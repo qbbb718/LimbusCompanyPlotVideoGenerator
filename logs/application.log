@@ -1,0 +1,21 @@
+2025-09-02 15:02:42 [main] DEBUG c.l.project.tool.HSLTextureColorizer - 开始处理纹理着色: 尺寸=1061x380, 色相=256.0, 饱和度=42.0, 亮度调整=32.0
+2025-09-02 15:02:42 [main] INFO  c.l.project.tool.HSLTextureColorizer - 纹理着色完成: 耗时50ms, 处理403180个像素
+2025-09-02 15:16:54 [main] DEBUG c.l.project.tool.HSLTextureColorizer - 开始处理纹理着色: 尺寸=1061x380, 色相=265.0, 饱和度=42.0, 亮度调整=-68.0
+2025-09-02 15:16:54 [main] INFO  c.l.project.tool.HSLTextureColorizer - 纹理着色完成: 耗时45ms, 处理403180个像素
+2025-09-02 15:22:47 [main] DEBUG c.l.project.tool.HSLTextureColorizer - 开始处理纹理着色: 尺寸=1061x380, 色相=265.0, 饱和度=42.0, 亮度调整=-68.0
+2025-09-02 15:22:47 [main] INFO  c.l.project.tool.HSLTextureColorizer - 纹理着色完成: 耗时42ms, 处理403180个像素
+2025-09-02 15:23:02 [main] DEBUG c.l.project.tool.HSLTextureColorizer - 开始处理纹理着色: 尺寸=1061x380, 色相=265.0, 饱和度=42.0, 亮度调整=-68.0
+2025-09-02 15:23:02 [main] INFO  c.l.project.tool.HSLTextureColorizer - 纹理着色完成: 耗时47ms, 处理403180个像素
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 开始着色处理 - 使用Color对象: R=78, G=48, B=118
+2025-09-02 15:27:23 [main] INFO  c.l.project.tool.TextureColorizer - 开始纹理着色: 纹理尺寸=1061x380, 目标颜色=RGB(78,48,118)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (10.0/40318 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (20.0/80636 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (30.000002/120954 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (40.0/161272 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (50.0/201590 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (60.000004/241908 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (70.0/282226 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (80.0/322544 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (90.0/362862 像素)
+2025-09-02 15:27:23 [main] DEBUG c.l.project.tool.TextureColorizer - 处理进度: {:.1f}% (100.0/403180 像素)
+2025-09-02 15:27:23 [main] INFO  c.l.project.tool.TextureColorizer - 纹理着色完成: 耗时38ms, 处理403180个像素, 平均{:.2f}像素/ms

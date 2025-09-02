@@ -18,7 +18,7 @@ public class Record {
     private boolean isDirty; //在上次导出后是否进行过修改，用来做多次导出的加速
 
     void calculateDuration(){
-        if()
+        //if()
     }
     //文本apply虽然也是画面的一部分，但这个的逻辑应该可以单拆出来写……虽然ui可能和静态一起渲染能提效率，但那都是以后的事了吧
 }

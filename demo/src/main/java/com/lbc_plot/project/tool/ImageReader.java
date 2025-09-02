@@ -4,12 +4,40 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * 图片读取工具类
  * 提供从文件系统读取图片的功能
+ * 
+ * 示例
+ * BufferedImage image1 = ImageReader.readResourceImage("assets/ui/name_tag.png");
+ * BufferedImage image3 = ImageReader.readFileImage("demo/src/main/resources/assets/ui/image.png");
  */
 public class ImageReader {
+
+
+
+    /**
+     * 从resources目录读取图片（推荐方式）
+     * @param resourcePath 相对于resources目录的路径
+     * @return BufferedImage对象
+     * @throws IOException 当读取失败时抛出
+     */
+    public static BufferedImage readResourceImage(String resourcePath) throws IOException {
+        ClassLoader classLoader = ImageReader.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(resourcePath);
+        
+        if (inputStream == null) {
+            throw new IOException("资源文件不存在: " + resourcePath);
+        }
+        
+        try {
+            return ImageIO.read(inputStream);
+        } finally {
+            inputStream.close();
+        }
+    }
 
     /**
      * 读取图片文件到BufferedImage

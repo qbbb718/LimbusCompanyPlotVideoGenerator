@@ -1,15 +1,19 @@
 package com.lbc_plot.project.tool;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 /**
  * 图片导出工具类
  * 提供将BufferedImage导出为文件的功能
  */
 public class ImageExporter {
+
 
     /**
      * 导出图片到指定路径
