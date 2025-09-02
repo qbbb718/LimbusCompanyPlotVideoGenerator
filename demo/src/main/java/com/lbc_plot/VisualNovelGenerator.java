@@ -7,6 +7,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 
+//这部分可以是最后渲染用的？
+//
+
 public class VisualNovelGenerator {
 
     public static void main(String[] args) throws Exception {
