@@ -4,10 +4,13 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import org.bytedeco.ffmpeg.global.postproc;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.repository.MyCharacter;
 import com.lbc_plot.model.repository.Portrait;
+import com.lbc_plot.service.Render;
 
 import java.awt.AlphaComposite;
 
@@ -15,6 +18,8 @@ import java.awt.AlphaComposite;
  * 角色立绘可视化类
  */
 public class CharacterVisual extends VisualElement {
+    private static final Logger logger = LoggerFactory.getLogger(CharacterVisual.class);
+
     // 所属角色，读取一些信息用
     private MyCharacter chara;
     private Portrait portrait;
@@ -53,8 +58,10 @@ public class CharacterVisual extends VisualElement {
         posX = ProjectConfig.VIDEO_WIDTH /2 - (146 * (ProjectConfig.VIDEO_WIDTH/ProjectConfig.VIDEO_WIDTH)/2) 
                 - portrait.getfaceX() + portrait.getAdjX() + adjX;
         posY = (int)((ProjectConfig.DEFAULT_CHARACTER_HEIGHT - chara.getHeight()) * ProjectConfig.Pixels_per_centimeter) 
-                + 300 + portrait.getAdjY() + adjY;
-        
+                + ProjectConfig.DEFAULT_CHARACTER_HEIGHT_Pixels + portrait.getAdjY() + adjY;
+
+        logger.debug("{}的身高为{},渲染距离为{}", 
+                    chara.getCharacterName(), chara.getHeight(), posY);
     }
 
 

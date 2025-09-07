@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.lbc_plot.core.ProjectConfig;
+import com.lbc_plot.service.Render;
 import com.lbc_plot.service.Composer.FrameComposerService;
 import com.lbc_plot.util.ImageReader;
 import com.lbc_plot.util.TextureColorizer;
@@ -159,11 +160,8 @@ public class MyCharacter {
         return color_Name_Image;
     }
 
-    public void updateColor_Name_Image() throws IOException {
-        FrameComposerService composer = new FrameComposerService();
-        BufferedImage name = ImageReader.readResourceImage(DEFAULT_FACTION);
-        color_Name_Image = TextureColorizer.colorizeToRGB(name, color_bg);
-        composer.addImageLayer(name, 0, 0);
+    public void updateColor_Name_Image() throws IOException { // 生成名字+阵营完整UI
+        color_Name_Image = Render.renderCharaNameUI(this);
     }
 
 

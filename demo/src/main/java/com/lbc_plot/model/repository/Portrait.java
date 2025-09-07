@@ -10,6 +10,7 @@ import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.util.ImageReader;
 import com.lbc_plot.util.TextureColorizer;
 
@@ -44,7 +45,7 @@ public class Portrait {
     private static final String DEFAULT_PORTRAITID = null;
     private static final int DEFAULT_FACE_X = 0;
     private static final int DEFAULT_FACE_Y = 0;
-    private static final int DEFAULT_LENGTH = 146;
+    private static final int DEFAULT_LENGTH = ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH;
     private static final int DEFAULT_ADJ_X = 0;
     private static final int DEFAULT_ADJ_Y = 0;
     private static final Emotion DEFAULT_EMOTION = Emotion.NORMAL;

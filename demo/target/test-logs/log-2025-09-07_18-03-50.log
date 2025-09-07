@@ -1,0 +1,60 @@
+2025-09-07 18:03:50.665 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:50.667 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.006 [main] INFO  com.lbc_plot.service.Render - 静态资源加载完成
+2025-09-07 18:03:51.008 [main] INFO  com.lbc_plot.service.Render - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-07 18:03:51.008 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.008 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.008 [main] INFO  com.lbc_plot.service.Render - 开始渲染背景层
+2025-09-07 18:03:51.008 [main] DEBUG com.lbc_plot.service.Render - 带边框渲染模式: targetSize=1536x864, borderMargin=192x108
+2025-09-07 18:03:51.032 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-07 18:03:51.032 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时24ms
+2025-09-07 18:03:51.032 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-07 18:03:51.032 [main] DEBUG com.lbc_plot.service.Render - 添加背景图层: 位置(192,108), 尺寸1536x864
+2025-09-07 18:03:51.032 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-07 18:03:51.032 [main] DEBUG com.lbc_plot.service.Render - 添加边框图层
+2025-09-07 18:03:51.032 [main] INFO  com.lbc_plot.service.Render - 开始渲染角色立绘层
+2025-09-07 18:03:51.033 [main] DEBUG com.lbc_plot.service.Render - 开始渲染1个角色立绘
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(605,325), 尺寸0x0
+2025-09-07 18:03:51.033 [main] DEBUG com.lbc_plot.service.Render - 添加角色图层: 格里高尔 at (605,325)
+2025-09-07 18:03:51.033 [main] INFO  com.lbc_plot.service.Render - 开始渲染UI和对话层
+2025-09-07 18:03:51.033 [main] INFO  com.lbc_plot.service.Render - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-09-07 18:03:51.033 [main] DEBUG com.lbc_plot.service.Render - 使用画布尺寸: 1920x1080
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-07 18:03:51.033 [main] DEBUG com.lbc_plot.service.Render - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-07 18:03:51.033 [main] DEBUG com.lbc_plot.service.Render - 渲染说话人UI元素: 格里高尔
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-07 18:03:51.033 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-09-07 18:03:51.034 [main] DEBUG com.lbc_plot.util.TextureColorizer - 开始着色处理 - 使用Color对象: R=76, G=54, B=31
+2025-09-07 18:03:51.034 [main] INFO  com.lbc_plot.util.TextureColorizer - 开始纹理着色: 纹理尺寸=1308x543, 目标颜色=RGB(76,54,31)
+2025-09-07 18:03:51.071 [main] INFO  com.lbc_plot.util.TextureColorizer - 纹理着色完成: 耗时37ms, 处理710244个像素, 平均{:.2f}像素/ms
+2025-09-07 18:03:51.071 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-09-07 18:03:51.136 [main] INFO  c.l.s.Composer.manager.FontLoader - 中文字体加载成功
+2025-09-07 18:03:51.257 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '13号罪人', 位置(740,135), 对齐CENTER, 字号75, 颜色java.awt.Color[r=159,g=106,b=59]
+2025-09-07 18:03:51.261 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '格里高尔', 位置(900,345), 对齐CENTER, 字号110, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-07 18:03:51.291 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层2
+2025-09-07 18:03:51.291 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸537x302
+2025-09-07 18:03:51.291 [main] DEBUG com.lbc_plot.service.Render - 剧情模式，渲染地点UI
+2025-09-07 18:03:51.291 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x265
+2025-09-07 18:03:51.291 [main] DEBUG com.lbc_plot.service.Render - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-07 18:03:51.293 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-07 18:03:51.293 [main] DEBUG com.lbc_plot.service.Render - 添加地点文本: 不XX就出不去的房间
+2025-09-07 18:03:51.293 [main] INFO  com.lbc_plot.service.Render - 开始合成UI图像
+2025-09-07 18:03:51.305 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-09-07 18:03:51.306 [main] INFO  com.lbc_plot.service.Render - UI图像合成成功: 尺寸1920x1080
+2025-09-07 18:03:51.306 [main] DEBUG com.lbc_plot.service.Render - UI图像信息: 类型=2, 透明度=透明
+2025-09-07 18:03:51.306 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-07 18:03:51.306 [main] DEBUG com.lbc_plot.service.Render - 清理UI合成器图层
+2025-09-07 18:03:51.306 [main] INFO  com.lbc_plot.service.Render - UI渲染完成
+2025-09-07 18:03:51.306 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-07 18:03:51.306 [main] DEBUG com.lbc_plot.service.Render - 添加UI图层
+2025-09-07 18:03:51.307 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '别TM嬷我了', 位置(376,912), 对齐LEFT, 字号28, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-07 18:03:51.307 [main] DEBUG com.lbc_plot.service.Render - 添加左对齐对话文本: 别TM嬷我了
+2025-09-07 18:03:51.307 [main] INFO  com.lbc_plot.service.Render - 开始合成最终图像
+2025-09-07 18:03:51.331 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层5, 文字图层1
+2025-09-07 18:03:51.331 [main] INFO  com.lbc_plot.service.Render - 图像合成成功: 尺寸1920x1080
+2025-09-07 18:03:51.331 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-07 18:03:51.332 [main] DEBUG com.lbc_plot.service.Render - 渲染预处理完成
+2025-09-07 18:03:51.538 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字

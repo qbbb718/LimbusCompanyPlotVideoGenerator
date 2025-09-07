@@ -83,14 +83,15 @@ class FrameComposerServiceTest {
         // 使用建造者模式（推荐）
         
         // 加载角色
-        Portrait portrait = Portrait.builder("Gregor-default.png")
+        Portrait portrait = Portrait.builder("Gregor-face_serious_R.png")
             .build();
+        portrait.setfaceX(282);
         //ImageExporter.exportImage(portrait.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_chara.png");
 
         MyCharacter character = MyCharacter.builder()
-            .characterName("张三")
+            .characterName("格里高尔")
             .height(168)
-            .faction("正义联盟")
+            .faction("13号罪人")
             .addPortrait(portrait)
             .build();
         
@@ -101,7 +102,7 @@ class FrameComposerServiceTest {
 
 
         // 加载背景
-        Background background = new Background("test_bg.png");
+        Background background = new Background("Story_private_room.png");
         //ImageExporter.exportImage(background.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bg.png");
 
         BackgroundVisual backgroundVisual = new BackgroundVisual(background);
@@ -109,8 +110,8 @@ class FrameComposerServiceTest {
 
         // 组合对话
         Dialogue dialogue = Dialogue.builder()
-            .text("啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊")
-            .location("会议室")
+            .text("别TM嬷我了")
+            .location("不XX就出不去的房间")
             .addSpeaker(character)
             .align(Align.LEFT)
             .speed(6)

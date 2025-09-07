@@ -12,6 +12,7 @@ import com.lbc_plot.project.audio.AudioCommand;
 import com.lbc_plot.service.Composer.FrameComposerService;
 import com.lbc_plot.util.ImageDarkener;
 import com.lbc_plot.util.ImageReader;
+import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.Record;
 import com.lbc_plot.model.repository.MyCharacter;
@@ -28,14 +29,15 @@ import com.lbc_plot.util.ImageReader;
 public class Render {
     private static final Logger logger = LoggerFactory.getLogger(Render.class);
     
-    static BufferedImage border, dialogBox, speaker_camp, location;
+    static BufferedImage border, dialogBox, speaker_camp, speaker_name, location;
     // 静态代码块 - 类加载时自动执行
     // 读入图片文件
     static {
         try {
-            border = ImageReader.readUI("border.png");
+            border = ImageReader.readUI("border_1080p.png");
             dialogBox = ImageReader.readUI("dialogBox.png");
             speaker_camp = ImageReader.readUI("speaker-camp.png");
+            speaker_name = ImageReader.readUI("speaker-name.png");
             location = ImageReader.readUI("location.png");
             
             logger.info("静态资源加载完成");
@@ -57,7 +59,15 @@ public class Render {
         try {
             // 分层渲染
             renderBackground(composer, record, plot, width, height);
-            renderCharacters(composer, record);
+            if(plot){
+                renderCharacters(composer, record);
+                composer.addImageLayer(border, 0, 0);
+                //缩放0.8
+                BufferedImage coImage = composer.compose();
+                composer.addFullScreenMask(255);
+                composer.addImageLayerScaled(coImage, width/10, height/10, 0.8f);
+            }
+            
             renderUIAndDialogue(composer, record, plot, width, height);
             
             // 合成最终图像
@@ -111,11 +121,8 @@ public class Render {
             return;
         }
         
-        if (plot) {
-            renderPlotBackground(composer, bgList, width, height);
-        } else {
-            renderFullScreenBackground(composer, bgList, width, height);
-        }
+        renderFullScreenBackground(composer, bgList, width, height);
+
     }
     
     /**
@@ -236,30 +243,66 @@ public class Render {
         
         return true;
     }
+
+    /**
+     * 安全地计算缩放比例
+     */
+    public static float calculateScaleSafely(int numerator, int denominator) {
+        if (denominator == 0) {
+            logger.warn("除数为0，返回默认缩放比例1.0f");
+            return 1.0f;
+        }
+        return (float) numerator / denominator;
+    }
     
     /**
      * 渲染单个角色
      */
     private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara) {
         BufferedImage charImage = chara.getImage();
+        float scaled = calculateScaleSafely(
+            ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH, 
+            chara.getPortrait().getLength()
+        );
+        logger.debug("{}立绘渲染比例为{}", chara.getChara().getCharacterName(), scaled);
         
         if (chara.isDim()) {
             // 不是说话人要压暗
             BufferedImage darkenedImage = ImageDarkener.darkenImage(charImage, 0.5f);
             if (darkenedImage == null) {
                 logger.error("图像压暗失败，使用原图: {}", chara.getChara().getCharacterName());
-                composer.addImageLayer(charImage, chara.getPosX(), chara.getPosY());
+                composer.addImageLayerScaled(charImage, chara.getPosX(), chara.getPosY(),scaled);
             } else {
-                composer.addImageLayer(darkenedImage, chara.getPosX(), chara.getPosY());
+                composer.addImageLayerScaled(darkenedImage, chara.getPosX(), chara.getPosY(),scaled);
                 logger.debug("添加压暗角色图层: {} at ({},{})", 
                             chara.getChara().getCharacterName(), chara.getPosX(), chara.getPosY());
             }
         } else {
-            composer.addImageLayer(charImage, chara.getPosX(), chara.getPosY());
+            composer.addImageLayerScaled(charImage, chara.getPosX(), chara.getPosY(),scaled);
             logger.debug("添加角色图层: {} at ({},{})", 
                         chara.getChara().getCharacterName(), chara.getPosX(), chara.getPosY());
         }
     }
+
+
+    /**
+     * 角色用, 渲染名字+阵营UI
+     * @param composer
+     * @param chara
+     */
+    public static BufferedImage renderCharaNameUI(MyCharacter myCharacter){
+        FrameComposerService composer = new FrameComposerService();
+        composer.addImageLayer(speaker_camp, 0,0);
+
+        BufferedImage name = TextureColorizer.colorizeToRGB(speaker_name, myCharacter.getColor_bg());
+        composer.addImageLayer(name, 0, 0);
+        composer.addFactionText(myCharacter.getFaction());
+        composer.addCharacterNameText(myCharacter.getCharacterName(), myCharacter.getColor_text());
+
+        BufferedImage nameUI = composer.compose();
+        return nameUI;
+    }
+     
     
     /**
      * 渲染UI和对话层
@@ -401,49 +444,7 @@ public class Render {
 
             if (!speaker.isNarrator()) { // 如果不是旁白
                 logger.debug("渲染说话人UI元素: {}", speaker.getCharacterName());
-                
-                // 渲染阵营UI
-                if (speaker_camp != null) {
-                    composer.addImageLayerScaled(speaker_camp, -26, 789, 0.28f);
-                    logger.debug("添加阵营UI: 位置(-26,789), 缩放0.28x");
-                } else {
-                    logger.error("阵营UI图像未加载，跳过渲染");
-                }
-
-                // 渲染人名UI
-                BufferedImage nameImage = speaker.getColor_Name_Image();
-                if (nameImage != null) {
-                    composer.addImageLayerScaled(nameImage, -26, 789, 0.28f);
-                    logger.debug("添加人名UI图像: 位置(-26,789), 缩放0.28x");
-                } else {
-                    logger.warn("角色{}的人名图像为空，跳过渲染", speaker.getCharacterName());
-                }
-
-                // 添加阵营文本
-                String faction = dialogue.getFaction();
-                if (faction != null && !faction.trim().isEmpty()) {
-                    composer.addFactionText(faction);
-                    logger.debug("添加阵营文本: {}", faction);
-                } else {
-                    logger.warn("阵营文本为空，跳过渲染");
-                }
-
-                // 添加人名文本
-                String speakerName = dialogue.getSpeakerName();
-                Color textColor = speaker.getColor_text();
-                if (speakerName != null && !speakerName.trim().isEmpty()) {
-                    if (textColor != null) {
-                        composer.addCharacterNameText(speakerName, textColor);
-                        logger.debug("添加角色名文本: {} (颜色: {})", speakerName, 
-                                String.format("#%06x", textColor.getRGB() & 0xFFFFFF));
-                    } else {
-                        composer.addCharacterNameText(speakerName, ProjectConfig.DEFAULT_TEXT_COLOR);
-                        logger.debug("添加角色名文本: {} (使用默认颜色)", speakerName);
-                    }
-                } else {
-                    logger.warn("说话人姓名为空，跳过文本渲染");
-                }
-                
+                composer.addImageLayerScaled(speaker.getColor_Name_Image(), -26, 789, 0.28f);  
             } else {
                 logger.debug("旁白模式，跳过说话人UI元素");
             }
