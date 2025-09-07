@@ -74,7 +74,7 @@ class FrameComposerServiceTest {
         Record record = creatTestRecord();
         //BufferedImage pre = Render.renderUI(true, record.getDialogue());
         BufferedImage pre = Render.renderPre(record, true, ProjectConfig.VIDEO_WIDTH, ProjectConfig.VIDEO_HEIGHT);
-        ImageExporter.exportImage(pre, "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/test3.png");
+        ImageExporter.exportImage(pre, "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/test4.png");
         
     }
 
@@ -83,20 +83,38 @@ class FrameComposerServiceTest {
         // 使用建造者模式（推荐）
         
         // 加载角色
-        Portrait portrait = Portrait.builder("Gregor-face_serious_R.png")
+        Portrait portrait_1, portrait_2;
+        portrait_1 = Portrait.builder("Gregor-face_serious_R.png")
             .build();
-        portrait.setfaceX(282);
+        portrait_1.setfaceX(282);
+
+        portrait_2 = Portrait.builder("Rodion-face_happy_L.png")
+            .build();
+        portrait_2.setfaceX(200);
         //ImageExporter.exportImage(portrait.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_chara.png");
 
         MyCharacter character = MyCharacter.builder()
             .characterName("格里高尔")
             .height(168)
             .faction("13号罪人")
-            .addPortrait(portrait)
+            .addPortrait(portrait_1)
+            .color_bg(new Color(105, 53, 11))
             .build();
         
-        CharacterVisual characterVisual = CharacterVisual.builder(character, portrait)
+        MyCharacter character_2 = MyCharacter.builder()
+            .characterName("罗佳")
+            .height(182)
+            .faction("9号罪人")
+            .addPortrait(portrait_2)
+            .color_bg(new Color(105, 53, 11))
+            .build();
+        
+        CharacterVisual characterVisual = CharacterVisual.builder(character, portrait_1)
             .dim(false)
+            .build();
+        CharacterVisual characterVisual_2 = CharacterVisual.builder(character_2, portrait_2)
+            .dim(true)
+            .adjX(400)
             .build();
         //ImageExporter.exportImage(characterVisual.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_charaV.png");
 
@@ -121,6 +139,7 @@ class FrameComposerServiceTest {
         Record record = new Record.Builder()
             .dialogue(dialogue)
             .addBackground(backgroundVisual)
+            .addCharacter(characterVisual_2)
             .addCharacter(characterVisual)
             .build();
 

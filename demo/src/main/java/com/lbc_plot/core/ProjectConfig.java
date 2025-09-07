@@ -51,7 +51,7 @@ public final class ProjectConfig {
     public static final int LOCATION_X = 197;
     public static final int LOCATION_Y = 78;
     public static final int LOCATION_FONT_SIZE = 32;
-    public static final float LOCATION_ROTATION = -6f;
+    public static final float LOCATION_ROTATION = -5.2f;
     public static final int LOCATION_MAX_WIDTH = 500;
     
     // 角色名文字参数
