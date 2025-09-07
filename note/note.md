@@ -116,13 +116,12 @@ classDiagram
     }
 
     class CharacterVisual { <!-- 使用立绘 -->
-        -Character cha <!-- 所属角色，读取一些信息用 -->
+        -Character cha <!-- 所属角色，读取一些信息用？ -->
         -String imageId <!-- 这个要做成从库里读吗？ -->
         -float startAlpha <!-- 透明度 -->
         -int posX, posY <!-- 立绘坐标，从角色读取 -->
         -int adjX, adjY <!-- 用户手动调整偏差 -->
         -boolean dim <!-- 是否压暗，默认1；说话人0 -->
-
         +getPos(cha) <!-- 从角色读取立绘坐标, 角色身高与单张立绘偏差值 -->
         +apply(Graphics2D, float progress) 
     }
@@ -226,7 +225,7 @@ classDiagram
     class Character { <!-- 角色 -->
         -String characterID <!-- 唯一ID -->
         -String characterName <!-- 角色名 -->
-        -String color<!-- 代表色 -->
+        -Color color_bg, color_text<!-- 代表色,和文字色 -->
         -int height <!-- 角色身高，算坐标用的 -->
         -List<Portrait> portraits <!-- 立绘们。第一位是默认立绘，没有就用这个 -->
     }
@@ -465,7 +464,6 @@ flowchart TB
 > **当前进度**：[填写你的最新进展]  
 > **待解决问题**：[具体问题描述]  
 
-需要补充/修改任何部分吗？可以立即调整！ (•̀ᴗ•́)و
 
 
 

@@ -1,0 +1,52 @@
+2025-09-06 23:51:23.162 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-06 23:51:23.163 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-06 23:51:23.453 [main] INFO  com.lbc_plot.service.Render - 静态资源加载完成
+2025-09-06 23:51:23.453 [main] INFO  com.lbc_plot.service.Render - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-06 23:51:23.455 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-06 23:51:23.455 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-06 23:51:23.455 [main] DEBUG com.lbc_plot.service.Render - 带边框渲染模式: targetSize=1536x864, borderMargin=192x108
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时20ms
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 添加背景图层: 位置(192,108), 尺寸1536x864
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 添加边框图层
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 开始渲染1个角色立绘
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(887,325), 尺寸650x1417
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 添加角色图层: 张三 at (887,325)
+2025-09-06 23:51:23.475 [main] INFO  com.lbc_plot.service.Render - 开始渲染UI: plot=true, dialogueSpeaker=张三
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 使用画布尺寸: 1920x1080
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 渲染说话人UI元素: 张三
+2025-09-06 23:51:23.475 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸322x151
+2025-09-06 23:51:23.475 [main] DEBUG com.lbc_plot.service.Render - 添加阵营UI: 位置(-26,789), 缩放0.28x
+2025-09-06 23:51:23.475 [main] WARN  com.lbc_plot.service.Render - 角色张三的人名图像为空，跳过渲染
+2025-09-06 23:51:23.609 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '正义联盟', 位置(300,250), 字号26, 颜色java.awt.Color[r=159,g=106,b=59], 旋转30.0度
+2025-09-06 23:51:23.609 [main] DEBUG com.lbc_plot.service.Render - 添加阵营文本: 正义联盟
+2025-09-06 23:51:23.609 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '张三', 位置(200,150), 字号24, 颜色java.awt.Color[r=249,g=217,b=175], 旋转30.0度
+2025-09-06 23:51:23.609 [main] DEBUG com.lbc_plot.service.Render - 添加角色名文本: 张三 (颜色: #f9d9af)
+2025-09-06 23:51:23.609 [main] DEBUG com.lbc_plot.service.Render - 剧情模式，渲染地点UI
+2025-09-06 23:51:23.609 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x265
+2025-09-06 23:51:23.609 [main] DEBUG com.lbc_plot.service.Render - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-06 23:51:23.613 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '会议室', 位置(100,50), 字号28, 颜色java.awt.Color[r=249,g=217,b=175], 旋转30.0度
+2025-09-06 23:51:23.613 [main] DEBUG com.lbc_plot.service.Render - 添加地点文本: 会议室
+2025-09-06 23:51:23.613 [main] INFO  com.lbc_plot.service.Render - 开始合成UI图像
+2025-09-06 23:51:23.684 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层3
+2025-09-06 23:51:23.684 [main] INFO  com.lbc_plot.service.Render - UI图像合成成功: 尺寸1920x1080
+2025-09-06 23:51:23.684 [main] DEBUG com.lbc_plot.service.Render - UI图像信息: 类型=2, 透明度=透明
+2025-09-06 23:51:23.684 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-06 23:51:23.684 [main] DEBUG com.lbc_plot.service.Render - 清理UI合成器图层
+2025-09-06 23:51:23.684 [main] INFO  com.lbc_plot.service.Render - UI渲染完成
+2025-09-06 23:51:23.684 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-06 23:51:23.684 [main] DEBUG com.lbc_plot.service.Render - 添加UI图层
+2025-09-06 23:51:23.684 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '你好，世界！', 位置(400,350), 字号20, 颜色java.awt.Color[r=249,g=217,b=175], 旋转0.0度
+2025-09-06 23:51:23.684 [main] DEBUG com.lbc_plot.service.Render - 添加左对齐对话文本: 你好，世界！
+2025-09-06 23:51:23.684 [main] INFO  com.lbc_plot.service.Render - 开始合成最终图像
+2025-09-06 23:51:23.728 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层5, 文字图层1
+2025-09-06 23:51:23.728 [main] INFO  com.lbc_plot.service.Render - 图像合成成功: 尺寸1920x1080
+2025-09-06 23:51:23.728 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-06 23:51:23.728 [main] DEBUG com.lbc_plot.service.Render - 渲染预处理完成
+2025-09-06 23:51:23.898 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
