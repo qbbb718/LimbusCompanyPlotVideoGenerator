@@ -11,9 +11,11 @@ import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.model.video.Dialogue.Align;
 import com.lbc_plot.project.audio.AudioCommand;
 import com.lbc_plot.project.audio.AudioCommandType;
-import com.lbc_plot.service.Render;
+import com.lbc_plot.service.RenderOfImage;
+import com.lbc_plot.service.RenderOfVideo;
 import com.lbc_plot.service.Composer.FrameComposerService;
 import com.lbc_plot.util.ImageExporter;
+import com.lbc_plot.util.VideoExporter;
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.Record;
 
@@ -71,11 +73,40 @@ class FrameComposerServiceTest {
 
     @Test
     void testBasicRenderPre() throws IOException {
-        Record record = creatTestRecord();
-        //BufferedImage pre = Render.renderUI(true, record.getDialogue());
-        BufferedImage pre = Render.renderPre(record, true, ProjectConfig.VIDEO_WIDTH, ProjectConfig.VIDEO_HEIGHT);
-        ImageExporter.exportImage(pre, "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/test4.png");
+        // Record record = creatTestRecord();
+        // BufferedImage pre = RenderOfImage.renderPre(record, true, ProjectConfig.VIDEO_WIDTH, ProjectConfig.VIDEO_HEIGHT);
+        // ImageExporter.exportImage(pre, "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/test4.png");
         
+    }
+
+    @Test
+    void testRenderOfVedio() throws IOException {
+
+        Record record = creatTestRecord();
+
+        
+
+        //BufferedImage pre = RenderOfImage.renderPreExceptDialogue(record, true, ProjectConfig.VIDEO_WIDTH, ProjectConfig.VIDEO_HEIGHT);
+        //ImageExporter.exportImage(pre, "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/test2-1.png");
+
+        try {
+            // 导出视频
+            RenderOfVideo.exportRecordVideo(
+                record, 
+                ProjectConfig.DEFAULT_EIALOGUE_SPEED, 
+                true, 
+                ProjectConfig.VIDEO_WIDTH, 
+                ProjectConfig.VIDEO_HEIGHT, 
+                "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/test.mp4", 
+                ProjectConfig.FRAME_RATE
+            );
+            
+            System.out.println("视频导出成功！");
+            
+        } catch (Exception e) {
+            System.err.println("视频导出失败: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     // 创建一个测试类
@@ -115,6 +146,60 @@ class FrameComposerServiceTest {
         CharacterVisual characterVisual_2 = CharacterVisual.builder(character_2, portrait_2)
             .dim(true)
             .adjX(400)
+            .build();
+        //ImageExporter.exportImage(characterVisual.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_charaV.png");
+
+
+        // 加载背景
+        Background background = new Background("Story_private_room.png");
+        //ImageExporter.exportImage(background.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bg.png");
+
+        BackgroundVisual backgroundVisual = new BackgroundVisual(background);
+        //ImageExporter.exportImage(backgroundVisual.getBgImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bgV.png");
+
+        // 组合对话
+        Dialogue dialogue = Dialogue.builder()
+            .text("别TM嬷我了")
+            .location("不XX就出不去的房间")
+            .addSpeaker(character)
+            .align(Align.LEFT)
+            .speed(6)
+            .build();
+        
+        // 组合record
+        Record record = new Record.Builder()
+            .dialogue(dialogue)
+            .addBackground(backgroundVisual)
+            .addCharacter(characterVisual_2)
+            .addCharacter(characterVisual)
+            .build();
+
+        return record;
+    }
+
+    // 创建一个超级测试类
+    public Record creatSupersTestRecord() throws IOException{
+        // 使用建造者模式（推荐）
+        
+        // 加载角色
+        Portrait portrait_1, portrait_2;
+        portrait_1 = Portrait.builder("Gregor-face_serious_R.png")
+            .faceX(282)
+            .build();
+
+
+        MyCharacter character = MyCharacter.builder()
+            .characterName("格里高尔")
+            .height(168)
+            .faction("13号罪人")
+            .addPortrait(portrait_1)
+            .color_bg(new Color(105, 53, 11))
+            .build();
+        
+        MyCharacter character_2 = MyCharacter.getDefaultNarrator();
+        
+        CharacterVisual characterVisual = CharacterVisual.builder(character, portrait_1)
+            .dim(false)
             .build();
         //ImageExporter.exportImage(characterVisual.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_charaV.png");
 

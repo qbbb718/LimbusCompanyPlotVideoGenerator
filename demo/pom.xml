@@ -39,6 +39,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>1.5.9</version> <!-- 请检查并使用最新稳定版本 -->
+        </dependency>
+
     </dependencies>
 
     <repositories>

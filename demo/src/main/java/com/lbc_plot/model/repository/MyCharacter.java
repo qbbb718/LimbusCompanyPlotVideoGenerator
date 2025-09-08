@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.lbc_plot.core.ProjectConfig;
-import com.lbc_plot.service.Render;
+import com.lbc_plot.service.RenderOfImage;
 import com.lbc_plot.service.Composer.FrameComposerService;
 import com.lbc_plot.util.ImageReader;
 import com.lbc_plot.util.TextureColorizer;
@@ -57,7 +57,7 @@ public class MyCharacter {
      */
     private static MyCharacter createDefaultNarrator() {
         return MyCharacter.builder()
-            .characterID("Narrator")
+            .characterID(ProjectConfig.NARRATION_ID)
             .characterName("旁白")
             .build();
     }
@@ -161,7 +161,7 @@ public class MyCharacter {
     }
 
     public void updateColor_Name_Image() throws IOException { // 生成名字+阵营完整UI
-        color_Name_Image = Render.renderCharaNameUI(this);
+        color_Name_Image = RenderOfImage.renderCharaNameUI(this);
     }
 
 

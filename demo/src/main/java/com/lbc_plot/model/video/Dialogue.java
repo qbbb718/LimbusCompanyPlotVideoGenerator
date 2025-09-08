@@ -37,7 +37,8 @@ public class Dialogue {
     
     
     
-    
+    // TODO
+    //
     
     // Getter 和 Setter 方法
     public String getText() {

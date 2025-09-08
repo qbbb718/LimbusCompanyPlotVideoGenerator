@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.repository.MyCharacter;
 import com.lbc_plot.model.repository.Portrait;
-import com.lbc_plot.service.Render;
+import com.lbc_plot.service.RenderOfImage;
 
 import java.awt.AlphaComposite;
 

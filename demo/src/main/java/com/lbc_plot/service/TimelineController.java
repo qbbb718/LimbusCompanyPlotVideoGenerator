@@ -57,7 +57,7 @@ public class TimelineController {
         List<AudioCommand> audioCommandsTemp = new ArrayList<>();
         Integer mixFrame; //视频导出后确认有多少帧
 
-        Render render = new Render();
+        RenderOfImage render = new RenderOfImage();
         // 先分别导出record的画面，再拼接，再渲染音频
         render.renderRecordsVedio();
         render.connectRecordsVedio();

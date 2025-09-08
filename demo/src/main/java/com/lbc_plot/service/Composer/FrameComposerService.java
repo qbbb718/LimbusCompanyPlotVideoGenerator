@@ -154,4 +154,7 @@ public class FrameComposerService extends BaseLayerManager
     public void addFullScreenMask(int rgb, int alpha) {
         imageManager.addFullScreenMask(rgb, alpha);
     }
+
+    
+
 }
