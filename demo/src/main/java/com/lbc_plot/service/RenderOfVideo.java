@@ -1,5 +1,8 @@
 package com.lbc_plot.service;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -11,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import com.lbc_plot.service.Composer.FrameComposerService;
 import com.lbc_plot.service.Composer.model.DialogueSpeed;
+import com.lbc_plot.service.Composer.model.TextLayerInfo;
+import com.lbc_plot.util.RenderQualityUtils;
 import com.lbc_plot.util.VideoExporter;
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.Record;
@@ -23,7 +28,6 @@ public class RenderOfVideo {
 
     public static void exportRecordVideo(
         Record record,
-        int speed,
         boolean plot,
         int width, 
         int height,
@@ -31,7 +35,7 @@ public class RenderOfVideo {
         int frameRate
     ) throws Exception {
         logger.info("开始导出视频: outputPath={}, plot={}, speed={}, frameRate={}, resolution={}x{}",
-            outputPath, plot, speed, frameRate, width, height);
+            outputPath, plot,  frameRate, width, height);
         
         long startTime = System.currentTimeMillis();
         
@@ -59,10 +63,8 @@ public class RenderOfVideo {
             
             // 3. 生成逐帧动画
             logger.debug("开始生成逐帧动画");
-            // List<BufferedImage> recordFrames = generateDialogueFrames(
-            //     recordPre, dialogue.getText(), speed, dialogue.isNarrator(), width, height);
             List<BufferedImage> recordFrames = generateSmoothDialogueFrames(
-                recordPre, dialogue.getText(), speed, dialogue.isNarrator(), width, height);
+                recordPre, dialogue.getText(), dialogue.getSpeed(), dialogue.isNarrator(), width, height);
             logger.info("逐帧动画生成完成: 总帧数={}", recordFrames.size());
             
             if (recordFrames.isEmpty()) {
@@ -72,7 +74,7 @@ public class RenderOfVideo {
             
             // 4. 导出视频
             logger.debug("开始导出视频文件");
-            VideoExporter.exportFrames(recordFrames, outputPath, frameRate);
+            VideoExporter.exportFramesHighQuality(recordFrames, outputPath, frameRate);
             logger.info("视频导出完成: {}", outputPath);
             
         } catch (Exception e) {
@@ -192,76 +194,68 @@ public class RenderOfVideo {
         }
     }
 
-    /**
-     * 生成逐字显示的帧序列
-     */
-    public static List<BufferedImage> generateDialogueFrames(
-        BufferedImage staticContent,  // 预渲染的静态内容
-        String fullText,              // 完整文本
-        int speed,                    // 速度值（1-6）
-        boolean isNarrator,           // 是否是旁白
-        int width, int height         // 画面尺寸
-    ) throws IOException {
-        
-        List<BufferedImage> frames = new ArrayList<>();
-        double charsPerFrame = DialogueSpeed.getCharactersPerFrame(speed);
-        double currentChars = 0;
-        
-        // 复制静态内容作为基础
-        BufferedImage baseFrame = copyImage(staticContent);
-        
-        while (currentChars < fullText.length()) {
-            currentChars += charsPerFrame;
-            int endIndex = Math.min((int) Math.ceil(currentChars), fullText.length());
-            String currentText = fullText.substring(0, endIndex);
-            
-            // 在当前帧上添加文字
-            BufferedImage frameWithText = addTextToFrame(baseFrame, currentText, isNarrator, width, height);
-            frames.add(frameWithText);
-            
-            // 如果是最后几个字符，可以多停留几帧
-            if (endIndex == fullText.length()) {
-                addStayFrames(frames, frameWithText, 10); // 最后停留10帧
-            }
-        }
-        
-        return frames;
-    }
 
     /**
-     * 在静态内容上添加当前文本
+     * 高效版本：直接渲染文字到帧上（避免多次图像复制）
      */
     private static BufferedImage addTextToFrame(BufferedImage baseFrame, String text, 
-                                            boolean isNarrator, int width, int height) {
-        if (logger.isTraceEnabled()) {
-            logger.trace("添加文本到帧: text='{}', isNarrator={}", 
-                text.length() > 30 ? text.substring(0, 27) + "..." : text, isNarrator);
-        }
-
-
+                                                    boolean isNarrator, int width, int height) {
         try {
-        // 创建新的帧（复制静态内容）
+            // 直接复制基础帧
             BufferedImage frame = copyImage(baseFrame);
-        
-
-            // 创建临时的FrameComposerService只用于文字渲染
-            FrameComposerService textComposer = new FrameComposerService();
-            textComposer.addImageLayer(frame, 0, 0);
-            if (isNarrator) {
-                textComposer.addDialogueTextCenter(text);
-            } else {
-                textComposer.addDialogueTextLeft(text);
-            }
+            Graphics2D g2d = frame.createGraphics();
             
-            // 只渲染文字层
-            BufferedImage textLayer = textComposer.compose();
+            // 设置高质量渲染
+            RenderQualityUtils.setupUltraQualityRendering(g2d);
+            
+            // 直接绘制文字（避免创建额外的合成器）
+            drawTextDirectly(g2d, text, isNarrator, width, height);
 
-            return textLayer;
+            g2d.dispose();
+            return frame;
+            
         } catch (Exception e) {
             logger.error("添加文本到帧失败", e);
             throw new RuntimeException("添加文本失败", e);
         }
     }
+
+    /**
+     * 直接绘制文字到Graphics2D
+     */
+    private static void drawTextDirectly(Graphics2D g2d, String text, boolean isNarrator, int width, int height) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        
+        // 设置文字样式
+        Font font = new Font("SimHei", Font.PLAIN, 24); // 根据需要调整
+        g2d.setFont(font);
+        g2d.setColor(Color.WHITE); // 根据需要调整颜色
+        
+        // 计算文字位置
+        FontMetrics metrics = g2d.getFontMetrics();
+        int textWidth = metrics.stringWidth(text);
+        int textHeight = metrics.getHeight();
+        
+        int x, y;
+        if (isNarrator) {
+            // 居中显示
+            x = (width - textWidth) / 2;
+            y = (height - textHeight) / 2 + metrics.getAscent();
+        } else {
+            // 左对齐显示
+            x = 50; // 左边距
+            y = height - 100; // 底部位置
+        }
+        
+        // 绘制文字
+        g2d.drawString(text, x, y);
+    }
+
+    
+
+
 
 
     /**
@@ -289,4 +283,5 @@ public class RenderOfVideo {
         
         return copy;
     }
+
 }

@@ -66,7 +66,7 @@ public class MyCharacter {
      * 判断是否为旁白
      */
     public boolean isNarrator() {
-        return "Narrator".equals(this.characterID);
+        return ProjectConfig.NARRATION_ID.equals(this.characterID);
     }
 
 

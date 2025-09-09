@@ -335,7 +335,7 @@ public class Portrait {
      */
     public static class Builder {
         // 必需参数
-        private final String portraitID = DEFAULT_PORTRAITID;
+        private String portraitID = DEFAULT_PORTRAITID;
         private final String imagePath;
         
         // 可选参数（有默认值）
@@ -357,6 +357,11 @@ public class Portrait {
         }
         
         // 链式设置方法
+        public Builder portraitID(String portraitID) {
+            this.portraitID = portraitID;
+            return this;
+        }
+
         public Builder image(BufferedImage image) {
             this.image = image;
             return this;

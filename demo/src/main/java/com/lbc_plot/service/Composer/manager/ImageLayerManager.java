@@ -1,6 +1,7 @@
 package com.lbc_plot.service.Composer.manager;
 
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.service.Composer.contract.ImageLayerOperations;
 import com.lbc_plot.util.ImageReader;
+import com.lbc_plot.util.RenderQualityUtils;
 
 // ImageLayerManager.java - 专门处理图像图层
 public class ImageLayerManager extends BaseLayerManager implements ImageLayerOperations {
@@ -66,8 +68,6 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerOpe
     }
 
 
-
-
     /**
      * 核心添加图层方法
      */
@@ -86,18 +86,16 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerOpe
         
         if (targetWidth > 0 && targetHeight > 0) {
             // 指定像素尺寸
-            finalWidth = targetWidth;
-            finalHeight = targetHeight;
+            image = RenderQualityUtils.scaleImageHighQuality(image, targetWidth, targetHeight );
             logger.debug("图层缩放: {} -> {}x{} 像素", resourcePath, targetWidth, targetHeight);
         } else if (scaleX != 1.0f || scaleY != 1.0f) {
             // 百分比缩放
-            finalWidth = (int) (image.getWidth() * scaleX);
-            finalHeight = (int) (image.getHeight() * scaleY);
+            image = RenderQualityUtils.scaleImageHighQuality(image, scaleX, false);
             logger.debug("图层缩放: {} -> {:.0f}% x {:.0f}%", 
                 resourcePath, scaleX * 100, scaleY * 100);
         }
 
-        LayerInfo layer = new LayerInfo(image, x, y, finalWidth, finalHeight, scaleX, scaleY, targetWidth, targetHeight);
+        LayerInfo layer = new LayerInfo(image, x, y, finalWidth, finalHeight, -1, -1, finalWidth, finalHeight);
         layers.add(layer);
 
 
@@ -112,31 +110,22 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerOpe
      * @param x 左上角x坐标
      * @param x 左上角y坐标
      */
-    public void addImageLayer(BufferedImage image, int x, int y) {
-        addImageLayer(image, x, y, 1.0f, 1.0f, -1, -1);
-    }
-
     public void addImageLayerScaled(BufferedImage image, int x, int y, float scale) {
-        addImageLayer(image, x, y, scale, scale, -1, -1);
+        BufferedImage scaledImage = RenderQualityUtils.scaleImageHighQuality(image, scale);
+        addImageLayer(scaledImage, x, y);
     }
 
-    public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight) {
-        addImageLayer(image, x, y, 1.0f, 1.0f, targetWidth, targetHeight);
+    public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight, boolean keepAspectRatio) {
+        BufferedImage scaledImage = RenderQualityUtils.scaleImageHighQuality(image, targetWidth, targetHeight, keepAspectRatio);
+        addImageLayer(scaledImage, x, y);
     }
 
-    private void addImageLayer(BufferedImage image, int x, int y, float scaleX, float scaleY, int targetWidth, int targetHeight) {
+    public void addImageLayer(BufferedImage image, int x, int y) {
         int finalWidth = image.getWidth();
         int finalHeight = image.getHeight();
         
-        if (targetWidth > 0 && targetHeight > 0) {
-            finalWidth = targetWidth;
-            finalHeight = targetHeight;
-        } else if (scaleX != 1.0f || scaleY != 1.0f) {
-            finalWidth = (int) (image.getWidth() * scaleX);
-            finalHeight = (int) (image.getHeight() * scaleY);
-        }
 
-        LayerInfo layer = new LayerInfo(image, x, y, finalWidth, finalHeight, scaleX, scaleY, targetWidth, targetHeight);
+        LayerInfo layer = new LayerInfo(image, x, y, finalWidth, finalHeight, -1, -1,  finalWidth, finalHeight);
         layers.add(layer);
 
         width = Math.max(width, x + finalWidth);
@@ -243,6 +232,26 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerOpe
                 layerIndex, layer.x, layer.y, layer.targetWidth, layer.targetHeight);
         }
     }
+
+    /**
+     * 高质量图像缩放
+     */
+    public static BufferedImage scaleImageHighQuality(BufferedImage original, int newWidth, int newHeight) {
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = scaledImage.createGraphics();
+        
+        RenderQualityUtils.setupUltraQualityRendering(g2d);
+
+        // 使用双三次插值进行高质量缩放
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, 
+                            RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        
+        g2d.drawImage(original, 0, 0, newWidth, newHeight, null);
+        g2d.dispose();
+        
+        return scaledImage;
+    }
+
     
     public void clear() {
         layers.clear();
@@ -281,5 +290,6 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerOpe
             this.scaleY = scaleY;
         }
     }
+
 
 }

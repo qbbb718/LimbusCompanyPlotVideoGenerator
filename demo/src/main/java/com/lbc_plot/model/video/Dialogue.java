@@ -3,6 +3,7 @@ package com.lbc_plot.model.video;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.repository.MyCharacter;
 
 /**
@@ -14,7 +15,6 @@ public class Dialogue {
     public static final String DEFAULT_TEXT = "...";
     public static final String DEFAULT_LOCATION = "default";
     public static final String DEFAULT_FACTION = "中立";
-    public static final int DEFAULT_SPEED = 0;
     
     // 枚举类型
     public enum Align {
@@ -132,6 +132,9 @@ public class Dialogue {
     public void setEmotion(Emotion emotion) {
         this.emotion = (emotion == null) ? Emotion.NORMAL : emotion;
     }
+
+
+
     
     /**
      * NLP分析情绪 - 简单实现
@@ -283,7 +286,7 @@ public class Dialogue {
         private List<MyCharacter> speakerC;
         private String speakerName;
         private String faction;
-        private Align align;
+        private Align align = Align.LEFT; //默认左对齐
         private int speed;
         private Emotion emotion;
         
@@ -292,7 +295,7 @@ public class Dialogue {
          */
         public Builder() {
             // 可以设置一些默认值
-            this.speed = DEFAULT_SPEED;
+            this.speed = ProjectConfig.DEFAULT_DIALOGUE_SPEED;
             this.emotion = Emotion.NORMAL;
         }
         

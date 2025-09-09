@@ -1,0 +1,10 @@
+2025-09-08 22:50:20.095 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-08 22:50:20.097 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-08 22:50:20.220 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-08 22:50:20.258 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-08 22:50:20.294 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-08 22:50:20.333 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-08 22:50:20.336 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-08 22:50:20.445 [main] INFO  c.l.service.BatchVideoProcessor - 开始处理 5 个Record
+2025-09-08 22:50:20.445 [main] INFO  c.l.service.BatchVideoProcessor - 临时目录正常
+2025-09-08 22:50:20.459 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字

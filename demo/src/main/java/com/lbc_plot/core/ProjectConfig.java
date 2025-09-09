@@ -15,7 +15,7 @@ public final class ProjectConfig {
     public static final String VIDEO_RESOLUTION = "1080p";
     public static final double VIDEO_ASPECT_RATIO = 16.0 / 9.0;
     public static final int FRAME_RATE = 30;
-    public static final int DEFAULT_EIALOGUE_SPEED = 1;
+    public static final int DEFAULT_DIALOGUE_SPEED = 1;
     
     // 文件路径配置
     public static final String IMAGE_BASE_PATH = "assets/images/";

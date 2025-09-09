@@ -1,0 +1,348 @@
+2025-09-09 10:39:41.101 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.103 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.235 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-09 10:39:41.274 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-09 10:39:41.311 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-09 10:39:41.357 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-09 10:39:41.357 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-09-09 10:39:41.472 [main] INFO  c.l.service.BatchVideoProcessor - 开始处理 5 个Record
+2025-09-09 10:39:41.472 [main] INFO  c.l.service.BatchVideoProcessor - 临时目录正常
+2025-09-09 10:39:41.481 [main] INFO  c.l.service.BatchVideoProcessor - 处理第 1/5 个Record: record0000idle.mp4
+2025-09-09 10:39:41.482 [main] INFO  com.lbc_plot.service.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0000idle.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-09-09 10:39:41.482 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-09-09 10:39:41.582 [main] INFO  com.lbc_plot.service.RenderOfImage - 静态资源加载完成
+2025-09-09 10:39:41.584 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-09 10:39:41.584 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.584 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.584 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染背景层
+2025-09-09 10:39:41.584 [main] DEBUG com.lbc_plot.service.RenderOfImage - 全屏渲染模式
+2025-09-09 10:39:41.628 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:41.628 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-09-09 10:39:41.628 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染角色立绘层
+2025-09-09 10:39:41.628 [main] DEBUG com.lbc_plot.service.RenderOfImage - 开始渲染1个角色立绘
+2025-09-09 10:39:41.629 [main] DEBUG com.lbc_plot.service.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-09-09 10:39:41.633 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-09-09 10:39:41.633 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-09-09 10:39:41.633 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:41.645 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-09-09 10:39:41.671 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:41.671 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时26ms
+2025-09-09 10:39:41.719 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-09 10:39:41.719 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-09-09 10:39:41.719 [main] DEBUG com.lbc_plot.service.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-09-09 10:39:41.719 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.719 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.743 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-09 10:39:41.743 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-09 10:39:41.743 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-09-09 10:39:41.743 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.743 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:41.743 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-09-09 10:39:41.744 [main] DEBUG com.lbc_plot.util.TextureColorizer - 开始着色处理 - 使用Color对象: R=105, G=53, B=11
+2025-09-09 10:39:41.744 [main] INFO  com.lbc_plot.util.TextureColorizer - 开始纹理着色: 纹理尺寸=1308x543, 目标颜色=RGB(105,53,11)
+2025-09-09 10:39:41.786 [main] INFO  com.lbc_plot.util.TextureColorizer - 纹理着色完成: 耗时42ms, 处理710244个像素, 平均{:.2f}像素/ms
+2025-09-09 10:39:41.786 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-09-09 10:39:41.832 [main] INFO  c.l.s.Composer.manager.FontLoader - 中文字体加载成功
+2025-09-09 10:39:41.950 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '13号罪人', 位置(740,135), 对齐CENTER, 字号75, 颜色java.awt.Color[r=159,g=106,b=59]
+2025-09-09 10:39:41.953 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '格里高尔', 位置(900,345), 对齐CENTER, 字号110, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-09 10:39:41.984 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层2
+2025-09-09 10:39:41.991 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-09-09 10:39:41.991 [main] DEBUG com.lbc_plot.service.RenderOfImage - 剧情模式，渲染地点UI
+2025-09-09 10:39:41.995 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-09-09 10:39:41.996 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-09 10:39:41.999 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-09 10:39:41.999 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-09-09 10:39:41.999 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成UI图像
+2025-09-09 10:39:42.007 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-09-09 10:39:42.007 [main] INFO  com.lbc_plot.service.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:42.007 [main] DEBUG com.lbc_plot.service.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-09-09 10:39:42.007 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:42.007 [main] DEBUG com.lbc_plot.service.RenderOfImage - 清理UI合成器图层
+2025-09-09 10:39:42.007 [main] INFO  com.lbc_plot.service.RenderOfImage - UI渲染完成
+2025-09-09 10:39:42.007 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:42.007 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加UI图层
+2025-09-09 10:39:42.007 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成最终图像
+2025-09-09 10:39:42.026 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-09-09 10:39:42.026 [main] INFO  com.lbc_plot.service.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:42.026 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:42.026 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染预处理完成
+2025-09-09 10:39:42.026 [main] INFO  com.lbc_plot.service.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-09-09 10:39:42.026 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 对话信息: textLength=4, isNarrator=false, textPreview='嘿，老兄'
+2025-09-09 10:39:42.026 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始生成逐帧动画
+2025-09-09 10:39:42.026 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=4
+2025-09-09 10:39:42.030 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 静态内容复制完成
+2025-09-09 10:39:42.030 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始逐字生成帧，文本长度: 4
+2025-09-09 10:39:42.109 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐字帧生成完成: 实际生成 4 帧 (预期: 4 帧)
+2025-09-09 10:39:42.110 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 添加停留帧: 75 帧
+2025-09-09 10:39:42.110 [main] INFO  com.lbc_plot.service.RenderOfVideo - 添加停留帧后总帧数: 79
+2025-09-09 10:39:42.110 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 平滑帧序列生成完成，耗时: 84ms
+2025-09-09 10:39:42.110 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐帧动画生成完成: 总帧数=79
+2025-09-09 10:39:42.110 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始导出视频文件
+2025-09-09 10:39:43.729 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0000idle.mp4
+2025-09-09 10:39:43.730 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出流程完成，耗时: 2248ms
+2025-09-09 10:39:43.730 [main] INFO  c.l.service.BatchVideoProcessor - Record record0000idle.mp4 导出完成，耗时: 2249ms
+2025-09-09 10:39:43.730 [main] INFO  c.l.service.BatchVideoProcessor - 处理第 2/5 个Record: record0001depressed.mp4
+2025-09-09 10:39:43.730 [main] INFO  com.lbc_plot.service.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0001depressed.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-09-09 10:39:43.730 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-09-09 10:39:43.730 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-09 10:39:43.730 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:43.730 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:43.730 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染背景层
+2025-09-09 10:39:43.730 [main] DEBUG com.lbc_plot.service.RenderOfImage - 全屏渲染模式
+2025-09-09 10:39:43.736 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:43.736 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-09-09 10:39:43.736 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染角色立绘层
+2025-09-09 10:39:43.736 [main] DEBUG com.lbc_plot.service.RenderOfImage - 开始渲染1个角色立绘
+2025-09-09 10:39:43.736 [main] DEBUG com.lbc_plot.service.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-09-09 10:39:43.741 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-09-09 10:39:43.741 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-09-09 10:39:43.741 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:43.751 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-09-09 10:39:43.765 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:43.766 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时15ms
+2025-09-09 10:39:43.814 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-09 10:39:43.814 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-09-09 10:39:43.814 [main] DEBUG com.lbc_plot.service.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-09-09 10:39:43.814 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:43.814 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:43.831 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-09 10:39:43.831 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-09 10:39:43.831 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-09-09 10:39:43.838 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-09-09 10:39:43.838 [main] DEBUG com.lbc_plot.service.RenderOfImage - 剧情模式，渲染地点UI
+2025-09-09 10:39:43.843 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-09-09 10:39:43.843 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-09 10:39:43.843 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-09 10:39:43.844 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-09-09 10:39:43.844 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成UI图像
+2025-09-09 10:39:43.850 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-09-09 10:39:43.850 [main] INFO  com.lbc_plot.service.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:43.850 [main] DEBUG com.lbc_plot.service.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-09-09 10:39:43.850 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:43.850 [main] DEBUG com.lbc_plot.service.RenderOfImage - 清理UI合成器图层
+2025-09-09 10:39:43.850 [main] INFO  com.lbc_plot.service.RenderOfImage - UI渲染完成
+2025-09-09 10:39:43.850 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:43.850 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加UI图层
+2025-09-09 10:39:43.850 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成最终图像
+2025-09-09 10:39:43.866 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-09-09 10:39:43.866 [main] INFO  com.lbc_plot.service.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:43.866 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:43.866 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染预处理完成
+2025-09-09 10:39:43.866 [main] INFO  com.lbc_plot.service.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-09-09 10:39:43.866 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 对话信息: textLength=10, isNarrator=false, textPreview='或者是女士，我不确定'
+2025-09-09 10:39:43.866 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始生成逐帧动画
+2025-09-09 10:39:43.866 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=10
+2025-09-09 10:39:43.870 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 静态内容复制完成
+2025-09-09 10:39:43.870 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始逐字生成帧，文本长度: 10
+2025-09-09 10:39:43.906 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐字帧生成完成: 实际生成 10 帧 (预期: 10 帧)
+2025-09-09 10:39:43.906 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 添加停留帧: 75 帧
+2025-09-09 10:39:43.906 [main] INFO  com.lbc_plot.service.RenderOfVideo - 添加停留帧后总帧数: 85
+2025-09-09 10:39:43.906 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 平滑帧序列生成完成，耗时: 40ms
+2025-09-09 10:39:43.906 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐帧动画生成完成: 总帧数=85
+2025-09-09 10:39:43.906 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始导出视频文件
+2025-09-09 10:39:44.917 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0001depressed.mp4
+2025-09-09 10:39:44.917 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出流程完成，耗时: 1187ms
+2025-09-09 10:39:44.917 [main] INFO  c.l.service.BatchVideoProcessor - Record record0001depressed.mp4 导出完成，耗时: 1187ms
+2025-09-09 10:39:44.917 [main] INFO  c.l.service.BatchVideoProcessor - 处理第 3/5 个Record: record0002smile2.mp4
+2025-09-09 10:39:44.917 [main] INFO  com.lbc_plot.service.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0002smile2.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-09-09 10:39:44.917 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-09-09 10:39:44.917 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-09 10:39:44.917 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:44.917 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:44.917 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染背景层
+2025-09-09 10:39:44.917 [main] DEBUG com.lbc_plot.service.RenderOfImage - 全屏渲染模式
+2025-09-09 10:39:44.921 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:44.921 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-09-09 10:39:44.921 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染角色立绘层
+2025-09-09 10:39:44.921 [main] DEBUG com.lbc_plot.service.RenderOfImage - 开始渲染1个角色立绘
+2025-09-09 10:39:44.921 [main] DEBUG com.lbc_plot.service.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-09-09 10:39:44.923 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-09-09 10:39:44.923 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-09-09 10:39:44.923 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:44.935 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-09-09 10:39:44.947 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:44.947 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时11ms
+2025-09-09 10:39:44.992 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-09 10:39:44.993 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-09-09 10:39:44.993 [main] DEBUG com.lbc_plot.service.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-09-09 10:39:44.993 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:44.993 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:45.010 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-09 10:39:45.011 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-09 10:39:45.011 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-09-09 10:39:45.017 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-09-09 10:39:45.017 [main] DEBUG com.lbc_plot.service.RenderOfImage - 剧情模式，渲染地点UI
+2025-09-09 10:39:45.020 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-09-09 10:39:45.020 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-09 10:39:45.021 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-09 10:39:45.021 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-09-09 10:39:45.021 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成UI图像
+2025-09-09 10:39:45.024 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-09-09 10:39:45.024 [main] INFO  com.lbc_plot.service.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:45.024 [main] DEBUG com.lbc_plot.service.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-09-09 10:39:45.025 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:45.025 [main] DEBUG com.lbc_plot.service.RenderOfImage - 清理UI合成器图层
+2025-09-09 10:39:45.025 [main] INFO  com.lbc_plot.service.RenderOfImage - UI渲染完成
+2025-09-09 10:39:45.025 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:45.025 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加UI图层
+2025-09-09 10:39:45.025 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成最终图像
+2025-09-09 10:39:45.039 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-09-09 10:39:45.040 [main] INFO  com.lbc_plot.service.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:45.040 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:45.040 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染预处理完成
+2025-09-09 10:39:45.040 [main] INFO  com.lbc_plot.service.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-09-09 10:39:45.040 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 对话信息: textLength=7, isNarrator=false, textPreview='咳，总之呢……'
+2025-09-09 10:39:45.040 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始生成逐帧动画
+2025-09-09 10:39:45.040 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=7
+2025-09-09 10:39:45.042 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 静态内容复制完成
+2025-09-09 10:39:45.042 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始逐字生成帧，文本长度: 7
+2025-09-09 10:39:45.064 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐字帧生成完成: 实际生成 7 帧 (预期: 7 帧)
+2025-09-09 10:39:45.064 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 添加停留帧: 75 帧
+2025-09-09 10:39:45.064 [main] INFO  com.lbc_plot.service.RenderOfVideo - 添加停留帧后总帧数: 82
+2025-09-09 10:39:45.064 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 平滑帧序列生成完成，耗时: 24ms
+2025-09-09 10:39:45.064 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐帧动画生成完成: 总帧数=82
+2025-09-09 10:39:45.064 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始导出视频文件
+2025-09-09 10:39:46.029 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0002smile2.mp4
+2025-09-09 10:39:46.029 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出流程完成，耗时: 1112ms
+2025-09-09 10:39:46.029 [main] INFO  c.l.service.BatchVideoProcessor - Record record0002smile2.mp4 导出完成，耗时: 1112ms
+2025-09-09 10:39:46.030 [main] INFO  c.l.service.BatchVideoProcessor - 处理第 4/5 个Record: record0003serious.mp4
+2025-09-09 10:39:46.030 [main] INFO  com.lbc_plot.service.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0003serious.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-09-09 10:39:46.030 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-09-09 10:39:46.030 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-09 10:39:46.030 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:46.030 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:46.030 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染背景层
+2025-09-09 10:39:46.030 [main] DEBUG com.lbc_plot.service.RenderOfImage - 全屏渲染模式
+2025-09-09 10:39:46.034 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:46.035 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-09-09 10:39:46.035 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染角色立绘层
+2025-09-09 10:39:46.035 [main] DEBUG com.lbc_plot.service.RenderOfImage - 开始渲染1个角色立绘
+2025-09-09 10:39:46.035 [main] DEBUG com.lbc_plot.service.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-09-09 10:39:46.038 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-09-09 10:39:46.038 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-09-09 10:39:46.038 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:46.045 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-09-09 10:39:46.056 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:46.058 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时13ms
+2025-09-09 10:39:46.107 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-09 10:39:46.107 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-09-09 10:39:46.107 [main] DEBUG com.lbc_plot.service.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-09-09 10:39:46.107 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:46.107 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:46.124 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-09 10:39:46.124 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-09 10:39:46.124 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-09-09 10:39:46.130 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-09-09 10:39:46.131 [main] DEBUG com.lbc_plot.service.RenderOfImage - 剧情模式，渲染地点UI
+2025-09-09 10:39:46.135 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-09-09 10:39:46.135 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-09 10:39:46.135 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-09 10:39:46.135 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-09-09 10:39:46.136 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成UI图像
+2025-09-09 10:39:46.140 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-09-09 10:39:46.141 [main] INFO  com.lbc_plot.service.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:46.141 [main] DEBUG com.lbc_plot.service.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-09-09 10:39:46.141 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:46.141 [main] DEBUG com.lbc_plot.service.RenderOfImage - 清理UI合成器图层
+2025-09-09 10:39:46.141 [main] INFO  com.lbc_plot.service.RenderOfImage - UI渲染完成
+2025-09-09 10:39:46.141 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:46.141 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加UI图层
+2025-09-09 10:39:46.141 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成最终图像
+2025-09-09 10:39:46.155 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-09-09 10:39:46.155 [main] INFO  com.lbc_plot.service.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:46.155 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:46.155 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染预处理完成
+2025-09-09 10:39:46.155 [main] INFO  com.lbc_plot.service.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-09-09 10:39:46.155 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 对话信息: textLength=19, isNarrator=false, textPreview='别用你那该死的代码让我说些奇怪的话了！'
+2025-09-09 10:39:46.155 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始生成逐帧动画
+2025-09-09 10:39:46.155 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=19
+2025-09-09 10:39:46.158 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 静态内容复制完成
+2025-09-09 10:39:46.158 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始逐字生成帧，文本长度: 19
+2025-09-09 10:39:46.229 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐字帧生成完成: 实际生成 19 帧 (预期: 19 帧)
+2025-09-09 10:39:46.230 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 添加停留帧: 75 帧
+2025-09-09 10:39:46.230 [main] INFO  com.lbc_plot.service.RenderOfVideo - 添加停留帧后总帧数: 94
+2025-09-09 10:39:46.230 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 平滑帧序列生成完成，耗时: 75ms
+2025-09-09 10:39:46.230 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐帧动画生成完成: 总帧数=94
+2025-09-09 10:39:46.230 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始导出视频文件
+2025-09-09 10:39:47.325 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0003serious.mp4
+2025-09-09 10:39:47.325 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出流程完成，耗时: 1295ms
+2025-09-09 10:39:47.325 [main] INFO  c.l.service.BatchVideoProcessor - Record record0003serious.mp4 导出完成，耗时: 1295ms
+2025-09-09 10:39:47.325 [main] INFO  c.l.service.BatchVideoProcessor - 处理第 5/5 个Record: record0004旁白.mp4
+2025-09-09 10:39:47.325 [main] INFO  com.lbc_plot.service.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0004旁白.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-09-09 10:39:47.325 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-09-09 10:39:47.325 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-09-09 10:39:47.325 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:47.325 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:47.325 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染背景层
+2025-09-09 10:39:47.325 [main] DEBUG com.lbc_plot.service.RenderOfImage - 全屏渲染模式
+2025-09-09 10:39:47.333 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:47.333 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-09-09 10:39:47.333 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染角色立绘层
+2025-09-09 10:39:47.333 [main] DEBUG com.lbc_plot.service.RenderOfImage - 开始渲染1个角色立绘
+2025-09-09 10:39:47.333 [main] DEBUG com.lbc_plot.service.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-09-09 10:39:47.334 [main] INFO  com.lbc_plot.util.ImageDarkener - 开始图像压暗处理: 图像尺寸=650x1417, 压暗颜色=RGBA(0,0,0,127)
+2025-09-09 10:39:47.350 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.356 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.362 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.368 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.372 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.375 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.379 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.382 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.385 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.388 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-09-09 10:39:47.388 [main] INFO  com.lbc_plot.util.ImageDarkener - 图像压暗完成: 耗时54ms, 处理921050个像素
+2025-09-09 10:39:47.390 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-09-09 10:39:47.390 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加压暗角色图层: 格里高尔 at (605,257)
+2025-09-09 10:39:47.390 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:47.398 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-09-09 10:39:47.421 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:47.421 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时21ms
+2025-09-09 10:39:47.469 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-09-09 10:39:47.469 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=旁白
+2025-09-09 10:39:47.469 [main] DEBUG com.lbc_plot.service.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-09-09 10:39:47.469 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:47.469 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-09-09 10:39:47.487 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-09-09 10:39:47.487 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-09-09 10:39:47.487 [main] DEBUG com.lbc_plot.service.RenderOfImage - 旁白模式，跳过说话人UI元素
+2025-09-09 10:39:47.487 [main] DEBUG com.lbc_plot.service.RenderOfImage - 剧情模式，渲染地点UI
+2025-09-09 10:39:47.491 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-09-09 10:39:47.491 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-09-09 10:39:47.491 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-09-09 10:39:47.492 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-09-09 10:39:47.492 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成UI图像
+2025-09-09 10:39:47.497 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层1
+2025-09-09 10:39:47.497 [main] INFO  com.lbc_plot.service.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:47.497 [main] DEBUG com.lbc_plot.service.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-09-09 10:39:47.497 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:47.497 [main] DEBUG com.lbc_plot.service.RenderOfImage - 清理UI合成器图层
+2025-09-09 10:39:47.497 [main] INFO  com.lbc_plot.service.RenderOfImage - UI渲染完成
+2025-09-09 10:39:47.497 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-09-09 10:39:47.497 [main] DEBUG com.lbc_plot.service.RenderOfImage - 添加UI图层
+2025-09-09 10:39:47.497 [main] INFO  com.lbc_plot.service.RenderOfImage - 开始合成最终图像
+2025-09-09 10:39:47.513 [main] INFO  c.l.s.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-09-09 10:39:47.513 [main] INFO  com.lbc_plot.service.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-09-09 10:39:47.513 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-09-09 10:39:47.513 [main] DEBUG com.lbc_plot.service.RenderOfImage - 渲染预处理完成
+2025-09-09 10:39:47.513 [main] INFO  com.lbc_plot.service.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-09-09 10:39:47.513 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 对话信息: textLength=5, isNarrator=true, textPreview='……好可爱'
+2025-09-09 10:39:47.513 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始生成逐帧动画
+2025-09-09 10:39:47.513 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=true, textLength=5
+2025-09-09 10:39:47.516 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 静态内容复制完成
+2025-09-09 10:39:47.516 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始逐字生成帧，文本长度: 5
+2025-09-09 10:39:47.539 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐字帧生成完成: 实际生成 5 帧 (预期: 5 帧)
+2025-09-09 10:39:47.539 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 添加停留帧: 75 帧
+2025-09-09 10:39:47.540 [main] INFO  com.lbc_plot.service.RenderOfVideo - 添加停留帧后总帧数: 80
+2025-09-09 10:39:47.540 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 平滑帧序列生成完成，耗时: 27ms
+2025-09-09 10:39:47.540 [main] INFO  com.lbc_plot.service.RenderOfVideo - 逐帧动画生成完成: 总帧数=80
+2025-09-09 10:39:47.540 [main] DEBUG com.lbc_plot.service.RenderOfVideo - 开始导出视频文件
+2025-09-09 10:39:48.492 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0004旁白.mp4
+2025-09-09 10:39:48.492 [main] INFO  com.lbc_plot.service.RenderOfVideo - 视频导出流程完成，耗时: 1167ms
+2025-09-09 10:39:48.492 [main] INFO  c.l.service.BatchVideoProcessor - Record record0004旁白.mp4 导出完成，耗时: 1167ms
+2025-09-09 10:39:48.493 [main] INFO  c.l.service.BatchVideoProcessor - 开始连接 5 个视频文件
+2025-09-09 10:39:48.493 [main] INFO  com.lbc_plot.util.VideoConcatenator - 开始连接 5 个视频文件到: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4
+2025-09-09 10:39:48.496 [main] DEBUG com.lbc_plot.util.VideoConcatenator - 创建视频列表文件: C:\Users\user\AppData\Local\Temp\video_list_6386293469016496963.txt，包含 5 个视频
+2025-09-09 10:39:48.744 [main] INFO  com.lbc_plot.util.VideoConcatenator - 视频连接完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4 <- 5 个视频, 耗时: 251ms
+2025-09-09 10:39:48.747 [main] INFO  c.l.service.BatchVideoProcessor - 批量处理完成！总耗时: 7275ms，输出文件: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4
+2025-09-09 10:39:48.749 [main] DEBUG c.l.s.C.manager.BaseLayerManager - 已清空所有图层和文字

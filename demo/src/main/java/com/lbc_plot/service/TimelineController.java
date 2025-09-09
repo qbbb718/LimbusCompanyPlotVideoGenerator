@@ -52,15 +52,27 @@ public class TimelineController {
     
 
 
-    void renderAll(){
+    void renderAll() throws Exception{
         //临时audio列表
         List<AudioCommand> audioCommandsTemp = new ArrayList<>();
         Integer mixFrame; //视频导出后确认有多少帧
 
-        RenderOfImage render = new RenderOfImage();
+        
         // 先分别导出record的画面，再拼接，再渲染音频
-        render.renderRecordsVedio();
-        render.connectRecordsVedio();
+
+        // 处理整个Record列表
+        BatchVideoProcessor.processRecordList(
+            records,
+            "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\final_video.mp4",
+            "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\temp_videos",
+            true,
+            ProjectConfig.VIDEO_WIDTH,
+            ProjectConfig.VIDEO_HEIGHT,
+            ProjectConfig.FRAME_RATE
+        );
+
+
+        // render.connectRecordsVedio();
         //renderAudio(audioCommandsTemp, mixFrame);
     }
 

@@ -21,6 +21,7 @@ import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.service.Composer.contract.TextLayerOperations;
 import com.lbc_plot.service.Composer.model.TextAlignment;
+import com.lbc_plot.util.RenderQualityUtils;
 
 // TextLayerManager.java - 专门处理文字图层
 public class TextLayerManager extends BaseLayerManager implements TextLayerOperations {
@@ -143,6 +144,7 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
         // 创建临时Graphics获取FontMetrics
         BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
         Graphics2D tempG = tempImage.createGraphics();
+        RenderQualityUtils.setupUltraQualityRendering(tempG); // 设置高质量渲染
         tempG.setFont(chineseFont);
         FontMetrics metrics = tempG.getFontMetrics();
         FontRenderContext frc = tempG.getFontRenderContext();
@@ -510,6 +512,9 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
     public int getTextLayerCount() {
         return textLayers.size();
     }
+
+    
+    
 
 
 

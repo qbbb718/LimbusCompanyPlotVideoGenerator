@@ -10,6 +10,7 @@ import com.lbc_plot.service.Composer.contract.TextLayerOperations;
 import com.lbc_plot.service.Composer.manager.BaseLayerManager;
 import com.lbc_plot.service.Composer.manager.ImageLayerManager;
 import com.lbc_plot.service.Composer.manager.TextLayerManager;
+import com.lbc_plot.util.RenderQualityUtils;
 
 /**
  * 帧合成器服务 - 主协调类
@@ -53,6 +54,11 @@ public class FrameComposerService extends BaseLayerManager
     public void addLayerScaled(String resourcePath, int x, int y, float scale) throws IOException {
         imageManager.addLayerScaled(resourcePath, x, y, scale);
     }
+
+    @Override
+    public void addLayerScaled(String resourcePath, int x, int y, float scaleX, float scaleY) throws IOException {
+        imageManager.addLayerScaled(resourcePath, x, y, scaleX, scaleY);
+    }
     
     // 委托文字操作方法
     @Override
@@ -71,7 +77,7 @@ public class FrameComposerService extends BaseLayerManager
         BufferedImage result = createTransparentImage();
         Graphics2D g2d = result.createGraphics();
         
-        setupHighQualityRendering(g2d);
+        RenderQualityUtils.setupHighQualityRendering(g2d);
         g2d.setClip(0, 0, width, height);
         
         imageManager.drawLayers(g2d);
@@ -131,8 +137,8 @@ public class FrameComposerService extends BaseLayerManager
     }
 
     @Override
-    public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight) {
-        imageManager.addImageLayerResized(image, x, y, targetWidth, targetHeight);
+    public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight, boolean keepAspectRatio) {
+        imageManager.addImageLayerResized(image, x, y, targetWidth, targetHeight, keepAspectRatio);
     }
 
     @Override

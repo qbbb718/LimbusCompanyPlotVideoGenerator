@@ -1,6 +1,8 @@
 package com.lbc_plot.service;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.List;
@@ -12,6 +14,7 @@ import com.lbc_plot.project.audio.AudioCommand;
 import com.lbc_plot.service.Composer.FrameComposerService;
 import com.lbc_plot.util.ImageDarkener;
 import com.lbc_plot.util.ImageReader;
+import com.lbc_plot.util.RenderQualityUtils;
 import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.core.ProjectConfig;
 import com.lbc_plot.model.Record;
@@ -176,7 +179,7 @@ public class RenderOfImage {
             
             try {
                 composer.addFullScreenMask(255);
-                composer.addImageLayerResized(bg.getBgImage(), borderWidth, borderHeight, targetWidth, targetHeight);
+                composer.addImageLayerResized(bg.getBgImage(), borderWidth, borderHeight, targetWidth, targetHeight, true);
                 logger.debug("添加背景图层: 位置({},{}), 尺寸{}x{}", 
                             borderWidth, borderHeight, targetWidth, targetHeight);
                 
@@ -198,7 +201,7 @@ public class RenderOfImage {
             if (!validateBackgroundVisual(bg)) continue;
             
             try {
-                composer.addImageLayerResized(bg.getBgImage(), 0, 0, width, height);
+                composer.addImageLayerResized(bg.getBgImage(), 0, 0, width, height, true);
                 logger.debug("添加全屏背景图层: 尺寸{}x{}", width, height);
             } catch (Exception e) {
                 logger.error("添加全屏背景图层失败: {}", bg, e);
@@ -211,7 +214,7 @@ public class RenderOfImage {
      */
     private static void renderBorder(FrameComposerService composer, int x, int y, int width, int height) {
         if (border != null) {
-            composer.addImageLayerResized(border, x, y, width, height);
+            composer.addImageLayerResized(border, x, y, width, height, true);
             logger.debug("添加边框图层");
         } else {
             logger.error("边框图像未加载，跳过边框渲染");
@@ -421,25 +424,6 @@ public class RenderOfImage {
 
 
 
-    static void renderRecordsVedio(){
-        //将dirty的record重新渲染画面
-        //导出后将isDirty重置为false
-    }
-    static void connectRecordsVedio(){
-        //将record的画面连接（希望没问题，应该）
-
-    }
-
-    static void renderAudio(List<AudioCommand> audioCommandsTemp, Integer mixFrame){
-        //渲染音频，整合到视频
-        //每次导出都重新渲染
-
-        //
-
-        //要不要考虑音量统一
-    }
-
-
     /**
      * 渲染整个UI
      * @param plot 是否为剧情模式
@@ -542,5 +526,24 @@ public class RenderOfImage {
     }
 
 
+
+    /**
+     * 高质量图像缩放
+     */
+    public static BufferedImage scaleImageHighQuality(BufferedImage original, int newWidth, int newHeight) {
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = scaledImage.createGraphics();
+        
+        RenderQualityUtils.setupUltraQualityRendering(g2d);
+        
+        // 使用双三次插值进行高质量缩放
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, 
+                            RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        
+        g2d.drawImage(original, 0, 0, newWidth, newHeight, null);
+        g2d.dispose();
+        
+        return scaledImage;
+    }
 
 }
