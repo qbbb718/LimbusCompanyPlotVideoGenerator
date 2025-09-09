@@ -4,8 +4,15 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.font.FontRenderContext;
+import java.awt.font.LineBreakMeasurer;
+import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.text.AttributedCharacterIterator;
+import java.text.AttributedString;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,7 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.lbc_plot.service.Composer.FrameComposerService;
+import com.lbc_plot.service.Composer.manager.FontLoader;
 import com.lbc_plot.service.Composer.model.DialogueSpeed;
+import com.lbc_plot.service.Composer.model.TextAlignment;
 import com.lbc_plot.service.Composer.model.TextLayerInfo;
 import com.lbc_plot.util.RenderQualityUtils;
 import com.lbc_plot.util.VideoExporter;
@@ -121,7 +130,7 @@ public class RenderOfVideo {
             // 处理空文本情况
             if (fullText.isEmpty()) {
                 logger.info("文本为空，生成单帧空文本画面");
-                BufferedImage emptyFrame = addTextToFrame(baseFrame, "", isNarrator, width, height);
+                BufferedImage emptyFrame = addTextToFrameAdvanced(baseFrame, "", isNarrator, width, height);
                 frames.add(emptyFrame);
                 return frames;
             }
@@ -139,7 +148,7 @@ public class RenderOfVideo {
                         currentText.length() > 20 ? currentText.substring(0, 17) + "..." : currentText);
                 }
                 
-                BufferedImage frame = addTextToFrame(baseFrame, currentText, isNarrator, width, height);
+                BufferedImage frame = addTextToFrameAdvanced(baseFrame, currentText, isNarrator, width, height);
                 
                 // 为每个字符状态生成指定数量的帧
                 for (int frameCount = 0; frameCount < framesPerChar; frameCount++) {
@@ -196,21 +205,50 @@ public class RenderOfVideo {
 
 
     /**
-     * 高效版本：直接渲染文字到帧上（避免多次图像复制）
+     * 高效版本：直接渲染文字到帧上（包含换行、对齐、锚点等高级功能）
+     * 
+     * @param baseFrame 基础背景帧
+     * @param text 要渲染的文本
+     * @param isNarrator 是否为旁白模式
+     * @param width 画布宽度
+     * @param height 画布高度
+     * @return 包含文字的图像帧
      */
-    private static BufferedImage addTextToFrame(BufferedImage baseFrame, String text, 
+    private static BufferedImage addTextToFrameAdvanced(BufferedImage baseFrame, String text, 
                                                     boolean isNarrator, int width, int height) {
         try {
-            // 直接复制基础帧
+            // 复制基础帧
             BufferedImage frame = copyImage(baseFrame);
             Graphics2D g2d = frame.createGraphics();
             
-            // 设置高质量渲染
+            // 设置超高质量渲染
             RenderQualityUtils.setupUltraQualityRendering(g2d);
             
-            // 直接绘制文字（避免创建额外的合成器）
-            drawTextDirectly(g2d, text, isNarrator, width, height);
-
+            // 根据模式选择配置参数
+            int x, y, maxWidth, fontSize;
+            TextAlignment alignment;
+            Color textColor = ProjectConfig.DEFAULT_TEXT_COLOR;
+            
+            if (isNarrator) {
+                // 旁白模式：居中显示
+                x = ProjectConfig.DIALOGUE_CENTER_X;
+                y = ProjectConfig.DIALOGUE_CENTER_Y;
+                maxWidth = ProjectConfig.DIALOGUE_MAX_WIDTH;
+                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE;
+                alignment = TextAlignment.CENTER;
+            } else {
+                // 对话模式：左对齐
+                x = ProjectConfig.DIALOGUE_LEFT_X;
+                y = ProjectConfig.DIALOGUE_LEFT_Y;
+                maxWidth = ProjectConfig.DIALOGUE_MAX_WIDTH;
+                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE;
+                alignment = TextAlignment.LEFT;
+            }
+            
+            // 绘制文字（包含所有高级功能）
+            drawTextWithAdvancedFeatures(g2d, text, x, y, fontSize, textColor, 
+                                    alignment, maxWidth, false, null, 0, 0);
+            
             g2d.dispose();
             return frame;
             
@@ -221,36 +259,208 @@ public class RenderOfVideo {
     }
 
     /**
-     * 直接绘制文字到Graphics2D
+     * 绘制带有高级功能的文字（换行、对齐、锚点等）
      */
-    private static void drawTextDirectly(Graphics2D g2d, String text, boolean isNarrator, int width, int height) {
+    private static void drawTextWithAdvancedFeatures(Graphics2D g2d, String text, int x, int y, 
+                                                int fontSize, Color color, TextAlignment alignment, 
+                                                int maxWidth, boolean hasShadow, Color shadowColor,
+                                                int shadowOffsetX, int shadowOffsetY) {
         if (text == null || text.isEmpty()) {
             return;
         }
         
-        // 设置文字样式
-        Font font = new Font("SimHei", Font.PLAIN, 24); // 根据需要调整
+        // 设置字体
+        Font font = FontLoader.getChineseFont(fontSize);
         g2d.setFont(font);
-        g2d.setColor(Color.WHITE); // 根据需要调整颜色
+        g2d.setColor(color);
         
-        // 计算文字位置
-        FontMetrics metrics = g2d.getFontMetrics();
-        int textWidth = metrics.stringWidth(text);
-        int textHeight = metrics.getHeight();
-        
-        int x, y;
-        if (isNarrator) {
-            // 居中显示
-            x = (width - textWidth) / 2;
-            y = (height - textHeight) / 2 + metrics.getAscent();
-        } else {
-            // 左对齐显示
-            x = 50; // 左边距
-            y = height - 100; // 底部位置
+        // 绘制阴影（如果需要）
+        if (hasShadow && shadowColor != null) {
+            drawTextWithOffset(g2d, text, x, y, alignment, maxWidth, 
+                            shadowOffsetX, shadowOffsetY, shadowColor);
         }
         
-        // 绘制文字
-        g2d.drawString(text, x, y);
+        // 绘制主文字
+        drawTextWithOffset(g2d, text, x, y, alignment, maxWidth, 0, 0, color);
+    }
+
+    /**
+     * 绘制带偏移的文字（支持换行和对齐）
+     */
+    private static void drawTextWithOffset(Graphics2D g2d, String text, int x, int y, 
+                                        TextAlignment alignment, int maxWidth,
+                                        int offsetX, int offsetY, Color drawColor) {
+        if (maxWidth > 0) {
+            // 需要换行的文本
+            drawWrappedTextWithOffset(g2d, text, x + offsetX, y + offsetY, 
+                                    alignment, maxWidth, drawColor);
+        } else {
+            // 单行文本
+            drawSingleLineWithOffset(g2d, text, x + offsetX, y + offsetY, 
+                                alignment, drawColor);
+        }
+    }
+
+    /**
+     * 绘制带偏移的单行文本
+     */
+    private static void drawSingleLineWithOffset(Graphics2D g2d, String text, int x, int y,
+                                            TextAlignment alignment, Color color) {
+        FontMetrics metrics = g2d.getFontMetrics();
+        int textWidth = metrics.stringWidth(text);
+        int drawX = x;
+        int drawY = y + metrics.getAscent(); // 基线位置
+        
+        // 根据对齐方式调整X坐标
+        if (alignment == TextAlignment.CENTER) {
+            drawX = x - textWidth / 2;
+        } else if (alignment == TextAlignment.RIGHT) {
+            drawX = x - textWidth;
+        }
+        
+        g2d.setColor(color);
+        g2d.drawString(text, drawX, drawY);
+    }
+
+    /**
+     * 绘制带偏移的换行文本（支持自动换行和对齐）
+     */
+    private static void drawWrappedTextWithOffset(Graphics2D g2d, String text, int x, int y,
+                                                TextAlignment alignment, int maxWidth, Color color) {
+        // 创建属性字符串
+        AttributedString attributedString = new AttributedString(text);
+        attributedString.addAttribute(TextAttribute.FONT, g2d.getFont());
+        attributedString.addAttribute(TextAttribute.FOREGROUND, color);
+        
+        AttributedCharacterIterator characterIterator = attributedString.getIterator();
+        FontRenderContext frc = g2d.getFontRenderContext();
+        LineBreakMeasurer measurer = new LineBreakMeasurer(characterIterator, frc);
+        
+        // 先测量总高度
+        List<TextLayout> layouts = new ArrayList<>();
+        float totalHeight = 0;
+        
+        while (measurer.getPosition() < characterIterator.getEndIndex()) {
+            TextLayout layout = measurer.nextLayout(maxWidth);
+            layouts.add(layout);
+            totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
+        }
+        
+        // 重新开始测量
+        measurer.setPosition(characterIterator.getBeginIndex());
+        
+        // 计算起始Y坐标（考虑对齐方式）
+        float currentY;
+        if (alignment == TextAlignment.CENTER) {
+            // 居中：锚点Y在文本垂直中心
+            currentY = y - totalHeight / 2;
+        } else {
+            // 左对齐/右对齐：锚点Y在文本顶部
+            currentY = y;
+        }
+        
+        // 绘制每一行
+        for (TextLayout layout : layouts) {
+            float lineWidth = layout.getAdvance();
+            float drawX;
+            
+            // 根据对齐方式计算X坐标
+            if (alignment == TextAlignment.CENTER) {
+                drawX = x - lineWidth / 2; // 水平居中
+            } else if (alignment == TextAlignment.RIGHT) {
+                drawX = x - lineWidth;     // 右对齐
+            } else {
+                drawX = x;                 // 左对齐
+            }
+            
+            // 绘制当前行
+            currentY += layout.getAscent();
+            layout.draw(g2d, drawX, currentY);
+            currentY += layout.getDescent() + layout.getLeading();
+        }
+    }
+
+    /**
+     * 计算文字边界（用于画布尺寸调整）
+     */
+    private static Rectangle calculateTextBounds(String text, int x, int y, int fontSize, 
+                                            TextAlignment alignment, int maxWidth) {
+        // 创建临时Graphics进行测量
+        BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D tempG = tempImage.createGraphics();
+        RenderQualityUtils.setupUltraQualityRendering(tempG);
+        
+        Font font = FontLoader.getChineseFont(fontSize);
+        tempG.setFont(font);
+        FontMetrics metrics = tempG.getFontMetrics();
+        FontRenderContext frc = tempG.getFontRenderContext();
+        
+        try {
+            if (maxWidth > 0) {
+                // 换行文本的边界计算
+                LineBreakMeasurer measurer = new LineBreakMeasurer(
+                    new AttributedString(text).getIterator(), frc);
+                
+                float totalHeight = 0;
+                float maxLineWidth = 0;
+                
+                while (measurer.getPosition() < text.length()) {
+                    TextLayout layout = measurer.nextLayout(maxWidth);
+                    maxLineWidth = Math.max(maxLineWidth, layout.getAdvance());
+                    totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
+                }
+                
+                // 根据对齐方式计算边界
+                int left, top, right, bottom;
+                
+                if (alignment == TextAlignment.CENTER) {
+                    left = (int) (x - maxLineWidth / 2);
+                    top = (int) (y - totalHeight / 2);
+                    right = (int) (x + maxLineWidth / 2);
+                    bottom = (int) (y + totalHeight / 2);
+                } else if (alignment == TextAlignment.RIGHT) {
+                    left = (int) (x - maxLineWidth);
+                    top = y;
+                    right = x;
+                    bottom = (int) (y + totalHeight);
+                } else {
+                    left = x;
+                    top = y;
+                    right = (int) (x + maxLineWidth);
+                    bottom = (int) (y + totalHeight);
+                }
+                
+                return new Rectangle(left, top, right - left, bottom - top);
+                
+            } else {
+                // 单行文本的边界计算
+                int textWidth = metrics.stringWidth(text);
+                int textHeight = metrics.getHeight();
+                
+                int left, top, right, bottom;
+                
+                if (alignment == TextAlignment.CENTER) {
+                    left = x - textWidth / 2;
+                    top = y - textHeight / 2;
+                    right = x + textWidth / 2;
+                    bottom = y + textHeight / 2;
+                } else if (alignment == TextAlignment.RIGHT) {
+                    left = x - textWidth;
+                    top = y;
+                    right = x;
+                    bottom = y + textHeight;
+                } else {
+                    left = x;
+                    top = y;
+                    right = x + textWidth;
+                    bottom = y + textHeight;
+                }
+                
+                return new Rectangle(left, top, right - left, bottom - top);
+            }
+        } finally {
+            tempG.dispose();
+        }
     }
 
     
