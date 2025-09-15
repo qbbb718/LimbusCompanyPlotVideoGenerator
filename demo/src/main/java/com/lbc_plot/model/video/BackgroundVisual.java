@@ -3,7 +3,7 @@ package com.lbc_plot.model.video;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
-import com.lbc_plot.model.repository.Background;
+import com.lbc_plot.model.storage.Background;
 
 import java.awt.image.BufferedImage;
 

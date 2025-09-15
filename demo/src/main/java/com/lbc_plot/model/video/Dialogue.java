@@ -3,8 +3,8 @@ package com.lbc_plot.model.video;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.lbc_plot.core.ProjectConfig;
-import com.lbc_plot.model.repository.MyCharacter;
+import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.model.storage.MyCharacter;
 
 /**
  * 对话内容类

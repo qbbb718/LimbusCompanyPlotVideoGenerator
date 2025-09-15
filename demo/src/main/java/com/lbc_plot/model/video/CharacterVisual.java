@@ -7,10 +7,10 @@ import org.bytedeco.ffmpeg.global.postproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.lbc_plot.core.ProjectConfig;
-import com.lbc_plot.model.repository.MyCharacter;
-import com.lbc_plot.model.repository.Portrait;
-import com.lbc_plot.service.RenderOfImage;
+import com.lbc_plot.application.Composer.RenderOfImage;
+import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.model.storage.MyCharacter;
+import com.lbc_plot.model.storage.Portrait;
 
 import java.awt.AlphaComposite;
 

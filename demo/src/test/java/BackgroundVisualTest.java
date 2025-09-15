@@ -1,8 +1,8 @@
 import org.junit.jupiter.api.Test;
 
-import com.lbc_plot.model.repository.Background;
+import com.lbc_plot.model.storage.Background;
 import com.lbc_plot.model.video.BackgroundVisual;
-import com.lbc_plot.util.ImageExporter;
+import com.lbc_plot.util.io.ImageExporter;
 
 import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;

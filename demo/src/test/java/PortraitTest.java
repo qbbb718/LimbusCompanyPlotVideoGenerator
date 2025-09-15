@@ -8,10 +8,10 @@ import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
 
-import com.lbc_plot.model.repository.Portrait;
+import com.lbc_plot.model.storage.Portrait;
 import com.lbc_plot.model.video.Dialogue.Emotion;
-import com.lbc_plot.util.ImageExporter;
-import com.lbc_plot.util.ImageReader;
+import com.lbc_plot.util.io.ImageExporter;
+import com.lbc_plot.util.io.ImageReader;
 
 public class PortraitTest {
     private static final String TEST_IMAGE_PATH = "Gregor-default.png";

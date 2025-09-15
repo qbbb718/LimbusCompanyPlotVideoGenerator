@@ -5,23 +5,27 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.lbc_plot.model.repository.MyCharacter;
-import com.lbc_plot.model.repository.Portrait;
-import com.lbc_plot.model.repository.Background;
 import com.lbc_plot.model.video.BackgroundVisual;
 import com.lbc_plot.model.video.CharacterVisual;
 import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.model.video.Dialogue.Align;
 import com.lbc_plot.project.audio.AudioCommand;
 import com.lbc_plot.project.audio.AudioCommandType;
-import com.lbc_plot.service.BatchVideoProcessor;
-import com.lbc_plot.service.RenderOfImage;
-import com.lbc_plot.service.RenderOfVideo;
-import com.lbc_plot.service.Composer.FrameComposerService;
-import com.lbc_plot.util.ImageExporter;
-import com.lbc_plot.util.VideoExporter;
-import com.lbc_plot.core.ProjectConfig;
+import com.lbc_plot.util.io.ImageExporter;
+import com.lbc_plot.util.io.VideoExporter;
+import com.lbc_plot.DAO.CharacterDAO;
+import com.lbc_plot.DAO.Impl.CharacterDAOImpl;
+import com.lbc_plot.application.Composer.BatchVideoProcessor;
+import com.lbc_plot.application.Composer.FrameComposerService;
+import com.lbc_plot.application.Composer.RenderOfImage;
+import com.lbc_plot.application.Composer.RenderOfVideo;
+import com.lbc_plot.application.service.CharacterService;
+import com.lbc_plot.application.service.impl.CharacterServiceImpl;
+import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.Record;
+import com.lbc_plot.model.storage.Background;
+import com.lbc_plot.model.storage.MyCharacter;
+import com.lbc_plot.model.storage.Portrait;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -272,36 +276,38 @@ class FrameComposerServiceTest {
             .color_bg(new Color(105, 53, 11))
             .build();
         
-        //旁白
+
         MyCharacter character_2 = MyCharacter.getDefaultNarrator();
-        
+
+        CharacterDAO characterDAO = new CharacterDAOImpl();
+        CharacterService characterService = new CharacterServiceImpl(characterDAO);
 
 
         // 5个角色立绘(一个暗的)
         CharacterVisual characterVisual_1, characterVisual_2, characterVisual_3, characterVisual_4, characterVisual_5;
         characterVisual_1 = CharacterVisual.builder(
             character, 
-            character.getPortraitById(ID_1))
+            characterService.getPortraitById(character, ID_1))
             .dim(false)
             .build();
         characterVisual_2 = CharacterVisual.builder(
             character, 
-            character.getPortraitById(ID_2))
+            characterService.getPortraitById(character, ID_2))
             .dim(false)
             .build();
         characterVisual_3 = CharacterVisual.builder(
             character, 
-            character.getPortraitById(ID_3))
+            characterService.getPortraitById(character, ID_3))
             .dim(false)
             .build();
         characterVisual_4 = CharacterVisual.builder(
             character, 
-            character.getPortraitById(ID_4))
+            characterService.getPortraitById(character, ID_4))
             .dim(false)
             .build();
         characterVisual_5 = CharacterVisual.builder(
             character, 
-            character.getPortraitById(ID_4))
+            characterService.getPortraitById(character, ID_5)) //甚至顺手验证了一下不存在ID导出默认立绘
             .dim(true)
             .build();
 

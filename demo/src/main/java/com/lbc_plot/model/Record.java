@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.lbc_plot.model.repository.MyCharacter;
+import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.video.BackgroundVisual;
 import com.lbc_plot.model.video.Camera;
 import com.lbc_plot.model.video.CharacterVisual;
