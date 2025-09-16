@@ -36,4 +36,8 @@ public interface CharacterService {
     int getCharacterCountByFaction(String faction);
     List<MyCharacter> createCharacters(List<MyCharacter> characters);
 
+    // 立绘相关
+    Portrait findPortraitByName(String characterId, String portraitName);
+    Portrait findPortraitByEmotion(String characterId, String emotion);
+    List<Portrait> getCharacterPortraits(String characterId);
 }

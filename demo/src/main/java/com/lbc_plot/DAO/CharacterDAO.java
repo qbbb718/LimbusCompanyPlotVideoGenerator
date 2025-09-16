@@ -12,7 +12,7 @@ public interface CharacterDAO {
     // 增删改查基本操作
     Optional<MyCharacter> findById(String characterId);
     List<MyCharacter> findAll();
-    boolean save(MyCharacter character);
+    MyCharacter save(MyCharacter character);
     boolean update(MyCharacter character);
     boolean delete(String characterId);
     

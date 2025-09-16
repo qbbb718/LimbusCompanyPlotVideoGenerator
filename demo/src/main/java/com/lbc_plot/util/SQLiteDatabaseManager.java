@@ -1,14 +1,21 @@
 package com.lbc_plot.util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+
+import com.lbc_plot.config.DatabaseConfig;
 
 /**
  * SQLite数据库连接管理
  */
 public class SQLiteDatabaseManager {
-    private static final String DB_URL = "jdbc:sqlite:character.db";
+    // 修改数据库路径指向resources/db目录
+    private static final String DB_URL = DatabaseConfig.getDatabaseUrl();
     private static Connection connection;
     
     static {
@@ -26,23 +33,22 @@ public class SQLiteDatabaseManager {
     }
     
     private static void createTables() {
-        String sql = """
-            -- 修改characters表，让character_id由数据库生成
-            CREATE TABLE IF NOT EXISTS characters (
-                character_id TEXT PRIMARY KEY,
-                character_name TEXT NOT NULL,
-                height INTEGER DEFAULT 170,
-                color_bg TEXT,
-                color_text TEXT,
-                faction TEXT,
-                created_time DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-            """;
-        
-        try (var stmt = connection.createStatement()) {
-            stmt.execute(sql);
-        } catch (SQLException e) {
-            throw new RuntimeException("创建表失败", e);
+        try (InputStream inputStream = SQLiteDatabaseManager.class.getClassLoader()
+                .getResourceAsStream("db/initial_schema.sql");
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            
+            StringBuilder sqlBuilder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sqlBuilder.append(line).append("\n");
+            }
+            
+            String sql = sqlBuilder.toString();
+            try (var stmt = connection.createStatement()) {
+                stmt.execute(sql);
+            }
+        } catch (IOException | SQLException e) {
+            throw new RuntimeException("创建表失败: " + e.getMessage(), e);
         }
     }
     

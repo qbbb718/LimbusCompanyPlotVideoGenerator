@@ -3,6 +3,7 @@ package com.lbc_plot.DAO.Impl;
 
 import com.lbc_plot.DAO.CharacterDAO;
 import com.lbc_plot.model.storage.MyCharacter;
+import com.lbc_plot.model.storage.Portrait;
 import com.lbc_plot.util.SQLiteDatabaseManager;
 import com.lbc_plot.util.ColorUtils;
 
@@ -57,8 +58,8 @@ public class CharacterDAOImpl implements CharacterDAO {
     }
     
     @Override
-    public boolean save(MyCharacter character) {
-        
+    public MyCharacter save(MyCharacter character) {
+        // 先保存角色基本信息
         String sql = """
             INSERT INTO characters (character_id, character_name, height, color_bg, color_text, faction)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -66,9 +67,40 @@ public class CharacterDAOImpl implements CharacterDAO {
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             setCharacterParameters(pstmt, character);
-            return pstmt.executeUpdate() > 0;
+            pstmt.executeUpdate();
+            
+            // 保存立绘关联关系
+            saveCharacterPortraits(character);
+            
+            return character;
+            
         } catch (SQLException e) {
-            throw new RuntimeException("保存角色失败: " + character.getCharacterID(), e);
+            throw new RuntimeException("保存角色失败", e);
+        }
+    }
+    
+    /**
+     * 保存角色-立绘关联关系
+     */
+    private void saveCharacterPortraits(MyCharacter character) throws SQLException {
+        String sql = """
+            INSERT INTO character_portraits (character_id, portrait_id, is_default, display_order)
+            VALUES (?, ?, ?, ?)
+            """;
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            List<Portrait> portraits = character.getPortraits();
+            if (portraits != null) {
+                for (int i = 0; i < portraits.size(); i++) {
+                    Portrait portrait = portraits.get(i);
+                    pstmt.setString(1, character.getCharacterID());
+                    pstmt.setString(2, portrait.getPortraitID());
+                    pstmt.setBoolean(3, i == 0); // 第一个立绘为默认
+                    pstmt.setInt(4, i); // 显示顺序
+                    pstmt.addBatch();
+                }
+                pstmt.executeBatch();
+            }
         }
     }
     

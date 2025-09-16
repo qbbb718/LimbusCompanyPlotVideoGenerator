@@ -56,7 +56,7 @@ public class CharacterVisual extends VisualElement {
         
         // 从角色获取身高, 从立绘获取头顶
         posX = ProjectConfig.VIDEO_WIDTH /2 - (146 * (ProjectConfig.VIDEO_WIDTH/ProjectConfig.VIDEO_WIDTH)/2) 
-                - portrait.getfaceX() + portrait.getAdjX() + adjX;
+                - portrait.getFaceX() + portrait.getAdjX() + adjX;
         posY = (int)((ProjectConfig.DEFAULT_CHARACTER_HEIGHT - chara.getHeight()) * ProjectConfig.Pixels_per_centimeter) 
                 + ProjectConfig.DEFAULT_CHARACTER_HEIGHT_Pixels + portrait.getAdjY() + adjY;
 

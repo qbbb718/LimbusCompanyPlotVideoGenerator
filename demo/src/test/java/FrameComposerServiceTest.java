@@ -14,7 +14,9 @@ import com.lbc_plot.project.audio.AudioCommandType;
 import com.lbc_plot.util.io.ImageExporter;
 import com.lbc_plot.util.io.VideoExporter;
 import com.lbc_plot.DAO.CharacterDAO;
+import com.lbc_plot.DAO.PortraitDAO;
 import com.lbc_plot.DAO.Impl.CharacterDAOImpl;
+import com.lbc_plot.DAO.Impl.PortraitDAOImpl;
 import com.lbc_plot.application.Composer.BatchVideoProcessor;
 import com.lbc_plot.application.Composer.FrameComposerService;
 import com.lbc_plot.application.Composer.RenderOfImage;
@@ -167,11 +169,11 @@ class FrameComposerServiceTest {
         Portrait portrait_1, portrait_2, portrait_3, portrait_4;
         portrait_1 = Portrait.builder("Gregor-face_serious_R.png")
             .build();
-        portrait_1.setfaceX(282);
+        portrait_1.setFaceX(282);
 
         portrait_2 = Portrait.builder("Rodion-face_happy_L.png")
             .build();
-        portrait_2.setfaceX(200);
+        portrait_2.setFaceX(200);
         //ImageExporter.exportImage(portrait.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_chara.png");
 
         MyCharacter character = MyCharacter.builder()
@@ -280,7 +282,8 @@ class FrameComposerServiceTest {
         MyCharacter character_2 = MyCharacter.getDefaultNarrator();
 
         CharacterDAO characterDAO = new CharacterDAOImpl();
-        CharacterService characterService = new CharacterServiceImpl(characterDAO);
+        PortraitDAO portraitDAO = new PortraitDAOImpl();
+        CharacterService characterService = new CharacterServiceImpl(characterDAO, portraitDAO);
 
 
         // 5个角色立绘(一个暗的)

@@ -5,12 +5,14 @@ package com.lbc_plot.application.service.impl;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
 import com.lbc_plot.DAO.CharacterDAO;
+import com.lbc_plot.DAO.PortraitDAO;
 import com.lbc_plot.application.Composer.RenderOfImage;
 import com.lbc_plot.application.service.CharacterService;
 import com.lbc_plot.config.ProjectConfig;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,9 +21,11 @@ import java.util.Optional;
  */
 public class CharacterServiceImpl implements CharacterService {
     private final CharacterDAO characterDAO;
+    private final PortraitDAO portraitDAO;
     
-    public CharacterServiceImpl(CharacterDAO characterDAO) {
+    public CharacterServiceImpl(CharacterDAO characterDAO, PortraitDAO portraitDAO) {
         this.characterDAO = characterDAO;
+        this.portraitDAO = portraitDAO;
     }
     
     /**
@@ -31,16 +35,16 @@ public class CharacterServiceImpl implements CharacterService {
     public MyCharacter createCharacter(String name, int height, String faction) {
         // 创建角色对象（不设置ID，由数据库生成）
         MyCharacter character = MyCharacter.builder()
-            .newCharacterID()
+            .characterID()
             .characterName(name)
             .height(height)
             .faction(faction)
             .build();
         
         // 保存到数据库并获取带有生成ID的角色对象
-        Boolean savedCharacter = characterDAO.save(character);
-        if (savedCharacter && character.getCharacterID() != null) {
-            return character;
+        MyCharacter savedCharacter = characterDAO.save(character);
+        if (savedCharacter != null && savedCharacter.getCharacterID() != null) {
+            return savedCharacter;
         }
         throw new RuntimeException("创建角色失败: " + name);
     }
@@ -226,5 +230,45 @@ public class CharacterServiceImpl implements CharacterService {
         }
         
         return characters;
+    }
+
+
+    /**
+     * 在角色中根据名称查找立绘
+     * 推荐：放在CharacterService中
+     */
+    @Override
+    public Portrait findPortraitByName(String characterId, String portraitName) {
+        // 1. 先获取角色（验证角色存在）
+        MyCharacter character = getCharacter(characterId);
+        
+        // 2. 从角色中查找立绘
+        return character.getPortraits().stream()
+            .filter(portrait -> portraitName.equals(portrait.getPortName()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException(
+                "角色 " + character.getCharacterName() + " 没有找到立绘: " + portraitName));
+    }
+    
+    /**
+     * 在角色中根据情绪查找立绘
+     */
+    @Override
+    public Portrait findPortraitByEmotion(String characterId, String emotion) {
+        MyCharacter character = getCharacter(characterId);
+        
+        return character.getPortraits().stream()
+            .filter(portrait -> emotion.equals(portrait.getEmotion()))
+            .findFirst()
+            .orElseGet(() -> getDefaultPortrait(character)); // 找不到返回默认立绘
+    }
+    
+    /**
+     * 获取角色的所有立绘
+     */
+    @Override
+    public List<Portrait> getCharacterPortraits(String characterId) {
+        MyCharacter character = getCharacter(characterId);
+        return new ArrayList<>(character.getPortraits()); // 返回副本
     }
 }

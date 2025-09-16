@@ -246,7 +246,7 @@ public class MyCharacter {
         }
 
         // 生成UUID
-        public Builder newCharacterID() {
+        public Builder characterID() {
             this.characterID = UUID.randomUUID().toString();
             return this;
         }
