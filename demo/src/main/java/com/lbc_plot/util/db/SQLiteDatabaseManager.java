@@ -1,4 +1,4 @@
-package com.lbc_plot.util;
+package com.lbc_plot.util.db;
 
 import java.io.BufferedReader;
 import java.io.IOException;

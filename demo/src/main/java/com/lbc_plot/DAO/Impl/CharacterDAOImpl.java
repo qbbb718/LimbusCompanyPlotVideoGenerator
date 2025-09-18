@@ -4,8 +4,8 @@ package com.lbc_plot.DAO.Impl;
 import com.lbc_plot.DAO.CharacterDAO;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
-import com.lbc_plot.util.SQLiteDatabaseManager;
 import com.lbc_plot.util.ColorUtils;
+import com.lbc_plot.util.db.SQLiteDatabaseManager;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -19,9 +19,24 @@ public class CharacterDAOImpl implements CharacterDAO {
     
     private final Connection connection;
     
+
+    /**
+     * 默认构造函数 - 使用默认数据库连接
+     */
     public CharacterDAOImpl() {
-        this.connection = SQLiteDatabaseManager.getConnection();
+        this(SQLiteDatabaseManager.getConnection());
     }
+    
+    /**
+     * 构造函数注入 - 可以传入自定义连接（用于测试）
+     * @param connection 数据库连接
+     */
+    public CharacterDAOImpl(Connection connection) {
+        this.connection = connection;
+    }
+    
+
+
     
     @Override
     public Optional<MyCharacter> findById(String characterId) {

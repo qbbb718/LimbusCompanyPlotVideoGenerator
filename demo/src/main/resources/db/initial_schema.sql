@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS characters (
     faction TEXT DEFAULT '无阵营',
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
--- 创建索引提高查询性能
-CREATE INDEX IF NOT EXISTS idx_character ON characters(character_id);
 
 
 -- 立绘表
@@ -20,20 +18,16 @@ CREATE TABLE IF NOT EXISTS portraits (
     image_path TEXT NOT NULL,
     port_name TEXT,
     emotion TEXT,
-    pos_x INTEGER DEFAULT 0,
-    pos_y INTEGER DEFAULT 0,
+    face_x INTEGER DEFAULT 0,
+    face_y INTEGER DEFAULT 0,
     length INTEGER DEFAULT 100,
     adj_x INTEGER DEFAULT 0,
     adj_y INTEGER DEFAULT 0,
     dim BOOLEAN DEFAULT 1,
     thumbnail_path TEXT,
-    created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (character_id) REFERENCES characters (character_id) ON DELETE CASCADE
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP--,
+    --FOREIGN KEY (character_id) REFERENCES characters (character_id) ON DELETE CASCADE
 );
-
--- 创建索引提高查询性能
-CREATE INDEX IF NOT EXISTS idx_portraits_character ON portraits(character_id);
-CREATE INDEX IF NOT EXISTS idx_portraits_emotion ON portraits(emotion);
 
 
 
@@ -54,8 +48,14 @@ CREATE TABLE IF NOT EXISTS character_portraits (
     FOREIGN KEY (portrait_id) REFERENCES portraits (portrait_id) ON DELETE CASCADE
 );
 
+
 -- 创建索引提高查询性能
-CREATE INDEX IF NOT EXISTS idx_char_portrait_char ON character_portraits(character_id);
-CREATE INDEX IF NOT EXISTS idx_char_portrait_port ON character_portraits(portrait_id);
+--CREATE INDEX IF NOT EXISTS idx_character ON characters(character_id);
+
+--CREATE INDEX IF NOT EXISTS idx_portraits_character ON portraits(character_id);
+--CREATE INDEX IF NOT EXISTS idx_portraits_emotion ON portraits(emotion);
+
+--CREATE INDEX IF NOT EXISTS idx_char_portrait_char ON character_portraits(character_id);
+--CREATE INDEX IF NOT EXISTS idx_char_portrait_port ON character_portraits(portrait_id);
 
 

@@ -203,6 +203,7 @@ public class Portrait {
      */
     private Portrait(Builder builder) {
         this.portraitID = builder.portraitID;
+        this.characterID = builder.characterID;
         this.imagePath = builder.imagePath;
         this.image = builder.image;
         this.portName = builder.portName;
@@ -247,8 +248,8 @@ public class Portrait {
      */
     public static class Builder {
         // 必需参数
-        private String portraitID = DEFAULT_PORTRAITID;
-        private String characterID = ProjectConfig.NARRATION_ID;
+        private String portraitID;
+        private String characterID;
         private String imagePath;
         
         // 可选参数（有默认值）
@@ -347,6 +348,8 @@ public class Portrait {
          * 路径从chara开始
          */
         public Portrait build() {
+            logger.debug("Building Portrait with: portraitID={}, characterID={}, imagePath={}, portName={}, emotion={}",
+                 this.portraitID, this.characterID, this.imagePath, this.portName, this.emotion);
             return new Portrait(this);
         }
     }
@@ -354,13 +357,24 @@ public class Portrait {
     /**
      * 静态工厂方法创建Builder
      */
-    public static Builder builder(String imagePath) {
-        return new Builder(imagePath);
+    public static Builder builder(String imageName) {
+        return new Builder(imageName);
     }
     
     @Override
     public String toString() {
-        return String.format("Portrait{id='%s', name='%s', emotion=%s, face=(%d,%d), size=%d, adj=(%d,%d)}",
-                portraitID, portName, emotion, faceX, faceY, length, adjX, adjY);
+        return "Portrait{" +
+                "portraitID='" + portraitID + '\'' +
+                ", characterID='" + characterID + '\'' +
+                ", imagePath='" + imagePath + '\'' +
+                ", portName='" + portName + '\'' +
+                ", emotion=" + (emotion != null ? emotion.name() : "null") + // 假设 emotion 是枚举类型
+                ", faceX=" + faceX +
+                ", faceY=" + faceY +
+                ", length=" + length +
+                ", adjX=" + adjX +
+                ", adjY=" + adjY +
+                ", thumbnailPath='" + thumbnailPath + '\'' +
+                '}';
     }
 }

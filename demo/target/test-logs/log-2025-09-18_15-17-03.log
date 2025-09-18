@@ -1,0 +1,1105 @@
+2025-09-18 15:17:03.562 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.565 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.565 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.565 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.567 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.567 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.691 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.692 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.692 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.694 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.694 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.695 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.695 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.695 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.698 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.699 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.699 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.699 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.699 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.699 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.699 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.699 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.699 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.700 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.700 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.701 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.701 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.701 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.701 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.701 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.701 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.701 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.701 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.702 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.704 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.706 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.706 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.706 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.706 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.706 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.706 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.706 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.706 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.706 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.708 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=有缩略图, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.716 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='有缩略图', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.717 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=无缩略图, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.717 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='无缩略图', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.717 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='有缩略图', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.721 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.721 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='无缩略图', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='null'}
+2025-09-18 15:17:03.722 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.722 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 查询所有有缩略图的立绘
+2025-09-18 15:17:03.723 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=有缩略图, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.723 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到 1 个有缩略图的立绘
+2025-09-18 15:17:03.729 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.730 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.739 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.739 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.739 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.739 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.739 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.739 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.739 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.740 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.740 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.740 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.740 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.740 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.740 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.742 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.742 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.742 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.742 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.742 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.742 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.742 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.742 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.742 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.742 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.742 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.743 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.743 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.743 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.743 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.743 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.743 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.745 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.745 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.745 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.745 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.745 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.746 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.746 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.746 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.746 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.746 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.746 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.747 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.747 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.748 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.748 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.748 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.748 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.748 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.750 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.750 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.750 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.750 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.751 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.751 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.751 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.751 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.751 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.751 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.751 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.752 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.752 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.752 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.754 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.755 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.755 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.755 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.755 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.755 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.755 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.755 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.756 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=格里高尔-face_depressed_L.png, emotion=NORMAL
+2025-09-18 15:17:03.756 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='格里高尔-face_depressed_L.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.756 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.756 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.756 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='格里高尔-face_depressed_L.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.756 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.756 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.756 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.756 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 查询所有立绘
+2025-09-18 15:17:03.757 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.757 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=格里高尔-face_depressed_L.png, emotion=NORMAL
+2025-09-18 15:17:03.757 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到 2 个立绘
+2025-09-18 15:17:03.757 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.757 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.759 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.759 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.759 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.759 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.759 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.759 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.760 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.760 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.762 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.762 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.762 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.763 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.763 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.763 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.763 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.763 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.764 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.764 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.764 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.766 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.766 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.766 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.766 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.766 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.767 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.767 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.767 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.767 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.767 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.767 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.767 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.767 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.767 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.767 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.767 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=战斗立绘, emotion=NORMAL
+2025-09-18 15:17:03.767 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='战斗立绘', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.767 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=微笑立绘, emotion=HAPPY
+2025-09-18 15:17:03.767 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='微笑立绘', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.767 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=Gregor-face_serious_R.png, portName=战斗姿势, emotion=ANGRY
+2025-09-18 15:17:03.768 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_003', characterID='char_002', imagePath='Gregor-face_serious_R.png', portName='战斗姿势', emotion=ANGRY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.768 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='战斗立绘', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.768 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.768 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='微笑立绘', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.768 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.768 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_003', characterID='char_002', imagePath='Gregor-face_serious_R.png', portName='战斗姿势', emotion=ANGRY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.768 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_003
+2025-09-18 15:17:03.768 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按名称查询立绘: 战斗
+2025-09-18 15:17:03.769 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=Gregor-face_serious_R.png, portName=战斗姿势, emotion=ANGRY
+2025-09-18 15:17:03.769 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=战斗立绘, emotion=NORMAL
+2025-09-18 15:17:03.769 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按名称 '战斗' 找到 2 个立绘
+2025-09-18 15:17:03.769 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按名称查询立绘: 微笑
+2025-09-18 15:17:03.771 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=微笑立绘, emotion=HAPPY
+2025-09-18 15:17:03.771 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按名称 '微笑' 找到 1 个立绘
+2025-09-18 15:17:03.771 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.771 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.773 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.773 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.773 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.773 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.773 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.773 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.773 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.773 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.775 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.775 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.775 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.775 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.775 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.775 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.775 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.775 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.776 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.776 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.776 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.776 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.776 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.776 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.776 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.777 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.777 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.777 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.777 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.777 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.777 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.777 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.777 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.779 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.779 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.779 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.779 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.779 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=Gregor-face_serious_R.png, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.779 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_003', characterID='char_002', imagePath='Gregor-face_serious_R.png', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.779 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.779 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.779 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.779 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.779 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_003', characterID='char_002', imagePath='Gregor-face_serious_R.png', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.780 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_003
+2025-09-18 15:17:03.780 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 统计所有立绘数量
+2025-09-18 15:17:03.780 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 总立绘数量: 3
+2025-09-18 15:17:03.780 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按角色统计立绘数量: char_001
+2025-09-18 15:17:03.780 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 角色 char_001 的立绘数量: 2
+2025-09-18 15:17:03.780 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按情绪统计立绘数量: NORMAL
+2025-09-18 15:17:03.780 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 情绪 NORMAL 的立绘数量: 2
+2025-09-18 15:17:03.780 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.780 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.782 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.782 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.782 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.782 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.782 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.782 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.782 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.782 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.784 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.784 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.784 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.784 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.784 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.785 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.785 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.785 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.785 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.785 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.785 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.785 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.785 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.785 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.785 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.786 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.786 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.786 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.786 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.786 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.786 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.786 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.787 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.787 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.787 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.787 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.787 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.787 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.787 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.787 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.787 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.788 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.788 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.788 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.788 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=立绘3, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.788 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_003', characterID='char_002', imagePath='立绘3', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.788 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.788 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.788 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.789 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.789 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_003', characterID='char_002', imagePath='立绘3', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.789 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_003
+2025-09-18 15:17:03.789 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按角色删除立绘: char_001
+2025-09-18 15:17:03.789 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功删除角色 char_001 的所有立绘，删除数量: 2
+2025-09-18 15:17:03.789 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 查询所有立绘
+2025-09-18 15:17:03.789 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=立绘3, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.789 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到 1 个立绘
+2025-09-18 15:17:03.789 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.789 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.790 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.790 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.790 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.790 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.790 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.790 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.792 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.793 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.793 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.793 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.793 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.793 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.793 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.794 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.795 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.795 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.795 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.797 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.797 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.797 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.797 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.797 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.797 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.798 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=测试立绘, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.798 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='测试立绘', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.798 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='测试立绘', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.798 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.798 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 更新立绘缩略图路径: port_001, thumbnails/new_thumbnail.png
+2025-09-18 15:17:03.799 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功更新立绘 port_001 的缩略图路径
+2025-09-18 15:17:03.799 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 根据ID查询立绘: port_001
+2025-09-18 15:17:03.799 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=测试立绘, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.799 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到立绘: port_001
+2025-09-18 15:17:03.799 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.799 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.802 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.802 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.802 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.802 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.802 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.802 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.802 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.802 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.802 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.802 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.803 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.803 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.803 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.803 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.803 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.803 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.803 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.803 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.805 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.805 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.805 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.805 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.805 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.805 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.805 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.805 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.806 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.806 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.806 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.806 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.806 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.806 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.806 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=测试立绘, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.806 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='测试立绘', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.806 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='测试立绘', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.806 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.806 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 删除立绘: port_001
+2025-09-18 15:17:03.806 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功删除立绘: port_001
+2025-09-18 15:17:03.806 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 根据ID查询立绘: port_001
+2025-09-18 15:17:03.806 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 未找到立绘: port_001
+2025-09-18 15:17:03.807 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.807 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.809 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.809 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.809 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.809 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.809 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.809 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.809 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.809 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.810 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.810 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.810 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.810 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.810 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.810 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.810 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.812 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.812 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.812 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.812 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.812 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.813 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.813 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.813 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.813 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.813 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.813 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.813 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.813 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.813 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.813 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=立绘3, portName=Gregor-face_serious_R.png, emotion=ANGRY
+2025-09-18 15:17:03.813 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_003', characterID='char_002', imagePath='立绘3', portName='Gregor-face_serious_R.png', emotion=ANGRY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.813 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 批量保存立绘，数量: 3
+2025-09-18 15:17:03.818 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功批量保存 3 个立绘
+2025-09-18 15:17:03.818 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 查询所有立绘
+2025-09-18 15:17:03.818 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.818 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.818 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=立绘3, portName=Gregor-face_serious_R.png, emotion=ANGRY
+2025-09-18 15:17:03.818 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到 3 个立绘
+2025-09-18 15:17:03.818 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.818 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.819 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.819 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.819 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.819 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.819 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.819 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.821 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.821 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.822 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.822 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.822 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.823 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.823 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.823 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.823 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.823 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.823 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.823 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.824 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.824 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.824 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.824 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.824 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.824 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.824 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.824 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.826 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.826 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.826 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.826 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.826 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.826 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.827 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.827 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.827 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.827 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.827 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=立绘3, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.827 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_003', characterID='char_002', imagePath='立绘3', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.827 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.827 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.827 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='立绘2', portName='Gregor-face_serious_R.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.827 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.827 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_003', characterID='char_002', imagePath='立绘3', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.828 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_003
+2025-09-18 15:17:03.828 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按情绪查询立绘: NORMAL
+2025-09-18 15:17:03.828 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.828 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=立绘3, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.828 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按情绪 NORMAL 找到 2 个立绘
+2025-09-18 15:17:03.828 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按情绪查询立绘: HAPPY
+2025-09-18 15:17:03.829 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=立绘2, portName=Gregor-face_serious_R.png, emotion=HAPPY
+2025-09-18 15:17:03.829 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按情绪 HAPPY 找到 1 个立绘
+2025-09-18 15:17:03.829 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.831 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.831 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.831 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.831 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.831 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.831 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.831 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.833 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.833 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.833 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.833 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.833 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.833 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.833 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.833 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.834 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.834 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.835 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.835 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.835 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.836 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.836 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.836 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.836 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.836 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.836 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.837 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 根据ID查询立绘: non_existent_id
+2025-09-18 15:17:03.837 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 未找到立绘: non_existent_id
+2025-09-18 15:17:03.837 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.837 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.838 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.838 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.838 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.838 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.838 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.838 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.839 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.839 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.839 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.839 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.839 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.839 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.839 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.841 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.841 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.842 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.842 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.842 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.842 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.842 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.843 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.843 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.843 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.843 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.843 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=旧名称, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.843 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='旧名称', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.843 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='旧名称', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.843 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.843 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 更新立绘: port_001
+2025-09-18 15:17:03.844 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功更新立绘: port_001
+2025-09-18 15:17:03.844 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 根据ID查询立绘: port_001
+2025-09-18 15:17:03.844 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=旧名称, portName=新名称, emotion=HAPPY
+2025-09-18 15:17:03.844 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到立绘: port_001
+2025-09-18 15:17:03.844 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.844 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.846 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.846 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.846 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.846 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.846 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.846 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.847 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.847 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.847 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.847 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.847 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.847 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.847 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.847 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.848 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.848 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.848 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.850 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.850 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.850 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.850 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.850 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.850 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.850 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=Gregor-face_serious_R.png, portName=测试立绘, emotion=NORMAL
+2025-09-18 15:17:03.850 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='测试立绘', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.850 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='Gregor-face_serious_R.png', portName='测试立绘', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.851 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.851 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 检查立绘是否存在: port_001
+2025-09-18 15:17:03.851 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 立绘 port_001 存在: true
+2025-09-18 15:17:03.851 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 检查立绘是否存在: 角色=char_001, 名称=测试立绘
+2025-09-18 15:17:03.851 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 立绘存在 - 角色=char_001, 名称=测试立绘: true
+2025-09-18 15:17:03.851 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 检查立绘是否存在: non_existent
+2025-09-18 15:17:03.851 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 立绘 non_existent 存在: false
+2025-09-18 15:17:03.851 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.851 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.852 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.852 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.852 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.852 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.852 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.852 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.854 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.854 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.854 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.854 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.855 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.855 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.855 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.855 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.855 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.855 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.855 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.855 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.856 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.856 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.856 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.856 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.856 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.856 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=格里高尔-face_idle_R.png, portName=默认立绘, emotion=NORMAL
+2025-09-18 15:17:03.856 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='格里高尔-face_idle_R.png', portName='默认立绘', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.856 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='格里高尔-face_idle_R.png', portName='默认立绘', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.857 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.857 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 根据ID查询立绘: port_001
+2025-09-18 15:17:03.857 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=格里高尔-face_idle_R.png, portName=默认立绘, emotion=NORMAL
+2025-09-18 15:17:03.857 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 找到立绘: port_001
+2025-09-18 15:17:03.857 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.857 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-18 15:17:03.860 [main] INFO  DAO.PortraitDAOTest - 开始设置测试环境
+2025-09-18 15:17:03.860 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-18 15:17:03.860 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-18 15:17:03.860 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-18 15:17:03.860 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-18 15:17:03.860 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-18 15:17:03.860 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-18 15:17:03.862 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-18 15:17:03.863 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-18 15:17:03.863 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 读取SQL文件完成: 61行, 1918字符
+2025-09-18 15:17:03.863 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-18 15:17:03.863 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-18 15:17:03.863 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-18 15:17:03.863 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-18 15:17:03.863 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: backgrounds
+2025-09-18 15:17:03.865 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 表 backgrounds 存在: false
+2025-09-18 15:17:03.865 [main] WARN  c.l.u.db.SQLiteTestDatabaseManager - 重要表 backgrounds 未创建成功
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 列出所有表
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-18 15:17:03.865 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - === 数据库诊断 ===
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 连接状态: 已连接
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库中的表:
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_character_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_characters_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_autoindex_portraits_1 (SYSTEM TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_schema (SYSTEM TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence (SYSTEM TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits (TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters (TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits (TABLE)
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - sqlite_master中的表:
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - characters
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - portraits
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - character_portraits
+2025-09-18 15:17:03.866 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager -  - sqlite_sequence
+2025-09-18 15:17:03.866 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-18 15:17:03.866 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-18 15:17:03.866 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 获取数据库连接
+2025-09-18 15:17:03.866 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 使用自定义连接创建PortraitDAOImpl实例
+2025-09-18 15:17:03.866 [main] INFO  DAO.PortraitDAOTest - 测试环境设置完成
+2025-09-18 15:17:03.866 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=角色1立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.866 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_001', characterID='char_001', imagePath='角色1立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.866 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=角色1立绘2, portName=格里高尔-face_smile2_L.png, emotion=HAPPY
+2025-09-18 15:17:03.866 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_002', characterID='char_001', imagePath='角色1立绘2', portName='格里高尔-face_smile2_L.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.866 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=角色2立绘1, portName=罗佳-face_happy_L.png, emotion=NORMAL
+2025-09-18 15:17:03.866 [main] DEBUG DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_003', characterID='char_002', imagePath='角色2立绘1', portName='罗佳-face_happy_L.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.866 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_001', characterID='char_001', imagePath='角色1立绘1', portName='Gregor-face_serious_R.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_001.png'}
+2025-09-18 15:17:03.868 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_001
+2025-09-18 15:17:03.868 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_002', characterID='char_001', imagePath='角色1立绘2', portName='格里高尔-face_smile2_L.png', emotion=HAPPY, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_002.png'}
+2025-09-18 15:17:03.868 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_002
+2025-09-18 15:17:03.868 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 尝试保存立绘详细信息: Portrait{portraitID='port_003', characterID='char_002', imagePath='角色2立绘1', portName='罗佳-face_happy_L.png', emotion=NORMAL, faceX=100, faceY=50, length=80, adjX=0, adjY=0, thumbnailPath='thumbnails/port_003.png'}
+2025-09-18 15:17:03.868 [main] INFO  c.lbc_plot.DAO.Impl.PortraitDAOImpl - 成功保存立绘: port_003
+2025-09-18 15:17:03.868 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按角色ID查询立绘: char_001
+2025-09-18 15:17:03.868 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_001, characterID=char_001, imagePath=角色1立绘1, portName=Gregor-face_serious_R.png, emotion=NORMAL
+2025-09-18 15:17:03.868 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_002, characterID=char_001, imagePath=角色1立绘2, portName=格里高尔-face_smile2_L.png, emotion=HAPPY
+2025-09-18 15:17:03.868 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 为角色 char_001 找到 2 个立绘
+2025-09-18 15:17:03.868 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 按角色ID查询立绘: char_002
+2025-09-18 15:17:03.868 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_003, characterID=char_002, imagePath=角色2立绘1, portName=罗佳-face_happy_L.png, emotion=NORMAL
+2025-09-18 15:17:03.868 [main] DEBUG c.lbc_plot.DAO.Impl.PortraitDAOImpl - 为角色 char_002 找到 1 个立绘
+2025-09-18 15:17:03.869 [main] DEBUG c.l.u.db.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-18 15:17:03.869 [main] INFO  c.l.u.db.SQLiteTestDatabaseManager - 数据库连接关闭成功
