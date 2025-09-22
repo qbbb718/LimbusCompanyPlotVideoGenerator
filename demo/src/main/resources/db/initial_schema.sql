@@ -6,8 +6,7 @@ CREATE TABLE IF NOT EXISTS characters (
     height INTEGER DEFAULT 170,
     color_bg TEXT DEFAULT '076,054,031',        -- 直接设置颜色字符串默认值
     color_text TEXT DEFAULT '251,219,179',    -- 直接设置颜色字符串默认值
-    faction TEXT DEFAULT '无阵营',
-    created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+    faction TEXT DEFAULT '无阵营'
 );
 
 
