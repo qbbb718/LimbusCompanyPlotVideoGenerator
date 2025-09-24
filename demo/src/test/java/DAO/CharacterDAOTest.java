@@ -4,17 +4,35 @@ import java.awt.Color;
 import java.io.IOException;
 import java.util.Optional;
 
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
+import org.sqlite.SQLiteDataSource;
 
 import com.lbc_plot.DAO.CharacterDAO;
-import com.lbc_plot.DAO.Impl.CharacterDAOImpl;
+import com.lbc_plot.DAO.CharacterMapper;
+import com.lbc_plot.DAO.ColorMapper;
+import com.lbc_plot.DAO.PortraitDAO;
+import com.lbc_plot.DAO.PortraitMapper;
 import com.lbc_plot.model.storage.MyCharacter;
+import com.lbc_plot.model.storage.Portrait;
+import com.lbc_plot.util.db.SQLiteDatabaseManager;
 
 public class CharacterDAOTest {
 
     @Test
     void baseTest() throws IOException {
-        CharacterDAO characterDAO = new CharacterDAOImpl();
+
+        
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        Jdbi jdbi = Jdbi.create(dataSource)
+        .registerRowMapper(Portrait.class, new PortraitMapper())
+        .registerRowMapper(MyCharacter.class, new CharacterMapper());
+
+        // 获取DAO实例
+        CharacterDAO characterDAO = jdbi.onDemand(CharacterDAO.class);
+        PortraitDAO portraitDAD = jdbi.onDemand(PortraitDAO.class);
+
+
         
         // 创建角色
         MyCharacter character = MyCharacter.builder()
@@ -27,7 +45,7 @@ public class CharacterDAOTest {
             .build();
         
         // 保存角色
-        MyCharacter saved = characterDAO.save(character);
+        String saved = characterDAO.save(character);
         System.out.println("保存结果: " + saved);
         
         // 查询角色

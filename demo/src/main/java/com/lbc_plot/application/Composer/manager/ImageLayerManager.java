@@ -12,11 +12,11 @@ import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.util.RenderQualityUtils;
 import com.lbc_plot.util.io.ImageReader;
 
-// ImageLayerManager.java - 专门处理图像图层
+/**
+ * 图像图层处理工具
+ */
 public class ImageLayerManager extends BaseLayerManager implements ImageLayerInterface {
     private final List<LayerInfo> layers = new ArrayList<>();
-    
-    // 实现 ImageLayerOperations 的所有方法...
     
     /**
      * 添加图层 - 原样叠加

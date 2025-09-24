@@ -32,18 +32,18 @@ public class CharacterServiceImpl implements CharacterService {
      * 创建Character并存入数据库
      */
     @Override
-    public MyCharacter createCharacter(String name, int height, String faction) {
+    public String createCharacter(String name, int height, String faction) {
         // 创建角色对象（不设置ID，由数据库生成）
         MyCharacter character = MyCharacter.builder()
-            .characterID()
+            //.characterID()
             .characterName(name)
             .height(height)
             .faction(faction)
             .build();
         
         // 保存到数据库并获取带有生成ID的角色对象
-        MyCharacter savedCharacter = characterDAO.save(character);
-        if (savedCharacter != null && savedCharacter.getCharacterID() != null) {
+        String savedCharacter = characterDAO.save(character);
+        if (savedCharacter != null) {
             return savedCharacter;
         }
         throw new RuntimeException("创建角色失败: " + name);

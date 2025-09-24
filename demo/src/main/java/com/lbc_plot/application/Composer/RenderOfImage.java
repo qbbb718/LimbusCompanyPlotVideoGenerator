@@ -23,8 +23,7 @@ import com.lbc_plot.model.video.CharacterVisual;
 import com.lbc_plot.model.video.Dialogue;
 
 /**
- * 渲染用的
- * static静态类
+ * 渲染图片
  */
 
 public class RenderOfImage {

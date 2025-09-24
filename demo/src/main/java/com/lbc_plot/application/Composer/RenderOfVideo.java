@@ -29,6 +29,9 @@ import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.Record;
 import com.lbc_plot.model.video.Dialogue;
 
+/**
+ * 渲染视频
+ */
 public class RenderOfVideo {
     private static final Logger logger = LoggerFactory.getLogger(RenderOfVideo.class);
     

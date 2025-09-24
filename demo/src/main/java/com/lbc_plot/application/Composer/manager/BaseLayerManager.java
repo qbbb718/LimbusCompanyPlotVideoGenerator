@@ -9,7 +9,10 @@ import java.awt.image.BufferedImage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// BaseLayerManager.java - 基础图层管理
+/**
+ * BaseLayerManager.java - 基础图层管理
+ * @return
+ */ 
 public abstract class BaseLayerManager {
     protected static final Logger logger = LoggerFactory.getLogger(BaseLayerManager.class);
     protected static final int DEFAULT_WIDTH = 1920;

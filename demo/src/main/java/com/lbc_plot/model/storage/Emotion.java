@@ -29,6 +29,12 @@ public enum Emotion {
         return code;
     }
 
+    public static Emotion fromString(String value) {
+        return value == null ? null : Emotion.valueOf(value);
+    }
+
+    
+
     /**
      * 根据代码获取情绪枚举
      */

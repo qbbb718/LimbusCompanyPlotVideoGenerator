@@ -13,7 +13,7 @@ import java.util.List;
 public interface CharacterService {
     
     // 角色管理
-    MyCharacter createCharacter(String name, int height, String faction);
+    String createCharacter(String name, int height, String faction);
     MyCharacter getCharacter(String characterId);
     List<MyCharacter> getAllCharacters();
     boolean updateCharacter(MyCharacter character);

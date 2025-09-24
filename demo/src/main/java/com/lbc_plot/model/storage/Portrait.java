@@ -5,6 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.UUID;
+
 import javax.imageio.ImageIO;
 
 import org.slf4j.Logger;
@@ -125,6 +127,10 @@ public class Portrait {
 
     public void setEmotion(Emotion emotion) {
         this.emotion = emotion;
+    }
+
+    public String getEmotionName() {
+        return emotion != null ? emotion.name() : null;
     }
 
     // 修改之后记得更新缩略图
@@ -271,6 +277,11 @@ public class Portrait {
         }
         
         // 链式设置方法
+        public Builder portraitID() {
+            this.portraitID = UUID.randomUUID().toString();;
+            return this;
+        }
+
         public Builder portraitID(String portraitID) {
             this.portraitID = portraitID;
             return this;

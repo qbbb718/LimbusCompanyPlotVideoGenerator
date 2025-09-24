@@ -1,0 +1,892 @@
+2025-09-24 17:09:27.207 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.209 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.209 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.209 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.211 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.212 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.336 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.336 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.337 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.337 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.338 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.338 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.338 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.339 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.343 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.343 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.343 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.343 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.343 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.343 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.343 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.343 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.343 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.345 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.345 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.345 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.345 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.345 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.345 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.347 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.347 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.347 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.347 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.347 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.347 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.347 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.347 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 380812044
+2025-09-24 17:09:27.467 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.467 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 380812044
+2025-09-24 17:09:27.469 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.469 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.471 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=有缩略图, emotion=NORMAL
+2025-09-24 17:09:27.545 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=无缩略图, emotion=HAPPY
+2025-09-24 17:09:27.553 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=无缩略图, emotion=HAPPY
+2025-09-24 17:09:27.553 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=有缩略图, emotion=NORMAL
+2025-09-24 17:09:27.558 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.558 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.558 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.565 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.565 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.565 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.565 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.565 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.565 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.565 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.566 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.566 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.566 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.566 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.568 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.568 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.568 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.568 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.568 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.568 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.568 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.569 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.569 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.569 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.569 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1373577787
+2025-09-24 17:09:27.576 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.577 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1373577787
+2025-09-24 17:09:27.577 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.577 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.578 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.587 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.587 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.587 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.588 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.588 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.588 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.588 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.588 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.588 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.588 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.588 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.590 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.590 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.590 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.590 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.590 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.590 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.591 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.591 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.591 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.591 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.591 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.591 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.591 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.591 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.591 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.591 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.592 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.592 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.592 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.592 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.592 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1599674462
+2025-09-24 17:09:27.596 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.596 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1599674462
+2025-09-24 17:09:27.596 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.597 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.597 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.599 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_002, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.602 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.602 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_002, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.603 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.603 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.603 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.603 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.603 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.603 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.603 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.603 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.603 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.604 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.604 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.604 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.604 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.606 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.606 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.606 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.606 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.606 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.606 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.606 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.607 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.607 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.607 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.607 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.607 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.607 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.607 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.607 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.608 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.608 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.608 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.608 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.608 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 575360353
+2025-09-24 17:09:27.612 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.612 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 575360353
+2025-09-24 17:09:27.613 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.613 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.613 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=默认立绘, emotion=NORMAL
+2025-09-24 17:09:27.616 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=战斗立绘, emotion=ANGRY
+2025-09-24 17:09:27.618 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=战斗立绘, emotion=ANGRY
+2025-09-24 17:09:27.619 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.619 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.619 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.620 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.620 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.620 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.620 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.620 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.620 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.622 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.622 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.622 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.623 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.623 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.623 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.623 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.623 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.623 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.623 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.623 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.623 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.624 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.624 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.624 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.624 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.624 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.624 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.624 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 61137731
+2025-09-24 17:09:27.629 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.629 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 61137731
+2025-09-24 17:09:27.629 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.629 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.630 [main] INFO  DAO.PortraitDAOTest - 开始测试保存和查询
+2025-09-24 17:09:27.630 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.630 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 61137731
+2025-09-24 17:09:27.630 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=Ryoshu-default.png, portName=默认立绘, emotion=NORMAL
+2025-09-24 17:09:27.630 [main] INFO  DAO.PortraitDAOTest - 创建测试立绘对象: Portrait{portraitID='port_test_001', characterID='char_test_001', imagePath='Ryoshu-default.png', portName='默认立绘', emotion=NORMAL, faceX=0, faceY=0, length=183, adjX=0, adjY=0, thumbnailPath='thumbs/port_test_001.png'}
+2025-09-24 17:09:27.637 [main] DEBUG DAO.PortraitDAOTest - 开始保存立绘...
+2025-09-24 17:09:27.641 [main] INFO  DAO.PortraitDAOTest - 立绘保存成功
+2025-09-24 17:09:27.641 [main] DEBUG DAO.PortraitDAOTest - 验证数据库记录...
+2025-09-24 17:09:27.641 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查记录存在性: portraits.portrait_id = port_test_001
+2025-09-24 17:09:27.641 [main] DEBUG helpers.SQLiteTestDatabaseManager - 记录存在性检查结果: true
+2025-09-24 17:09:27.642 [main] INFO  DAO.PortraitDAOTest - 数据库记录验证完成
+2025-09-24 17:09:27.642 [main] DEBUG DAO.PortraitDAOTest - 开始查询立绘...
+2025-09-24 17:09:27.643 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=Ryoshu-default.png, portName=默认立绘, emotion=NORMAL
+2025-09-24 17:09:27.644 [main] INFO  DAO.PortraitDAOTest - 立绘查询结果: 找到
+2025-09-24 17:09:27.644 [main] DEBUG DAO.PortraitDAOTest - 查询到的立绘详情: Portrait{portraitID='port_test_001', characterID='char_test_001', imagePath='Ryoshu-default.png', portName='默认立绘', emotion=NORMAL, faceX=0, faceY=0, length=183, adjX=0, adjY=0, thumbnailPath='thumbs/port_test_001.png'}
+2025-09-24 17:09:27.644 [main] INFO  DAO.PortraitDAOTest - 立绘详细信息验证通过
+2025-09-24 17:09:27.644 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.644 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.644 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.645 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.645 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.645 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.645 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.645 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.645 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.645 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.645 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.645 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.645 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.647 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.647 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.648 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.648 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 417797183
+2025-09-24 17:09:27.652 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.652 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 417797183
+2025-09-24 17:09:27.652 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.652 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.652 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.655 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.657 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_003, characterID=char_test_002, imagePath=3.png, portName=C, emotion=ANGRY
+2025-09-24 17:09:27.662 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.662 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.662 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.663 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.663 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.663 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.663 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.663 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.663 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.664 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.664 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.664 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.664 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.664 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.665 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.665 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.665 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.665 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.665 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.666 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.666 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.666 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.666 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.666 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.666 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 67671827
+2025-09-24 17:09:27.670 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.670 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 67671827
+2025-09-24 17:09:27.670 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.670 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.670 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.676 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.676 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.676 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.677 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.677 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.677 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.677 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.677 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.678 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.678 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 215759534
+2025-09-24 17:09:27.683 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.683 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 215759534
+2025-09-24 17:09:27.683 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.683 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.683 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.687 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.687 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.687 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.687 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.688 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.688 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.688 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.688 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.688 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.688 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.688 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.688 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.689 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.689 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.689 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.689 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.689 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.689 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.690 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.690 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.690 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.690 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.690 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.690 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.690 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.692 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.692 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.692 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.692 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.692 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.692 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.692 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.692 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1193841543
+2025-09-24 17:09:27.696 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.696 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1193841543
+2025-09-24 17:09:27.696 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.696 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.696 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.698 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_002, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.700 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.700 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.700 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.701 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.701 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.701 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.701 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.701 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.701 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.701 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.701 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.701 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.701 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.703 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.703 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.703 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.703 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.703 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.703 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.703 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.703 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.704 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.704 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.704 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.704 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.704 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.704 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.704 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 453671855
+2025-09-24 17:09:27.709 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.709 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 453671855
+2025-09-24 17:09:27.709 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.709 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.709 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=普通, emotion=NORMAL
+2025-09-24 17:09:27.712 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=开心, emotion=HAPPY
+2025-09-24 17:09:27.714 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=普通, emotion=NORMAL
+2025-09-24 17:09:27.714 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.714 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.714 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.715 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.715 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.715 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.715 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.715 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.715 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.716 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.716 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.716 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.716 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.717 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.717 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.718 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.718 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.718 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1624211687
+2025-09-24 17:09:27.723 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.723 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1624211687
+2025-09-24 17:09:27.723 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.724 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.724 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.727 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.728 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_003, characterID=char_test_002, imagePath=3.png, portName=C, emotion=ANGRY
+2025-09-24 17:09:27.730 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.730 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.730 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.731 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.731 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.731 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.731 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.731 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.731 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.731 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.731 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.731 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.732 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.732 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 373437697
+2025-09-24 17:09:27.736 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.736 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 373437697
+2025-09-24 17:09:27.736 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.736 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.737 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=test.png, portName=待删除, emotion=NORMAL
+2025-09-24 17:09:27.742 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.742 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.742 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.743 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.743 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.743 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.743 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.743 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.743 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.743 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.743 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.743 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.744 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.744 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.744 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.744 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.744 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.744 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.744 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.745 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.745 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.745 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.745 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.745 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.745 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1139609587
+2025-09-24 17:09:27.749 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.749 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1139609587
+2025-09-24 17:09:27.749 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.749 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.749 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.749 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.755 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.756 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.756 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.756 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.756 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.756 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.756 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.757 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.757 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.757 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.757 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.758 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.758 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.758 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.758 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.758 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.758 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.759 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.759 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.759 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.759 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.759 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.759 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.759 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.761 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.761 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.761 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.761 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.761 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.761 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.761 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.761 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1095947149
+2025-09-24 17:09:27.764 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.764 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1095947149
+2025-09-24 17:09:27.764 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.764 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.764 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=普通, emotion=NORMAL
+2025-09-24 17:09:27.767 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=开心, emotion=HAPPY
+2025-09-24 17:09:27.775 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=开心, emotion=HAPPY
+2025-09-24 17:09:27.775 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.775 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.775 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.776 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.776 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.776 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.776 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.776 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.776 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.776 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.776 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.777 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.777 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.777 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.777 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.777 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.777 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.777 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.778 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.778 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 2142893855
+2025-09-24 17:09:27.782 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.782 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 2142893855
+2025-09-24 17:09:27.782 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.782 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.782 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=A, emotion=NORMAL
+2025-09-24 17:09:27.782 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_001, imagePath=2.png, portName=B, emotion=HAPPY
+2025-09-24 17:09:27.788 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.788 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.788 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.789 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.789 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.789 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.789 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.789 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.789 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.789 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.789 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.790 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.790 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.790 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.790 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.790 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.790 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.792 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.792 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1469907228
+2025-09-24 17:09:27.795 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.795 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1469907228
+2025-09-24 17:09:27.795 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.795 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.796 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=test.png, portName=原始名称, emotion=NORMAL
+2025-09-24 17:09:27.800 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.800 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.800 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.804 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.804 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.804 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.804 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.804 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.804 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.805 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.805 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.805 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.806 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.806 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.806 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.806 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.806 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.806 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.807 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.807 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 577734751
+2025-09-24 17:09:27.811 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.811 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 577734751
+2025-09-24 17:09:27.811 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.811 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.811 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=test.png, portName=测试立绘, emotion=NORMAL
+2025-09-24 17:09:27.814 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=test.png, portName=测试立绘, emotion=NORMAL
+2025-09-24 17:09:27.815 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.815 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.815 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.817 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.817 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.817 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.817 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.817 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.817 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.817 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.817 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.817 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.818 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.818 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.818 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.818 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.818 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.818 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.818 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.818 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.819 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.819 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.819 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.819 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.819 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.819 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.820 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.820 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.820 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.820 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.820 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.820 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.820 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.820 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 846718105
+2025-09-24 17:09:27.823 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.823 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 846718105
+2025-09-24 17:09:27.823 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.823 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.825 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.825 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.825 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭
+2025-09-24 17:09:27.826 [main] INFO  DAO.PortraitDAOTest - ======== 测试初始化 ========
+2025-09-24 17:09:27.826 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-09-24 17:09:27.826 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-09-24 17:09:27.826 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-09-24 17:09:27.826 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-09-24 17:09:27.826 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-09-24 17:09:27.826 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-09-24 17:09:27.826 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-09-24 17:09:27.826 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-09-24 17:09:27.826 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-09-24 17:09:27.828 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-09-24 17:09:27.828 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-09-24 17:09:27.828 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-09-24 17:09:27.828 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-09-24 17:09:27.828 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-09-24 17:09:27.828 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-09-24 17:09:27.828 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-09-24 17:09:27.828 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.828 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-09-24 17:09:27.828 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-09-24 17:09:27.829 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-09-24 17:09:27.829 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-09-24 17:09:27.829 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.829 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-09-24 17:09:27.829 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-09-24 17:09:27.829 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.829 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 2145420209
+2025-09-24 17:09:27.832 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-09-24 17:09:27.832 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 2145420209
+2025-09-24 17:09:27.832 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-09-24 17:09:27.832 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-09-24 17:09:27.833 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=角色1立绘, emotion=NORMAL
+2025-09-24 17:09:27.834 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_002, characterID=char_test_002, imagePath=2.png, portName=角色2立绘, emotion=HAPPY
+2025-09-24 17:09:27.837 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=port_test_001, characterID=char_test_001, imagePath=1.png, portName=角色1立绘, emotion=NORMAL
+2025-09-24 17:09:27.837 [main] DEBUG helpers.SQLiteTestDatabaseManager - 关闭数据库连接
+2025-09-24 17:09:27.837 [main] INFO  helpers.SQLiteTestDatabaseManager - 数据库连接关闭成功
+2025-09-24 17:09:27.837 [main] INFO  DAO.PortraitDAOTest - 测试数据库连接已关闭

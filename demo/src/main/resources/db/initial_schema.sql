@@ -23,8 +23,7 @@ CREATE TABLE IF NOT EXISTS portraits (
     adj_x INTEGER DEFAULT 0,
     adj_y INTEGER DEFAULT 0,
     dim BOOLEAN DEFAULT 1,
-    thumbnail_path TEXT,
-    created_time DATETIME DEFAULT CURRENT_TIMESTAMP--,
+    thumbnail_path TEXT
     --FOREIGN KEY (character_id) REFERENCES characters (character_id) ON DELETE CASCADE
 );
 
