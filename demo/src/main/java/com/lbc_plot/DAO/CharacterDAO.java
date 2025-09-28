@@ -5,13 +5,16 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
+import com.lbc_plot.util.ColorUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public interface CharacterDAO {
 
@@ -24,29 +27,70 @@ public interface CharacterDAO {
     @SqlQuery("SELECT * FROM characters ORDER BY character_name")
     List<MyCharacter> findAll();
 
+    // 保存单个角色
     @SqlUpdate("""
         INSERT INTO characters 
         (character_id, character_name, height, color_bg, color_text, faction)
-        VALUES (:characterID, :characterName, :height, :colorBg, :colorText, :faction)
+        VALUES (:characterID, :characterName, :height, :colorBgStr, :colorTextStr, :faction)
         """)
-    @GetGeneratedKeys("character_id")
-    String save(@BindBean MyCharacter character);
+    void save(@BindBean MyCharacter character,
+             @Bind("colorBgStr") String colorBgStr,
+             @Bind("colorTextStr") String colorTextStr);
+    
+    default void save(MyCharacter character) {
+        save(character, 
+            ColorUtils.colorToString(character.getColor_bg()),
+            ColorUtils.colorToString(character.getColor_text()));
+    }
+
+    /**
+     * 批量保存角色
+     */
+    @SqlBatch("""
+        INSERT INTO characters 
+        (character_id, character_name, height, color_bg, color_text, faction)
+        VALUES (:characterID, :characterName, :height, :colorBgStr, :colorTextStr, :faction)
+        """)
+    void saveAll(@BindBean List<MyCharacter> characters,
+                @Bind("colorBgStr") List<String> colorBgStrs,
+                @Bind("colorTextStr") List<String> colorTextStrs);
+    
+    default void saveAll(List<MyCharacter> characters) {
+        List<String> bgStrs = characters.stream()
+            .map(c -> ColorUtils.colorToString(c.getColor_bg()))
+            .collect(Collectors.toList());
+        
+        List<String> textStrs = characters.stream()
+            .map(c -> ColorUtils.colorToString(c.getColor_text()))
+            .collect(Collectors.toList());
+        
+        saveAll(characters, bgStrs, textStrs);
+    }
 
     // 更新角色
     @SqlUpdate("""
         UPDATE characters SET 
         character_name = :characterName, 
         height = :height, 
-        color_bg = :colorBg, 
-        color_text = :colorText, 
+        color_bg = :colorBgStr, 
+        color_text = :colorTextStr, 
         faction = :faction
         WHERE character_id = :characterID
         """)
-    boolean update(@BindBean MyCharacter character);
+    boolean update(@BindBean MyCharacter character,
+                 @Bind("colorBgStr") String colorBgStr,
+                 @Bind("colorTextStr") String colorTextStr);
+    
+    default boolean update(MyCharacter character) {
+        return update(character,
+                    ColorUtils.colorToString(character.getColor_bg()),
+                    ColorUtils.colorToString(character.getColor_text()));
+    }
 
     // 删除角色
     @SqlUpdate("DELETE FROM characters WHERE character_id = :id")
     boolean delete(@Bind("id") String characterId);
+
 
 
 
@@ -59,7 +103,7 @@ public interface CharacterDAO {
     List<MyCharacter> findByName(@Bind("name") String name);
 
     // 检查角色是否存在
-    @SqlQuery("SELECT 1 FROM characters WHERE character_id = :id")
+    @SqlQuery("SELECT COUNT(1) > 0 FROM characters WHERE character_id = :id")
     boolean existsById(@Bind("id") String characterId);
 
     // 统计总数
@@ -80,8 +124,10 @@ public interface CharacterDAO {
     @Transaction
     default void saveWithPortraits(MyCharacter character, PortraitDAO portraitDao) {
         // 1. 保存角色基本信息
-        String characterId = save(character);
+        save(character);
+        String characterId = character.getCharacterID();
         // 2. 保存立绘及关联（委托给PortraitDAO）
+        portraitDao.saveAll(character.getPortraits());
         portraitDao.saveCharacterPortraits(characterId, character.getPortraits());
     }
 

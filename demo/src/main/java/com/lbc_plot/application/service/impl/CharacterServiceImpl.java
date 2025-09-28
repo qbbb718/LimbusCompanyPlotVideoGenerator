@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 角色业务服务实现
@@ -30,23 +31,33 @@ public class CharacterServiceImpl implements CharacterService {
     
     /**
      * 创建Character并存入数据库
+     * @param name 角色名称
+     * @param height 角色身高
+     * @param faction 角色阵营
+     * @return 创建的角色ID（由应用生成）
      */
     @Override
     public String createCharacter(String name, int height, String faction) {
-        // 创建角色对象（不设置ID，由数据库生成）
+        // 生成角色ID（使用UUID或其他ID生成策略）
+        String characterId = UUID.randomUUID().toString();
+        
+        // 创建角色对象（显式设置ID）
         MyCharacter character = MyCharacter.builder()
-            //.characterID()
+            .characterID(characterId)  // 显式设置ID
             .characterName(name)
             .height(height)
+            .color_bg(ProjectConfig.DEFAULT_BG_COLOR)  // 设置默认背景色
+            .color_text(ProjectConfig.DEFAULT_TEXT_COLOR)  // 设置默认文字色
             .faction(faction)
             .build();
         
-        // 保存到数据库并获取带有生成ID的角色对象
-        String savedCharacter = characterDAO.save(character);
-        if (savedCharacter != null) {
-            return savedCharacter;
+        // 保存到数据库
+        try {
+            characterDAO.save(character);
+            return characterId;  // 返回应用生成的ID
+        } catch (Exception e) {
+            throw new RuntimeException("创建角色失败: " + name, e);
         }
-        throw new RuntimeException("创建角色失败: " + name);
     }
     
     /**

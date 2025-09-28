@@ -7,6 +7,9 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.lbc_plot.model.storage.Portrait;
 import com.lbc_plot.model.storage.Emotion;
 import java.util.List;
@@ -145,7 +148,11 @@ public interface PortraitDAO {
         @Bind("order") int order
     );
 
-    // 新增：批量保存关联关系
+    /**
+     * 批量保存角色-立绘关联关系
+     * @param characterId 角色ID
+     * @param portraits 立绘列表（第一个立绘将设为默认）
+     */
     @Transaction
     default void saveCharacterPortraits(String characterId, List<Portrait> portraits) {
         for (int i = 0; i < portraits.size(); i++) {
