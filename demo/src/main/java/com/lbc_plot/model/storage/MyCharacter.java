@@ -7,30 +7,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.lbc_plot.application.Composer.FrameComposerService;
 import com.lbc_plot.application.Composer.RenderOfImage;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.util.io.ImageReader;
+import com.lbc_plot.util.json.ColorDeserializer;
+import com.lbc_plot.util.json.ColorSerializer;
 
 /**
  * 角色类
  */
 public class MyCharacter {
-    // 唯一ID
     private String characterID;
-    // 角色名
     private String characterName;
-    // 角色身高，算坐标用的
     private int height;
-    // 立绘们。第一位是默认立绘，没有就用这个
-    private List<Portrait> portraits; //可能没有立绘（旁白）
-    
-    // 代表色和文字色
-    private Color color_bg;
-    private Color color_text;
-    private BufferedImage color_Name_Image; //人设界面预览用，然后可以直接用到剧情渲染里
     private String faction; //阵营
+    private List<Portrait> portraits; //可能没有立绘（旁白）
+    @JsonSerialize(using = ColorSerializer.class)
+    @JsonDeserialize(using = ColorDeserializer.class)
+    private Color color_bg;
+    @JsonSerialize(using = ColorSerializer.class)
+    @JsonDeserialize(using = ColorDeserializer.class)
+    private Color color_text;
+    @JsonIgnore
+    private BufferedImage color_Name_Image; //人设界面预览用，然后可以直接用到剧情渲染里
 
 
     // 默认值
@@ -145,6 +151,7 @@ public class MyCharacter {
         this.faction = faction;
     }
 
+
     @Override
     public String toString() {
         return "Character{" +
@@ -225,11 +232,12 @@ public class MyCharacter {
     public static class Builder {
         // Builder参数
         private String characterID = null;
-        private String characterName;
+        private String characterName = DEFAULT_NAME;
         private int height = DEFAULT_HEIGHT;
         private List<Portrait> portraits = new ArrayList<>();
         private Color color_bg = DEFAULT_BG_COLOR;
         private Color color_text = DEFAULT_TEXT_COLOR;
+        @JsonIgnore
         private BufferedImage color_Name_Image;
         private String faction = DEFAULT_FACTION;
 

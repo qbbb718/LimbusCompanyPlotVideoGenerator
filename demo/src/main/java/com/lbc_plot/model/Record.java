@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.video.BackgroundVisual;
 import com.lbc_plot.model.video.Camera;
@@ -19,12 +20,16 @@ public class Record {
     private String uuid;                     // 避免修改顺序破坏dirty
     private int durationFrames;         // 持续时间（帧数）
     private Dialogue dialogue;          // 文本对话内容
+    @JsonIgnore
     private Camera camera;              // 摄像机信息
     private List<BackgroundVisual> bg;  // 背景视觉元素
     private List<CharacterVisual> chars; // 角色立绘列表
+    @JsonIgnore
     private List<EffectVisual> effects;  // 特效列表
+    @JsonIgnore
     private List<AudioCommand> audioCommands; // 音频操作列表
     private boolean isDirty; // 在上次导出后是否进行过修改
+    @JsonIgnore
     private BufferedImage preImage; // 预览图, 无UI的
 
     /**

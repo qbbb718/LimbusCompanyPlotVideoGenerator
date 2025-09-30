@@ -7,6 +7,7 @@ import org.bytedeco.ffmpeg.global.postproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lbc_plot.application.Composer.RenderOfImage;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.storage.MyCharacter;
@@ -24,6 +25,7 @@ public class CharacterVisual extends VisualElement {
     private MyCharacter chara;
     private Portrait portrait;
     // 图像
+    @JsonIgnore
     private BufferedImage image;
     // 立绘坐标，从角色读取计算
     private int posX;

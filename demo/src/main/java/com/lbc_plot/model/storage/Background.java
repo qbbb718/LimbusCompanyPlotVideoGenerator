@@ -2,7 +2,9 @@ package com.lbc_plot.model.storage;
 
 import java.awt.image.BufferedImage;
 import java.nio.file.Path;
+import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lbc_plot.util.io.ImageReader;
 
 import java.awt.image.BufferedImage;
@@ -10,6 +12,7 @@ import java.awt.image.BufferedImage;
 public class Background {
     private String uuid; // 唯一id（保证换源后能直接替换
     private String path; // 文件存储路径
+    @JsonIgnore
     private BufferedImage image; // 读入的图像，初始为null
     
     /**
@@ -17,6 +20,13 @@ public class Background {
      * 路径从bg开始
      */
     public Background(String path) {
+        uuid = UUID.randomUUID().toString();
+        this.path = path;
+        this.image = null; // 初始时image为null，实现懒加载
+    }
+
+    public Background(String uuid, String path) {
+        this.uuid = uuid;
         this.path = path;
         this.image = null; // 初始时image为null，实现懒加载
     }

@@ -3,6 +3,7 @@ package com.lbc_plot.model.video;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lbc_plot.model.storage.Background;
 
 import java.awt.image.BufferedImage;
@@ -13,6 +14,7 @@ import java.awt.image.BufferedImage;
  */
 public class BackgroundVisual extends VisualElement {
     private Background background;
+    @JsonIgnore
     private BufferedImage bgImage;
     private int posX;
     private int posY;
