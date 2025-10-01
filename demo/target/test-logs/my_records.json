@@ -5,237 +5,56 @@
     "text" : "嘿，老兄",
     "location" : "不XX就出不去的房间",
     "speakerC" : [ {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     } ],
     "speakerName" : "格里高尔",
     "faction" : "13号罪人",
     "align" : "LEFT",
     "speed" : 1,
-    "emotion" : "NORMAL",
-    "narrator" : false,
-    "speakerCharacter" : {
-      "characterID" : null,
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
-    }
+    "emotion" : "NORMAL"
   },
-  "bg" : [ {
-    "background" : {
-      "uuid" : "a54be008-c519-4880-86a5-3d8eda328392",
-      "path" : "Story_private_room.png",
-      "height" : 1080,
-      "width" : 1920,
-      "imageLoaded" : true
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true,
-    "imageInfo" : "Image: 1920x1080, Scale: 1.00, Position: (0, 0)",
-    "scaledWidth" : 1920,
-    "scaledHeight" : 1080
-  } ],
-  "chars" : [ {
+  "characters" : [ {
     "chara" : {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     },
     "portrait" : {
       "portraitID" : "idle",
       "characterID" : null,
       "imagePath" : "格里高尔-face_idle_R.png",
       "portName" : "idle",
-      "emotion" : "NORMAL",
+      "emotion" : "normal",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : null,
-      "emotionName" : "NORMAL"
+      "thumbnailPath" : null
     },
     "posX" : 605,
     "posY" : 257,
     "adjX" : 0,
     "adjY" : 0,
-    "dim" : false,
-    "characterId" : null
+    "dim" : false
   } ],
-  "dirty" : true
+  "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "3256de73-bda2-4caf-bea3-26c2f9c9781f",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
 }, {
   "uuid" : "depressed",
   "durationFrames" : 0,
@@ -243,237 +62,56 @@
     "text" : "或者是女士，我不确定",
     "location" : "不XX就出不去的房间",
     "speakerC" : [ {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     } ],
     "speakerName" : "格里高尔",
     "faction" : "13号罪人",
     "align" : "LEFT",
     "speed" : 1,
-    "emotion" : "NORMAL",
-    "narrator" : false,
-    "speakerCharacter" : {
-      "characterID" : null,
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
-    }
+    "emotion" : "NORMAL"
   },
-  "bg" : [ {
-    "background" : {
-      "uuid" : "a54be008-c519-4880-86a5-3d8eda328392",
-      "path" : "Story_private_room.png",
-      "height" : 1080,
-      "width" : 1920,
-      "imageLoaded" : true
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true,
-    "imageInfo" : "Image: 1920x1080, Scale: 1.00, Position: (0, 0)",
-    "scaledWidth" : 1920,
-    "scaledHeight" : 1080
-  } ],
-  "chars" : [ {
+  "characters" : [ {
     "chara" : {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     },
     "portrait" : {
       "portraitID" : "depressed",
       "characterID" : null,
       "imagePath" : "格里高尔-face_depressed_L.png",
       "portName" : "depressed",
-      "emotion" : "NORMAL",
+      "emotion" : "normal",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : null,
-      "emotionName" : "NORMAL"
+      "thumbnailPath" : null
     },
     "posX" : 605,
     "posY" : 257,
     "adjX" : 0,
     "adjY" : 0,
-    "dim" : false,
-    "characterId" : null
+    "dim" : false
   } ],
-  "dirty" : true
+  "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "3256de73-bda2-4caf-bea3-26c2f9c9781f",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
 }, {
   "uuid" : "smile2",
   "durationFrames" : 0,
@@ -481,237 +119,56 @@
     "text" : "咳，总之呢……",
     "location" : "不XX就出不去的房间",
     "speakerC" : [ {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     } ],
     "speakerName" : "格里高尔",
     "faction" : "13号罪人",
     "align" : "LEFT",
     "speed" : 1,
-    "emotion" : "NORMAL",
-    "narrator" : false,
-    "speakerCharacter" : {
-      "characterID" : null,
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
-    }
+    "emotion" : "NORMAL"
   },
-  "bg" : [ {
-    "background" : {
-      "uuid" : "a54be008-c519-4880-86a5-3d8eda328392",
-      "path" : "Story_private_room.png",
-      "height" : 1080,
-      "width" : 1920,
-      "imageLoaded" : true
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true,
-    "imageInfo" : "Image: 1920x1080, Scale: 1.00, Position: (0, 0)",
-    "scaledWidth" : 1920,
-    "scaledHeight" : 1080
-  } ],
-  "chars" : [ {
+  "characters" : [ {
     "chara" : {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     },
     "portrait" : {
       "portraitID" : "smile2",
       "characterID" : null,
       "imagePath" : "格里高尔-face_smile2_L.png",
       "portName" : "smile2",
-      "emotion" : "NORMAL",
+      "emotion" : "normal",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : null,
-      "emotionName" : "NORMAL"
+      "thumbnailPath" : null
     },
     "posX" : 605,
     "posY" : 257,
     "adjX" : 0,
     "adjY" : 0,
-    "dim" : false,
-    "characterId" : null
+    "dim" : false
   } ],
-  "dirty" : true
+  "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "3256de73-bda2-4caf-bea3-26c2f9c9781f",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
 }, {
   "uuid" : "serious",
   "durationFrames" : 0,
@@ -719,237 +176,56 @@
     "text" : "别用你那该死的代码让我说些奇怪的话了！",
     "location" : "不XX就出不去的房间",
     "speakerC" : [ {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     } ],
     "speakerName" : "格里高尔",
     "faction" : "13号罪人",
     "align" : "LEFT",
     "speed" : 1,
-    "emotion" : "NORMAL",
-    "narrator" : false,
-    "speakerCharacter" : {
-      "characterID" : null,
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
-    }
+    "emotion" : "NORMAL"
   },
-  "bg" : [ {
-    "background" : {
-      "uuid" : "a54be008-c519-4880-86a5-3d8eda328392",
-      "path" : "Story_private_room.png",
-      "height" : 1080,
-      "width" : 1920,
-      "imageLoaded" : true
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true,
-    "imageInfo" : "Image: 1920x1080, Scale: 1.00, Position: (0, 0)",
-    "scaledWidth" : 1920,
-    "scaledHeight" : 1080
-  } ],
-  "chars" : [ {
+  "characters" : [ {
     "chara" : {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     },
     "portrait" : {
       "portraitID" : "serious",
       "characterID" : null,
       "imagePath" : "Gregor-face_serious_R.png",
       "portName" : "serious",
-      "emotion" : "NORMAL",
+      "emotion" : "normal",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : null,
-      "emotionName" : "NORMAL"
+      "thumbnailPath" : null
     },
     "posX" : 605,
     "posY" : 257,
     "adjX" : 0,
     "adjY" : 0,
-    "dim" : false,
-    "characterId" : null
+    "dim" : false
   } ],
-  "dirty" : true
+  "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "3256de73-bda2-4caf-bea3-26c2f9c9781f",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
 }, {
   "uuid" : "旁白",
   "durationFrames" : 0,
@@ -961,127 +237,51 @@
       "characterName" : "旁白",
       "height" : 171,
       "faction" : "无阵营",
-      "portraits" : [ ],
-      "color_bg" : "76,54,31",
-      "color_text" : "251,219,179",
-      "narrator" : true
+      "colorBg" : "76,54,31",
+      "colorText" : "251,219,179"
     } ],
     "speakerName" : "旁白",
     "faction" : "无阵营",
     "align" : "LEFT",
     "speed" : 1,
-    "emotion" : "NORMAL",
-    "narrator" : true,
-    "speakerCharacter" : {
-      "characterID" : "NARRATION",
-      "characterName" : "旁白",
-      "height" : 171,
-      "faction" : "无阵营",
-      "portraits" : [ ],
-      "color_bg" : "76,54,31",
-      "color_text" : "251,219,179",
-      "narrator" : true
-    }
+    "emotion" : "NORMAL"
   },
-  "bg" : [ {
-    "background" : {
-      "uuid" : "a54be008-c519-4880-86a5-3d8eda328392",
-      "path" : "Story_private_room.png",
-      "height" : 1080,
-      "width" : 1920,
-      "imageLoaded" : true
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true,
-    "imageInfo" : "Image: 1920x1080, Scale: 1.00, Position: (0, 0)",
-    "scaledWidth" : 1920,
-    "scaledHeight" : 1080
-  } ],
-  "chars" : [ {
+  "characters" : [ {
     "chara" : {
-      "characterID" : null,
       "characterName" : "格里高尔",
       "height" : 168,
       "faction" : "13号罪人",
-      "portraits" : [ {
-        "portraitID" : "idle",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_idle_R.png",
-        "portName" : "idle",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "depressed",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_depressed_L.png",
-        "portName" : "depressed",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "smile2",
-        "characterID" : null,
-        "imagePath" : "格里高尔-face_smile2_L.png",
-        "portName" : "smile2",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      }, {
-        "portraitID" : "serious",
-        "characterID" : null,
-        "imagePath" : "Gregor-face_serious_R.png",
-        "portName" : "serious",
-        "emotion" : "NORMAL",
-        "faceX" : 282,
-        "faceY" : 0,
-        "length" : 183,
-        "adjX" : 0,
-        "adjY" : 0,
-        "thumbnailPath" : null,
-        "emotionName" : "NORMAL"
-      } ],
-      "color_bg" : "105,53,11",
-      "color_text" : "251,219,179",
-      "narrator" : false
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
     },
     "portrait" : {
       "portraitID" : "idle",
       "characterID" : null,
       "imagePath" : "格里高尔-face_idle_R.png",
       "portName" : "idle",
-      "emotion" : "NORMAL",
+      "emotion" : "normal",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : null,
-      "emotionName" : "NORMAL"
+      "thumbnailPath" : null
     },
     "posX" : 605,
     "posY" : 257,
     "adjX" : 0,
     "adjY" : 0,
-    "dim" : true,
-    "characterId" : null
+    "dim" : true
   } ],
-  "dirty" : true
+  "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "3256de73-bda2-4caf-bea3-26c2f9c9781f",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
 } ]

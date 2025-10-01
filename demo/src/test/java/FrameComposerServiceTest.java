@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.lbc_plot.model.video.BackgroundVisual;
+import com.lbc_plot.model.video.CharacterRef;
 import com.lbc_plot.model.video.CharacterVisual;
 import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.model.video.Dialogue.Align;
@@ -35,6 +36,7 @@ import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.bytedeco.flycapture.FlyCapture2.ImageEventCallback;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.junit.jupiter.api.AfterEach;
@@ -45,10 +47,15 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * FrameComposerService 测试类
  */
 class FrameComposerServiceTest {
+    private static final Logger logger = LoggerFactory.getLogger(FrameComposerServiceTest.class);
+
     
     private FrameComposerService composer;
     
@@ -131,8 +138,64 @@ class FrameComposerServiceTest {
     // }
 
 
-
-
+    @Test
+    void testRenderOfPreImage() throws IOException {
+        try {
+            // 1. 获取测试数据
+            List<Record> records = creatSupersTestRecord();
+            Record record = records.get(0);
+            
+            // 2. 只关注CharacterVisual的定位数据
+            logger.info("===== 立绘位置/偏移检查 =====");
+            logger.info("当前记录ID: {}", record.getUuid());
+            
+            int index = 0;
+            for (CharacterVisual cv : record.getCharacters()) {
+                logger.info("\n[立绘 {}]", ++index);
+                
+                // 核心定位数据
+                logger.info("  角色ID: {}", cv.getChara().getCharacterID());
+                logger.info("  基础位置: ({}, {})", cv.getPosX(), cv.getPosY());
+                logger.info("  手动调整: ({}, {})", cv.getAdjX(), cv.getAdjY());
+                logger.info("  最终坐标: ({}, {})", 
+                    cv.getPosX() + cv.getAdjX(), 
+                    cv.getPosY() + cv.getAdjY());
+                
+                // 关联数据检查
+                logger.info("  立绘资源: {}", cv.getPortrait().getPortraitID());
+                logger.info("  是否压暗: {}", cv.isDim());
+                
+                // 图像状态
+                try {
+                    BufferedImage img = cv.getPortrait().getImage();
+                    if (img != null) {
+                        logger.info("  图片尺寸: {}x{}", img.getWidth(), img.getHeight());
+                    } else {
+                        logger.warn("  图片未加载!");
+                    }
+                } catch (Exception e) {
+                    logger.error("  图片加载失败", e);
+                }
+            }
+            
+            // 3. 执行渲染并保存调试快照
+            BufferedImage debugImage = RenderOfImage.renderPre(
+                record, 
+                true, 
+                ProjectConfig.VIDEO_WIDTH, 
+                ProjectConfig.VIDEO_HEIGHT
+            );
+            ImageExporter.exportImage(
+                debugImage, 
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\position_check.png"
+            );
+            logger.info("调试快照已保存");
+            
+        } catch (Exception e) {
+            logger.error("调试失败", e);
+        }
+    }
+    
 
     
     @Test
@@ -142,21 +205,18 @@ class FrameComposerServiceTest {
             List<Record> records = creatSupersTestRecord();
 
 
-            Path jsonFile = Paths.get("E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\my_records.json");
-            RecordsIO.exportRecords(records, jsonFile);
+            // 处理整个Record列表
+            BatchVideoProcessor.processRecordList(
+                records,
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\final_video.mp4",
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\temp_videos",
+                true,
+                ProjectConfig.VIDEO_WIDTH,
+                ProjectConfig.VIDEO_HEIGHT,
+                ProjectConfig.FRAME_RATE
+            );
             
-            // // 处理整个Record列表
-            // BatchVideoProcessor.processRecordList(
-            //     records,
-            //     "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\final_video.mp4",
-            //     "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\temp_videos",
-            //     true,
-            //     ProjectConfig.VIDEO_WIDTH,
-            //     ProjectConfig.VIDEO_HEIGHT,
-            //     ProjectConfig.FRAME_RATE
-            // );
-            
-            // System.out.println("批量视频处理完成！");
+            System.out.println("批量视频处理完成！");
 
 
             // 更新
@@ -170,8 +230,103 @@ class FrameComposerServiceTest {
             e.printStackTrace();
         }
 
+    }
 
+
+    @Test
+    void testExportJson() throws IOException {
+        try {
+            // 你的Record列表
+            List<Record> records = creatSupersTestRecord();
+
+
+            Path jsonFile = Paths.get("E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\my_records.json");
+            RecordsIO.exportRecords(records, jsonFile);
+            
+        } catch (Exception e) {
+            System.err.println("处理失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    void testImportJson() throws IOException {
+        final Logger logger = LoggerFactory.getLogger(this.getClass());
         
+        try {
+            // 1. 读取JSON文件
+            Path jsonFile = Paths.get("E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\my_records.json");
+            logger.info("开始导入JSON文件: {}", jsonFile);
+            
+            // 2. 反序列化记录
+            List<Record> records = RecordsIO.importRecords(jsonFile);
+            logger.info("成功导入 {} 条记录", records.size());
+            
+            // 3. 详细检查每条记录
+            for (int i = 0; i < records.size(); i++) {
+                Record record = records.get(i);
+                logger.info("\n===== 记录 {} =====", i + 1);
+                logger.info("UUID: {}", record.getUuid());
+                logger.info("持续时间: {} 帧", record.getDurationFrames());
+                
+                // 检查背景
+                logger.info("背景数量: {}", record.getBackgroundVisuals().size());
+                for (BackgroundVisual bg : record.getBackgroundVisuals()) {
+                    logger.info(" - 背景: {} (位置: {},{} 缩放: {})", 
+                        bg.getBackground().getPath(), 
+                        bg.getPosX(), bg.getPosY(), 
+                        bg.getScale());
+                }
+                
+                // 重点检查角色立绘
+                logger.info("角色立绘数量: {}", record.getCharacters().size());
+                for (CharacterVisual cv : record.getCharacters()) {
+                    logger.info("\n[角色立绘]");
+                    logger.info(" - 角色ID: {}", cv.getChara().getCharacterID());
+                    logger.info(" - 立绘ID: {}", cv.getPortrait().getPortraitID());
+                    logger.info(" - 位置: ({},{}) + 调整: ({},{}) → 最终: ({},{})",
+                        cv.getPosX(), cv.getPosY(),
+                        cv.getAdjX(), cv.getAdjY(),
+                        cv.getPosX() + cv.getAdjX(),
+                        cv.getPosY() + cv.getAdjY());
+                    
+                    // 检查图片加载状态
+                    try {
+                        BufferedImage img = cv.getPortrait().getImage();
+
+                        String path = "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\"+ record.getUuid() +".png";
+                        ImageExporter.exportImage(
+                            img, 
+                            path
+                        );
+
+                        if (img != null) {
+                            logger.info(" - 图片状态: 已加载 ({}x{})", img.getWidth(), img.getHeight());
+                        } else {
+                            logger.warn(" - 图片状态: 未加载 (路径: {})", cv.getPortrait().getImagePath());
+                        }
+                    } catch (Exception e) {
+                        logger.error(" - 图片加载异常: {}", e.getMessage());
+                    }
+                }
+            }
+            
+            // 4. 处理视频
+            logger.info("\n开始视频处理...");
+            BatchVideoProcessor.processRecordList(
+                records,
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\testImportJson.mp4",
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\temp_videos",
+                true,
+                ProjectConfig.VIDEO_WIDTH,
+                ProjectConfig.VIDEO_HEIGHT,
+                ProjectConfig.FRAME_RATE
+            );
+            logger.info("批量视频处理完成！");
+            
+        } catch (Exception e) {
+            logger.error("处理失败", e);
+        }
     }
 
 
@@ -198,7 +353,7 @@ class FrameComposerServiceTest {
             .height(168)
             .faction("13号罪人")
             .addPortrait(portrait_1)
-            .color_bg(new Color(105, 53, 11))
+            .colorBg(new Color(105, 53, 11))
             .build();
         
         MyCharacter character_2 = MyCharacter.builder()
@@ -206,7 +361,7 @@ class FrameComposerServiceTest {
             .height(182)
             .faction("9号罪人")
             .addPortrait(portrait_2)
-            .color_bg(new Color(105, 53, 11))
+            .colorBg(new Color(105, 53, 11))
             .build();
         
         CharacterVisual characterVisual = CharacterVisual.builder(character, portrait_1)
@@ -226,11 +381,13 @@ class FrameComposerServiceTest {
         BackgroundVisual backgroundVisual = new BackgroundVisual(background);
         //ImageExporter.exportImage(backgroundVisual.getBgImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bgV.png");
 
+        CharacterRef characterRef1 = CharacterRef.from(character);
+        CharacterRef characterRef2 = CharacterRef.from(character_2);
         // 组合对话
         Dialogue dialogue = Dialogue.builder()
             .text("别TM嬷我了")
             .location("不XX就出不去的房间")
-            .addSpeaker(character)
+            .addSpeaker(characterRef1)
             .align(Align.LEFT)
             .build();
         
@@ -254,6 +411,7 @@ class FrameComposerServiceTest {
 
     // 创建一个超级测试类
     public List<Record> creatSupersTestRecord() throws IOException{
+        logger.info("===== 开始创建超级测试记录 =====");
         
         // 四个id
         String 
@@ -264,6 +422,7 @@ class FrameComposerServiceTest {
         ID_5 = "旁白";
 
         // 四张立绘
+        logger.debug("创建测试立绘对象...");
         Portrait portrait_1, portrait_2, portrait_3, portrait_4;
         portrait_1 = Portrait.builder("格里高尔-face_idle_R.png")
             .portraitID(ID_1)
@@ -284,6 +443,7 @@ class FrameComposerServiceTest {
 
 
         //一个角色
+        logger.info("创建测试角色对象...");
         MyCharacter character = MyCharacter.builder()
             .characterName("格里高尔")
             .height(168)
@@ -292,18 +452,15 @@ class FrameComposerServiceTest {
             .addPortrait(portrait_2)
             .addPortrait(portrait_3)
             .addPortrait(portrait_4)
-            .color_bg(new Color(105, 53, 11))
+            .colorBg(new Color(105, 53, 11))
             .build();
         
 
         MyCharacter character_2 = MyCharacter.getDefaultNarrator();
 
-        
-        SQLiteDataSource dataSource = new SQLiteDataSource();
 
         // 获取DAO实例
-
-        
+        logger.debug("初始化数据库连接...");
         dbManager = new SQLiteTestDatabaseManager();
         Jdbi jdbi = Jdbi.create(dbManager.getConnection())
             .installPlugin(new SqlObjectPlugin())
@@ -316,6 +473,7 @@ class FrameComposerServiceTest {
 
 
         // 5个角色立绘(一个暗的)
+        logger.debug("构建角色可视化对象...");
         CharacterVisual characterVisual_1, characterVisual_2, characterVisual_3, characterVisual_4, characterVisual_5;
         characterVisual_1 = CharacterVisual.builder(
             character, 
@@ -345,6 +503,7 @@ class FrameComposerServiceTest {
 
 
         // 加载背景
+        logger.info("加载背景资源...");
         Background background = new Background("Story_private_room.png");
         //ImageExporter.exportImage(background.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bg.png");
 
@@ -352,38 +511,43 @@ class FrameComposerServiceTest {
         //ImageExporter.exportImage(backgroundVisual.getBgImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bgV.png");
 
 
+        CharacterRef characterRef1 = CharacterRef.from(character);
+        CharacterRef characterRef2 = CharacterRef.from(character_2);
+
         // 组合5条对话
+        logger.debug("构建对话记录...");
         Dialogue dialogue_1, dialogue_2, dialogue_3, dialogue_4, dialogue_5;
         
         dialogue_1 = Dialogue.builder()
             .text("嘿，老兄")
             .location("不XX就出不去的房间")
-            .addSpeaker(character)
+            .addSpeaker(characterRef1)
             .build();
         dialogue_2 = Dialogue.builder()
             .text("或者是女士，我不确定")
             .location("不XX就出不去的房间")
-            .addSpeaker(character)
+            .addSpeaker(characterRef1)
             .build();
         dialogue_3 = Dialogue.builder()
             .text("咳，总之呢……")
             .location("不XX就出不去的房间")
-            .addSpeaker(character)
+            .addSpeaker(characterRef1)
             .build();
         dialogue_4 = Dialogue.builder()
             .text("别用你那该死的代码让我说些奇怪的话了！")
             .location("不XX就出不去的房间")
-            .addSpeaker(character)
+            .addSpeaker(characterRef1)
             .speed(1)
             .build();
 
         dialogue_5 = Dialogue.builder()
             .text("……好可爱")
             .location("不XX就出不去的房间")
-            .addSpeaker(character_2)
+            .addSpeaker(characterRef2)
             .build();
         
         // 组合5条record
+        logger.info("组装最终record对象...");
         Record record_1, record_2, record_3, record_4, record_5;
 
         record_1 = new Record.Builder()

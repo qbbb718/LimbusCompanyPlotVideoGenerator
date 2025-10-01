@@ -30,6 +30,12 @@ public class Background {
         this.path = path;
         this.image = null; // 初始时image为null，实现懒加载
     }
+
+    public Background() {
+        this.uuid = null;
+        this.path = null;
+        this.image = null; // 初始时image为null，实现懒加载
+    }
     
     /**
      * 懒加载获取图像
@@ -80,6 +86,8 @@ public class Background {
      * 检查图像是否已加载
      * @return 如果图像已加载返回true，否则返回false
      */
+    
+    @JsonIgnore
     public boolean isImageLoaded() {
         return image != null;
     }
@@ -106,6 +114,7 @@ public class Background {
     /**
      * 获取图像宽度（懒加载版本）
      */
+    @JsonIgnore
     public int getWidth() {
         BufferedImage img = getImage();
         return img != null ? img.getWidth() : 0;
@@ -114,6 +123,7 @@ public class Background {
     /**
      * 获取图像高度（懒加载版本）
      */
+    @JsonIgnore
     public int getHeight() {
         BufferedImage img = getImage();
         return img != null ? img.getHeight() : 0;

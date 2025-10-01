@@ -1,6 +1,5 @@
 package com.lbc_plot.application.Composer;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -10,15 +9,18 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.lbc_plot.project.audio.AudioCommand;
 import com.lbc_plot.util.ImageDarkener;
 import com.lbc_plot.util.RenderQualityUtils;
 import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.util.io.ImageReader;
+import com.lbc_plot.DAO.CharacterDAO;
+import com.lbc_plot.application.service.CharacterService;
+import com.lbc_plot.application.service.impl.CharacterServiceImpl;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.Record;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.video.BackgroundVisual;
+import com.lbc_plot.model.video.CharacterRef;
 import com.lbc_plot.model.video.CharacterVisual;
 import com.lbc_plot.model.video.Dialogue;
 
@@ -148,7 +150,7 @@ public class RenderOfImage {
     private static void renderBackground(FrameComposerService composer, Record record, boolean plot, int width, int height) {
         logger.info("开始渲染背景层");
         
-        List<BackgroundVisual> bgList = record.getBg();
+        List<BackgroundVisual> bgList = record.getBackgroundVisuals();
         if (bgList == null || bgList.isEmpty()) {
             logger.warn("记录中没有背景信息，使用默认背景");
             composer.addFullScreenMask(255); // 添加黑色背景作为默认
@@ -241,7 +243,7 @@ public class RenderOfImage {
     private static void renderCharacters(FrameComposerService composer, Record record) {
         logger.info("开始渲染角色立绘层");
         
-        List<CharacterVisual> chars = record.getChars();
+        List<CharacterVisual> chars = record.getCharacters();
         if (chars == null || chars.isEmpty()) {
             logger.info("记录中没有角色立绘信息");
             return;
@@ -324,14 +326,14 @@ public class RenderOfImage {
      * @param composer
      * @param chara
      */
-    public static BufferedImage renderCharaNameUI(MyCharacter myCharacter){
+    public static BufferedImage renderCharaNameUI(CharacterRef myCharacter){
         FrameComposerService composer = new FrameComposerService();
         composer.addImageLayer(speaker_camp, 0,0);
 
-        BufferedImage name = TextureColorizer.colorizeToRGB(speaker_name, myCharacter.getColor_bg());
+        BufferedImage name = TextureColorizer.colorizeToRGB(speaker_name, myCharacter.getColorBg());
         composer.addImageLayer(name, 0, 0);
         composer.addFactionText(myCharacter.getFaction());
-        composer.addCharacterNameText(myCharacter.getCharacterName(), myCharacter.getColor_text());
+        composer.addCharacterNameText(myCharacter.getCharacterName(), myCharacter.getColorText());
 
         BufferedImage nameUI = composer.compose();
         return nameUI;
@@ -453,15 +455,15 @@ public class RenderOfImage {
                 logger.error("对话框图像未加载，跳过渲染");
             }
 
-            MyCharacter speaker = dialogue.getSpeakerCharacter();
+            CharacterRef speaker = dialogue.getSpeakerCharacter();
             if (speaker == null) {
                 logger.warn("说话人角色为空，使用默认处理");
-                speaker = MyCharacter.getDefaultNarrator();
+                speaker = CharacterRef.getDefaultNarrator();
             }
 
             if (!speaker.isNarrator()) { // 如果不是旁白
                 logger.debug("渲染说话人UI元素: {}", speaker.getCharacterName());
-                composer.addImageLayerScaled(speaker.getColor_Name_Image(), -26, 789, 0.28f);  
+                composer.addImageLayerScaled(speaker.getColorNameImage(), -26, 789, 0.28f);  
             } else {
                 logger.debug("旁白模式，跳过说话人UI元素");
             }

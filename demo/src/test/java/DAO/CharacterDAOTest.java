@@ -107,10 +107,10 @@ class CharacterDAOTest {
         // 验证颜色转换是否正确
         // 测试类中修改断言（忽略Alpha和前导零）
         assertEquals("76,54,31,255",  // 去前导零 + 忽略Alpha
-            ColorUtils.colorToString(actualCharacter.getColor_bg()),
+            ColorUtils.colorToString(actualCharacter.getColorBg()),
             "背景色应与保存时一致");
         assertEquals("251,219,179,255", 
-            ColorUtils.colorToString(actualCharacter.getColor_text()),
+            ColorUtils.colorToString(actualCharacter.getColorText()),
             "文字色应与保存时一致");
     }
     
@@ -357,8 +357,8 @@ class CharacterDAOTest {
             .characterID(id)
             .characterName(name)
             .height(height)
-            .color_bg(ColorUtils.stringToColor(colorBg)) // 使用工具类
-            .color_text(ColorUtils.stringToColor(colorText))
+            .colorBg(ColorUtils.stringToColor(colorBg)) // 使用工具类
+            .colorText(ColorUtils.stringToColor(colorText))
             .faction(faction)
             .build();
     }

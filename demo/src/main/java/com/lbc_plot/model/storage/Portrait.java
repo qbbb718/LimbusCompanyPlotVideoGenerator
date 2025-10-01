@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.util.io.ImageReader;
@@ -20,6 +22,7 @@ import com.lbc_plot.util.io.ImageReader;
 /**
  * 角色立绘差分
  */
+@JsonDeserialize(builder = Portrait.Builder.class)
 public class Portrait {
     private static final Logger logger = LoggerFactory.getLogger(Portrait.class);
 
@@ -126,6 +129,7 @@ public class Portrait {
         this.emotion = emotion;
     }
 
+    @JsonIgnore
     public String getEmotionName() {
         return emotion != null ? emotion.name() : null;
     }
@@ -272,20 +276,35 @@ public class Portrait {
      */
     public static class Builder {
         // 必需参数
+        @JsonProperty
         private String portraitID;
+        @JsonProperty
         private String characterID;
+        @JsonProperty
         private String imagePath;
-        
-        // 可选参数（有默认值）
-        private BufferedImage image;
+
+        // 可选参数（带默认值）
+        @JsonIgnore
+        private transient BufferedImage image; // 不序列化
+        @JsonProperty
         private String portName;
+        @JsonProperty
         private Emotion emotion = DEFAULT_EMOTION;
+        @JsonProperty
         private int faceX = DEFAULT_FACE_X;
+        @JsonProperty
         private int faceY = DEFAULT_FACE_Y;
+        @JsonProperty
         private int length = DEFAULT_LENGTH;
+        @JsonProperty
         private int adjX = DEFAULT_ADJ_X;
+        @JsonProperty
         private int adjY = DEFAULT_ADJ_Y;
+        @JsonProperty
         private String thumbnailPath;
+
+        // 无参构造器（JSON反序列化必需）
+        public Builder() {}
 
         /**
          * 必需参数构造函数

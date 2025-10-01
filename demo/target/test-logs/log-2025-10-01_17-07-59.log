@@ -1,0 +1,396 @@
+2025-10-01 17:07:59.956 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:07:59.958 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:07:59.960 [main] INFO  FrameComposerServiceTest - ===== 开始创建超级测试记录 =====
+2025-10-01 17:07:59.960 [main] DEBUG FrameComposerServiceTest - 创建测试立绘对象...
+2025-10-01 17:07:59.962 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=idle, characterID=null, imagePath=格里高尔-face_idle_R.png, portName=null, emotion=NORMAL
+2025-10-01 17:07:59.962 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=depressed, characterID=null, imagePath=格里高尔-face_depressed_L.png, portName=null, emotion=NORMAL
+2025-10-01 17:07:59.962 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=smile2, characterID=null, imagePath=格里高尔-face_smile2_L.png, portName=null, emotion=NORMAL
+2025-10-01 17:07:59.963 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=serious, characterID=null, imagePath=Gregor-face_serious_R.png, portName=null, emotion=NORMAL
+2025-10-01 17:07:59.963 [main] INFO  FrameComposerServiceTest - 创建测试角色对象...
+2025-10-01 17:07:59.970 [main] DEBUG FrameComposerServiceTest - 初始化数据库连接...
+2025-10-01 17:07:59.971 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-10-01 17:07:59.971 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-10-01 17:07:59.971 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-10-01 17:07:59.974 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-10-01 17:07:59.974 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-10-01 17:08:00.099 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-10-01 17:08:00.099 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-10-01 17:08:00.099 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-10-01 17:08:00.099 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-10-01 17:08:00.100 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-10-01 17:08:00.100 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-10-01 17:08:00.100 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-10-01 17:08:00.100 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-10-01 17:08:00.104 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-10-01 17:08:00.104 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-10-01 17:08:00.104 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-10-01 17:08:00.105 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-10-01 17:08:00.105 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-10-01 17:08:00.105 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-10-01 17:08:00.105 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-10-01 17:08:00.105 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-10-01 17:08:00.105 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-10-01 17:08:00.107 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-10-01 17:08:00.107 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-10-01 17:08:00.107 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-10-01 17:08:00.107 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-10-01 17:08:00.107 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-10-01 17:08:00.107 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-10-01 17:08:00.108 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-10-01 17:08:00.108 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-10-01 17:08:00.108 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-10-01 17:08:00.108 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-10-01 17:08:00.108 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-10-01 17:08:00.108 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-10-01 17:08:00.109 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-10-01 17:08:00.109 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1142347343
+2025-10-01 17:08:00.278 [main] DEBUG FrameComposerServiceTest - 构建角色可视化对象...
+2025-10-01 17:08:00.362 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-01 17:08:00.398 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-01 17:08:00.434 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-01 17:08:00.476 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-01 17:08:00.476 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-01 17:08:00.476 [main] INFO  FrameComposerServiceTest - 加载背景资源...
+2025-10-01 17:08:00.588 [main] DEBUG FrameComposerServiceTest - 构建对话记录...
+2025-10-01 17:08:00.590 [main] INFO  FrameComposerServiceTest - 组装最终record对象...
+2025-10-01 17:08:00.591 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 开始处理 5 个Record
+2025-10-01 17:08:00.591 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 临时目录正常
+2025-10-01 17:08:00.593 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 1/5 个Record: record0000idle.mp4
+2025-10-01 17:08:00.594 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0000idle.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-01 17:08:00.594 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-01 17:08:00.689 [main] INFO  c.l.a.Composer.RenderOfImage - 静态资源加载完成
+2025-10-01 17:08:00.689 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-01 17:08:00.689 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:00.690 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:00.690 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-01 17:08:00.690 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-01 17:08:00.733 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:00.734 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-01 17:08:00.734 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-01 17:08:00.734 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-01 17:08:00.734 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-01 17:08:00.738 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-01 17:08:00.738 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-01 17:08:00.738 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:00.749 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-01 17:08:00.768 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:00.768 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时19ms
+2025-10-01 17:08:00.815 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-01 17:08:00.816 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-01 17:08:00.816 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-01 17:08:00.816 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:00.816 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:00.834 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-01 17:08:00.834 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-01 17:08:00.835 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-01 17:08:00.835 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:00.835 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:00.835 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-10-01 17:08:00.835 [main] DEBUG com.lbc_plot.util.TextureColorizer - 开始着色处理 - 使用Color对象: R=105, G=53, B=11
+2025-10-01 17:08:00.835 [main] INFO  com.lbc_plot.util.TextureColorizer - 开始纹理着色: 纹理尺寸=1308x543, 目标颜色=RGB(105,53,11)
+2025-10-01 17:08:00.876 [main] INFO  com.lbc_plot.util.TextureColorizer - 纹理着色完成: 耗时41ms, 处理710244个像素, 平均{:.2f}像素/ms
+2025-10-01 17:08:00.876 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-10-01 17:08:00.922 [main] INFO  c.l.a.Composer.manager.FontLoader - 中文字体加载成功
+2025-10-01 17:08:01.029 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '13号罪人', 位置(740,135), 对齐CENTER, 字号75, 颜色java.awt.Color[r=159,g=106,b=59]
+2025-10-01 17:08:01.034 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '格里高尔', 位置(900,345), 对齐CENTER, 字号110, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-01 17:08:01.062 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层2
+2025-10-01 17:08:01.069 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-01 17:08:01.069 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-01 17:08:01.074 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-01 17:08:01.074 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-01 17:08:01.075 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-01 17:08:01.075 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-01 17:08:01.075 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-01 17:08:01.082 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-01 17:08:01.083 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:01.083 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-01 17:08:01.083 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:01.083 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-01 17:08:01.083 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-01 17:08:01.083 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:01.083 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-01 17:08:01.083 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-01 17:08:01.098 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-01 17:08:01.098 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:01.098 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:01.098 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-01 17:08:01.098 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-01 17:08:01.098 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=4, isNarrator=false, textPreview='嘿，老兄'
+2025-10-01 17:08:01.098 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-01 17:08:01.099 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=4
+2025-10-01 17:08:01.102 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-01 17:08:01.102 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 4
+2025-10-01 17:08:01.120 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 4 帧 (预期: 4 帧)
+2025-10-01 17:08:01.121 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-01 17:08:01.121 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 79
+2025-10-01 17:08:01.121 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 22ms
+2025-10-01 17:08:01.121 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=79
+2025-10-01 17:08:01.121 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0000idle.mp4
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 2018ms
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0000idle.mp4 导出完成，耗时: 2019ms
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 2/5 个Record: record0001depressed.mp4
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0001depressed.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-01 17:08:02.612 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-01 17:08:02.612 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:02.612 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:02.612 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-01 17:08:02.612 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-01 17:08:02.617 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:02.617 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-01 17:08:02.617 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-01 17:08:02.617 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-01 17:08:02.617 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-01 17:08:02.619 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-01 17:08:02.619 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-01 17:08:02.619 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:02.627 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-01 17:08:02.641 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:02.641 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时13ms
+2025-10-01 17:08:02.688 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-01 17:08:02.688 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-01 17:08:02.688 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-01 17:08:02.688 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:02.688 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:02.706 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-01 17:08:02.706 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-01 17:08:02.706 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-01 17:08:02.712 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-01 17:08:02.712 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-01 17:08:02.716 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-01 17:08:02.717 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-01 17:08:02.718 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-01 17:08:02.718 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-01 17:08:02.718 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-01 17:08:02.722 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-01 17:08:02.722 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:02.722 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-01 17:08:02.722 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:02.722 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-01 17:08:02.722 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-01 17:08:02.722 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:02.722 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-01 17:08:02.722 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-01 17:08:02.735 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-01 17:08:02.737 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:02.737 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:02.737 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-01 17:08:02.737 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-01 17:08:02.737 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=10, isNarrator=false, textPreview='或者是女士，我不确定'
+2025-10-01 17:08:02.737 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-01 17:08:02.737 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=10
+2025-10-01 17:08:02.739 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-01 17:08:02.739 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 10
+2025-10-01 17:08:02.780 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 10 帧 (预期: 10 帧)
+2025-10-01 17:08:02.780 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-01 17:08:02.780 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 85
+2025-10-01 17:08:02.780 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 43ms
+2025-10-01 17:08:02.780 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=85
+2025-10-01 17:08:02.780 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0001depressed.mp4
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1080ms
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0001depressed.mp4 导出完成，耗时: 1080ms
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 3/5 个Record: record0002smile2.mp4
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0002smile2.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-01 17:08:03.692 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-01 17:08:03.692 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:03.692 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:03.692 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-01 17:08:03.692 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-01 17:08:03.696 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:03.696 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-01 17:08:03.696 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-01 17:08:03.696 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-01 17:08:03.696 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-01 17:08:03.699 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-01 17:08:03.699 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-01 17:08:03.699 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:03.710 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-01 17:08:03.725 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:03.725 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时15ms
+2025-10-01 17:08:03.770 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-01 17:08:03.770 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-01 17:08:03.770 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-01 17:08:03.770 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:03.770 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:03.789 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-01 17:08:03.789 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-01 17:08:03.789 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-01 17:08:03.795 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-01 17:08:03.795 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-01 17:08:03.799 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-01 17:08:03.799 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-01 17:08:03.800 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-01 17:08:03.800 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-01 17:08:03.800 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-01 17:08:03.804 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-01 17:08:03.804 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:03.804 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-01 17:08:03.804 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:03.804 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-01 17:08:03.804 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-01 17:08:03.804 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:03.804 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-01 17:08:03.804 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-01 17:08:03.818 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-01 17:08:03.819 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:03.819 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:03.819 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-01 17:08:03.819 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-01 17:08:03.819 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=7, isNarrator=false, textPreview='咳，总之呢……'
+2025-10-01 17:08:03.819 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-01 17:08:03.819 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=7
+2025-10-01 17:08:03.821 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-01 17:08:03.821 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 7
+2025-10-01 17:08:03.846 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 7 帧 (预期: 7 帧)
+2025-10-01 17:08:03.846 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-01 17:08:03.846 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 82
+2025-10-01 17:08:03.846 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 27ms
+2025-10-01 17:08:03.846 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=82
+2025-10-01 17:08:03.846 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0002smile2.mp4
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1018ms
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0002smile2.mp4 导出完成，耗时: 1018ms
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 4/5 个Record: record0003serious.mp4
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0003serious.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-01 17:08:04.710 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-01 17:08:04.710 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:04.710 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:04.710 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-01 17:08:04.710 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-01 17:08:04.715 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:04.715 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-01 17:08:04.715 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-01 17:08:04.715 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-01 17:08:04.715 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-01 17:08:04.718 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-01 17:08:04.718 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-01 17:08:04.719 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:04.726 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-01 17:08:04.737 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:04.738 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时12ms
+2025-10-01 17:08:04.784 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-01 17:08:04.784 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-01 17:08:04.784 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-01 17:08:04.784 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:04.784 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:04.801 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-01 17:08:04.801 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-01 17:08:04.802 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-01 17:08:04.807 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-01 17:08:04.807 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-01 17:08:04.812 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-01 17:08:04.812 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-01 17:08:04.812 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-01 17:08:04.814 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-01 17:08:04.814 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-01 17:08:04.817 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-01 17:08:04.817 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:04.817 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-01 17:08:04.817 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:04.817 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-01 17:08:04.817 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-01 17:08:04.817 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:04.817 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-01 17:08:04.817 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-01 17:08:04.831 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-01 17:08:04.831 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:04.831 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:04.831 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-01 17:08:04.831 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-01 17:08:04.831 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=19, isNarrator=false, textPreview='别用你那该死的代码让我说些奇怪的话了！'
+2025-10-01 17:08:04.831 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-01 17:08:04.831 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=19
+2025-10-01 17:08:04.834 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-01 17:08:04.834 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 19
+2025-10-01 17:08:04.903 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 19 帧 (预期: 19 帧)
+2025-10-01 17:08:04.904 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-01 17:08:04.904 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 94
+2025-10-01 17:08:04.904 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 73ms
+2025-10-01 17:08:04.904 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=94
+2025-10-01 17:08:04.904 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-01 17:08:05.875 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0003serious.mp4
+2025-10-01 17:08:05.875 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1165ms
+2025-10-01 17:08:05.875 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0003serious.mp4 导出完成，耗时: 1165ms
+2025-10-01 17:08:05.875 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 5/5 个Record: record0004旁白.mp4
+2025-10-01 17:08:05.876 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0004旁白.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-01 17:08:05.876 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-01 17:08:05.876 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-01 17:08:05.876 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:05.876 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:05.876 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-01 17:08:05.876 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-01 17:08:05.880 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:05.880 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-01 17:08:05.880 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-01 17:08:05.880 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-01 17:08:05.880 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-01 17:08:05.881 [main] INFO  com.lbc_plot.util.ImageDarkener - 开始图像压暗处理: 图像尺寸=650x1417, 压暗颜色=RGBA(0,0,0,127)
+2025-10-01 17:08:05.896 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.900 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.904 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.907 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.911 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.915 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.919 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.921 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.924 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.927 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-01 17:08:05.927 [main] INFO  com.lbc_plot.util.ImageDarkener - 图像压暗完成: 耗时46ms, 处理921050个像素
+2025-10-01 17:08:05.928 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-01 17:08:05.928 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加压暗角色图层: 格里高尔 at (605,257)
+2025-10-01 17:08:05.928 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:05.935 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-01 17:08:05.950 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:05.950 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时15ms
+2025-10-01 17:08:05.997 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-01 17:08:05.997 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=旁白
+2025-10-01 17:08:05.997 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-01 17:08:05.997 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:05.997 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-01 17:08:06.014 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-01 17:08:06.014 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-01 17:08:06.014 [main] DEBUG c.l.a.Composer.RenderOfImage - 旁白模式，跳过说话人UI元素
+2025-10-01 17:08:06.014 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-01 17:08:06.019 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-01 17:08:06.019 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-01 17:08:06.020 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-01 17:08:06.020 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-01 17:08:06.020 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-01 17:08:06.024 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层1
+2025-10-01 17:08:06.024 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:06.024 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-01 17:08:06.024 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:06.024 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-01 17:08:06.024 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-01 17:08:06.024 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-01 17:08:06.024 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-01 17:08:06.024 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-01 17:08:06.037 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-01 17:08:06.037 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-01 17:08:06.037 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-01 17:08:06.037 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-01 17:08:06.037 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-01 17:08:06.037 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=5, isNarrator=true, textPreview='……好可爱'
+2025-10-01 17:08:06.037 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-01 17:08:06.037 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=true, textLength=5
+2025-10-01 17:08:06.039 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-01 17:08:06.039 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 5
+2025-10-01 17:08:06.058 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 5 帧 (预期: 5 帧)
+2025-10-01 17:08:06.058 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-01 17:08:06.058 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 80
+2025-10-01 17:08:06.058 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 21ms
+2025-10-01 17:08:06.058 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=80
+2025-10-01 17:08:06.058 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-01 17:08:06.902 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0004旁白.mp4
+2025-10-01 17:08:06.902 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1026ms
+2025-10-01 17:08:06.902 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0004旁白.mp4 导出完成，耗时: 1026ms
+2025-10-01 17:08:06.903 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 开始连接 5 个视频文件
+2025-10-01 17:08:06.903 [main] INFO  com.lbc_plot.util.VideoConcatenator - 开始连接 5 个视频文件到: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4
+2025-10-01 17:08:06.905 [main] DEBUG com.lbc_plot.util.VideoConcatenator - 创建视频列表文件: C:\Users\user\AppData\Local\Temp\video_list_18240268430754225541.txt，包含 5 个视频
+2025-10-01 17:08:07.006 [main] INFO  com.lbc_plot.util.VideoConcatenator - 视频连接完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4 <- 5 个视频, 耗时: 103ms
+2025-10-01 17:08:07.007 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 批量处理完成！总耗时: 6416ms，输出文件: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4
+2025-10-01 17:08:07.009 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字

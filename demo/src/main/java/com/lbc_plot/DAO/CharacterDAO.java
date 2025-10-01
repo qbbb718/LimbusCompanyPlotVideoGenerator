@@ -39,8 +39,8 @@ public interface CharacterDAO {
     
     default void save(MyCharacter character) {
         save(character, 
-            ColorUtils.colorToString(character.getColor_bg()),
-            ColorUtils.colorToString(character.getColor_text()));
+            ColorUtils.colorToString(character.getColorBg()),
+            ColorUtils.colorToString(character.getColorText()));
     }
 
     /**
@@ -57,11 +57,11 @@ public interface CharacterDAO {
     
     default void saveAll(List<MyCharacter> characters) {
         List<String> bgStrs = characters.stream()
-            .map(c -> ColorUtils.colorToString(c.getColor_bg()))
+            .map(c -> ColorUtils.colorToString(c.getColorBg()))
             .collect(Collectors.toList());
         
         List<String> textStrs = characters.stream()
-            .map(c -> ColorUtils.colorToString(c.getColor_text()))
+            .map(c -> ColorUtils.colorToString(c.getColorText()))
             .collect(Collectors.toList());
         
         saveAll(characters, bgStrs, textStrs);
@@ -83,8 +83,8 @@ public interface CharacterDAO {
     
     default boolean update(MyCharacter character) {
         return update(character,
-                    ColorUtils.colorToString(character.getColor_bg()),
-                    ColorUtils.colorToString(character.getColor_text()));
+                    ColorUtils.colorToString(character.getColorBg()),
+                    ColorUtils.colorToString(character.getColorText()));
     }
 
     // 删除角色

@@ -4,6 +4,7 @@ package com.lbc_plot.application.service.impl;
 
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
+import com.lbc_plot.model.video.CharacterRef;
 import com.lbc_plot.DAO.CharacterDAO;
 import com.lbc_plot.DAO.PortraitDAO;
 import com.lbc_plot.application.Composer.RenderOfImage;
@@ -46,8 +47,8 @@ public class CharacterServiceImpl implements CharacterService {
             .characterID(characterId)  // 显式设置ID
             .characterName(name)
             .height(height)
-            .color_bg(ProjectConfig.DEFAULT_BG_COLOR)  // 设置默认背景色
-            .color_text(ProjectConfig.DEFAULT_TEXT_COLOR)  // 设置默认文字色
+            .colorBg(ProjectConfig.DEFAULT_BG_COLOR)  // 设置默认背景色
+            .colorText(ProjectConfig.DEFAULT_TEXT_COLOR)  // 设置默认文字色
             .faction(faction)
             .build();
         
@@ -105,7 +106,8 @@ public class CharacterServiceImpl implements CharacterService {
     @Override
     public BufferedImage generateNameCardImage(String characterId) throws IOException {
         MyCharacter character = getCharacter(characterId);
-        return RenderOfImage.renderCharaNameUI(character);
+        CharacterRef ref = CharacterRef.from(character);
+        return RenderOfImage.renderCharaNameUI(ref);
     }
     
     /**

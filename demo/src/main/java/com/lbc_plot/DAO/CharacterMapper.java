@@ -16,8 +16,8 @@ public class CharacterMapper implements RowMapper<MyCharacter> {
             .characterID(rs.getString("character_id"))
             .characterName(rs.getString("character_name"))
             .height(rs.getInt("height"))
-            .color_bg(ColorUtils.stringToColor(rs.getString("color_bg")))
-            .color_text(ColorUtils.stringToColor(rs.getString("color_text")))
+            .colorBg(ColorUtils.stringToColor(rs.getString("color_bg")))
+            .colorText(ColorUtils.stringToColor(rs.getString("color_text")))
             .faction(rs.getString("faction"))
             .build();
     }

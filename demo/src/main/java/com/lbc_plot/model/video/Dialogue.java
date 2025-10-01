@@ -3,12 +3,15 @@ package com.lbc_plot.model.video;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.storage.MyCharacter;
 
 /**
  * 对话内容类
  */
+@JsonDeserialize(builder = Dialogue.Builder.class)
 public class Dialogue {
     // 常量定义
     public static final String DEFAULT_NARRATOR = "旁白";
@@ -28,9 +31,9 @@ public class Dialogue {
     // 成员变量
     private String text;          // 具体文本
     private String location;         // 场景地点
-    private List<MyCharacter> speakerC; // 说话人列表
+    private List<CharacterRef> speakerC; // 说话人列表
     private String speakerName;       // 说话人名字
-    private String faction;          // 所属阵营
+    private String faction;          // 所属阵营s
     private Align align;          // 对齐方式
     private int speed;            // 文字显示速度的修改值
     private Emotion emotion;      // 情绪
@@ -57,11 +60,11 @@ public class Dialogue {
         this.location = (location == null || location.trim().isEmpty()) ? DEFAULT_LOCATION : location.trim();
     }
     
-    public List<MyCharacter> getSpeakerC() {
+    public List<CharacterRef> getSpeakerC() {
         return new ArrayList<>(speakerC);
     }
     
-    public void setSpeakerC(List<MyCharacter> speakerC) {
+    public void setSpeakerC(List<CharacterRef> speakerC) {
         this.speakerC = (speakerC == null) ? new ArrayList<>() : new ArrayList<>(speakerC);
         // 旁白强制单人说话
         if (this.speakerName.equals(DEFAULT_NARRATOR) && this.speakerC.size() > 1) {
@@ -69,15 +72,15 @@ public class Dialogue {
         }
     }
     
-    public void addSpeaker(MyCharacter character) {
-        if (character != null) {
-            // 旁白只能有一个说话人
+    public void addSpeaker(CharacterRef characterRef) {
+        if (characterRef != null) {
             if (this.speakerName.equals(DEFAULT_NARRATOR) && !this.speakerC.isEmpty()) {
-                return;
+                return; // 旁白只能有一个说话人
             }
-            this.speakerC.add(character);
+            this.speakerC.add(characterRef);
         }
     }
+
     
     public String getSpeakerName() {
         return speakerName;
@@ -191,16 +194,15 @@ public class Dialogue {
     /**
      * 获取主要的说话人角色（第一个）
      */
-    public MyCharacter getSpeakerCharacter() {
-        if (speakerC != null && !speakerC.isEmpty()) {
-            return speakerC.get(0);
-        }
-        return null; // 或者返回一个默认的旁白角色
+    @JsonIgnore
+    public CharacterRef getSpeakerCharacter() {
+        return speakerC != null && !speakerC.isEmpty() ? speakerC.get(0) : null;
     }
     
     /**
      * 判断是否为旁白
      */
+    @JsonIgnore
     public boolean isNarrator() {
         return DEFAULT_NARRATOR.equals(speakerName);
     }
@@ -281,14 +283,14 @@ public class Dialogue {
      */
     public static class Builder {
         // Builder中的参数（与Dialogue类对应）
-        private String text;
-        private String location;
-        private List<MyCharacter> speakerC;
-        private String speakerName;
-        private String faction;
-        private Align align = Align.LEFT; //默认左对齐
-        private int speed;
-        private Emotion emotion;
+        @JsonProperty private String text;
+        @JsonProperty private String location;
+        @JsonProperty private List<CharacterRef> speakerC;
+        @JsonProperty private String speakerName;
+        @JsonProperty private String faction;
+        @JsonProperty private Align align = Align.LEFT; //默认左对齐
+        @JsonProperty private int speed;
+        @JsonProperty private Emotion emotion;
         
         /**
          * Builder构造函数
@@ -310,20 +312,22 @@ public class Dialogue {
             return this;
         }
         
-        public Builder speakerC(List<MyCharacter> speakerC) {
+        public Builder speakerC(List<CharacterRef> speakerC) {
             this.speakerC = speakerC;
             return this;
         }
-        
-        public Builder addSpeaker(MyCharacter speaker) {
+
+        public Builder addSpeaker(CharacterRef characterRef) {
             if (this.speakerC == null) {
                 this.speakerC = new ArrayList<>();
             }
-            this.speakerC.add(speaker);
-
-            // 读取speaker信息
-            this.speakerName = speaker.getCharacterName();
-            this.faction = speaker.getFaction();
+            this.speakerC.add(characterRef);
+            
+            // 自动设置关联属性
+            if (characterRef != null) {
+                this.speakerName = characterRef.getCharacterName();
+                this.faction = characterRef.getFaction();
+            }
             return this;
         }
         
@@ -367,16 +371,4 @@ public class Dialogue {
         return new Builder();
     }
     
-
-    // 基本使用 - 超级清晰！
-    // Dialogue dialogue1 = Dialogue.builder()
-    //     .text("你好，世界！")
-    //     .location("会议室")
-    //     .speakerName("张三")
-    //     .faction("技术部")
-    //     .align(Align.LEFT)
-    //     .speed(6)
-    //     .emotion(Emotion.HAPPY)
-    //     .build();
-
 }

@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lbc_plot.model.storage.Background;
 
 import java.awt.image.BufferedImage;
@@ -13,13 +14,12 @@ import java.awt.image.BufferedImage;
  * 封装背景图像及其显示属性
  */
 public class BackgroundVisual extends VisualElement {
-    private Background background;
-    @JsonIgnore
-    private BufferedImage bgImage;
-    private int posX;
-    private int posY;
-    private float scale = 1.0f;
-    private boolean visible = true;
+    @JsonProperty private Background background;
+    @JsonIgnore private BufferedImage bgImage;
+    @JsonProperty private int posX;
+    @JsonProperty private int posY;
+    @JsonProperty private float scale = 1.0f;
+    @JsonProperty private boolean visible = true;
 
     /**
      * 构造函数
@@ -47,6 +47,14 @@ public class BackgroundVisual extends VisualElement {
     public BackgroundVisual(Background background, int posX, int posY, float scale) {
         this(background, posX, posY);
         this.scale = scale;
+    }
+
+    public BackgroundVisual() {
+        // 初始化默认值
+        this.posX = 0;
+        this.posY = 0;
+        this.scale = 1.0f;
+        this.visible = true;
     }
 
     // Getter 方法
@@ -77,11 +85,13 @@ public class BackgroundVisual extends VisualElement {
         return visible;
     }
 
+    @JsonIgnore
     public int getScaledWidth() {
         if (bgImage == null) return 0;
         return (int) (bgImage.getWidth() * scale);
     }
 
+    @JsonIgnore
     public int getScaledHeight() {
         if (bgImage == null) return 0;
         return (int) (bgImage.getHeight() * scale);
@@ -143,6 +153,7 @@ public class BackgroundVisual extends VisualElement {
     /**
      * 获取图像信息字符串（用于调试）
      */
+    @JsonIgnore
     public String getImageInfo() {
         if (bgImage == null) {
             return "No image loaded";

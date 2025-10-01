@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.video.BackgroundVisual;
 import com.lbc_plot.model.video.Camera;
@@ -15,6 +16,7 @@ import com.lbc_plot.project.audio.AudioCommand;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
+
 
 public class Record {
     private String uuid;                     // 避免修改顺序破坏dirty
@@ -53,6 +55,8 @@ public class Record {
         calculateDuration();
     }
 
+    // 必须添加无参构造器（Jackson反射需要）
+    protected Record() {}
 
     void calculateDuration(){
         durationFrames = 0;
@@ -96,20 +100,25 @@ public class Record {
         this.isDirty = true;
     }
 
-    public List<BackgroundVisual> getBg() {
+    public List<BackgroundVisual> getBackgroundVisuals() {
         return bg;
     }
 
-    public void setBg(List<BackgroundVisual> bg) {
+    public void setBackgroundVisuals(List<BackgroundVisual> bg) {
         this.bg = bg;
         this.isDirty = true;
     }
 
-    public List<CharacterVisual> getChars() {
+    @JsonIgnore
+    public BackgroundVisual getFirstBackgroundVisual() {
+        return bg.get(0);
+    }
+
+    public List<CharacterVisual> getCharacters() {
         return chars;
     }
 
-    public void setChars(List<CharacterVisual> chars) {
+    public void setCharacters(List<CharacterVisual> chars) {
         this.chars = chars;
         this.isDirty = true;
     }
@@ -211,17 +220,18 @@ public class Record {
     /**
      * 建造者模式 - 用于创建复杂的 Record 对象
      */
+    @JsonDeserialize(builder = Record.Builder.class)
     public static class Builder {
-        private String uuid;
-        private int durationFrames;
-        private Dialogue dialogue;
-        private Camera camera = new Camera();
-        private List<BackgroundVisual> bg = new ArrayList<>();
-        private List<CharacterVisual> chars = new ArrayList<>();
-        private List<EffectVisual> effects = new ArrayList<>();
-        private List<AudioCommand> audioCommands = new ArrayList<>();
-        private boolean isDirty = true;
-        private BufferedImage preImage;
+        @JsonProperty private String uuid;
+        @JsonProperty private int durationFrames;
+        @JsonProperty private Dialogue dialogue;
+        @JsonProperty private Camera camera = new Camera();
+        @JsonProperty private List<BackgroundVisual> bg = new ArrayList<>();
+        @JsonProperty private List<CharacterVisual> chars = new ArrayList<>();
+        @JsonIgnore private List<EffectVisual> effects = new ArrayList<>();
+        @JsonIgnore private List<AudioCommand> audioCommands = new ArrayList<>();
+        @JsonProperty private boolean isDirty = true;
+        @JsonIgnore private BufferedImage preImage; // 图片不序列化
 
         public Builder() {
         }
