@@ -12,7 +12,7 @@ import com.lbc_plot.model.video.Camera;
 import com.lbc_plot.model.video.CharacterVisual;
 import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.model.video.EffectVisual;
-import com.lbc_plot.project.audio.AudioCommand;
+import com.lbc_plot.project.audio.model.AudioCommand;
 
 import java.awt.image.BufferedImage;
 import java.util.List;

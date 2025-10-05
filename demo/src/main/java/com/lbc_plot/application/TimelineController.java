@@ -7,7 +7,7 @@ import com.lbc_plot.application.Composer.BatchVideoProcessor;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.Record;
 import com.lbc_plot.model.video.BackgroundVisual;
-import com.lbc_plot.project.audio.AudioCommand;
+import com.lbc_plot.project.audio.model.AudioCommand;
 import com.lbc_plot.util.io.ImageReader;
 
 import java.awt.image.BufferedImage;

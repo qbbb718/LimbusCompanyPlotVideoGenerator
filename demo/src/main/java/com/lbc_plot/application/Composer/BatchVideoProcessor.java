@@ -10,6 +10,14 @@ import java.util.List;
 
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.Record;
+import com.lbc_plot.project.audio.AudioTimelineBuilder;
+import com.lbc_plot.project.audio.FFmpegAudioProcessor;
+import com.lbc_plot.project.audio.FrameInfo;
+import com.lbc_plot.project.audio.TimelineToFFmpegConverter;
+import com.lbc_plot.project.audio.model.AudioCommand;
+import com.lbc_plot.project.audio.model.AudioSegment;
+import com.lbc_plot.project.audio.model.AudioTimeline;
+import com.lbc_plot.util.VideoAudioMerger;
 import com.lbc_plot.util.VideoConcatenator;
 
 /**
@@ -48,7 +56,10 @@ public class BatchVideoProcessor {
             throw new IOException("无法创建临时目录: " + tempDir);
         }
         logger.info("临时目录正常");
-        
+
+        // 新增：音频处理相关变量
+        List<FrameInfo> frameInfos = new ArrayList<>(); // 记录每条Record的帧数信息
+        int currentFrame = 0;
     
         List<String> videoPaths = new ArrayList<>();
         try {
@@ -61,25 +72,64 @@ public class BatchVideoProcessor {
                 logger.info("处理第 {}/{} 个Record: {}", i + 1, records.size(), videoFileName);
                 
                 long recordStartTime = System.currentTimeMillis();
-                RenderOfVideo.exportRecordVideo(record, plot, width, height, videoPath, frameRate);
+
+                RenderResult recordResult = RenderOfVideo.exportRecordVideo(
+                    record, plot, width, height, videoPath, frameRate);
+
                 long recordDuration = System.currentTimeMillis() - recordStartTime;
                 
                 logger.info("Record {} 导出完成，耗时: {}ms", videoFileName, recordDuration);
                 videoPaths.add(videoPath);
+
+                // 新增：记录帧数信息（关键步骤）
+                FrameInfo frameInfo = new FrameInfo(
+                    record.getUuid(),
+                    currentFrame,
+                    recordResult.getFrameCount()  // 从渲染结果获取实际帧数
+                );
+                frameInfos.add(frameInfo);
+                
+                currentFrame += recordResult.getFrameCount();
+                logger.debug("Record {} 帧数信息: 开始帧={}, 帧数={}", 
+                    record.getUuid(), frameInfo.getStartFrame(), frameInfo.getFrameCount());
             }
             
-            // 2. 连接所有视频
-            logger.info("开始连接 {} 个视频文件", videoPaths.size());
-            VideoConcatenator.concatenateVideos(videoPaths, outputPath);
+            // 阶段2: 连接所有视频（无声）
+            String silentVideoPath = tempDir + File.separator + "silent_video.mp4";
+            VideoConcatenator.concatenateVideos(videoPaths, silentVideoPath);
+            logger.info("无声视频生成完成: {}", silentVideoPath);
             
-            long totalDuration = System.currentTimeMillis() - totalStartTime;
-            logger.info("批量处理完成！总耗时: {}ms，输出文件: {}", totalDuration, outputPath);
+            // 阶段3: FFmpeg音频处理（使用修复版）
+            String audioPath = tempDir + File.separator + "mixed_audio.wav";
             
+            AudioTimelineBuilder timelineBuilder = new AudioTimelineBuilder();
+            AudioTimeline audioTimeline = timelineBuilder.buildTimeline(records, frameInfos, frameRate);
+            
+            FFmpegAudioProcessor audioProcessor = new FFmpegAudioProcessor();
+            audioProcessor.processAudioTimeline(audioTimeline, audioPath);
+            
+            logger.info("音频生成完成: {}", audioPath);
+            
+            // 阶段4: 合并音视频（使用新的直接映射方法）
+            logger.info("开始合并音视频");
+            
+            // 方法1: 直接映射合并（推荐，速度更快）
+            VideoAudioMerger.mergeVideoAudioDirect(silentVideoPath, audioPath, outputPath);
+            
+            // 或者方法2: 以最长文件为准的合并
+            // VideoAudioMerger.mergeVideoAudioLongest(silentVideoPath, audioPath, outputPath);
+            
+            logger.info("音视频合并完成: {}", outputPath);
+                
         } finally {
             // 可选：清理临时文件
             // cleanupTempFiles(videoPaths);
         }
+        
     }
+
+
+
     
     /**
      * 生成有意义的视频文件名（包含顺序信息和Record标识）
@@ -165,5 +215,30 @@ public class BatchVideoProcessor {
         VideoConcatenator.concatenateVideos(allVideoPaths, finalOutputPath);
         
         logger.info("单个Record更新完成");
+    }
+
+    /**
+     * 渲染单个Record的结果
+     */
+    public static class RenderResult {
+        private final int frameCount;
+        private final long startTimeMs;
+        private final long durationMs;
+        
+        public RenderResult(int frameCount, long startTimeMs, long durationMs) {
+            this.frameCount = frameCount;
+            this.startTimeMs = startTimeMs;
+            this.durationMs = durationMs;
+        }
+        
+        // getter方法
+        public int getFrameCount() { return frameCount; }
+        public long getStartTimeMs() { return startTimeMs; }
+        public long getDurationMs() { return durationMs; }
+
+        @Override
+        public String toString() {
+            return String.format("RenderResult{frameCount=%d, durationMs=%d}", frameCount, durationMs);
+        }
     }
 }

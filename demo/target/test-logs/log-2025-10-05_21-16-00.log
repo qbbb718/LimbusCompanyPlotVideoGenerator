@@ -1,0 +1,545 @@
+2025-10-05 21:16:00.201 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:00.203 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:00.207 [main] INFO  helpers.RecordsCreater - ===== 开始创建超级测试记录 =====
+2025-10-05 21:16:00.208 [main] DEBUG helpers.RecordsCreater - 创建测试立绘对象...
+2025-10-05 21:16:00.209 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=idle, characterID=null, imagePath=格里高尔-face_idle_R.png, portName=null, emotion=NORMAL
+2025-10-05 21:16:00.209 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=depressed, characterID=null, imagePath=格里高尔-face_depressed_L.png, portName=null, emotion=NORMAL
+2025-10-05 21:16:00.209 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=smile2, characterID=null, imagePath=格里高尔-face_smile2_L.png, portName=null, emotion=NORMAL
+2025-10-05 21:16:00.209 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=serious, characterID=null, imagePath=Gregor-face_serious_R.png, portName=null, emotion=NORMAL
+2025-10-05 21:16:00.209 [main] INFO  helpers.RecordsCreater - 创建测试角色对象...
+2025-10-05 21:16:00.217 [main] DEBUG helpers.RecordsCreater - 初始化数据库连接...
+2025-10-05 21:16:00.219 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-10-05 21:16:00.219 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-10-05 21:16:00.219 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-10-05 21:16:00.223 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-10-05 21:16:00.223 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-10-05 21:16:00.358 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-10-05 21:16:00.358 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-10-05 21:16:00.359 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-10-05 21:16:00.359 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-10-05 21:16:00.360 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-10-05 21:16:00.360 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-10-05 21:16:00.360 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-10-05 21:16:00.360 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-10-05 21:16:00.363 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-10-05 21:16:00.363 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-10-05 21:16:00.363 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-10-05 21:16:00.364 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-10-05 21:16:00.364 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-10-05 21:16:00.364 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-10-05 21:16:00.364 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-10-05 21:16:00.364 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-10-05 21:16:00.364 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-10-05 21:16:00.365 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-10-05 21:16:00.365 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-10-05 21:16:00.365 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-10-05 21:16:00.365 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-10-05 21:16:00.365 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-10-05 21:16:00.365 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-10-05 21:16:00.366 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-10-05 21:16:00.366 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-10-05 21:16:00.366 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-10-05 21:16:00.366 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-10-05 21:16:00.366 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-10-05 21:16:00.367 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-10-05 21:16:00.367 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-10-05 21:16:00.367 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 1350751778
+2025-10-05 21:16:00.529 [main] DEBUG helpers.RecordsCreater - 构建角色可视化对象...
+2025-10-05 21:16:00.623 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-05 21:16:00.660 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-05 21:16:00.695 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-05 21:16:00.737 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-05 21:16:00.737 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-05 21:16:00.737 [main] INFO  helpers.RecordsCreater - 加载背景资源...
+2025-10-05 21:16:00.848 [main] DEBUG helpers.RecordsCreater - 构建对话记录...
+2025-10-05 21:16:00.850 [main] INFO  helpers.RecordsCreater - 组装最终record对象...
+2025-10-05 21:16:00.853 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 开始处理 5 个Record
+2025-10-05 21:16:00.854 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 临时目录正常
+2025-10-05 21:16:00.855 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 1/5 个Record: record0000idle.mp4
+2025-10-05 21:16:00.856 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0000idle.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-05 21:16:00.857 [main] DEBUG c.l.util.RecordDurationCalculator - Record时长计算 - 音频: 0帧, 文字: 23帧, 最终: 23帧
+2025-10-05 21:16:00.857 [main] INFO  c.l.a.Composer.RenderOfVideo - Record时长计算完成: 需要 23 帧 (约0.7666666666666667秒)
+2025-10-05 21:16:00.857 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-05 21:16:00.946 [main] INFO  c.l.a.Composer.RenderOfImage - 静态资源加载完成
+2025-10-05 21:16:00.946 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-05 21:16:00.946 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:00.946 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:00.946 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-05 21:16:00.946 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-05 21:16:00.990 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:00.990 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-05 21:16:00.990 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-05 21:16:00.990 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-05 21:16:00.990 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-05 21:16:00.993 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-05 21:16:00.994 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-05 21:16:00.994 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:01.003 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-05 21:16:01.021 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:01.022 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时19ms
+2025-10-05 21:16:01.068 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-05 21:16:01.069 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-05 21:16:01.069 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-05 21:16:01.069 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:01.069 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:01.086 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-05 21:16:01.087 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-05 21:16:01.087 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-05 21:16:01.087 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:01.087 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:01.087 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-10-05 21:16:01.087 [main] DEBUG com.lbc_plot.util.TextureColorizer - 开始着色处理 - 使用Color对象: R=105, G=53, B=11
+2025-10-05 21:16:01.087 [main] INFO  com.lbc_plot.util.TextureColorizer - 开始纹理着色: 纹理尺寸=1308x543, 目标颜色=RGB(105,53,11)
+2025-10-05 21:16:01.128 [main] INFO  com.lbc_plot.util.TextureColorizer - 纹理着色完成: 耗时41ms, 处理710244个像素, 平均{:.2f}像素/ms
+2025-10-05 21:16:01.129 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1308x543
+2025-10-05 21:16:01.172 [main] INFO  c.l.a.Composer.manager.FontLoader - 中文字体加载成功
+2025-10-05 21:16:01.279 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '13号罪人', 位置(740,135), 对齐CENTER, 字号75, 颜色java.awt.Color[r=159,g=106,b=59]
+2025-10-05 21:16:01.285 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '格里高尔', 位置(900,345), 对齐CENTER, 字号110, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-05 21:16:01.314 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层2
+2025-10-05 21:16:01.321 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-05 21:16:01.321 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-05 21:16:01.325 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-05 21:16:01.326 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-05 21:16:01.328 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-05 21:16:01.328 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-05 21:16:01.328 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-05 21:16:01.335 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-05 21:16:01.335 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:01.335 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-05 21:16:01.335 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:01.335 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-05 21:16:01.335 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-05 21:16:01.335 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:01.335 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-05 21:16:01.335 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-05 21:16:01.351 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-05 21:16:01.351 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:01.351 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:01.351 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-05 21:16:01.351 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-05 21:16:01.351 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=4, isNarrator=false, textPreview='嘿，老兄'
+2025-10-05 21:16:01.351 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-05 21:16:01.351 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=4
+2025-10-05 21:16:01.355 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-05 21:16:01.355 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 4
+2025-10-05 21:16:01.373 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 4 帧 (预期: 4 帧)
+2025-10-05 21:16:01.373 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-05 21:16:01.373 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 79
+2025-10-05 21:16:01.374 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 23ms
+2025-10-05 21:16:01.374 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=79
+2025-10-05 21:16:01.374 [main] DEBUG c.l.a.Composer.RenderOfVideo - 需要截断帧序列: 79 -> 23 帧
+2025-10-05 21:16:01.374 [main] WARN  c.l.a.Composer.RenderOfVideo - 由于音频时长限制，文字显示被截断: 79 -> 23 帧
+2025-10-05 21:16:01.374 [main] INFO  c.l.a.Composer.RenderOfVideo - 帧序列调整完成: 原始 79 帧 -> 最终 23 帧
+2025-10-05 21:16:01.374 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-05 21:16:02.874 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0000idle.mp4
+2025-10-05 21:16:02.874 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 2018ms
+2025-10-05 21:16:02.874 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0000idle.mp4 导出完成，耗时: 2018ms
+2025-10-05 21:16:02.876 [main] DEBUG c.l.a.Composer.BatchVideoProcessor - Record idle 帧数信息: 开始帧=0, 帧数=23
+2025-10-05 21:16:02.876 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 2/5 个Record: record0001depressed.mp4
+2025-10-05 21:16:02.876 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0001depressed.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-05 21:16:02.876 [main] DEBUG c.l.util.RecordDurationCalculator - Record时长计算 - 音频: 0帧, 文字: 35帧, 最终: 35帧
+2025-10-05 21:16:02.876 [main] INFO  c.l.a.Composer.RenderOfVideo - Record时长计算完成: 需要 35 帧 (约1.1666666666666667秒)
+2025-10-05 21:16:02.876 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-05 21:16:02.876 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-05 21:16:02.876 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:02.876 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:02.876 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-05 21:16:02.876 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-05 21:16:02.880 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:02.880 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-05 21:16:02.880 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-05 21:16:02.880 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-05 21:16:02.881 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-05 21:16:02.883 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-05 21:16:02.883 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-05 21:16:02.883 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:02.892 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-05 21:16:02.907 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:02.907 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时15ms
+2025-10-05 21:16:02.953 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-05 21:16:02.953 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-05 21:16:02.953 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-05 21:16:02.953 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:02.953 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:02.970 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-05 21:16:02.971 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-05 21:16:02.971 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-05 21:16:02.977 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-05 21:16:02.977 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-05 21:16:02.981 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-05 21:16:02.981 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-05 21:16:02.982 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-05 21:16:02.982 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-05 21:16:02.982 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-05 21:16:02.987 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-05 21:16:02.987 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:02.987 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-05 21:16:02.987 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:02.987 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-05 21:16:02.987 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-05 21:16:02.987 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:02.987 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-05 21:16:02.987 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-05 21:16:03.001 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-05 21:16:03.002 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:03.002 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:03.002 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-05 21:16:03.002 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-05 21:16:03.002 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=10, isNarrator=false, textPreview='或者是女士，我不确定'
+2025-10-05 21:16:03.002 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-05 21:16:03.002 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=10
+2025-10-05 21:16:03.005 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-05 21:16:03.005 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 10
+2025-10-05 21:16:03.042 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 10 帧 (预期: 10 帧)
+2025-10-05 21:16:03.042 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-05 21:16:03.042 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 85
+2025-10-05 21:16:03.042 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 40ms
+2025-10-05 21:16:03.042 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=85
+2025-10-05 21:16:03.042 [main] DEBUG c.l.a.Composer.RenderOfVideo - 需要截断帧序列: 85 -> 35 帧
+2025-10-05 21:16:03.042 [main] WARN  c.l.a.Composer.RenderOfVideo - 由于音频时长限制，文字显示被截断: 85 -> 35 帧
+2025-10-05 21:16:03.042 [main] INFO  c.l.a.Composer.RenderOfVideo - 帧序列调整完成: 原始 85 帧 -> 最终 35 帧
+2025-10-05 21:16:03.042 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-05 21:16:03.977 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0001depressed.mp4
+2025-10-05 21:16:03.977 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1101ms
+2025-10-05 21:16:03.977 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0001depressed.mp4 导出完成，耗时: 1101ms
+2025-10-05 21:16:03.977 [main] DEBUG c.l.a.Composer.BatchVideoProcessor - Record depressed 帧数信息: 开始帧=23, 帧数=35
+2025-10-05 21:16:03.977 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 3/5 个Record: record0002smile2.mp4
+2025-10-05 21:16:03.977 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0002smile2.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-05 21:16:03.979 [main] DEBUG com.lbc_plot.util.ResourceChecker - 文件存在于resources: audio/台词切片.wav
+2025-10-05 21:16:03.983 [main] DEBUG com.lbc_plot.util.ResourceChecker - 资源文件已复制到临时文件: C:\Users\user\AppData\Local\Temp\audio_17526574341463142989_台词切片.wav
+2025-10-05 21:16:03.983 [main] DEBUG c.l.p.audio.AudioDurationHelper - 获取音频时长: ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "C:\\Users\\user\\AppData\\Local\\Temp\\audio_17526574341463142989_台词切片.wav"
+2025-10-05 21:16:04.040 [main] DEBUG c.l.p.audio.AudioDurationHelper - 音频时长: 台词切片 -> 6.997333秒
+2025-10-05 21:16:04.040 [main] DEBUG c.l.util.RecordDurationCalculator - Record时长计算 - 音频: 240帧, 文字: 29帧, 最终: 240帧
+2025-10-05 21:16:04.040 [main] INFO  c.l.a.Composer.RenderOfVideo - Record时长计算完成: 需要 240 帧 (约8.0秒)
+2025-10-05 21:16:04.040 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-05 21:16:04.040 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-05 21:16:04.040 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:04.040 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:04.040 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-05 21:16:04.040 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-05 21:16:04.045 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:04.045 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-05 21:16:04.045 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-05 21:16:04.045 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-05 21:16:04.045 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-05 21:16:04.048 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-05 21:16:04.048 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-05 21:16:04.048 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:04.057 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-05 21:16:04.072 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:04.072 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时15ms
+2025-10-05 21:16:04.121 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-05 21:16:04.121 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-05 21:16:04.121 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-05 21:16:04.121 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:04.121 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:04.139 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-05 21:16:04.139 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-05 21:16:04.139 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-05 21:16:04.145 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-05 21:16:04.145 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-05 21:16:04.149 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-05 21:16:04.150 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-05 21:16:04.150 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-05 21:16:04.150 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-05 21:16:04.150 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-05 21:16:04.156 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-05 21:16:04.156 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:04.156 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-05 21:16:04.156 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:04.156 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-05 21:16:04.156 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-05 21:16:04.156 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:04.156 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-05 21:16:04.156 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-05 21:16:04.171 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-05 21:16:04.171 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:04.171 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:04.171 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-05 21:16:04.171 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-05 21:16:04.171 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=7, isNarrator=false, textPreview='咳，总之呢……'
+2025-10-05 21:16:04.171 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-05 21:16:04.171 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=7
+2025-10-05 21:16:04.175 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-05 21:16:04.175 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 7
+2025-10-05 21:16:04.205 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 7 帧 (预期: 7 帧)
+2025-10-05 21:16:04.205 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-05 21:16:04.205 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 82
+2025-10-05 21:16:04.205 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 34ms
+2025-10-05 21:16:04.205 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=82
+2025-10-05 21:16:04.205 [main] DEBUG c.l.a.Composer.RenderOfVideo - 需要延长帧序列: 82 -> 240 帧
+2025-10-05 21:16:04.708 [main] DEBUG c.l.a.Composer.RenderOfVideo - 已添加 158 帧延长
+2025-10-05 21:16:04.709 [main] INFO  c.l.a.Composer.RenderOfVideo - 帧序列调整完成: 原始 82 帧 -> 最终 240 帧
+2025-10-05 21:16:04.709 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-05 21:16:05.700 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0002smile2.mp4
+2025-10-05 21:16:05.701 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1724ms
+2025-10-05 21:16:05.701 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0002smile2.mp4 导出完成，耗时: 1724ms
+2025-10-05 21:16:05.701 [main] DEBUG c.l.a.Composer.BatchVideoProcessor - Record smile2 帧数信息: 开始帧=58, 帧数=240
+2025-10-05 21:16:05.701 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 4/5 个Record: record0003serious.mp4
+2025-10-05 21:16:05.701 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0003serious.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-05 21:16:05.701 [main] DEBUG c.l.util.RecordDurationCalculator - Record时长计算 - 音频: 0帧, 文字: 53帧, 最终: 53帧
+2025-10-05 21:16:05.701 [main] INFO  c.l.a.Composer.RenderOfVideo - Record时长计算完成: 需要 53 帧 (约1.7666666666666666秒)
+2025-10-05 21:16:05.701 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-05 21:16:05.701 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-05 21:16:05.701 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:05.702 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:05.702 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-05 21:16:05.702 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-05 21:16:05.709 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:05.709 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-05 21:16:05.709 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-05 21:16:05.709 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-05 21:16:05.709 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-05 21:16:05.711 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-05 21:16:05.711 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加角色图层: 格里高尔 at (605,257)
+2025-10-05 21:16:05.711 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:05.723 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-05 21:16:05.740 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:05.740 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时17ms
+2025-10-05 21:16:05.788 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-05 21:16:05.788 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=格里高尔
+2025-10-05 21:16:05.788 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-05 21:16:05.788 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:05.788 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:05.806 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-05 21:16:05.807 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-05 21:16:05.807 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染说话人UI元素: 格里高尔
+2025-10-05 21:16:05.813 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-26,789), 尺寸538x302
+2025-10-05 21:16:05.813 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-05 21:16:05.817 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-05 21:16:05.817 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-05 21:16:05.818 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-05 21:16:05.818 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-05 21:16:05.818 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-05 21:16:05.822 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层1
+2025-10-05 21:16:05.823 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:05.823 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-05 21:16:05.823 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:05.823 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-05 21:16:05.823 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-05 21:16:05.823 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:05.823 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-05 21:16:05.823 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-05 21:16:05.837 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-05 21:16:05.837 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:05.837 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:05.837 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-05 21:16:05.837 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-05 21:16:05.837 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=19, isNarrator=false, textPreview='别用你那该死的代码让我说些奇怪的话了！'
+2025-10-05 21:16:05.837 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-05 21:16:05.837 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=false, textLength=19
+2025-10-05 21:16:05.841 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-05 21:16:05.841 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 19
+2025-10-05 21:16:05.907 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 19 帧 (预期: 19 帧)
+2025-10-05 21:16:05.907 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-05 21:16:05.907 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 94
+2025-10-05 21:16:05.907 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 70ms
+2025-10-05 21:16:05.907 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=94
+2025-10-05 21:16:05.907 [main] DEBUG c.l.a.Composer.RenderOfVideo - 需要截断帧序列: 94 -> 53 帧
+2025-10-05 21:16:05.907 [main] WARN  c.l.a.Composer.RenderOfVideo - 由于音频时长限制，文字显示被截断: 94 -> 53 帧
+2025-10-05 21:16:05.907 [main] INFO  c.l.a.Composer.RenderOfVideo - 帧序列调整完成: 原始 94 帧 -> 最终 53 帧
+2025-10-05 21:16:05.907 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0003serious.mp4
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1212ms
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0003serious.mp4 导出完成，耗时: 1212ms
+2025-10-05 21:16:06.913 [main] DEBUG c.l.a.Composer.BatchVideoProcessor - Record serious 帧数信息: 开始帧=298, 帧数=53
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 处理第 5/5 个Record: record0004旁白.mp4
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.RenderOfVideo - 开始导出视频: outputPath=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0004旁白.mp4, plot=true, speed=30, frameRate=1920, resolution=1080x{}
+2025-10-05 21:16:06.913 [main] DEBUG c.l.util.RecordDurationCalculator - Record时长计算 - 音频: 0帧, 文字: 25帧, 最终: 25帧
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.RenderOfVideo - Record时长计算完成: 需要 25 帧 (约0.8333333333333334秒)
+2025-10-05 21:16:06.913 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始渲染静态内容（除对话外）
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染预处理: plot=true, width=1920, height=1080
+2025-10-05 21:16:06.913 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:06.913 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:06.913 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染背景层
+2025-10-05 21:16:06.913 [main] DEBUG c.l.a.Composer.RenderOfImage - 全屏渲染模式
+2025-10-05 21:16:06.917 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:06.918 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加全屏背景图层: 尺寸1920x1080
+2025-10-05 21:16:06.918 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染角色立绘层
+2025-10-05 21:16:06.918 [main] DEBUG c.l.a.Composer.RenderOfImage - 开始渲染1个角色立绘
+2025-10-05 21:16:06.918 [main] DEBUG c.l.a.Composer.RenderOfImage - 格里高尔立绘渲染比例为1.0
+2025-10-05 21:16:06.920 [main] INFO  com.lbc_plot.util.ImageDarkener - 开始图像压暗处理: 图像尺寸=650x1417, 压暗颜色=RGBA(0,0,0,127)
+2025-10-05 21:16:06.934 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.938 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.942 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.945 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.949 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.953 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.957 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.959 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.961 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.964 [main] DEBUG com.lbc_plot.util.ImageDarkener - 处理进度: {:.1f}%
+2025-10-05 21:16:06.964 [main] INFO  com.lbc_plot.util.ImageDarkener - 图像压暗完成: 耗时44ms, 处理921050个像素
+2025-10-05 21:16:06.966 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(605,257), 尺寸650x1417
+2025-10-05 21:16:06.966 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加压暗角色图层: 格里高尔 at (605,257)
+2025-10-05 21:16:06.966 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:06.974 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层3, 文字图层0
+2025-10-05 21:16:06.986 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:06.986 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加纯色图层完成: 颜色#0, 透明度255, 位置(0,0), 尺寸1920x1080, 耗时12ms
+2025-10-05 21:16:07.032 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(192,108), 尺寸1536x864
+2025-10-05 21:16:07.032 [main] INFO  c.l.a.Composer.RenderOfImage - 开始渲染UI: plot=true, dialogueSpeaker=旁白
+2025-10-05 21:16:07.032 [main] DEBUG c.l.a.Composer.RenderOfImage - 使用画布尺寸: 1920x1080
+2025-10-05 21:16:07.032 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:07.032 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-05 21:16:07.050 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(264,826), 尺寸1470x254
+2025-10-05 21:16:07.050 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加对话框UI: 位置(264,826), 缩放1.46x
+2025-10-05 21:16:07.050 [main] DEBUG c.l.a.Composer.RenderOfImage - 旁白模式，跳过说话人UI元素
+2025-10-05 21:16:07.050 [main] DEBUG c.l.a.Composer.RenderOfImage - 剧情模式，渲染地点UI
+2025-10-05 21:16:07.055 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(-2,-117), 尺寸409x266
+2025-10-05 21:16:07.056 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点UI: 位置(-2,-117), 缩放0.41x
+2025-10-05 21:16:07.056 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加文字图层: '不XX就出不去的房间', 位置(197,78), 对齐CENTER, 字号32, 颜色java.awt.Color[r=251,g=219,b=179]
+2025-10-05 21:16:07.057 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加地点文本: 不XX就出不去的房间
+2025-10-05 21:16:07.057 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成UI图像
+2025-10-05 21:16:07.060 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层2, 文字图层1
+2025-10-05 21:16:07.060 [main] INFO  c.l.a.Composer.RenderOfImage - UI图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:07.060 [main] DEBUG c.l.a.Composer.RenderOfImage - UI图像信息: 类型=2, 透明度=透明
+2025-10-05 21:16:07.060 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:07.060 [main] DEBUG c.l.a.Composer.RenderOfImage - 清理UI合成器图层
+2025-10-05 21:16:07.060 [main] INFO  c.l.a.Composer.RenderOfImage - UI渲染完成
+2025-10-05 21:16:07.060 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 添加图像图层: 位置(0,0), 尺寸1920x1080
+2025-10-05 21:16:07.060 [main] DEBUG c.l.a.Composer.RenderOfImage - 添加UI图层
+2025-10-05 21:16:07.060 [main] INFO  c.l.a.Composer.RenderOfImage - 开始合成最终图像
+2025-10-05 21:16:07.074 [main] INFO  c.l.a.C.manager.BaseLayerManager - 合成完成: 1920x1080, 图片图层6, 文字图层0
+2025-10-05 21:16:07.074 [main] INFO  c.l.a.Composer.RenderOfImage - 图像合成成功: 尺寸1920x1080
+2025-10-05 21:16:07.074 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
+2025-10-05 21:16:07.074 [main] DEBUG c.l.a.Composer.RenderOfImage - 渲染预处理完成
+2025-10-05 21:16:07.074 [main] INFO  c.l.a.Composer.RenderOfVideo - 静态内容渲染完成: 尺寸1920x1080
+2025-10-05 21:16:07.074 [main] DEBUG c.l.a.Composer.RenderOfVideo - 对话信息: textLength=5, isNarrator=true, textPreview='……好可爱'
+2025-10-05 21:16:07.074 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始生成逐帧动画
+2025-10-05 21:16:07.074 [main] DEBUG c.l.a.Composer.RenderOfVideo - 生成平滑帧序列: framesPerChar=1, isNarrator=true, textLength=5
+2025-10-05 21:16:07.076 [main] DEBUG c.l.a.Composer.RenderOfVideo - 静态内容复制完成
+2025-10-05 21:16:07.077 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始逐字生成帧，文本长度: 5
+2025-10-05 21:16:07.093 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐字帧生成完成: 实际生成 5 帧 (预期: 5 帧)
+2025-10-05 21:16:07.093 [main] DEBUG c.l.a.Composer.RenderOfVideo - 添加停留帧: 75 帧
+2025-10-05 21:16:07.093 [main] INFO  c.l.a.Composer.RenderOfVideo - 添加停留帧后总帧数: 80
+2025-10-05 21:16:07.093 [main] DEBUG c.l.a.Composer.RenderOfVideo - 平滑帧序列生成完成，耗时: 19ms
+2025-10-05 21:16:07.093 [main] INFO  c.l.a.Composer.RenderOfVideo - 逐帧动画生成完成: 总帧数=80
+2025-10-05 21:16:07.093 [main] DEBUG c.l.a.Composer.RenderOfVideo - 需要截断帧序列: 80 -> 25 帧
+2025-10-05 21:16:07.093 [main] WARN  c.l.a.Composer.RenderOfVideo - 由于音频时长限制，文字显示被截断: 80 -> 25 帧
+2025-10-05 21:16:07.093 [main] INFO  c.l.a.Composer.RenderOfVideo - 帧序列调整完成: 原始 80 帧 -> 最终 25 帧
+2025-10-05 21:16:07.093 [main] DEBUG c.l.a.Composer.RenderOfVideo - 开始导出视频文件
+2025-10-05 21:16:07.988 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\record0004旁白.mp4
+2025-10-05 21:16:07.988 [main] INFO  c.l.a.Composer.RenderOfVideo - 视频导出流程完成，耗时: 1075ms
+2025-10-05 21:16:07.988 [main] INFO  c.l.a.Composer.BatchVideoProcessor - Record record0004旁白.mp4 导出完成，耗时: 1075ms
+2025-10-05 21:16:07.988 [main] DEBUG c.l.a.Composer.BatchVideoProcessor - Record 旁白 帧数信息: 开始帧=351, 帧数=25
+2025-10-05 21:16:07.989 [main] INFO  com.lbc_plot.util.VideoConcatenator - 开始连接 5 个视频文件到: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\silent_video.mp4
+2025-10-05 21:16:07.991 [main] DEBUG com.lbc_plot.util.VideoConcatenator - 创建视频列表文件: C:\Users\user\AppData\Local\Temp\video_list_1112111631651111793.txt，包含 5 个视频
+2025-10-05 21:16:08.091 [main] INFO  com.lbc_plot.util.VideoConcatenator - 视频连接完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\silent_video.mp4 <- 5 个视频, 耗时: 102ms
+2025-10-05 21:16:08.092 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 无声视频生成完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\silent_video.mp4
+2025-10-05 21:16:08.093 [main] INFO  c.l.p.audio.AudioTimelineBuilder - 开始构建音频时间线: 5个Record, 5个帧信息, 帧率30.0fps
+2025-10-05 21:16:08.093 [main] DEBUG c.l.p.audio.AudioTimelineBuilder - 处理Record idle 的音频指令: 1个指令
+2025-10-05 21:16:08.094 [main] DEBUG c.l.p.audio.AudioTimelineBuilder - BGM BusInside (online-audio-converter.com) 开始播放，起始帧: 0
+2025-10-05 21:16:08.094 [main] DEBUG c.l.p.audio.AudioTimelineBuilder - 处理Record depressed 的音频指令: 1个指令
+2025-10-05 21:16:08.094 [main] DEBUG c.l.p.audio.AudioTimelineBuilder - BGM BusInside (online-audio-converter.com) 停止播放，结束帧: 58
+2025-10-05 21:16:08.094 [main] DEBUG c.l.p.audio.AudioTimelineBuilder - 处理Record smile2 的音频指令: 1个指令
+2025-10-05 21:16:08.094 [main] DEBUG c.l.p.audio.AudioTimelineBuilder - 短音频 台词切片 播放，帧范围: 58-298, 类型: VOICE_PLAY
+2025-10-05 21:16:08.094 [main] INFO  c.l.p.audio.AudioTimelineBuilder - 音频时间线构建完成: 总帧数376, 音频片段2个
+2025-10-05 21:16:08.094 [main] INFO  c.l.p.audio.FFmpegAudioProcessor - 开始FFmpeg音频处理: 输出路径=E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav, 片段数量=2
+2025-10-05 21:16:08.095 [main] DEBUG com.lbc_plot.util.ResourceChecker - 文件存在于resources: audio/BusInside (online-audio-converter.com).mp3
+2025-10-05 21:16:08.099 [main] DEBUG com.lbc_plot.util.ResourceChecker - 资源文件已复制到临时文件: C:\Users\user\AppData\Local\Temp\audio_2432405655009204166_BusInside (online-audio-converter.com).mp3
+2025-10-05 21:16:08.099 [main] DEBUG com.lbc_plot.util.ResourceChecker - 文件存在于resources: audio/台词切片.wav
+2025-10-05 21:16:08.103 [main] DEBUG com.lbc_plot.util.ResourceChecker - 资源文件已复制到临时文件: C:\Users\user\AppData\Local\Temp\audio_9427286416430900414_台词切片.wav
+2025-10-05 21:16:08.103 [main] DEBUG c.l.p.audio.FFmpegAudioProcessor - BGM处理: BusInside (online-audio-converter.com) 开始0.0秒, 限制1.9333333333333333秒
+2025-10-05 21:16:08.103 [main] DEBUG c.l.p.audio.FFmpegAudioProcessor - 语音/音效处理: 台词切片 开始1.9333333333333333秒, 完整文件
+2025-10-05 21:16:08.103 [main] DEBUG c.l.p.audio.FFmpegAudioProcessor - FFmpeg命令: ffmpeg -y -i "C:\Users\user\AppData\Local\Temp\audio_2432405655009204166_BusInside (online-audio-converter.com).mp3" -i "C:\Users\user\AppData\Local\Temp\audio_9427286416430900414_台词切片.wav" -filter_complex "[0]adelay=0|0,volume=1.00,atrim=0:1.93[bgm0];[1]adelay=1933|1933,volume=1.00[sfx0]; [bgm0][sfx0]amix=inputs=2:duration=longest" -ac 2 -ar 44100 "E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav"
+2025-10-05 21:16:08.103 [main] INFO  c.l.p.audio.FFmpegAudioProcessor - 执行FFmpeg命令: ffmpeg -y -i "C:\Users\user\AppData\Local\Temp\audio_2432405655009204166_BusInside (online-audio-converter.com).mp3" -i "C:\Users\user\AppData\Local\Temp\audio_9427286416430900414_台词切片.wav" -filter_complex "[0]adelay=0|0,volume=1.00,atrim=0:1.93[bgm0];[1]adelay=1933|1933,volume=1.00[sfx0]; [bgm0][sfx0]amix=inputs=2:duration=longest" -ac 2 -ar 44100 "E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav"
+2025-10-05 21:16:08.164 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: ffmpeg version 7.1.1-full_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   built with gcc 14.2.0 (Rev1, Built by MSYS2 project)
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   configuration: --enable-gpl --enable-version3 --enable-static --disable-w32threads --disable-autodetect --enable-fontconfig --enable-iconv --enable-gnutls --enable-lcms2 --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma --enable-libsnappy --enable-zlib --enable-librist --enable-libsrt --enable-libssh --enable-libzmq --enable-avisynth --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-sdl2 --enable-libaribb24 --enable-libaribcaption --enable-libdav1d --enable-libdavs2 --enable-libopenjpeg --enable-libquirc --enable-libuavs3d --enable-libxevd --enable-libzvbi --enable-libqrencode --enable-librav1e --enable-libsvtav1 --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxeve --enable-libxvid --enable-libaom --enable-libjxl --enable-libvpx --enable-mediafoundation --enable-libass --enable-frei0r --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-liblensfun --enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf --enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va --enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec --enable-nvenc --enable-vaapi --enable-libshaderc --enable-vulkan --enable-libplacebo --enable-opencl --enable-libcdio --enable-libgme --enable-libmodplug --enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame --enable-libshine --enable-libtheora --enable-libtwolame --enable-libvo-amrwbenc --enable-libcodec2 --enable-libilbc --enable-libgsm --enable-liblc3 --enable-libopencore-amrnb --enable-libopus --enable-libspeex --enable-libvorbis --enable-ladspa --enable-libbs2b --enable-libflite --enable-libmysofa --enable-librubberband --enable-libsoxr --enable-chromaprint
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libavutil      59. 39.100 / 59. 39.100
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libavcodec     61. 19.101 / 61. 19.101
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libavformat    61.  7.100 / 61.  7.100
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libavdevice    61.  3.100 / 61.  3.100
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libavfilter    10.  4.100 / 10.  4.100
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libswscale      8.  3.100 /  8.  3.100
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libswresample   5.  3.100 /  5.  3.100
+2025-10-05 21:16:08.165 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   libpostproc    58.  3.100 / 58.  3.100
+2025-10-05 21:16:08.167 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: Input #0, mp3, from 'C:\Users\user\AppData\Local\Temp\audio_2432405655009204166_BusInside (online-audio-converter.com).mp3':
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Metadata:
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     title           : 梅菲斯托费勒斯号内部
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     artist          : Project Moon
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     album           : Limbus Company
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     comment         : online-audio-converter.com
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Duration: 00:01:02.85, start: 0.025057, bitrate: 192 kb/s
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Stream #0:0: Audio: mp3 (mp3float), 44100 Hz, stereo, fltp, 192 kb/s
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:       Metadata:
+2025-10-05 21:16:08.168 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:         encoder         : Lavc61.19
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: Input #1, wav, from 'C:\Users\user\AppData\Local\Temp\audio_9427286416430900414_台词切片.wav':
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Metadata:
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     date            : 2025-06-29
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     encoder         : Lavf61.7.100
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Duration: 00:00:07.00, bitrate: 1152 kb/s
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Stream #1:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, mono, s32 (24 bit), 1152 kb/s
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: Stream mapping:
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Stream #0:0 (mp3float) -> adelay:default
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Stream #1:0 (pcm_s24le) -> adelay:default
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   amix:default -> Stream #0:0 (pcm_s16le)
+2025-10-05 21:16:08.170 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: Press [q] to stop, [?] for help
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: Output #0, wav, to 'E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav':
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Metadata:
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     INAM            : 梅菲斯托费勒斯号内部
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     IART            : Project Moon
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     IPRD            : Limbus Company
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     ICMT            : online-audio-converter.com
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:     ISFT            : Lavf61.7.100
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:   Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 44100 Hz, stereo, s16, 1411 kb/s
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:       Metadata:
+2025-10-05 21:16:08.173 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg:         encoder         : Lavc61.19.101 pcm_s16le
+2025-10-05 21:16:08.177 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: [out#0/wav @ 000001975c6f8640] video:0KiB audio:1538KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.012696%
+2025-10-05 21:16:08.179 [Thread-1] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg: size=    1539KiB time=00:00:08.93 bitrate=1411.4kbits/s speed=1.11e+03x    
+2025-10-05 21:16:08.183 [main] INFO  c.l.p.audio.FFmpegAudioProcessor - FFmpeg音频处理完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav, 耗时: 89ms
+2025-10-05 21:16:08.183 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 音频生成完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav
+2025-10-05 21:16:08.183 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 开始合并音视频
+2025-10-05 21:16:08.183 [main] INFO  com.lbc_plot.util.VideoAudioMerger - 执行视频音频合并(direct模式): ffmpeg -y -i "E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\silent_video.mp4" -i "E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav" -vcodec copy -acodec copy "E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4"
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: ffmpeg version 7.1.1-full_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   built with gcc 14.2.0 (Rev1, Built by MSYS2 project)
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   configuration: --enable-gpl --enable-version3 --enable-static --disable-w32threads --disable-autodetect --enable-fontconfig --enable-iconv --enable-gnutls --enable-lcms2 --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma --enable-libsnappy --enable-zlib --enable-librist --enable-libsrt --enable-libssh --enable-libzmq --enable-avisynth --enable-libbluray --enable-libcaca --enable-libdvdnav --enable-libdvdread --enable-sdl2 --enable-libaribb24 --enable-libaribcaption --enable-libdav1d --enable-libdavs2 --enable-libopenjpeg --enable-libquirc --enable-libuavs3d --enable-libxevd --enable-libzvbi --enable-libqrencode --enable-librav1e --enable-libsvtav1 --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxeve --enable-libxvid --enable-libaom --enable-libjxl --enable-libvpx --enable-mediafoundation --enable-libass --enable-frei0r --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-liblensfun --enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf --enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va --enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec --enable-nvenc --enable-vaapi --enable-libshaderc --enable-vulkan --enable-libplacebo --enable-opencl --enable-libcdio --enable-libgme --enable-libmodplug --enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame --enable-libshine --enable-libtheora --enable-libtwolame --enable-libvo-amrwbenc --enable-libcodec2 --enable-libilbc --enable-libgsm --enable-liblc3 --enable-libopencore-amrnb --enable-libopus --enable-libspeex --enable-libvorbis --enable-ladspa --enable-libbs2b --enable-libflite --enable-libmysofa --enable-librubberband --enable-libsoxr --enable-chromaprint
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libavutil      59. 39.100 / 59. 39.100
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libavcodec     61. 19.101 / 61. 19.101
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libavformat    61.  7.100 / 61.  7.100
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libavdevice    61.  3.100 / 61.  3.100
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libavfilter    10.  4.100 / 10.  4.100
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libswscale      8.  3.100 /  8.  3.100
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libswresample   5.  3.100 /  5.  3.100
+2025-10-05 21:16:08.240 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   libpostproc    58.  3.100 / 58.  3.100
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\silent_video.mp4':
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Metadata:
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     major_brand     : isom
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     minor_version   : 512
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     compatible_brands: isomiso2avc1mp41
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     encoder         : Lavf60.3.100
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Duration: 00:00:14.00, start: 0.000000, bitrate: 431 kb/s
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 1920x1080, 430 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:       Metadata:
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:         handler_name    : VideoHandler
+2025-10-05 21:16:08.249 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:         vendor_id       : [0][0][0][0]
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: [aist#1:0/pcm_s16le @ 000001ef32f0ee00] Guessed Channel Layout: stereo
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: Input #1, wav, from 'E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\temp_videos\mixed_audio.wav':
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Metadata:
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     artist          : Project Moon
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     comment         : online-audio-converter.com
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     title           : 梅菲斯托费勒斯号内部
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     album           : Limbus Company
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     encoder         : Lavf61.7.100
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Duration: 00:00:08.93, bitrate: 1411 kb/s
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Stream #1:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 44100 Hz, stereo, s16, 1411 kb/s
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: Stream mapping:
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Stream #0:0 -> #0:0 (copy)
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Stream #1:0 -> #0:1 (copy)
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: Output #0, mp4, to 'E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4':
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Metadata:
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     major_brand     : isom
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     minor_version   : 512
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     compatible_brands: isomiso2avc1mp41
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:     encoder         : Lavf61.7.100
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Stream #0:0(und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 1920x1080, q=2-31, 430 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:       Metadata:
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:         handler_name    : VideoHandler
+2025-10-05 21:16:08.269 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:         vendor_id       : [0][0][0][0]
+2025-10-05 21:16:08.270 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg:   Stream #0:1: Audio: pcm_s16le (ipcm / 0x6D637069), 44100 Hz, stereo, s16, 1411 kb/s
+2025-10-05 21:16:08.270 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: Press [q] to stop, [?] for help
+2025-10-05 21:16:08.277 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: [out#0/mp4 @ 000001ef32e721c0] video:735KiB audio:1538KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.185236%
+2025-10-05 21:16:08.277 [Thread-3] INFO  com.lbc_plot.util.VideoAudioMerger - FFmpeg: frame=  420 fps=0.0 q=-1.0 Lsize=    2277KiB time=00:00:08.93 bitrate=2089.2kbits/s speed=1.16e+03x    
+2025-10-05 21:16:08.284 [main] INFO  com.lbc_plot.util.VideoAudioMerger - 视频音频合并成功: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4
+2025-10-05 21:16:08.284 [main] INFO  c.l.a.Composer.BatchVideoProcessor - 音视频合并完成: E:\LimbusCompanyPlotVideoGenerator\demo\target\test-logs\final_video.mp4
+2025-10-05 21:16:08.286 [main] DEBUG c.l.a.C.manager.BaseLayerManager - 已清空所有图层和文字
