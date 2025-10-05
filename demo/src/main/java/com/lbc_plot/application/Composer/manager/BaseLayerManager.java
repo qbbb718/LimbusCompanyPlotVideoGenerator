@@ -1,9 +1,6 @@
 package com.lbc_plot.application.Composer.manager;
 
-import java.awt.AlphaComposite;
 import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
 import org.slf4j.Logger;

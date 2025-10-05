@@ -17,10 +17,11 @@ public final class ProjectConfig {
     public static final int FRAME_RATE = 30;
     public static final int DEFAULT_DIALOGUE_SPEED = 1;
     
-    // 文件路径配置
+    // 文件路径配置 好像没用上啊
     public static final String IMAGE_BASE_PATH = "assets/images/";
     public static final String PORTRAIT_BASE_PATH = IMAGE_BASE_PATH + "portraits/";
     public static final String THUMBNAIL_BASE_PATH = IMAGE_BASE_PATH + "thumbnails/";
+    public static final String AUDIO_BASE_PATH = "audio/";
     
     // 默认颜色配置
     
@@ -82,9 +83,6 @@ public final class ProjectConfig {
 
 
     
-
-
-
     // 旁白的id
     public static final String NARRATION_ID = "NARRATION";
 }

@@ -1,37 +1,25 @@
 package DAO;
 
-import java.awt.Color;
-import java.io.IOException;
 import java.util.Optional;
 
 import org.jdbi.v3.core.Jdbi;
-import org.sqlite.SQLiteDataSource;
-
 import com.lbc_plot.DAO.CharacterDAO;
 import com.lbc_plot.DAO.CharacterMapper;
-import com.lbc_plot.DAO.ColorMapper;
 import com.lbc_plot.DAO.PortraitDAO;
 import com.lbc_plot.DAO.PortraitMapper;
 import com.lbc_plot.model.storage.Emotion;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
 import com.lbc_plot.util.ColorUtils;
-import com.lbc_plot.util.db.SQLiteDatabaseManager;
-
 import helpers.SQLiteTestDatabaseManager;
 
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.core.mapper.reflect.BeanMapper;
-
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class CharacterDAOTest {

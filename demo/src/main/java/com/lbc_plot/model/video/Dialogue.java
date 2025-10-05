@@ -13,6 +13,18 @@ import com.lbc_plot.model.storage.MyCharacter;
  */
 @JsonDeserialize(builder = Dialogue.Builder.class)
 public class Dialogue {
+    
+    // 成员变量
+    private String text;          // 具体文本
+    private String location;         // 场景地点
+    private List<CharacterRef> speakerC; // 说话人列表
+    private String speakerName;       // 说话人名字
+    private String faction;          // 所属阵营s
+    private Align align;          // 对齐方式
+    private int speed;            // 文字显示速度的修改值
+    private Emotion emotion;      // 情绪
+
+    
     // 常量定义
     public static final String DEFAULT_NARRATOR = "旁白";
     public static final String DEFAULT_TEXT = "...";
@@ -27,16 +39,6 @@ public class Dialogue {
     public enum Emotion {
         NORMAL, HAPPY, ANGRY, SAD, SURPRISED, CONFUSED, NERVOUS
     }
-    
-    // 成员变量
-    private String text;          // 具体文本
-    private String location;         // 场景地点
-    private List<CharacterRef> speakerC; // 说话人列表
-    private String speakerName;       // 说话人名字
-    private String faction;          // 所属阵营s
-    private Align align;          // 对齐方式
-    private int speed;            // 文字显示速度的修改值
-    private Emotion emotion;      // 情绪
     
     
     

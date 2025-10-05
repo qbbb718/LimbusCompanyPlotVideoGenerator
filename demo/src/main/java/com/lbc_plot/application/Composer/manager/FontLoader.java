@@ -8,8 +8,6 @@ import java.io.InputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.lbc_plot.application.Composer.RenderOfImage;
-
 /**
  * 字体加载工具类
  */

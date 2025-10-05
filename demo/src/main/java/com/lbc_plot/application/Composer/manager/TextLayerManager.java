@@ -1,6 +1,5 @@
 package com.lbc_plot.application.Composer.manager;
 
-import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -20,7 +19,6 @@ import java.util.List;
 import com.lbc_plot.application.Composer.contract.TextLayerOperations;
 import com.lbc_plot.application.Composer.model.TextAlignment;
 import com.lbc_plot.config.ProjectConfig;
-import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.util.RenderQualityUtils;
 
 // TextLayerManager.java - 专门处理文字图层

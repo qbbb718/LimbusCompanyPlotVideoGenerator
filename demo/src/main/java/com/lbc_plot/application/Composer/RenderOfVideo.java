@@ -19,8 +19,10 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lbc_plot.util.RecordDurationCalculator;
 import com.lbc_plot.util.RenderQualityUtils;
 import com.lbc_plot.util.io.VideoExporter;
+import com.lbc_plot.application.Composer.BatchVideoProcessor.RenderResult;
 import com.lbc_plot.application.Composer.manager.FontLoader;
 import com.lbc_plot.application.Composer.model.DialogueSpeed;
 import com.lbc_plot.application.Composer.model.TextAlignment;
@@ -37,7 +39,7 @@ public class RenderOfVideo {
     
 
 
-    public static void exportRecordVideo(
+    public static RenderResult exportRecordVideo(
         Record record,
         boolean plot,
         int width, 
@@ -51,13 +53,19 @@ public class RenderOfVideo {
         long startTime = System.currentTimeMillis();
         
         try {
-            // 1. 渲染除对话外的静态内容
+            // 1. 计算Record的总时长（帧数）
+            int requiredFrames = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
+            logger.info("Record时长计算完成: 需要 {} 帧 (约{}秒)", 
+                requiredFrames, requiredFrames / (double)frameRate);
+            record.setDurationFrames(requiredFrames);
+            
+            // 2. 渲染除对话外的静态内容
             logger.debug("开始渲染静态内容（除对话外）");
             BufferedImage recordPre = RenderOfImage.renderPreExceptDialogue(record, plot, width, height);
             logger.info("静态内容渲染完成: 尺寸{}x{}", 
                 recordPre.getWidth(), recordPre.getHeight());
             
-            // 2. 获取对话信息
+            // 3. 获取对话信息
             Dialogue dialogue = record.getDialogue();
             if (dialogue == null) {
                 logger.warn("记录中没有对话信息，使用空对话");
@@ -72,21 +80,31 @@ public class RenderOfVideo {
                      dialogue.getText().substring(0, 47) + "..." : 
                      dialogue.getText()) : "null");
             
-            // 3. 生成逐帧动画
+            // 4. 生成逐帧动画
             logger.debug("开始生成逐帧动画");
-            List<BufferedImage> recordFrames = generateSmoothDialogueFrames(
+            List<BufferedImage> textFrames = generateSmoothDialogueFrames(
                 recordPre, dialogue.getText(), dialogue.getSpeed(), dialogue.isNarrator(), width, height);
-            logger.info("逐帧动画生成完成: 总帧数={}", recordFrames.size());
+            logger.info("逐帧动画生成完成: 总帧数={}", textFrames.size());
             
-            if (recordFrames.isEmpty()) {
+            if (textFrames.isEmpty()) {
                 logger.error("生成的帧序列为空，无法导出视频");
                 throw new Exception("生成的帧序列为空");
             }
+
+            // 5. 调整帧序列长度以适应总时长要求
+            List<BufferedImage> finalFrames = adjustFramesToRequiredLength(textFrames, requiredFrames);
+            logger.info("帧序列调整完成: 原始 {} 帧 -> 最终 {} 帧", 
+                textFrames.size(), finalFrames.size());
             
             // 4. 导出视频
             logger.debug("开始导出视频文件");
-            VideoExporter.exportFramesHighQuality(recordFrames, outputPath, frameRate);
+            VideoExporter.exportFramesHighQuality(textFrames, outputPath, frameRate);
             logger.info("视频导出完成: {}", outputPath);
+
+            // 7. 返回渲染结果
+            long durationMs = (long)(finalFrames.size() * 1000.0 / frameRate);
+            return new RenderResult(finalFrames.size(), startTime, durationMs);
+            
             
         } catch (Exception e) {
             logger.error("视频导出失败", e);
@@ -97,6 +115,58 @@ public class RenderOfVideo {
         }
     }
     
+    /**
+     * 调整帧序列长度以适应总时长要求
+     */
+    private static List<BufferedImage> adjustFramesToRequiredLength(
+        List<BufferedImage> originalFrames, int requiredFrames) {
+        
+        int originalSize = originalFrames.size();
+        
+        if (originalSize == requiredFrames) {
+            logger.debug("帧数正好符合要求，无需调整");
+            return new ArrayList<>(originalFrames);
+        }
+        
+        List<BufferedImage> adjustedFrames = new ArrayList<>();
+        
+        if (originalSize < requiredFrames) {
+            // 原始帧数不足，需要延长
+            logger.debug("需要延长帧序列: {} -> {} 帧", originalSize, requiredFrames);
+            
+            // 1. 先添加所有原始帧
+            adjustedFrames.addAll(originalFrames);
+            
+            // 2. 获取最后一帧（用于延长）
+            BufferedImage lastFrame = originalFrames.get(originalFrames.size() - 1);
+            
+            // 3. 复制最后一帧直到达到所需长度
+            int framesToAdd = requiredFrames - originalSize;
+            for (int i = 0; i < framesToAdd; i++) {
+                adjustedFrames.add(copyImage(lastFrame));
+            }
+            
+            logger.debug("已添加 {} 帧延长", framesToAdd);
+            
+        } else {
+            // 原始帧数过多，需要截断
+            logger.debug("需要截断帧序列: {} -> {} 帧", originalSize, requiredFrames);
+            
+            // 1. 保留前面的帧直到所需长度
+            for (int i = 0; i < requiredFrames && i < originalFrames.size(); i++) {
+                adjustedFrames.add(originalFrames.get(i));
+            }
+            
+            // 2. 如果截断了文字显示过程，记录警告
+            if (requiredFrames < originalFrames.size()) {
+                logger.warn("由于音频时长限制，文字显示被截断: {} -> {} 帧", 
+                    originalFrames.size(), requiredFrames);
+            }
+        }
+        
+        return adjustedFrames;
+    }
+
 
     /**
      * 生成平滑的逐字显示帧序列
@@ -487,11 +557,18 @@ public class RenderOfVideo {
         logger.trace("复制图像: {}x{}, type={}", 
             source.getWidth(), source.getHeight(), source.getType());
         
+        if (source == null) {
+            return null;
+        }
+
         BufferedImage copy = new BufferedImage(
             source.getWidth(), source.getHeight(), source.getType());
         Graphics2D g2d = copy.createGraphics();
-        g2d.drawImage(source, 0, 0, null);
-        g2d.dispose();
+        try {
+            g2d.drawImage(source, 0, 0, null);
+        } finally {
+            g2d.dispose();
+        }
         
         return copy;
     }

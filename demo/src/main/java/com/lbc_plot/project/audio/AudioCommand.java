@@ -1,31 +1,88 @@
 package com.lbc_plot.project.audio;
 
-public class AudioCommand {
-    private String audioFile;      // 音频文件路径
-    private AudioCommandType type; // 操作类型（START/LOOP/STOP）
-    private int startFrame;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-    // 构造方法
-    public AudioCommand(String audioFile, AudioCommandType type) {
-        this.audioFile = audioFile;
+
+/**
+ * 音频操作指令-Record中
+ */
+public class AudioCommand {
+    private AudioCommandType type;    // BGM_START, BGM_STOP, SFX_PLAY, VOICE_PLAY
+    private String audioId;           // 音频文件标识
+    private Float volume;             // 音量
+    private Integer fadeDuration;     // 淡入淡出帧数
+
+    // 构造函数
+    public AudioCommand() {}
+    
+    public AudioCommand(AudioCommandType type, String audioId) {
         this.type = type;
+        this.audioId = audioId;
+    }
+    
+    public AudioCommand(AudioCommandType type, String audioId, Float volume) {
+        this.type = type;
+        this.audioId = audioId;
+        this.volume = volume;
+    }
+    
+    public AudioCommand(AudioCommandType type, String audioId, Float volume, Integer fadeDuration) {
+        this.type = type;
+        this.audioId = audioId;
+        this.volume = volume;
+        this.fadeDuration = fadeDuration;
     }
 
-    // Getter 方法
+    // Getter 和 Setter 方法
     public AudioCommandType getType() {
         return type;
     }
 
-    public String getAudioFile() {
-        return audioFile;
+    public void setType(AudioCommandType type) {
+        this.type = type;
     }
 
-    public int getStartFrame() {
-        return startFrame;
+    public String getAudioId() {
+        return audioId;
     }
 
-    // Setter 方法
-    public void setStartFrame(int startFrame) {
-        this.startFrame = startFrame;
+    public void setAudioId(String audioId) {
+        this.audioId = audioId;
+    }
+
+    public Float getVolume() {
+        return volume;
+    }
+
+    public void setVolume(Float volume) {
+        this.volume = volume;
+    }
+
+    public Integer getFadeDuration() {
+        return fadeDuration;
+    }
+
+    public void setFadeDuration(Integer fadeDuration) {
+        this.fadeDuration = fadeDuration;
+    }
+
+    // 便捷方法
+    public boolean isBgmCommand() {
+        return type == AudioCommandType.BGM_START || type == AudioCommandType.BGM_STOP;
+    }
+    
+    public boolean isPlayCommand() {
+        return type == AudioCommandType.SFX_PLAY || type == AudioCommandType.VOICE_PLAY;
+    }
+    
+    @Override
+    public String toString() {
+        return "AudioCommand{" +
+                "type=" + type +
+                ", audioId='" + audioId + '\'' +
+                ", volume=" + volume +
+                ", fadeDuration=" + fadeDuration +
+                '}';
     }
 }

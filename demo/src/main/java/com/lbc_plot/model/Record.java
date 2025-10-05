@@ -29,7 +29,7 @@ public class Record {
     @JsonIgnore
     private List<EffectVisual> effects;  // 特效列表
     @JsonIgnore
-    private List<AudioCommand> audioCommands; // 音频操作列表
+    private List<AudioCommand> audioCommands;  // 音频操作指令
     private boolean isDirty; // 在上次导出后是否进行过修改
     @JsonIgnore
     private BufferedImage preImage; // 预览图, 无UI的
