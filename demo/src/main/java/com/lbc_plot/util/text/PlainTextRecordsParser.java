@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +37,8 @@ public class PlainTextRecordsParser {
     private static final Logger logger = LoggerFactory.getLogger(PlainTextRecordsParser.class);
 
     private static final Pattern BGM_PATTERN = Pattern.compile("^\\s*\\[(.+?)\\]\\s*");
+    // Stop BGM directive: a line exactly like [-STOP] (case-insensitive)
+    private static final Pattern STOP_BGM_PATTERN = Pattern.compile("^\\s*\\[-STOP\\]\\s*", Pattern.CASE_INSENSITIVE);
     private static final Pattern BG_PATTERN = Pattern.compile("^\\s*\\{(.+?)\\}\\s*");
     private static final Pattern SPEAKER_PATTERN = Pattern.compile("^\\s*([^:]+)\\s*:\\s*(.+)$");
     private static final Pattern EMOTION_PATTERN = Pattern.compile("(.+?)\\((.+?)\\)\\s*$");
@@ -70,6 +74,22 @@ public class PlainTextRecordsParser {
         for (String rawLine : lines) {
             String line = rawLine.trim();
             if (line.isEmpty()) continue;
+
+            // BGM 停止指令：[-STOP]
+            Matcher mStop = STOP_BGM_PATTERN.matcher(line);
+            if (mStop.matches()) {
+                // 如果有当前正在播放的 BGM，则在最后一条已有 record 上添加停止命令
+                if (currentBgm != null) {
+                    AudioCommand stop = new AudioCommand(AudioCommandType.BGM_STOP, currentBgm.getAudioId());
+                    if (!records.isEmpty()) {
+                        records.get(records.size()-1).addAudioCommand(stop);
+                    }
+                }
+                // 清除当前 BGM 状态与 pending 标记
+                currentBgm = null;
+                bgmPendingStart = false;
+                continue;
+            }
 
             // BGM 行：不单独创建 record，只改变当前 BGM 状态
             Matcher mBgm = BGM_PATTERN.matcher(line);
@@ -142,22 +162,66 @@ public class PlainTextRecordsParser {
                 String speaker = mSpeak.group(1).trim();
                 String textPart = mSpeak.group(2).trim();
 
-                // 检查情绪
+                // 检查情绪：支持更宽容的写法（英文枚举名 / 英文 code / 中文 displayName）
                 Dialogue.Emotion emotion = Dialogue.Emotion.NORMAL;
+                boolean emoSpecified = false;
+                boolean emoParsed = false;
                 Matcher mEmo = EMOTION_PATTERN.matcher(textPart);
                 if (mEmo.matches()) {
+                    emoSpecified = true;
                     textPart = mEmo.group(1).trim();
-                    String emoStr = mEmo.group(2).trim().toUpperCase();
+                    String rawEmo = mEmo.group(2).trim();
+                    String emoUpper = rawEmo.toUpperCase();
+                    // 1) Try Dialogue enum by name (English) first
                     try {
-                        emotion = Dialogue.Emotion.valueOf(emoStr);
-                    } catch (Exception e) {
-                        // 忽略未知情绪，使用 NLP 解析或默认
-                        emotion = Dialogue.Emotion.NORMAL;
+                        emotion = Dialogue.Emotion.valueOf(emoUpper);
+                        emoParsed = true;
+                    } catch (Exception ex) {
+                        // 2) Try storage.Emotion parsing (supports code/name and can be extended to Chinese)
+                        try {
+                            com.lbc_plot.model.storage.Emotion se = com.lbc_plot.model.storage.Emotion.fromString(rawEmo);
+                            // Map storage.Emotion -> Dialogue.Emotion (best-effort)
+                            switch (se) {
+                                case NORMAL:
+                                    emotion = Dialogue.Emotion.NORMAL; break;
+                                case HAPPY:
+                                    emotion = Dialogue.Emotion.HAPPY; break;
+                                case ANGRY:
+                                    emotion = Dialogue.Emotion.ANGRY; break;
+                                case SAD:
+                                    emotion = Dialogue.Emotion.SAD; break;
+                                case SURPRISED:
+                                    emotion = Dialogue.Emotion.SURPRISED; break;
+                                case CONFUSED:
+                                    emotion = Dialogue.Emotion.CONFUSED; break;
+                                case BLUSH:
+                                    emotion = Dialogue.Emotion.HAPPY; break; // map blush -> happy
+                                case HURT:
+                                    emotion = Dialogue.Emotion.SAD; break; // map hurt -> sad
+                                default:
+                                    emotion = Dialogue.Emotion.NORMAL; break;
+                            }
+                            emoParsed = true;
+                        } catch (Exception ex2) {
+                            // ignore and leave as unparsed
+                        }
                     }
                 }
 
                 // 建立 Dialogue
                 Dialogue d = Dialogue.builder().text(textPart).speakerName(speaker).emotion(emotion).build();
+                // 如果没有指定情绪，或指定但未解析成功，则尝试用 NLP 做后备识别
+                if (!emoSpecified || !emoParsed) {
+                    try {
+                        Dialogue.Emotion nlp = d.emotionNLP();
+                        if (nlp != null) {
+                            d.setEmotion(nlp);
+                            emotion = nlp;
+                        }
+                    } catch (Exception ex) {
+                        // ignore NLP failures
+                    }
+                }
                 Record rec = new Record.Builder().dialogue(d).build();
                 // 如果当前背景存在或当前BGM存在，作为该 record 的一部分继承
                 if (currentBg != null) {
@@ -272,6 +336,23 @@ public class PlainTextRecordsParser {
                     }
                 }
 
+                // 如果本条是旁白，则复制上一条 record 的角色列表以保持画面一致
+                if (d.isNarrator() && !records.isEmpty()) {
+                    try {
+                        List<CharacterVisual> prevChars = records.get(records.size() - 1).getCharacters();
+                        if (prevChars != null && !prevChars.isEmpty()) {
+                                // 深拷贝 prevChars，避免修改原 record 的状态
+                                ObjectMapper om = new ObjectMapper();
+                                List<CharacterVisual> copy = om.convertValue(prevChars, new TypeReference<List<CharacterVisual>>(){});
+                                // 根据当前 Dialogue 重置 dim 状态（旁白全部压暗；否则仅与 speaker 匹配的立绘为亮）
+                                applyDimState(copy, d);
+                                rec.setCharacters(copy);
+                        }
+                    } catch (Exception ex) {
+                        logger.debug("Failed to copy character visuals for narrator: {}", ex.getMessage());
+                    }
+                }
+
                 records.add(rec);
                 continue;
             }
@@ -280,9 +361,69 @@ public class PlainTextRecordsParser {
             Dialogue d = Dialogue.builder().text(line).speakerName(Dialogue.DEFAULT_NARRATOR).build();
             Record rec = new Record.Builder().dialogue(d).build();
             if (currentBgm != null) rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_START, currentBgm.getAudioId()));
+            // 如果本条是旁白，复制上一条的角色立绘（如果存在）
+            if (d.isNarrator() && !records.isEmpty()) {
+                try {
+                    List<CharacterVisual> prevChars = records.get(records.size() - 1).getCharacters();
+                    if (prevChars != null && !prevChars.isEmpty()) {
+                        ObjectMapper om = new ObjectMapper();
+                        List<CharacterVisual> copy = om.convertValue(prevChars, new TypeReference<List<CharacterVisual>>(){});
+                        applyDimState(copy, d);
+                        rec.setCharacters(copy);
+                    }
+                } catch (Exception ex) {
+                    logger.debug("Failed to copy character visuals for narrator (fallback): {}", ex.getMessage());
+                }
+            }
             records.add(rec);
         }
 
         return records;
+    }
+
+    /**
+     * 根据当前 Dialogue 调整 character visuals 的亮/暗状态：
+     * - 当为旁白时，所有立绘都设为暗
+     * - 否则，仅与 speaker 匹配的立绘设为亮，其余设为暗
+     */
+    private static void applyDimState(List<CharacterVisual> chars, Dialogue d) {
+        if (chars == null || chars.isEmpty() || d == null) return;
+        try {
+            boolean narrator = d.isNarrator();
+            String speakerName = d.getSpeakerName();
+            for (CharacterVisual cv : chars) {
+                try {
+                    if (narrator) {
+                        cv.setDim(true);
+                    } else {
+                        // 尝试按 CharacterRef 名称匹配
+                        String charName = null;
+                        try {
+                            if (cv.getChara() != null) charName = cv.getChara().getCharacterName();
+                        } catch (Exception ex) {
+                            // ignore
+                        }
+                        // 如果没有名字则尝试按 characterId
+                        if (charName == null || charName.isBlank()) {
+                            String cid = null;
+                            try { cid = cv.getCharacterId(); } catch (Exception ex) {}
+                            if (cid != null && cid.equals(speakerName)) {
+                                cv.setDim(false);
+                                continue;
+                            }
+                        }
+                        if (charName != null && !charName.isBlank() && charName.equals(speakerName)) {
+                            cv.setDim(false);
+                        } else {
+                            cv.setDim(true);
+                        }
+                    }
+                } catch (Exception ex) {
+                    try { cv.setDim(true); } catch (Exception ignore) {}
+                }
+            }
+        } catch (Exception ex) {
+            // 忽略所有异常以保证解析器健壮性
+        }
     }
 }

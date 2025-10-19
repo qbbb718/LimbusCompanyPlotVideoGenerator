@@ -1,5 +1,5 @@
 [ {
-  "uuid" : "7e13b468-17f3-4b20-80bc-22d09747501c",
+  "uuid" : "671b32b7-a169-4d83-98d9-4f7c2ea56be5",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "嘿，老兄",
@@ -25,6 +25,21 @@
     "fadeDuration" : null
   } ],
   "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ],
   "characters" : [ {
     "chara" : {
       "characterID" : "gregor-id",
@@ -52,24 +67,9 @@
     "adjX" : 0,
     "adjY" : 0,
     "dim" : false
-  } ],
-  "backgroundVisuals" : [ {
-    "background" : {
-      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
-      "path" : "assets/backgrounds/Story_private_room.png",
-      "name" : "办公室",
-      "displayName" : "办公室",
-      "imagePath" : "assets/backgrounds/Story_private_room.png",
-      "source" : null,
-      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true
   } ]
 }, {
-  "uuid" : "2deab8cf-5960-4e9f-8f45-cbe74b5c3927",
+  "uuid" : "c7d47a98-a2c6-4ccb-a4a0-fa99b01d325a",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "或者是女士，我不确定",
@@ -90,6 +90,21 @@
   },
   "audioCommands" : [ ],
   "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ],
   "characters" : [ {
     "chara" : {
       "characterID" : "gregor-id",
@@ -117,24 +132,9 @@
     "adjX" : 0,
     "adjY" : 0,
     "dim" : false
-  } ],
-  "backgroundVisuals" : [ {
-    "background" : {
-      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
-      "path" : "assets/backgrounds/Story_private_room.png",
-      "name" : "办公室",
-      "displayName" : "办公室",
-      "imagePath" : "assets/backgrounds/Story_private_room.png",
-      "source" : null,
-      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true
   } ]
 }, {
-  "uuid" : "45b93771-934c-4a7b-beb1-a20d5295e09b",
+  "uuid" : "1b50af17-49a0-4b2f-b870-2ae4687c1625",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "咳，总之呢……",
@@ -153,8 +153,28 @@
     "speed" : 3,
     "emotion" : "HAPPY"
   },
-  "audioCommands" : [ ],
+  "audioCommands" : [ {
+    "type" : "BGM_STOP",
+    "audioId" : "BusInside (online-audio-converter.com)",
+    "volume" : null,
+    "fadeDuration" : null
+  } ],
   "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ],
   "characters" : [ {
     "chara" : {
       "characterID" : "gregor-id",
@@ -182,24 +202,9 @@
     "adjX" : 0,
     "adjY" : 0,
     "dim" : false
-  } ],
-  "backgroundVisuals" : [ {
-    "background" : {
-      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
-      "path" : "assets/backgrounds/Story_private_room.png",
-      "name" : "办公室",
-      "displayName" : "办公室",
-      "imagePath" : "assets/backgrounds/Story_private_room.png",
-      "source" : null,
-      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true
   } ]
 }, {
-  "uuid" : "122dd3bb-53ed-496a-9e57-1feb7a93662c",
+  "uuid" : "6586b8fe-83a5-45dd-abb2-f97433454608",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -220,6 +225,21 @@
   },
   "audioCommands" : [ ],
   "dirty" : true,
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ],
   "characters" : [ {
     "chara" : {
       "characterID" : "gregor-id",
@@ -247,24 +267,9 @@
     "adjX" : 0,
     "adjY" : 0,
     "dim" : false
-  } ],
-  "backgroundVisuals" : [ {
-    "background" : {
-      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
-      "path" : "assets/backgrounds/Story_private_room.png",
-      "name" : "办公室",
-      "displayName" : "办公室",
-      "imagePath" : "assets/backgrounds/Story_private_room.png",
-      "source" : null,
-      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true
   } ]
 }, {
-  "uuid" : "13a23a00-2457-456a-8c98-3fb19fa88bb5",
+  "uuid" : "8241cbc5-e3b3-4dec-8c46-e84b506f4f5c",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -274,24 +279,51 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "NORMAL"
+    "emotion" : "SURPRISED"
   },
   "audioCommands" : [ ],
   "dirty" : true,
-  "characters" : [ ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
+      "uuid" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074",
       "path" : "assets/backgrounds/Story_private_room.png",
       "name" : "办公室",
       "displayName" : "办公室",
       "imagePath" : "assets/backgrounds/Story_private_room.png",
       "source" : null,
-      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
+      "backgroundID" : "dc3c151f-59e4-4bc1-a4b1-6aff18ace074"
     },
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.0,
     "visible" : true
+  } ],
+  "characters" : [ {
+    "chara" : {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    },
+    "portrait" : {
+      "portraitID" : "serious",
+      "characterID" : "gregor-id",
+      "imagePath" : "Gregor-face_serious_R.png",
+      "portName" : "serious",
+      "emotion" : "angry",
+      "faceX" : 282,
+      "faceY" : 0,
+      "length" : 183,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : null
+    },
+    "posX" : 605,
+    "posY" : 257,
+    "adjX" : 0,
+    "adjY" : 0,
+    "dim" : true
   } ]
 } ]

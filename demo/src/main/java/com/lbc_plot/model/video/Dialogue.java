@@ -148,28 +148,96 @@ public class Dialogue {
         }
         
         String lowerText = text.toLowerCase();
-        
-        if (lowerText.contains("开心") || lowerText.contains("高兴") || 
-            lowerText.contains("哈哈") || lowerText.contains("嘻嘻")) {
-            return Emotion.HAPPY;
-        } else if (lowerText.contains("生气") || lowerText.contains("愤怒") || 
-                  lowerText.contains("可恶") || lowerText.contains("混蛋")) {
-            return Emotion.ANGRY;
-        } else if (lowerText.contains("悲伤") || lowerText.contains("难过") || 
-                  lowerText.contains("哭泣") || lowerText.contains("眼泪")) {
-            return Emotion.SAD;
-        } else if (lowerText.contains("惊讶") || lowerText.contains("吃惊") || 
-                  lowerText.contains("什么") || lowerText.contains("！")) {
+        // 先检测强烈标点（多个感叹号或问号倾向于惊讶/生气/紧张）
+        int exclam = countChar(lowerText, '!');
+        int qmark = countChar(lowerText, '?');
+        int ellipses = countSubstring(lowerText, "...");
+
+        if (exclam >= 2) {
+            // 多个叹号更可能是生气或惊讶，使用关键词进一步判定
+            if (lowerText.contains("生气") || lowerText.contains("愤怒") || lowerText.contains("可恶")) {
+                return Emotion.ANGRY;
+            }
+            if (lowerText.contains("开心") || lowerText.contains("哈哈") || lowerText.contains("好耶")) {
+                return Emotion.HAPPY;
+            }
             return Emotion.SURPRISED;
-        } else if (lowerText.contains("困惑") || lowerText.contains("疑惑") || 
-                  lowerText.contains("为什么") || lowerText.contains("？")) {
+        }
+
+        if (qmark >= 2) {
             return Emotion.CONFUSED;
-        } else if (lowerText.contains("紧张") || lowerText.contains("害怕") || 
-                  lowerText.contains("担心")) {
+        }
+
+        // 直接关键词匹配（中文扩展）
+        if (containsAny(lowerText, "开心", "高兴", "快乐", "喜悦", "哈哈", "嘻嘻", "好可爱", "好棒", "太棒了")) {
+            return Emotion.HAPPY;
+        }
+        if (containsAny(lowerText, "生气", "愤怒", "可恶", "混蛋", "气死", "讨厌")) {
+            return Emotion.ANGRY;
+        }
+        if (containsAny(lowerText, "悲伤", "难过", "哭泣", "眼泪", "伤心", "难受", "呜呜")) {
+            return Emotion.SAD;
+        }
+        if (containsAny(lowerText, "惊讶", "吃惊", "天哪", "什么", "居然", "竟然", "哇")) {
+            return Emotion.SURPRISED;
+        }
+        if (containsAny(lowerText, "困惑", "疑惑", "为什么", "怎么回事", "搞不清楚")) {
+            return Emotion.CONFUSED;
+        }
+        if (containsAny(lowerText, "紧张", "害怕", "担心", "怕", "心跳")) {
             return Emotion.NERVOUS;
         }
-        
+
+        // 英文短语支持（基础）
+        if (containsAny(lowerText, "happy", "glad", "joy", "lol", "haha")) {
+            return Emotion.HAPPY;
+        }
+        if (containsAny(lowerText, "angry", "mad", "furious", "damn", "shit")) {
+            return Emotion.ANGRY;
+        }
+        if (containsAny(lowerText, "sad", "sorry", "sorry to", "cry")) {
+            return Emotion.SAD;
+        }
+        if (containsAny(lowerText, "wow", "surprised", "what the", "oh my")) {
+            return Emotion.SURPRISED;
+        }
+        if (containsAny(lowerText, "confused", "puzzled", "huh", "what?")) {
+            return Emotion.CONFUSED;
+        }
+        if (containsAny(lowerText, "nervous", "scared", "afraid", "worried")) {
+            return Emotion.NERVOUS;
+        }
+
+        // 省略号和单问号视为犹豫/困惑的轻度信号
+        if (ellipses > 0 || qmark == 1) {
+            return Emotion.CONFUSED;
+        }
+
         return Emotion.NORMAL;
+    }
+
+    private static int countChar(String s, char c) {
+        int cnt = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) cnt++;
+        }
+        return cnt;
+    }
+
+    private static int countSubstring(String s, String sub) {
+        int idx = 0, cnt = 0;
+        while ((idx = s.indexOf(sub, idx)) >= 0) {
+            cnt++;
+            idx += sub.length();
+        }
+        return cnt;
+    }
+
+    private static boolean containsAny(String s, String... tokens) {
+        for (String t : tokens) {
+            if (s.contains(t)) return true;
+        }
+        return false;
     }
     
     /**

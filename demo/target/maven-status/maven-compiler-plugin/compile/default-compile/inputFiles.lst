@@ -20,6 +20,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\Ti
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\Camera.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\EmotionMapper.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\CharacterMapper.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\BackgroundMapper.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\text\PlainTextRecordsParser.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\CharacterVisualOrderService.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\RenderOfVideo.java
@@ -32,6 +33,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\Image
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\impl\ThumbnailServiceImpl.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\manager\TextLayerManager.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\RenderOfImage.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\impl\BackgroundServiceImpl.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\AppConfig.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\model\AudioSegment.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\storage\Portrait.java
@@ -53,12 +55,14 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\VideoAud
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\ThumbnailService.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\ProjectConfig.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\model\AudioCommand.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\BackgroundService.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\VideoExporter.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\storage\MyCharacter.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\db\SQLiteDatabaseManager.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\PathUtils.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\model\TextLayerInfo.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\json\ColorSerializer.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\BackgroundDAO.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\Dialogue.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\manager\ImageLayerManager.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\BackgroundVisual.java
