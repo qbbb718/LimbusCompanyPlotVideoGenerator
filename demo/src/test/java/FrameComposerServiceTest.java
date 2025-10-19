@@ -78,7 +78,7 @@ class FrameComposerServiceTest {
             .build();
         com.lbc_plot.model.storage.Portrait p4 = com.lbc_plot.model.storage.Portrait.builder("Gregor-face_serious_R.png")
             .portraitID("serious").characterID("gregor-id").portName("serious").faceX(282)
-            .emotion(com.lbc_plot.model.storage.Emotion.NORMAL)
+            .emotion(com.lbc_plot.model.storage.Emotion.ANGRY)
             .build();
 
         // 创建角色并指定一些属性（与 RecordsCreater 保持一致）
@@ -288,10 +288,10 @@ class FrameComposerServiceTest {
     // 这个字符串根据 helpers/RecordsCreater.creatSupersTestRecord() 构造
     String script = "[BusInside (online-audio-converter.com)]\n" +
         "{Story_private_room.png}\n" +
-        "格里高尔: 嘿，老兄\n" +
-        "格里高尔: 或者是女士，我不确定\n" +
-        "格里高尔: 咳，总之呢……\n" +
-        "格里高尔: 别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+        "格里高尔: 嘿，老兄(NOLMAL)\n" +
+        "格里高尔: 或者是女士，我不确定(SAD)\n" +
+        "格里高尔: 咳，总之呢……(HAPPY)\n" +
+        "格里高尔: 别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!(ANGRY)\n" +
         "旁白: ……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 
     // 写入临时文件

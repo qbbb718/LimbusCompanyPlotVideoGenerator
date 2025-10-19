@@ -1,5 +1,5 @@
 [ {
-  "uuid" : "3433c2e7-87af-4ed9-af5a-e886531c70ba",
+  "uuid" : "7e13b468-17f3-4b20-80bc-22d09747501c",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "嘿，老兄",
@@ -35,10 +35,10 @@
       "colorText" : "251,219,179"
     },
     "portrait" : {
-      "portraitID" : "depressed",
+      "portraitID" : "idle",
       "characterID" : "gregor-id",
-      "imagePath" : "格里高尔-face_depressed_L.png",
-      "portName" : "depressed",
+      "imagePath" : "格里高尔-face_idle_R.png",
+      "portName" : "idle",
       "emotion" : "normal",
       "faceX" : 282,
       "faceY" : 0,
@@ -55,13 +55,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
       "path" : "assets/backgrounds/Story_private_room.png",
       "name" : "办公室",
       "displayName" : "办公室",
       "imagePath" : "assets/backgrounds/Story_private_room.png",
       "source" : null,
-      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
+      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
     },
     "posX" : 0,
     "posY" : 0,
@@ -69,7 +69,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "9bdaa2f8-f78d-4338-a752-f8d914fd3aca",
+  "uuid" : "2deab8cf-5960-4e9f-8f45-cbe74b5c3927",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "或者是女士，我不确定",
@@ -86,7 +86,7 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "NORMAL"
+    "emotion" : "SAD"
   },
   "audioCommands" : [ ],
   "dirty" : true,
@@ -104,7 +104,7 @@
       "characterID" : "gregor-id",
       "imagePath" : "格里高尔-face_depressed_L.png",
       "portName" : "depressed",
-      "emotion" : "normal",
+      "emotion" : "sad",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
@@ -120,13 +120,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
       "path" : "assets/backgrounds/Story_private_room.png",
       "name" : "办公室",
       "displayName" : "办公室",
       "imagePath" : "assets/backgrounds/Story_private_room.png",
       "source" : null,
-      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
+      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
     },
     "posX" : 0,
     "posY" : 0,
@@ -134,7 +134,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "c438a3a5-91f4-43dd-ab9b-0a4fa25c900e",
+  "uuid" : "45b93771-934c-4a7b-beb1-a20d5295e09b",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "咳，总之呢……",
@@ -151,7 +151,7 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "NORMAL"
+    "emotion" : "HAPPY"
   },
   "audioCommands" : [ ],
   "dirty" : true,
@@ -165,11 +165,11 @@
       "colorText" : "251,219,179"
     },
     "portrait" : {
-      "portraitID" : "depressed",
+      "portraitID" : "smile2",
       "characterID" : "gregor-id",
-      "imagePath" : "格里高尔-face_depressed_L.png",
-      "portName" : "depressed",
-      "emotion" : "normal",
+      "imagePath" : "格里高尔-face_smile2_L.png",
+      "portName" : "smile2",
+      "emotion" : "happy",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
@@ -185,13 +185,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
       "path" : "assets/backgrounds/Story_private_room.png",
       "name" : "办公室",
       "displayName" : "办公室",
       "imagePath" : "assets/backgrounds/Story_private_room.png",
       "source" : null,
-      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
+      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
     },
     "posX" : 0,
     "posY" : 0,
@@ -199,7 +199,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "ffcdbc84-70aa-4546-a1b5-8f29fb9ca470",
+  "uuid" : "122dd3bb-53ed-496a-9e57-1feb7a93662c",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -216,7 +216,7 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "NORMAL"
+    "emotion" : "ANGRY"
   },
   "audioCommands" : [ ],
   "dirty" : true,
@@ -230,11 +230,11 @@
       "colorText" : "251,219,179"
     },
     "portrait" : {
-      "portraitID" : "depressed",
+      "portraitID" : "serious",
       "characterID" : "gregor-id",
-      "imagePath" : "格里高尔-face_depressed_L.png",
-      "portName" : "depressed",
-      "emotion" : "normal",
+      "imagePath" : "Gregor-face_serious_R.png",
+      "portName" : "serious",
+      "emotion" : "angry",
       "faceX" : 282,
       "faceY" : 0,
       "length" : 183,
@@ -250,13 +250,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
       "path" : "assets/backgrounds/Story_private_room.png",
       "name" : "办公室",
       "displayName" : "办公室",
       "imagePath" : "assets/backgrounds/Story_private_room.png",
       "source" : null,
-      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
+      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
     },
     "posX" : 0,
     "posY" : 0,
@@ -264,7 +264,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "21a83867-b74b-4499-a818-0ac253d4b371",
+  "uuid" : "13a23a00-2457-456a-8c98-3fb19fa88bb5",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -281,13 +281,13 @@
   "characters" : [ ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "uuid" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9",
       "path" : "assets/backgrounds/Story_private_room.png",
       "name" : "办公室",
       "displayName" : "办公室",
       "imagePath" : "assets/backgrounds/Story_private_room.png",
       "source" : null,
-      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
+      "backgroundID" : "341cdeaa-6624-48ef-b09b-77d60c7fe0f9"
     },
     "posX" : 0,
     "posY" : 0,

@@ -283,9 +283,10 @@ public class CharacterServiceImpl implements CharacterService {
     @Override
     public Portrait findPortraitByEmotion(String characterId, String emotion) {
         MyCharacter character = getCharacter(characterId);
-        
+        com.lbc_plot.model.storage.Emotion desired = com.lbc_plot.model.storage.Emotion.fromString(emotion);
+
         return character.getPortraits().stream()
-            .filter(portrait -> emotion.equals(portrait.getEmotion()))
+            .filter(portrait -> portrait.getEmotion() != null && portrait.getEmotion().equals(desired))
             .findFirst()
             .orElseGet(() -> getDefaultPortrait(character)); // 找不到返回默认立绘
     }
