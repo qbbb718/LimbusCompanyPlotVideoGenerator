@@ -1,0 +1,95 @@
+2025-10-19 15:30:00.630 [main] DEBUG c.l.c.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-19 15:30:00.632 [main] DEBUG c.l.c.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-19 15:30:00.635 [main] INFO  helpers.RecordsCreater - ===== 开始创建超级测试记录 =====
+2025-10-19 15:30:00.635 [main] DEBUG helpers.RecordsCreater - 创建测试立绘对象...
+2025-10-19 15:30:00.636 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=idle, characterID=null, imagePath=格里高尔-face_idle_R.png, portName=null, emotion=NORMAL
+2025-10-19 15:30:00.636 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=depressed, characterID=null, imagePath=格里高尔-face_depressed_L.png, portName=null, emotion=NORMAL
+2025-10-19 15:30:00.637 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=smile2, characterID=null, imagePath=格里高尔-face_smile2_L.png, portName=null, emotion=NORMAL
+2025-10-19 15:30:00.637 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=serious, characterID=null, imagePath=Gregor-face_serious_R.png, portName=null, emotion=NORMAL
+2025-10-19 15:30:00.637 [main] INFO  helpers.RecordsCreater - 创建测试角色对象...
+2025-10-19 15:30:00.650 [main] DEBUG helpers.RecordsCreater - 初始化数据库连接...
+2025-10-19 15:30:00.651 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-10-19 15:30:00.651 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-10-19 15:30:00.651 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-10-19 15:30:00.656 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-10-19 15:30:00.656 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-10-19 15:30:00.791 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-10-19 15:30:00.791 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-10-19 15:30:00.792 [main] ERROR helpers.SQLiteTestDatabaseManager - 测试数据库初始化失败
+java.lang.NullPointerException: null
+	at java.base/java.io.Reader.<init>(Reader.java:168)
+	at java.base/java.io.InputStreamReader.<init>(InputStreamReader.java:88)
+	at helpers.SQLiteTestDatabaseManager.createTables(SQLiteTestDatabaseManager.java:102)
+	at helpers.SQLiteTestDatabaseManager.initializeDatabase(SQLiteTestDatabaseManager.java:75)
+	at helpers.SQLiteTestDatabaseManager.<init>(SQLiteTestDatabaseManager.java:43)
+	at helpers.RecordsCreater.creatSupersTestRecord(RecordsCreater.java:124)
+	at FrameComposerServiceTest.testRenderOfRecords(FrameComposerServiceTest.java:187)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:727)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:156)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:147)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:103)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:93)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:92)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:86)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:217)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:213)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:138)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:68)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:147)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:127)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:90)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:55)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:102)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:95)
+	at org.junit.platform.launcher.core.DefaultLauncherSession$DelegatingLauncher.execute(DefaultLauncherSession.java:91)
+	at org.junit.platform.launcher.core.SessionPerRequestLauncher.execute(SessionPerRequestLauncher.java:60)
+	at org.eclipse.jdt.internal.junit5.runner.JUnit5TestReference.run(JUnit5TestReference.java:100)
+	at org.eclipse.jdt.internal.junit.runner.TestExecution.run(TestExecution.java:40)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:520)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:748)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:443)
+	at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:211)
+2025-10-19 15:30:00.799 [main] DEBUG c.l.c.C.manager.BaseLayerManager - 已清空所有图层和文字

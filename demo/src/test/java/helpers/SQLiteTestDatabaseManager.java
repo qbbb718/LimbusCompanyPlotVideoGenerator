@@ -97,16 +97,16 @@ public class SQLiteTestDatabaseManager {
     private void createTables() {
         logger.info("开始创建数据库表结构");
         
-        try (InputStream inputStream = getClass().getClassLoader()
+        InputStream inputStream = getClass().getClassLoader()
                 .getResourceAsStream("db/initial_schema.sql");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            
-            if (inputStream == null) {
-                logger.error("找不到数据库初始化文件: db/initial_schema.sql");
-                throw new RuntimeException("找不到数据库初始化文件: db/initial_schema.sql");
-            }
-            
-            logger.debug("读取数据库初始化文件成功");
+
+        if (inputStream == null) {
+            logger.error("找不到数据库初始化文件: db/initial_schema.sql (请确认该文件已在 classpath 中)");
+            throw new RuntimeException("找不到数据库初始化文件: db/initial_schema.sql");
+        }
+
+        logger.debug("读取数据库初始化文件成功");
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             
             StringBuilder sqlBuilder = new StringBuilder();
             String line;
