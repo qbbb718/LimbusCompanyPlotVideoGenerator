@@ -1,0 +1,56 @@
+2025-10-19 15:51:03.105 [main] DEBUG c.l.c.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-19 15:51:03.108 [main] DEBUG c.l.c.C.manager.BaseLayerManager - 设置输出尺寸: 1920x1080
+2025-10-19 15:51:03.111 [main] INFO  helpers.RecordsCreater - ===== 开始创建超级测试记录 =====
+2025-10-19 15:51:03.112 [main] DEBUG helpers.RecordsCreater - 创建测试立绘对象...
+2025-10-19 15:51:03.113 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=idle, characterID=null, imagePath=格里高尔-face_idle_R.png, portName=null, emotion=NORMAL
+2025-10-19 15:51:03.114 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=depressed, characterID=null, imagePath=格里高尔-face_depressed_L.png, portName=null, emotion=NORMAL
+2025-10-19 15:51:03.114 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=smile2, characterID=null, imagePath=格里高尔-face_smile2_L.png, portName=null, emotion=NORMAL
+2025-10-19 15:51:03.114 [main] DEBUG com.lbc_plot.model.storage.Portrait - Building Portrait with: portraitID=serious, characterID=null, imagePath=Gregor-face_serious_R.png, portName=null, emotion=NORMAL
+2025-10-19 15:51:03.114 [main] INFO  helpers.RecordsCreater - 创建测试角色对象...
+2025-10-19 15:51:03.122 [main] DEBUG helpers.RecordsCreater - 初始化数据库连接...
+2025-10-19 15:51:03.124 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建SQLite测试数据库管理器
+2025-10-19 15:51:03.124 [main] DEBUG helpers.SQLiteTestDatabaseManager - 开始初始化测试数据库
+2025-10-19 15:51:03.124 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查SQLite JDBC驱动
+2025-10-19 15:51:03.127 [main] DEBUG helpers.SQLiteTestDatabaseManager - SQLite JDBC驱动加载成功
+2025-10-19 15:51:03.127 [main] DEBUG helpers.SQLiteTestDatabaseManager - 创建内存数据库连接: jdbc:sqlite::memory:
+2025-10-19 15:51:03.254 [main] INFO  helpers.SQLiteTestDatabaseManager - 内存数据库连接创建成功
+2025-10-19 15:51:03.254 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始创建数据库表结构
+2025-10-19 15:51:03.255 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取数据库初始化文件成功
+2025-10-19 15:51:03.255 [main] DEBUG helpers.SQLiteTestDatabaseManager - 读取SQL文件完成: 59行, 1809字符
+2025-10-19 15:51:03.256 [main] DEBUG helpers.SQLiteTestDatabaseManager - 解析出 3 条SQL语句
+2025-10-19 15:51:03.256 [main] INFO  helpers.SQLiteTestDatabaseManager - 分类完成: 3个CREATE TABLE, 0个CREATE INDEX, 0个其他语句
+2025-10-19 15:51:03.256 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE TABLE语句
+2025-10-19 15:51:03.256 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[1]: CHARACTERS
+2025-10-19 15:51:03.259 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTERS
+2025-10-19 15:51:03.259 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[2]: PORTRAITS
+2025-10-19 15:51:03.259 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: PORTRAITS
+2025-10-19 15:51:03.260 [main] DEBUG helpers.SQLiteTestDatabaseManager - 执行CREATE TABLE[3]: CHARACTER_PORTRAITS
+2025-10-19 15:51:03.260 [main] INFO  helpers.SQLiteTestDatabaseManager - 创建表成功: CHARACTER_PORTRAITS
+2025-10-19 15:51:03.260 [main] INFO  helpers.SQLiteTestDatabaseManager - 开始执行CREATE INDEX语句
+2025-10-19 15:51:03.260 [main] INFO  helpers.SQLiteTestDatabaseManager - SQL执行完成: 共执行 3 个表, 0 个索引
+2025-10-19 15:51:03.260 [main] INFO  helpers.SQLiteTestDatabaseManager - 验证表创建情况
+2025-10-19 15:51:03.260 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: characters
+2025-10-19 15:51:03.262 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-10-19 15:51:03.262 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 characters 存在: true
+2025-10-19 15:51:03.263 [main] DEBUG helpers.SQLiteTestDatabaseManager - 检查表是否存在: portraits
+2025-10-19 15:51:03.263 [main] DEBUG helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-10-19 15:51:03.263 [main] INFO  helpers.SQLiteTestDatabaseManager - 表 portraits 存在: true
+2025-10-19 15:51:03.263 [main] INFO  helpers.SQLiteTestDatabaseManager - 列出所有表
+2025-10-19 15:51:03.264 [main] INFO  helpers.SQLiteTestDatabaseManager -  - characters (table)
+2025-10-19 15:51:03.264 [main] INFO  helpers.SQLiteTestDatabaseManager -  - portraits (table)
+2025-10-19 15:51:03.264 [main] INFO  helpers.SQLiteTestDatabaseManager -  - character_portraits (table)
+2025-10-19 15:51:03.264 [main] INFO  helpers.SQLiteTestDatabaseManager -  - sqlite_sequence (table)
+2025-10-19 15:51:03.264 [main] INFO  helpers.SQLiteTestDatabaseManager - 共发现 4 个表/视图
+2025-10-19 15:51:03.264 [main] INFO  helpers.SQLiteTestDatabaseManager - 测试数据库初始化完成
+2025-10-19 15:51:03.264 [main] DEBUG helpers.SQLiteTestDatabaseManager - 请求获取数据库连接
+2025-10-19 15:51:03.264 [main] DEBUG helpers.SQLiteTestDatabaseManager - 使用现有连接: 300983713
+2025-10-19 15:51:03.435 [main] DEBUG helpers.RecordsCreater - 构建角色可视化对象...
+2025-10-19 15:51:03.530 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-19 15:51:03.571 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-19 15:51:03.608 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-19 15:51:03.651 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-19 15:51:03.651 [main] DEBUG c.l.model.video.CharacterVisual - 格里高尔的身高为168,渲染距离为257
+2025-10-19 15:51:03.651 [main] INFO  helpers.RecordsCreater - 加载背景资源...
+2025-10-19 15:51:03.765 [main] DEBUG helpers.RecordsCreater - 构建对话记录...
+2025-10-19 15:51:03.767 [main] INFO  helpers.RecordsCreater - 组装最终record对象...
+2025-10-19 15:51:03.951 [main] DEBUG c.l.c.C.manager.BaseLayerManager - 已清空所有图层和文字

@@ -4,3 +4,12 @@
 tree /f > project_structure.txt
 
 仓库根的 PROJECT_CONTEXT.md 的内容
+
+
+[TODO]
+
+JSON文件导入导出更新(音频部分)
+
+文本转为项目功能
+
+学前端三件套HTML, CSS, JS

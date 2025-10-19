@@ -305,6 +305,9 @@ class FrameComposerServiceTest {
             }
             
             // 4. 处理视频
+            
+            VolumeConfig.setUserVolumes(0.1f, 0.9f, 1.2f);
+            
             logger.info("\n开始视频处理...");
             BatchVideoProcessor.processRecordList(
                 records,

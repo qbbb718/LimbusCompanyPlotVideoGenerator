@@ -2,11 +2,14 @@ package com.lbc_plot.core.audio.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 /**
  * 音频操作指令-Record中
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AudioCommand {
     private AudioCommandType type;    // BGM_START, BGM_STOP, SFX_PLAY, VOICE_PLAY
     private String audioId;           // 音频文件标识
@@ -68,10 +71,12 @@ public class AudioCommand {
     }
 
     // 便捷方法
+    @JsonIgnore
     public boolean isBgmCommand() {
         return type == AudioCommandType.BGM_START || type == AudioCommandType.BGM_STOP;
     }
     
+    @JsonIgnore
     public boolean isPlayCommand() {
         return type == AudioCommandType.SFX_PLAY || type == AudioCommandType.VOICE_PLAY;
     }

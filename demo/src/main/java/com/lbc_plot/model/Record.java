@@ -28,7 +28,6 @@ public class Record {
     private List<CharacterVisual> chars; // 角色立绘列表
     @JsonIgnore
     private List<EffectVisual> effects;  // 特效列表
-    @JsonIgnore
     private List<AudioCommand> audioCommands; // 音频操作列表
     private boolean isDirty; // 在上次导出后是否进行过修改
     @JsonIgnore
