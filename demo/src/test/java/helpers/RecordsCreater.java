@@ -164,7 +164,7 @@ public class RecordsCreater {
 
         // 加载背景
         logger.info("加载背景资源...");
-        Background background = new Background("Story_private_room.png");
+    Background background = new Background("Story_private_room.png", "Story_private_room");
         //ImageExporter.exportImage(background.getImage(), "E:/LimbusCompanyPlotVideoGenerator/demo/target/test-logs/load_bg.png");
 
         BackgroundVisual backgroundVisual = new BackgroundVisual(background);
@@ -246,6 +246,7 @@ public class RecordsCreater {
             .dialogue(dialogue_3)
             .addBackground(backgroundVisual)
             .addCharacter(characterVisual_3)
+            .addAudioCommand(audioCommand2)
             .build();
         record_4 = new Record.Builder()
             .uuid(ID_4)

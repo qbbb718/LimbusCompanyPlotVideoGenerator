@@ -1,7 +1,7 @@
 package com.lbc_plot.model.storage;
 
 import java.awt.image.BufferedImage;
-import java.nio.file.Path;
+// import java.nio.file.Path;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 public class Background {
     private String uuid; // 唯一id（保证换源后能直接替换
     private String path; // 文件存储路径
+    private String name; // 背景显示名（用于场景地点显示）
     @JsonIgnore
     private BufferedImage image; // 读入的图像，初始为null
     
@@ -20,20 +21,24 @@ public class Background {
      * 路径从bg开始
      */
     public Background(String path) {
-        uuid = UUID.randomUUID().toString();
-        this.path = path;
-        this.image = null; // 初始时image为null，实现懒加载
+        this(UUID.randomUUID().toString(), path, null);
     }
 
-    public Background(String uuid, String path) {
+    public Background(String path, String name) {
+        this(UUID.randomUUID().toString(), path, name);
+    }
+
+    public Background(String uuid, String path, String name) {
         this.uuid = uuid;
         this.path = path;
+        this.name = name;
         this.image = null; // 初始时image为null，实现懒加载
     }
 
     public Background() {
         this.uuid = null;
         this.path = null;
+        this.name = null;
         this.image = null; // 初始时image为null，实现懒加载
     }
     
@@ -110,6 +115,14 @@ public class Background {
         // 路径改变时，需要重新加载图像
         image = null;
     }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
     
     /**
      * 获取图像宽度（懒加载版本）
@@ -134,6 +147,7 @@ public class Background {
         return "Background{" +
                 "uuid='" + uuid + '\'' +
                 ", path='" + path + '\'' +
+                ", name='" + name + '\'' +
                 ", loaded=" + isImageLoaded() +
                 '}';
     }

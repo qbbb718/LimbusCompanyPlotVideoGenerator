@@ -169,6 +169,28 @@ public class Record {
         }
     }
 
+    /**
+     * 添加背景并在对话没有指定地点时使用背景的 name 作为对话 location
+     */
+    public void addBackgroundVisualAndApplyLocation(BackgroundVisual background) {
+        if (this.bg == null) this.bg = new ArrayList<>();
+        this.bg.add(background);
+        this.isDirty = true;
+
+        try {
+            if (this.dialogue != null) {
+                String currentLoc = this.dialogue.getLocation();
+                if (currentLoc == null || Dialogue.DEFAULT_LOCATION.equals(currentLoc)) {
+                    if (background != null && background.getBackground() != null && background.getBackground().getName() != null && !background.getBackground().getName().isBlank()) {
+                        this.dialogue.setLocation(background.getBackground().getName());
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            // 忽略任何异常以保证 API 稳定性
+        }
+    }
+
     public void addCharacterVisual(CharacterVisual character) {
         if (this.chars != null) {
             this.chars.add(character);
@@ -252,6 +274,19 @@ public class Record {
 
         public Builder addBackground(BackgroundVisual background) {
             this.bg.add(background);
+            // If dialogue is present and location is default, apply background name
+            try {
+                if (this.dialogue != null) {
+                    String loc = this.dialogue.getLocation();
+                    if (loc == null || Dialogue.DEFAULT_LOCATION.equals(loc)) {
+                        if (background != null && background.getBackground() != null && background.getBackground().getName() != null && !background.getBackground().getName().isBlank()) {
+                            this.dialogue.setLocation(background.getBackground().getName());
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                // ignore
+            }
             return this;
         }
 

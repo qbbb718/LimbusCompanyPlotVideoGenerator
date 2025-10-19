@@ -1,0 +1,272 @@
+[ {
+  "uuid" : "dabfd2c4-a14e-473f-b52b-107fad1783d2",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "嘿，老兄",
+    "location" : "default",
+    "speakerC" : [ {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    } ],
+    "speakerName" : "格里高尔",
+    "faction" : "中立",
+    "align" : "LEFT",
+    "speed" : 3,
+    "emotion" : "NORMAL"
+  },
+  "audioCommands" : [ {
+    "type" : "BGM_START",
+    "audioId" : "BusInside (online-audio-converter.com)",
+    "volume" : null,
+    "fadeDuration" : null
+  } ],
+  "dirty" : true,
+  "characters" : [ {
+    "chara" : {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    },
+    "portrait" : {
+      "portraitID" : "depressed",
+      "characterID" : "gregor-id",
+      "imagePath" : "格里高尔-face_depressed_L.png",
+      "portName" : "depressed",
+      "emotion" : "normal",
+      "faceX" : 282,
+      "faceY" : 0,
+      "length" : 183,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : null
+    },
+    "posX" : 605,
+    "posY" : 257,
+    "adjX" : 0,
+    "adjY" : 0,
+    "dim" : false
+  } ],
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "e2f76674-c431-4a98-b009-f251e493119b",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "或者是女士，我不确定",
+    "location" : "default",
+    "speakerC" : [ {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    } ],
+    "speakerName" : "格里高尔",
+    "faction" : "中立",
+    "align" : "LEFT",
+    "speed" : 3,
+    "emotion" : "NORMAL"
+  },
+  "audioCommands" : [ ],
+  "dirty" : true,
+  "characters" : [ {
+    "chara" : {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    },
+    "portrait" : {
+      "portraitID" : "depressed",
+      "characterID" : "gregor-id",
+      "imagePath" : "格里高尔-face_depressed_L.png",
+      "portName" : "depressed",
+      "emotion" : "normal",
+      "faceX" : 282,
+      "faceY" : 0,
+      "length" : 183,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : null
+    },
+    "posX" : 605,
+    "posY" : 257,
+    "adjX" : 0,
+    "adjY" : 0,
+    "dim" : false
+  } ],
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "3a2b5e9c-c198-41bf-a377-637e91f7ecf0",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "咳，总之呢……",
+    "location" : "default",
+    "speakerC" : [ {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    } ],
+    "speakerName" : "格里高尔",
+    "faction" : "中立",
+    "align" : "LEFT",
+    "speed" : 3,
+    "emotion" : "NORMAL"
+  },
+  "audioCommands" : [ ],
+  "dirty" : true,
+  "characters" : [ {
+    "chara" : {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    },
+    "portrait" : {
+      "portraitID" : "depressed",
+      "characterID" : "gregor-id",
+      "imagePath" : "格里高尔-face_depressed_L.png",
+      "portName" : "depressed",
+      "emotion" : "normal",
+      "faceX" : 282,
+      "faceY" : 0,
+      "length" : 183,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : null
+    },
+    "posX" : 605,
+    "posY" : 257,
+    "adjX" : 0,
+    "adjY" : 0,
+    "dim" : false
+  } ],
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "bf67563f-e734-46f1-9717-e5e5f366cd54",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+    "location" : "default",
+    "speakerC" : [ {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    } ],
+    "speakerName" : "格里高尔",
+    "faction" : "中立",
+    "align" : "LEFT",
+    "speed" : 3,
+    "emotion" : "NORMAL"
+  },
+  "audioCommands" : [ ],
+  "dirty" : true,
+  "characters" : [ {
+    "chara" : {
+      "characterID" : "gregor-id",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "105,53,11",
+      "colorText" : "251,219,179"
+    },
+    "portrait" : {
+      "portraitID" : "depressed",
+      "characterID" : "gregor-id",
+      "imagePath" : "格里高尔-face_depressed_L.png",
+      "portName" : "depressed",
+      "emotion" : "normal",
+      "faceX" : 282,
+      "faceY" : 0,
+      "length" : 183,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : null
+    },
+    "posX" : 605,
+    "posY" : 257,
+    "adjX" : 0,
+    "adjY" : 0,
+    "dim" : false
+  } ],
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "090aa9dd-7ad5-4dfa-b187-9d44215875e8",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+    "location" : "default",
+    "speakerC" : [ ],
+    "speakerName" : "旁白",
+    "faction" : "中立",
+    "align" : "LEFT",
+    "speed" : 3,
+    "emotion" : "NORMAL"
+  },
+  "audioCommands" : [ ],
+  "dirty" : true,
+  "characters" : [ ],
+  "backgroundVisuals" : [ {
+    "background" : {
+      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
+      "path" : "Story_private_room.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+} ]

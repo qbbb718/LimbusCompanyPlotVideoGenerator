@@ -112,9 +112,10 @@ public class AudioTimelineBuilder {
                                Map<String, AudioSegment> activeBgms, float normalizedVolume) {
         String audioId = command.getAudioId();
         
-        // 如果同ID的BGM已经在播放，先结束它
+        // 如果同ID的BGM已经在播放，则忽略重复的 START（不重启），保持最初的开始点
         if (activeBgms.containsKey(audioId)) {
-            logger.debug("BGM {} 已经在播放，重新开始", audioId);
+            logger.debug("BGM {} 已经在播放，忽略重复的 START", audioId);
+            return;
         }
         
         // 创建新的BGM片段（使用标准化音量）

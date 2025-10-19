@@ -36,6 +36,16 @@ import java.nio.file.Paths;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.lbc_plot.core.service.CharacterService;
+import com.lbc_plot.core.service.impl.CharacterServiceImpl;
+import com.lbc_plot.util.text.PlainTextRecordsParser;
+import java.nio.file.Files;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import com.lbc_plot.DAO.CharacterDAO;
+import com.lbc_plot.DAO.PortraitDAO;
+import com.lbc_plot.DAO.CharacterMapper;
+import helpers.SQLiteTestDatabaseManager;
 
 /**
  * FrameComposerService 测试类
@@ -49,6 +59,41 @@ class FrameComposerServiceTest {
         composer = new FrameComposerService();
     }
     
+    /**
+     * 将 RecordsCreater 中用到的角色与立绘写入测试数据库
+     */
+    private void seedCharactersToTestDb(SQLiteTestDatabaseManager dbManager) throws IOException {
+        // 创建立绘对象（与 RecordsCreater 保持一致）
+        com.lbc_plot.model.storage.Portrait p1 = com.lbc_plot.model.storage.Portrait.builder("格里高尔-face_idle_R.png")
+            .portraitID("idle").characterID("gregor-id").portName("idle").faceX(282).build();
+        com.lbc_plot.model.storage.Portrait p2 = com.lbc_plot.model.storage.Portrait.builder("格里高尔-face_depressed_L.png")
+            .portraitID("depressed").characterID("gregor-id").portName("depressed").faceX(282).build();
+        com.lbc_plot.model.storage.Portrait p3 = com.lbc_plot.model.storage.Portrait.builder("格里高尔-face_smile2_L.png")
+            .portraitID("smile2").characterID("gregor-id").portName("smile2").faceX(282).build();
+        com.lbc_plot.model.storage.Portrait p4 = com.lbc_plot.model.storage.Portrait.builder("Gregor-face_serious_R.png")
+            .portraitID("serious").characterID("gregor-id").portName("serious").faceX(282).build();
+
+        // 创建角色并指定一些属性（与 RecordsCreater 保持一致）
+        com.lbc_plot.model.storage.MyCharacter ch = com.lbc_plot.model.storage.MyCharacter.builder()
+            .characterID("gregor-id")
+            .characterName("格里高尔")
+            .height(168)
+            .faction("13号罪人")
+            .addPortrait(p1)
+            .addPortrait(p2)
+            .addPortrait(p3)
+            .addPortrait(p4)
+            .colorBg(new Color(105, 53, 11))
+            .build();
+
+        // 将角色与立绘写入DB
+        Jdbi jdbi = Jdbi.create(dbManager.getConnection()).installPlugin(new SqlObjectPlugin());
+        CharacterDAO characterDao = jdbi.onDemand(CharacterDAO.class);
+        PortraitDAO portraitDao = jdbi.onDemand(PortraitDAO.class);
+
+        // 使用 DAO 保存
+        characterDao.saveWithPortraits(ch, portraitDao);
+    }
     @AfterEach
     void tearDown() {
         composer.clearLayers();
@@ -227,6 +272,65 @@ class FrameComposerServiceTest {
 
 
     @Test
+    void testRenderFromPlainText() throws IOException {
+    // 这个字符串根据 helpers/RecordsCreater.creatSupersTestRecord() 构造
+    String script = "[BusInside (online-audio-converter.com)]\n" +
+        "{Story_private_room.png}\n" +
+        "格里高尔: 嘿，老兄\n" +
+        "格里高尔: 或者是女士，我不确定\n" +
+        "格里高尔: 咳，总之呢……\n" +
+        "格里高尔: 别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+        "旁白: ……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+
+    // 写入临时文件
+    Path tmp = Files.createTempFile("script_for_render", ".txt");
+    Files.writeString(tmp, script);
+
+    // 使用真实测试数据库并写入角色/立绘数据
+    SQLiteTestDatabaseManager dbManager = new SQLiteTestDatabaseManager();
+    seedCharactersToTestDb(dbManager);
+
+    Jdbi jdbi = Jdbi.create(dbManager.getConnection())
+        .installPlugin(new SqlObjectPlugin())
+        .registerRowMapper(new CharacterMapper());
+    CharacterDAO characterDao = jdbi.onDemand(CharacterDAO.class);
+    PortraitDAO portraitDao = jdbi.onDemand(PortraitDAO.class);
+
+    CharacterService svcReal = new CharacterServiceImpl(characterDao, portraitDao);
+
+    // 解析并生成 records（真实服务）
+    List<Record> records = PlainTextRecordsParser.parse(tmp, svcReal);
+
+    // 导出解析结果为 JSON 以便检查
+    try {
+        Path jsonFile = Paths.get("E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\plaintext_records.json");
+        RecordsIO.exportRecords(records, jsonFile);
+        logger.info("解析得到的 records 已导出为 JSON: {}", jsonFile.toAbsolutePath());
+    } catch (Exception e) {
+        logger.warn("导出 records 为 JSON 失败: {}", e.getMessage());
+    }
+
+    // 输出视频到 target/test-logs/plaintext_render.mp4
+    try {
+        VolumeConfig.setUserVolumes(0.1f, 0.9f, 1.2f);
+        BatchVideoProcessor.processRecordList(
+                records,
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\plaintext_render.mp4",
+                "E:\\LimbusCompanyPlotVideoGenerator\\demo\\target\\test-logs\\temp_videos",
+                true,
+                ProjectConfig.VIDEO_WIDTH,
+                ProjectConfig.VIDEO_HEIGHT,
+                ProjectConfig.FRAME_RATE
+        );
+        System.out.println("Plain text -> records 渲染完成，文件: target/test-logs/plaintext_render.mp4");
+    } catch (Exception e) {
+        System.err.println("处理失败: " + e.getMessage());
+        e.printStackTrace();
+    }
+    }
+
+
+    @Test
     void testExportJson() throws IOException {
         try {
             // 你的Record列表
@@ -307,7 +411,7 @@ class FrameComposerServiceTest {
             // 4. 处理视频
             
             VolumeConfig.setUserVolumes(0.1f, 0.9f, 1.2f);
-            
+
             logger.info("\n开始视频处理...");
             BatchVideoProcessor.processRecordList(
                 records,

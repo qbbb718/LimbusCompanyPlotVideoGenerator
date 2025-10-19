@@ -66,8 +66,16 @@ public class CharacterServiceImpl implements CharacterService {
      */
     @Override
     public MyCharacter getCharacter(String characterId) {
-        return characterDAO.findById(characterId)
+        MyCharacter c = characterDAO.findById(characterId)
             .orElseThrow(() -> new RuntimeException("角色不存在: " + characterId));
+        // Ensure portraits are loaded from DAO (mapper builds MyCharacter without portraits)
+        try {
+            List<Portrait> portraits = portraitDAO.findByCharacterId(characterId);
+            c.setPortraits(portraits);
+        } catch (Exception e) {
+            // ignore - return character without portraits
+        }
+        return c;
     }
     
     /**
@@ -170,7 +178,13 @@ public class CharacterServiceImpl implements CharacterService {
     public Portrait getDefaultPortrait(MyCharacter character) {
         List<Portrait> portraits = character.getPortraits();
         if (portraits == null || portraits.isEmpty()) {
-            return null;
+            // Try DAO fallback
+            try {
+                Optional<Portrait> p = portraitDAO.findDefaultPortraitByCharacter(character.getCharacterID());
+                return p.orElse(null);
+            } catch (Exception e) {
+                return null;
+            }
         }
         return portraits.get(0);
     }
