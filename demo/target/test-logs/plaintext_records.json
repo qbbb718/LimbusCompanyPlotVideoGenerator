@@ -1,9 +1,9 @@
 [ {
-  "uuid" : "dabfd2c4-a14e-473f-b52b-107fad1783d2",
+  "uuid" : "3433c2e7-87af-4ed9-af5a-e886531c70ba",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "嘿，老兄",
-    "location" : "default",
+    "location" : "办公室",
     "speakerC" : [ {
       "characterID" : "gregor-id",
       "characterName" : "格里高尔",
@@ -55,8 +55,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
-      "path" : "Story_private_room.png"
+      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
     },
     "posX" : 0,
     "posY" : 0,
@@ -64,11 +69,11 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "e2f76674-c431-4a98-b009-f251e493119b",
+  "uuid" : "9bdaa2f8-f78d-4338-a752-f8d914fd3aca",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "或者是女士，我不确定",
-    "location" : "default",
+    "location" : "办公室",
     "speakerC" : [ {
       "characterID" : "gregor-id",
       "characterName" : "格里高尔",
@@ -115,8 +120,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
-      "path" : "Story_private_room.png"
+      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
     },
     "posX" : 0,
     "posY" : 0,
@@ -124,11 +134,11 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "3a2b5e9c-c198-41bf-a377-637e91f7ecf0",
+  "uuid" : "c438a3a5-91f4-43dd-ab9b-0a4fa25c900e",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "咳，总之呢……",
-    "location" : "default",
+    "location" : "办公室",
     "speakerC" : [ {
       "characterID" : "gregor-id",
       "characterName" : "格里高尔",
@@ -175,8 +185,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
-      "path" : "Story_private_room.png"
+      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
     },
     "posX" : 0,
     "posY" : 0,
@@ -184,11 +199,11 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "bf67563f-e734-46f1-9717-e5e5f366cd54",
+  "uuid" : "ffcdbc84-70aa-4546-a1b5-8f29fb9ca470",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
-    "location" : "default",
+    "location" : "办公室",
     "speakerC" : [ {
       "characterID" : "gregor-id",
       "characterName" : "格里高尔",
@@ -235,8 +250,13 @@
   } ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
-      "path" : "Story_private_room.png"
+      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
     },
     "posX" : 0,
     "posY" : 0,
@@ -244,11 +264,11 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "090aa9dd-7ad5-4dfa-b187-9d44215875e8",
+  "uuid" : "21a83867-b74b-4499-a818-0ac253d4b371",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
-    "location" : "default",
+    "location" : "办公室",
     "speakerC" : [ ],
     "speakerName" : "旁白",
     "faction" : "中立",
@@ -261,8 +281,13 @@
   "characters" : [ ],
   "backgroundVisuals" : [ {
     "background" : {
-      "uuid" : "ade6c719-83d4-4b5a-ad14-8da98d7068e6",
-      "path" : "Story_private_room.png"
+      "uuid" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee",
+      "path" : "assets/backgrounds/Story_private_room.png",
+      "name" : "办公室",
+      "displayName" : "办公室",
+      "imagePath" : "assets/backgrounds/Story_private_room.png",
+      "source" : null,
+      "backgroundID" : "4fcb8c13-1f00-4c1d-8b4e-20b0136855ee"
     },
     "posX" : 0,
     "posY" : 0,

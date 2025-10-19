@@ -3,6 +3,7 @@ package com.lbc_plot.util.text;
 import com.lbc_plot.core.audio.model.AudioCommand;
 import com.lbc_plot.core.audio.model.AudioCommandType;
 import com.lbc_plot.core.service.CharacterService;
+import com.lbc_plot.core.service.BackgroundService;
 import com.lbc_plot.model.Record;
 import com.lbc_plot.model.video.BackgroundVisual;
 import com.lbc_plot.model.video.CharacterVisual;
@@ -42,13 +43,21 @@ public class PlainTextRecordsParser {
      * 解析文本文件为 Record 列表
      */
     public static List<Record> parse(Path file) throws IOException {
-        return parse(file, null);
+        return parse(file, null, null);
     }
 
     /**
      * Parse with optional CharacterService to map speaker names to MyCharacter/Portrait.
      */
     public static List<Record> parse(Path file, CharacterService characterService) throws IOException {
+        return parse(file, characterService, null);
+    }
+
+    /**
+     * Parse with optional CharacterService and BackgroundService. If BackgroundService is provided,
+     * backgrounds will be created/queried in DB and returned Background instances will be used for visuals.
+     */
+    public static List<Record> parse(Path file, CharacterService characterService, BackgroundService backgroundService) throws IOException {
         List<Record> records = new ArrayList<>();
 
         List<String> lines = Files.readAllLines(file);
@@ -90,7 +99,40 @@ public class PlainTextRecordsParser {
                 if (slash >= 0) name = bgPath.substring(slash + 1);
                 int dot = name.lastIndexOf('.');
                 if (dot > 0) name = name.substring(0, dot);
-                currentBg = new Background(bgPath, name);
+                // If DB-backed BackgroundService is available, try to find the background entry.
+                // Try exact path first, then try suffix/filename match against existing entries,
+                // finally fall back to creating a new entry.
+                if (backgroundService != null) {
+                    try {
+                        java.util.Optional<Background> byPath = backgroundService.findByPath(bgPath);
+                        if (byPath.isPresent()) {
+                            currentBg = byPath.get();
+                        } else {
+                            // try suffix/filename matching against existing backgrounds
+                            String filename = bgPath;
+                            int lastSlash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
+                            if (lastSlash >= 0) filename = bgPath.substring(lastSlash + 1);
+                            boolean found = false;
+                            for (Background b : backgroundService.findAll()) {
+                                if (b.getPath() != null) {
+                                    if (b.getPath().endsWith(filename) || b.getPath().endsWith(bgPath)) {
+                                        currentBg = b;
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!found) {
+                                currentBg = backgroundService.findOrCreateByPath(bgPath, name, "parser");
+                            }
+                        }
+                    } catch (Exception ex) {
+                        logger.debug("BackgroundService lookup failed: {}", ex.getMessage());
+                        currentBg = new Background(bgPath, name);
+                    }
+                } else {
+                    currentBg = new Background(bgPath, name);
+                }
                 continue;
             }
 
@@ -167,7 +209,28 @@ public class PlainTextRecordsParser {
 
                         Portrait portrait = null;
                         try {
-                            portrait = characterService.findPortraitByEmotion(chosen.getCharacterID(), emotion.name());
+                            // Prefer portrait with matching emotion from the character's portrait list
+                            // Map Dialogue.Emotion -> storage.Emotion via name matching when possible
+                            com.lbc_plot.model.storage.Emotion desired = com.lbc_plot.model.storage.Emotion.fromString(emotion.name());
+                            List<com.lbc_plot.model.storage.Portrait> charPortraits = null;
+                            try {
+                                charPortraits = chosen.getPortraits();
+                            } catch (Exception ex) {
+                                // fallback to DAO-based service methods
+                                charPortraits = characterService.getCharacterPortraits(chosen.getCharacterID());
+                            }
+                            if (charPortraits != null && !charPortraits.isEmpty()) {
+                                for (com.lbc_plot.model.storage.Portrait p : charPortraits) {
+                                    if (p.getEmotion() != null && p.getEmotion().equals(desired)) {
+                                        portrait = p;
+                                        break;
+                                    }
+                                }
+                            }
+                            // fallback to service convenience method if not found in-memory
+                            if (portrait == null) {
+                                portrait = characterService.findPortraitByEmotion(chosen.getCharacterID(), desired.name());
+                            }
                             if (portrait != null) {
                                 logger.info("Found portrait '{}' for character '{}' (emotion={})", portrait.getPortraitID(), chosen.getCharacterName(), emotion.name());
                             } else {

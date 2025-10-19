@@ -60,7 +60,13 @@ public class Background {
     private void loadImage() {
         try {
             System.out.println("正在懒加载背景图像: " + path);
-            image = ImageReader.readBackGround(path);
+            // If path already looks like a resource path (contains assets/backgrounds/),
+            // read it directly; otherwise treat it as filename and use readBackGround.
+            if (path != null && (path.startsWith("assets/backgrounds/") || path.startsWith("/assets/backgrounds/"))) {
+                image = ImageReader.readResourceImage(path.startsWith("/") ? path.substring(1) : path);
+            } else {
+                image = ImageReader.readBackGround(path);
+            }
             if (image == null) {
                 System.err.println("无法加载背景图像: " + path);
                 // 可以设置一个默认图像或抛出异常
@@ -114,6 +120,26 @@ public class Background {
         this.path = path;
         // 路径改变时，需要重新加载图像
         image = null;
+    }
+
+    // Compatibility getters for JDBI BindBean (some DAOs expect these property names)
+    public String getBackgroundID() {
+        return uuid;
+    }
+
+    public String getImagePath() {
+        return path;
+    }
+
+    public String getDisplayName() {
+        return name;
+    }
+
+    /**
+     * Source is optional; DAOs may bind :source. Return null by default.
+     */
+    public String getSource() {
+        return null;
     }
 
     public String getName() {

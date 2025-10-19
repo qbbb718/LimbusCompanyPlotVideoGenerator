@@ -163,20 +163,11 @@ public class Record {
     }
 
     public void addBackgroundVisual(BackgroundVisual background) {
-        if (this.bg != null) {
-            this.bg.add(background);
-            this.isDirty = true;
-        }
-    }
-
-    /**
-     * 添加背景并在对话没有指定地点时使用背景的 name 作为对话 location
-     */
-    public void addBackgroundVisualAndApplyLocation(BackgroundVisual background) {
         if (this.bg == null) this.bg = new ArrayList<>();
         this.bg.add(background);
         this.isDirty = true;
 
+        // 如果对话尚未指定 location，优先使用背景的 name 作为 location
         try {
             if (this.dialogue != null) {
                 String currentLoc = this.dialogue.getLocation();

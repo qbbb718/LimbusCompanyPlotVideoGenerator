@@ -87,18 +87,22 @@ public class RecordsCreater {
         portrait_1 = Portrait.builder("格里高尔-face_idle_R.png")
             .portraitID(ID_1)
             .faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.NORMAL)
             .build();
         portrait_2 = Portrait.builder("格里高尔-face_depressed_L.png")
             .portraitID(ID_2)
             .faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.SAD)
             .build();
         portrait_3 = Portrait.builder("格里高尔-face_smile2_L.png")
             .portraitID(ID_3)
             .faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.HAPPY)
             .build();
         portrait_4 = Portrait.builder("Gregor-face_serious_R.png")
             .portraitID(ID_4)
             .faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.NORMAL)
             .build();
 
 

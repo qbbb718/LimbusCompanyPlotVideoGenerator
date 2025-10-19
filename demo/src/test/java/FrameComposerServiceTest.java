@@ -65,13 +65,21 @@ class FrameComposerServiceTest {
     private void seedCharactersToTestDb(SQLiteTestDatabaseManager dbManager) throws IOException {
         // 创建立绘对象（与 RecordsCreater 保持一致）
         com.lbc_plot.model.storage.Portrait p1 = com.lbc_plot.model.storage.Portrait.builder("格里高尔-face_idle_R.png")
-            .portraitID("idle").characterID("gregor-id").portName("idle").faceX(282).build();
+            .portraitID("idle").characterID("gregor-id").portName("idle").faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.NORMAL)
+            .build();
         com.lbc_plot.model.storage.Portrait p2 = com.lbc_plot.model.storage.Portrait.builder("格里高尔-face_depressed_L.png")
-            .portraitID("depressed").characterID("gregor-id").portName("depressed").faceX(282).build();
+            .portraitID("depressed").characterID("gregor-id").portName("depressed").faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.SAD)
+            .build();
         com.lbc_plot.model.storage.Portrait p3 = com.lbc_plot.model.storage.Portrait.builder("格里高尔-face_smile2_L.png")
-            .portraitID("smile2").characterID("gregor-id").portName("smile2").faceX(282).build();
+            .portraitID("smile2").characterID("gregor-id").portName("smile2").faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.HAPPY)
+            .build();
         com.lbc_plot.model.storage.Portrait p4 = com.lbc_plot.model.storage.Portrait.builder("Gregor-face_serious_R.png")
-            .portraitID("serious").characterID("gregor-id").portName("serious").faceX(282).build();
+            .portraitID("serious").characterID("gregor-id").portName("serious").faceX(282)
+            .emotion(com.lbc_plot.model.storage.Emotion.NORMAL)
+            .build();
 
         // 创建角色并指定一些属性（与 RecordsCreater 保持一致）
         com.lbc_plot.model.storage.MyCharacter ch = com.lbc_plot.model.storage.MyCharacter.builder()
@@ -90,6 +98,10 @@ class FrameComposerServiceTest {
         Jdbi jdbi = Jdbi.create(dbManager.getConnection()).installPlugin(new SqlObjectPlugin());
         CharacterDAO characterDao = jdbi.onDemand(CharacterDAO.class);
         PortraitDAO portraitDao = jdbi.onDemand(PortraitDAO.class);
+        // 将背景写入测试数据库，display_name = "办公室"（通过 BackgroundService）
+        com.lbc_plot.DAO.BackgroundDAO backgroundDao = jdbi.onDemand(com.lbc_plot.DAO.BackgroundDAO.class);
+        com.lbc_plot.core.service.BackgroundService bgService = new com.lbc_plot.core.service.impl.BackgroundServiceImpl(backgroundDao);
+    bgService.findOrCreateByPath("assets/backgrounds/Story_private_room.png", "办公室", "test");
 
         // 使用 DAO 保存
         characterDao.saveWithPortraits(ch, portraitDao);
@@ -298,8 +310,12 @@ class FrameComposerServiceTest {
 
     CharacterService svcReal = new CharacterServiceImpl(characterDao, portraitDao);
 
-    // 解析并生成 records（真实服务）
-    List<Record> records = PlainTextRecordsParser.parse(tmp, svcReal);
+    // 使用 BackgroundService（来自测试数据库）让解析器能读取到 display_name
+    com.lbc_plot.DAO.BackgroundDAO backgroundDao = jdbi.onDemand(com.lbc_plot.DAO.BackgroundDAO.class);
+    com.lbc_plot.core.service.BackgroundService bgService = new com.lbc_plot.core.service.impl.BackgroundServiceImpl(backgroundDao);
+
+    // 解析并生成 records（真实服务 + 背景 service）
+    List<Record> records = PlainTextRecordsParser.parse(tmp, svcReal, bgService);
 
     // 导出解析结果为 JSON 以便检查
     try {

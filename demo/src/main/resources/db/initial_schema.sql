@@ -47,6 +47,33 @@ CREATE TABLE IF NOT EXISTS character_portraits (
 );
 
 
+-- 背景表：存储背景资源元数据（文件路径、显示名等）
+CREATE TABLE IF NOT EXISTS backgrounds (
+    background_id TEXT PRIMARY KEY NOT NULL,
+    image_path TEXT NOT NULL,
+    display_name TEXT,
+    source TEXT,
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 背景标签表（可选）：用于将tag附加到背景
+CREATE TABLE IF NOT EXISTS background_tags (
+    tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tag_name TEXT UNIQUE NOT NULL
+);
+
+-- 背景-标签关联表（多对多）
+CREATE TABLE IF NOT EXISTS background_tag_map (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    background_id TEXT NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (background_id) REFERENCES backgrounds(background_id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES background_tags(tag_id) ON DELETE CASCADE,
+    UNIQUE(background_id, tag_id)
+);
+
+
 -- 创建索引提高查询性能
 --CREATE INDEX IF NOT EXISTS idx_character ON characters(character_id);
 
