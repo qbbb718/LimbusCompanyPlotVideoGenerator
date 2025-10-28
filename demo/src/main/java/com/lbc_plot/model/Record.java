@@ -4,27 +4,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.lbc_plot.core.audio.model.AudioCommand;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.video.BackgroundVisual;
 import com.lbc_plot.model.video.Camera;
 import com.lbc_plot.model.video.CharacterVisual;
 import com.lbc_plot.model.video.Dialogue;
 import com.lbc_plot.model.video.EffectVisual;
-import com.lbc_plot.project.audio.AudioCommand;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
+
 
 public class Record {
     private String uuid;                     // 避免修改顺序破坏dirty
     private int durationFrames;         // 持续时间（帧数）
     private Dialogue dialogue;          // 文本对话内容
+    @JsonIgnore
     private Camera camera;              // 摄像机信息
     private List<BackgroundVisual> bg;  // 背景视觉元素
     private List<CharacterVisual> chars; // 角色立绘列表
+    @JsonIgnore
     private List<EffectVisual> effects;  // 特效列表
     private List<AudioCommand> audioCommands; // 音频操作列表
     private boolean isDirty; // 在上次导出后是否进行过修改
+    @JsonIgnore
     private BufferedImage preImage; // 预览图, 无UI的
 
     /**
@@ -48,6 +54,8 @@ public class Record {
         calculateDuration();
     }
 
+    // 必须添加无参构造器（Jackson反射需要）
+    protected Record() {}
 
     void calculateDuration(){
         durationFrames = 0;
@@ -91,20 +99,25 @@ public class Record {
         this.isDirty = true;
     }
 
-    public List<BackgroundVisual> getBg() {
+    public List<BackgroundVisual> getBackgroundVisuals() {
         return bg;
     }
 
-    public void setBg(List<BackgroundVisual> bg) {
+    public void setBackgroundVisuals(List<BackgroundVisual> bg) {
         this.bg = bg;
         this.isDirty = true;
     }
 
-    public List<CharacterVisual> getChars() {
+    @JsonIgnore
+    public BackgroundVisual getFirstBackgroundVisual() {
+        return bg.get(0);
+    }
+
+    public List<CharacterVisual> getCharacters() {
         return chars;
     }
 
-    public void setChars(List<CharacterVisual> chars) {
+    public void setCharacters(List<CharacterVisual> chars) {
         this.chars = chars;
         this.isDirty = true;
     }
@@ -150,9 +163,22 @@ public class Record {
     }
 
     public void addBackgroundVisual(BackgroundVisual background) {
-        if (this.bg != null) {
-            this.bg.add(background);
-            this.isDirty = true;
+        if (this.bg == null) this.bg = new ArrayList<>();
+        this.bg.add(background);
+        this.isDirty = true;
+
+        // 如果对话尚未指定 location，优先使用背景的 name 作为 location
+        try {
+            if (this.dialogue != null) {
+                String currentLoc = this.dialogue.getLocation();
+                if (currentLoc == null || Dialogue.DEFAULT_LOCATION.equals(currentLoc)) {
+                    if (background != null && background.getBackground() != null && background.getBackground().getName() != null && !background.getBackground().getName().isBlank()) {
+                        this.dialogue.setLocation(background.getBackground().getName());
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            // 忽略任何异常以保证 API 稳定性
         }
     }
 
@@ -206,17 +232,18 @@ public class Record {
     /**
      * 建造者模式 - 用于创建复杂的 Record 对象
      */
+    @JsonDeserialize(builder = Record.Builder.class)
     public static class Builder {
-        private String uuid;
-        private int durationFrames;
-        private Dialogue dialogue;
-        private Camera camera = new Camera();
-        private List<BackgroundVisual> bg = new ArrayList<>();
-        private List<CharacterVisual> chars = new ArrayList<>();
-        private List<EffectVisual> effects = new ArrayList<>();
-        private List<AudioCommand> audioCommands = new ArrayList<>();
-        private boolean isDirty = true;
-        private BufferedImage preImage;
+        @JsonProperty private String uuid;
+        @JsonProperty private int durationFrames;
+        @JsonProperty private Dialogue dialogue;
+        @JsonProperty private Camera camera = new Camera();
+        @JsonProperty private List<BackgroundVisual> bg = new ArrayList<>();
+        @JsonProperty private List<CharacterVisual> chars = new ArrayList<>();
+        @JsonIgnore private List<EffectVisual> effects = new ArrayList<>();
+        @JsonIgnore private List<AudioCommand> audioCommands = new ArrayList<>();
+        @JsonProperty private boolean isDirty = true;
+        @JsonIgnore private BufferedImage preImage; // 图片不序列化
 
         public Builder() {
         }
@@ -238,6 +265,19 @@ public class Record {
 
         public Builder addBackground(BackgroundVisual background) {
             this.bg.add(background);
+            // If dialogue is present and location is default, apply background name
+            try {
+                if (this.dialogue != null) {
+                    String loc = this.dialogue.getLocation();
+                    if (loc == null || Dialogue.DEFAULT_LOCATION.equals(loc)) {
+                        if (background != null && background.getBackground() != null && background.getBackground().getName() != null && !background.getBackground().getName().isBlank()) {
+                            this.dialogue.setLocation(background.getBackground().getName());
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                // ignore
+            }
             return this;
         }
 

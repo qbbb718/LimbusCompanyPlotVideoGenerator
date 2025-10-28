@@ -7,30 +7,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.lbc_plot.application.Composer.FrameComposerService;
-import com.lbc_plot.application.Composer.RenderOfImage;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.core.Composer.FrameComposerService;
+import com.lbc_plot.core.Composer.RenderOfImage;
+import com.lbc_plot.model.video.CharacterRef;
 import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.util.io.ImageReader;
+import com.lbc_plot.util.json.ColorDeserializer;
+import com.lbc_plot.util.json.ColorSerializer;
 
 /**
  * 角色类
  */
 public class MyCharacter {
-    // 唯一ID
     private String characterID;
-    // 角色名
     private String characterName;
-    // 角色身高，算坐标用的
     private int height;
-    // 立绘们。第一位是默认立绘，没有就用这个
-    private List<Portrait> portraits; //可能没有立绘（旁白）
-    
-    // 代表色和文字色
-    private Color color_bg;
-    private Color color_text;
-    private BufferedImage color_Name_Image; //人设界面预览用，然后可以直接用到剧情渲染里
     private String faction; //阵营
+    private List<Portrait> portraits; //可能没有立绘（旁白）
+    @JsonSerialize(using = ColorSerializer.class)
+    @JsonDeserialize(using = ColorDeserializer.class)
+    private Color colorBg;
+    @JsonSerialize(using = ColorSerializer.class)
+    @JsonDeserialize(using = ColorDeserializer.class)
+    private Color colorText;
+    @JsonIgnore
+    private BufferedImage colorNameImage; //人设界面预览用，然后可以直接用到剧情渲染里
 
 
     // 默认值
@@ -90,20 +97,20 @@ public class MyCharacter {
         this.characterName = characterName;
     }
 
-    public Color getColor_bg() {
-        return color_bg;
+    public Color getColorBg() {
+        return colorBg;
     }
 
-    public void setColor_bg(Color color_bg) {
-        this.color_bg = color_bg;
+    public void setColorBg(Color colorBg) {
+        this.colorBg = colorBg;
     }
 
-    public Color getColor_text() {
-        return color_text;
+    public Color getColorText() {
+        return colorText;
     }
 
-    public void setColor_text(Color color_text) {
-        this.color_text = color_text;
+    public void setColorText(Color colorText) {
+        this.colorText = colorText;
     }
 
     public int getHeight() {
@@ -124,15 +131,16 @@ public class MyCharacter {
 
 
 
-    public BufferedImage getColor_Name_Image() throws IOException  {
-        if (color_Name_Image == null) {
-            updateColor_Name_Image();
+    public BufferedImage getColorNameImage() throws IOException  {
+        if (colorNameImage == null) {
+            updateColorNameImage();
         }
-        return color_Name_Image;
+        return colorNameImage;
     }
 
-    public void updateColor_Name_Image() throws IOException { // 生成名字+阵营完整UI
-        color_Name_Image = RenderOfImage.renderCharaNameUI(this);
+    public void updateColorNameImage() throws IOException { // 生成名字+阵营完整UI
+        CharacterRef ref = CharacterRef.from(this);
+        colorNameImage = RenderOfImage.renderCharaNameUI(ref);
     }
 
 
@@ -144,6 +152,7 @@ public class MyCharacter {
     public void setFaction(String faction){
         this.faction = faction;
     }
+
 
     @Override
     public String toString() {
@@ -177,9 +186,9 @@ public class MyCharacter {
         this.characterName = builder.characterName;
         this.height = builder.height;
         this.portraits = builder.portraits;
-        this.color_bg = builder.color_bg;
-        this.color_text = builder.color_text;
-        this.color_Name_Image = builder.color_Name_Image;
+        this.colorBg = builder.colorBg;
+        this.colorText = builder.colorText;
+        this.colorNameImage = builder.colorNameImage;
         this.faction = builder.faction;
         
         // 应用智能默认值
@@ -196,13 +205,13 @@ public class MyCharacter {
         }
         
         // 背景色默认值
-        if (this.color_bg == null) {
-            this.color_bg = DEFAULT_BG_COLOR;
+        if (this.colorBg == null) {
+            this.colorBg = DEFAULT_BG_COLOR;
         }
         
         // 文字色默认值
-        if (this.color_text == null) {
-            this.color_text = DEFAULT_TEXT_COLOR;
+        if (this.colorText == null) {
+            this.colorText = DEFAULT_TEXT_COLOR;
         }
         
         // 阵营默认值
@@ -225,12 +234,13 @@ public class MyCharacter {
     public static class Builder {
         // Builder参数
         private String characterID = null;
-        private String characterName;
+        private String characterName = DEFAULT_NAME;
         private int height = DEFAULT_HEIGHT;
         private List<Portrait> portraits = new ArrayList<>();
-        private Color color_bg = DEFAULT_BG_COLOR;
-        private Color color_text = DEFAULT_TEXT_COLOR;
-        private BufferedImage color_Name_Image;
+        private Color colorBg = DEFAULT_BG_COLOR;
+        private Color colorText = DEFAULT_TEXT_COLOR;
+        @JsonIgnore
+        private BufferedImage colorNameImage;
         private String faction = DEFAULT_FACTION;
 
         /**
@@ -274,18 +284,18 @@ public class MyCharacter {
             return this;
         }
         
-        public Builder color_bg(Color color_bg) {
-            this.color_bg = color_bg;
+        public Builder colorBg(Color colorBg) {
+            this.colorBg = colorBg;
             return this;
         }
         
-        public Builder color_text(Color color_text) {
-            this.color_text = color_text;
+        public Builder colorText(Color colorText) {
+            this.colorText = colorText;
             return this;
         }
         
-        public Builder color_Name_Image(BufferedImage color_Name_Image) {
-            this.color_Name_Image = color_Name_Image;
+        public Builder colorNameImage(BufferedImage colorNameImage) {
+            this.colorNameImage = colorNameImage;
             return this;
         }
         

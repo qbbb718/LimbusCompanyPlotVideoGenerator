@@ -1,7 +1,10 @@
 package com.lbc_plot.model.storage;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
- * 情绪枚举，用于立绘自动匹配
+ * 角色立绘情绪枚举
  */
 public enum Emotion {
     NORMAL("正常", "normal"),
@@ -21,23 +24,35 @@ public enum Emotion {
         this.code = code;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
-
+    @JsonValue
     public String getCode() {
         return code;
     }
 
-    /**
-     * 根据代码获取情绪枚举
-     */
-    public static Emotion fromCode(String code) {
-        for (Emotion emotion : values()) {
-            if (emotion.code.equals(code)) {
-                return emotion;
+    @JsonCreator
+    public static Emotion fromString(String input) {
+        if (input == null) return NORMAL;
+        
+        String lowerInput = input.toLowerCase();
+        for (Emotion e : values()) {
+            if (e.code.equals(lowerInput)) {
+                return e;
             }
         }
-        return NORMAL;
+        
+        try {
+            return Emotion.valueOf(input.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return NORMAL;
+        }
+    }
+
+    // 保留基础业务方法（无JSON相关注释）
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public static Emotion fromCode(String code) {
+        return fromString(code);
     }
 }

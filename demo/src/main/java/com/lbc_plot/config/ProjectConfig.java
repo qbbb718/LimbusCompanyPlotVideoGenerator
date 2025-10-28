@@ -15,7 +15,6 @@ public final class ProjectConfig {
     public static final String VIDEO_RESOLUTION = "1080p";
     public static final double VIDEO_ASPECT_RATIO = 16.0 / 9.0;
     public static final int FRAME_RATE = 30;
-    public static final int DEFAULT_DIALOGUE_SPEED = 1;
     
     // 文件路径配置
     public static final String IMAGE_BASE_PATH = "assets/images/";
@@ -40,12 +39,12 @@ public final class ProjectConfig {
 
 
 
-
     // 字幕配置
     public static final String TEXT_FONT_NAME = "ChineseFont" ;//"更纱黑体 SC Bold";
     public static final java.awt.Color DEFAULT_TEXT_COLOR = new Color(251, 219, 179);
     public static final java.awt.Color DEFAULT_BG_COLOR = new Color(76, 54, 31);
     public static final java.awt.Color FACTION_COLOR = new Color(159, 106, 59);
+    public static final int DEFAULT_DIALOGUE_SPEED = 3;
     public static final int SHADOW_OFFSET_DEFAULT_X = 1;
     public static final int SHADOW_OFFSET_DEFAULT_Y = 1;
     public static final int SHADOW_OFFSET_NAME_X = 5;

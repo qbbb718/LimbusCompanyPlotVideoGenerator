@@ -2,13 +2,19 @@ package com.lbc_plot.model.video;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 import org.bytedeco.ffmpeg.global.postproc;
+import org.jdbi.v3.core.collector.ElementTypeNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.lbc_plot.application.Composer.RenderOfImage;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.core.Composer.RenderOfImage;
+import com.lbc_plot.core.service.CharacterService;
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
 
@@ -17,13 +23,17 @@ import java.awt.AlphaComposite;
 /**
  * 角色立绘可视化类
  */
+@JsonDeserialize(builder = CharacterVisual.Builder.class)
 public class CharacterVisual extends VisualElement {
     private static final Logger logger = LoggerFactory.getLogger(CharacterVisual.class);
 
     // 所属角色，读取一些信息用
-    private MyCharacter chara;
+    private CharacterRef chara; 
     private Portrait portrait;
+    @JsonIgnore
+    private transient MyCharacter charaCache; // 运行时缓存
     // 图像
+    @JsonIgnore
     private BufferedImage image;
     // 立绘坐标，从角色读取计算
     private int posX;
@@ -33,6 +43,9 @@ public class CharacterVisual extends VisualElement {
     private int adjY;
     // 是否压暗，默认true；说话人false
     private boolean dim;
+    @JsonIgnore
+    private BufferedImage color_Name_Image; //人设界面预览用，然后可以直接用到剧情渲染里
+
 
 
     // 默认值
@@ -76,12 +89,26 @@ public class CharacterVisual extends VisualElement {
     }
 
     // Getter和Setter方法
-    public MyCharacter getChara() {
+
+    // 获取完整角色对象（按需加载）通过方法注入Service（非字段注入！）
+    public MyCharacter getCharacter(CharacterService service) {
+        if (charaCache == null && service != null) {
+            try {
+                charaCache = service.getCharacter(chara.getCharacterID());
+            } catch (ElementTypeNotFoundException e) {
+                throw new RuntimeException("角色加载失败: " + e.getMessage(), e);
+            }
+        }
+        return charaCache;
+    }
+
+    public CharacterRef getChara(){
         return chara;
     }
 
-    public void setChara(MyCharacter chara) {
-        this.chara = chara;
+    public void setChara(MyCharacter character) throws IOException {
+        CharacterRef ref = CharacterRef.from(character);
+        this.chara = ref;
     }
 
     public Portrait getPortrait() {
@@ -93,8 +120,22 @@ public class CharacterVisual extends VisualElement {
         image = portrait.getImage();
     }
 
+    @JsonIgnore
     public BufferedImage getImage() {
-        return image;
+        if (this.image == null) {
+            this.image = loadImage();
+        }
+        return this.image;
+    }
+
+    @JsonIgnore
+    private BufferedImage loadImage() {
+        // 从Portrait获取图片
+        BufferedImage img = portrait.getImage();
+        if (img == null) {
+            throw new IllegalStateException("无法从Portrait加载图像");
+        }
+        return img;
     }
 
     public int getPosX() {
@@ -144,6 +185,7 @@ public class CharacterVisual extends VisualElement {
     /**
      * 获取角色ID（便捷方法）
      */
+    @JsonIgnore
     public String getCharacterId() {
         return chara != null ? chara.getCharacterID() : null;
     }
@@ -179,22 +221,36 @@ public class CharacterVisual extends VisualElement {
      */
     public static class Builder {
         // 必需参数
-        private final MyCharacter chara;
-        private final Portrait portrait;
-        
-        // 可选参数（有默认值）
-        private BufferedImage image;
+        @JsonProperty
+        private CharacterRef chara;
+        @JsonProperty
+        private Portrait portrait;
+
+        // 可选参数（带默认值）
+        @JsonProperty
         private int posX = DEFAULT_POS_X;
+        @JsonProperty
         private int posY = DEFAULT_POS_Y;
+        @JsonProperty
         private int adjX = DEFAULT_ADJ_X;
+        @JsonProperty
         private int adjY = DEFAULT_ADJ_Y;
+        @JsonProperty
         private boolean dim = DEFAULT_DIM;
+        
+        @JsonIgnore
+        private transient BufferedImage image; // 不序列化
+
+        // 无参构造器（JSON反序列化必需）
+        public Builder() {}
 
         /**
          * 必需参数构造函数
+         * @throws IOException 
          */
-        public Builder(MyCharacter chara, Portrait portrait) {
-            this.chara = chara;
+        public Builder(MyCharacter character, Portrait portrait) throws IOException {
+            CharacterRef ref = CharacterRef.from(character);
+            this.chara = ref;
             this.portrait = portrait;
             image = portrait.getImage();
         }
@@ -262,8 +318,9 @@ public class CharacterVisual extends VisualElement {
     
     /**
      * 静态工厂方法创建Builder
+     * @throws IOException 
      */
-    public static Builder builder(MyCharacter chara, Portrait portrait) {
+    public static Builder builder(MyCharacter chara, Portrait portrait) throws IOException {
         return new Builder(chara, portrait);
     }
 
