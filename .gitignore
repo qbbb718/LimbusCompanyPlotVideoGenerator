@@ -67,3 +67,5 @@ demo/target/test-classes/FrameComposerServiceTest.class
 demo/target/test-classes/helpers/SQLiteTestDatabaseManager.class
 note
 demo/target/test-logs
+/demo/target/test-logs
+/note
