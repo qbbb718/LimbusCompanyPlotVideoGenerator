@@ -65,3 +65,5 @@ demo/target/test-classes/DAO/CharacterDAOTest.class
 demo/target/test-classes/DAO/PortraitDAOTest.class
 demo/target/test-classes/FrameComposerServiceTest.class
 demo/target/test-classes/helpers/SQLiteTestDatabaseManager.class
+note
+demo/target/test-logs
