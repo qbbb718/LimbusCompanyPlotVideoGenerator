@@ -1,0 +1,13 @@
+[一些口令]
+
+# 输出到文件
+tree /f > project_structure.txt
+
+仓库根的 PROJECT_CONTEXT.md 的内容
+
+
+[TODO]
+
+文本转为项目功能
+
+学前端三件套HTML, CSS, JS

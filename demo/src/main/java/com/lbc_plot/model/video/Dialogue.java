@@ -3,12 +3,15 @@ package com.lbc_plot.model.video;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.model.storage.MyCharacter;
 
 /**
  * 对话内容类
  */
+@JsonDeserialize(builder = Dialogue.Builder.class)
 public class Dialogue {
     // 常量定义
     public static final String DEFAULT_NARRATOR = "旁白";
@@ -28,9 +31,9 @@ public class Dialogue {
     // 成员变量
     private String text;          // 具体文本
     private String location;         // 场景地点
-    private List<MyCharacter> speakerC; // 说话人列表
+    private List<CharacterRef> speakerC; // 说话人列表
     private String speakerName;       // 说话人名字
-    private String faction;          // 所属阵营
+    private String faction;          // 所属阵营s
     private Align align;          // 对齐方式
     private int speed;            // 文字显示速度的修改值
     private Emotion emotion;      // 情绪
@@ -57,11 +60,11 @@ public class Dialogue {
         this.location = (location == null || location.trim().isEmpty()) ? DEFAULT_LOCATION : location.trim();
     }
     
-    public List<MyCharacter> getSpeakerC() {
+    public List<CharacterRef> getSpeakerC() {
         return new ArrayList<>(speakerC);
     }
     
-    public void setSpeakerC(List<MyCharacter> speakerC) {
+    public void setSpeakerC(List<CharacterRef> speakerC) {
         this.speakerC = (speakerC == null) ? new ArrayList<>() : new ArrayList<>(speakerC);
         // 旁白强制单人说话
         if (this.speakerName.equals(DEFAULT_NARRATOR) && this.speakerC.size() > 1) {
@@ -69,15 +72,15 @@ public class Dialogue {
         }
     }
     
-    public void addSpeaker(MyCharacter character) {
-        if (character != null) {
-            // 旁白只能有一个说话人
+    public void addSpeaker(CharacterRef characterRef) {
+        if (characterRef != null) {
             if (this.speakerName.equals(DEFAULT_NARRATOR) && !this.speakerC.isEmpty()) {
-                return;
+                return; // 旁白只能有一个说话人
             }
-            this.speakerC.add(character);
+            this.speakerC.add(characterRef);
         }
     }
+
     
     public String getSpeakerName() {
         return speakerName;
@@ -145,28 +148,96 @@ public class Dialogue {
         }
         
         String lowerText = text.toLowerCase();
-        
-        if (lowerText.contains("开心") || lowerText.contains("高兴") || 
-            lowerText.contains("哈哈") || lowerText.contains("嘻嘻")) {
-            return Emotion.HAPPY;
-        } else if (lowerText.contains("生气") || lowerText.contains("愤怒") || 
-                  lowerText.contains("可恶") || lowerText.contains("混蛋")) {
-            return Emotion.ANGRY;
-        } else if (lowerText.contains("悲伤") || lowerText.contains("难过") || 
-                  lowerText.contains("哭泣") || lowerText.contains("眼泪")) {
-            return Emotion.SAD;
-        } else if (lowerText.contains("惊讶") || lowerText.contains("吃惊") || 
-                  lowerText.contains("什么") || lowerText.contains("！")) {
+        // 先检测强烈标点（多个感叹号或问号倾向于惊讶/生气/紧张）
+        int exclam = countChar(lowerText, '!');
+        int qmark = countChar(lowerText, '?');
+        int ellipses = countSubstring(lowerText, "...");
+
+        if (exclam >= 2) {
+            // 多个叹号更可能是生气或惊讶，使用关键词进一步判定
+            if (lowerText.contains("生气") || lowerText.contains("愤怒") || lowerText.contains("可恶")) {
+                return Emotion.ANGRY;
+            }
+            if (lowerText.contains("开心") || lowerText.contains("哈哈") || lowerText.contains("好耶")) {
+                return Emotion.HAPPY;
+            }
             return Emotion.SURPRISED;
-        } else if (lowerText.contains("困惑") || lowerText.contains("疑惑") || 
-                  lowerText.contains("为什么") || lowerText.contains("？")) {
+        }
+
+        if (qmark >= 2) {
             return Emotion.CONFUSED;
-        } else if (lowerText.contains("紧张") || lowerText.contains("害怕") || 
-                  lowerText.contains("担心")) {
+        }
+
+        // 直接关键词匹配（中文扩展）
+        if (containsAny(lowerText, "开心", "高兴", "快乐", "喜悦", "哈哈", "嘻嘻", "好可爱", "好棒", "太棒了")) {
+            return Emotion.HAPPY;
+        }
+        if (containsAny(lowerText, "生气", "愤怒", "可恶", "混蛋", "气死", "讨厌")) {
+            return Emotion.ANGRY;
+        }
+        if (containsAny(lowerText, "悲伤", "难过", "哭泣", "眼泪", "伤心", "难受", "呜呜")) {
+            return Emotion.SAD;
+        }
+        if (containsAny(lowerText, "惊讶", "吃惊", "天哪", "什么", "居然", "竟然", "哇")) {
+            return Emotion.SURPRISED;
+        }
+        if (containsAny(lowerText, "困惑", "疑惑", "为什么", "怎么回事", "搞不清楚")) {
+            return Emotion.CONFUSED;
+        }
+        if (containsAny(lowerText, "紧张", "害怕", "担心", "怕", "心跳")) {
             return Emotion.NERVOUS;
         }
-        
+
+        // 英文短语支持（基础）
+        if (containsAny(lowerText, "happy", "glad", "joy", "lol", "haha")) {
+            return Emotion.HAPPY;
+        }
+        if (containsAny(lowerText, "angry", "mad", "furious", "damn", "shit")) {
+            return Emotion.ANGRY;
+        }
+        if (containsAny(lowerText, "sad", "sorry", "sorry to", "cry")) {
+            return Emotion.SAD;
+        }
+        if (containsAny(lowerText, "wow", "surprised", "what the", "oh my")) {
+            return Emotion.SURPRISED;
+        }
+        if (containsAny(lowerText, "confused", "puzzled", "huh", "what?")) {
+            return Emotion.CONFUSED;
+        }
+        if (containsAny(lowerText, "nervous", "scared", "afraid", "worried")) {
+            return Emotion.NERVOUS;
+        }
+
+        // 省略号和单问号视为犹豫/困惑的轻度信号
+        if (ellipses > 0 || qmark == 1) {
+            return Emotion.CONFUSED;
+        }
+
         return Emotion.NORMAL;
+    }
+
+    private static int countChar(String s, char c) {
+        int cnt = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) cnt++;
+        }
+        return cnt;
+    }
+
+    private static int countSubstring(String s, String sub) {
+        int idx = 0, cnt = 0;
+        while ((idx = s.indexOf(sub, idx)) >= 0) {
+            cnt++;
+            idx += sub.length();
+        }
+        return cnt;
+    }
+
+    private static boolean containsAny(String s, String... tokens) {
+        for (String t : tokens) {
+            if (s.contains(t)) return true;
+        }
+        return false;
     }
     
     /**
@@ -191,16 +262,15 @@ public class Dialogue {
     /**
      * 获取主要的说话人角色（第一个）
      */
-    public MyCharacter getSpeakerCharacter() {
-        if (speakerC != null && !speakerC.isEmpty()) {
-            return speakerC.get(0);
-        }
-        return null; // 或者返回一个默认的旁白角色
+    @JsonIgnore
+    public CharacterRef getSpeakerCharacter() {
+        return speakerC != null && !speakerC.isEmpty() ? speakerC.get(0) : null;
     }
     
     /**
      * 判断是否为旁白
      */
+    @JsonIgnore
     public boolean isNarrator() {
         return DEFAULT_NARRATOR.equals(speakerName);
     }
@@ -281,14 +351,14 @@ public class Dialogue {
      */
     public static class Builder {
         // Builder中的参数（与Dialogue类对应）
-        private String text;
-        private String location;
-        private List<MyCharacter> speakerC;
-        private String speakerName;
-        private String faction;
-        private Align align = Align.LEFT; //默认左对齐
-        private int speed;
-        private Emotion emotion;
+        @JsonProperty private String text;
+        @JsonProperty private String location;
+        @JsonProperty private List<CharacterRef> speakerC;
+        @JsonProperty private String speakerName;
+        @JsonProperty private String faction;
+        @JsonProperty private Align align = Align.LEFT; //默认左对齐
+        @JsonProperty private int speed;
+        @JsonProperty private Emotion emotion;
         
         /**
          * Builder构造函数
@@ -310,20 +380,22 @@ public class Dialogue {
             return this;
         }
         
-        public Builder speakerC(List<MyCharacter> speakerC) {
+        public Builder speakerC(List<CharacterRef> speakerC) {
             this.speakerC = speakerC;
             return this;
         }
-        
-        public Builder addSpeaker(MyCharacter speaker) {
+
+        public Builder addSpeaker(CharacterRef characterRef) {
             if (this.speakerC == null) {
                 this.speakerC = new ArrayList<>();
             }
-            this.speakerC.add(speaker);
-
-            // 读取speaker信息
-            this.speakerName = speaker.getCharacterName();
-            this.faction = speaker.getFaction();
+            this.speakerC.add(characterRef);
+            
+            // 自动设置关联属性
+            if (characterRef != null) {
+                this.speakerName = characterRef.getCharacterName();
+                this.faction = characterRef.getFaction();
+            }
             return this;
         }
         
@@ -367,16 +439,4 @@ public class Dialogue {
         return new Builder();
     }
     
-
-    // 基本使用 - 超级清晰！
-    // Dialogue dialogue1 = Dialogue.builder()
-    //     .text("你好，世界！")
-    //     .location("会议室")
-    //     .speakerName("张三")
-    //     .faction("技术部")
-    //     .align(Align.LEFT)
-    //     .speed(6)
-    //     .emotion(Emotion.HAPPY)
-    //     .build();
-
 }

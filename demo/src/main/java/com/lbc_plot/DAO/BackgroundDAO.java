@@ -1,0 +1,60 @@
+package com.lbc_plot.DAO;
+
+import com.lbc_plot.model.storage.Background;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.statement.UseRowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import java.util.List;
+import java.util.Optional;
+
+public interface BackgroundDAO {
+
+    @SqlQuery("SELECT * FROM backgrounds WHERE background_id = :id")
+    @UseRowMapper(BackgroundMapper.class)
+    Optional<Background> findById(@Bind("id") String id);
+
+    @SqlQuery("SELECT * FROM backgrounds ORDER BY display_name")
+    @UseRowMapper(BackgroundMapper.class)
+    List<Background> findAll();
+
+    @SqlQuery("SELECT * FROM backgrounds WHERE image_path = :path LIMIT 1")
+    @UseRowMapper(BackgroundMapper.class)
+    Optional<Background> findByPath(@Bind("path") String imagePath);
+
+    @SqlUpdate("INSERT INTO backgrounds (background_id, image_path, display_name, source) VALUES (:backgroundID, :imagePath, :displayName, :source)")
+    void save(@BindBean Background bg);
+
+    @SqlUpdate("UPDATE backgrounds SET image_path = :imagePath, display_name = :displayName, source = :source WHERE background_id = :backgroundID")
+    boolean update(@BindBean Background bg);
+
+    @SqlUpdate("DELETE FROM backgrounds WHERE background_id = :id")
+    boolean delete(@Bind("id") String id);
+
+    @SqlQuery("SELECT COUNT(*) FROM backgrounds")
+    int countAll();
+
+    @Transaction
+    default Background findOrCreateByPath(String path, String displayName, String source) {
+        Optional<Background> exist = findByPath(path);
+        if (exist.isPresent()) return exist.get();
+
+        // Try to find by suffix match: allow scripts that reference only the filename
+        // to match DB entries that store a longer path (e.g. assets/backgrounds/xxx.png)
+        List<Background> all = findAll();
+        for (Background b : all) {
+            try {
+                String img = b.getImagePath();
+                if (img != null && img.endsWith(path)) {
+                    return b;
+                }
+            } catch (Exception ignore) {}
+        }
+
+        Background bg = new Background(path, displayName);
+        save(bg);
+        return bg;
+    }
+}

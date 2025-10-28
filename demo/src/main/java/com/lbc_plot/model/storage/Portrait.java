@@ -5,11 +5,16 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.UUID;
+
 import javax.imageio.ImageIO;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.util.TextureColorizer;
 import com.lbc_plot.util.io.ImageReader;
@@ -17,30 +22,27 @@ import com.lbc_plot.util.io.ImageReader;
 /**
  * 角色立绘差分
  */
+@JsonDeserialize(builder = Portrait.Builder.class)
 public class Portrait {
     private static final Logger logger = LoggerFactory.getLogger(Portrait.class);
 
-    // 唯一ID
     String portraitID;
     String characterID; // 对应的角色的id
-    // 文件相对路径, 读入
     String imagePath;
+    @JsonIgnore
     BufferedImage image;
 
     // 立绘名
     String portName;
-    // 情绪。做立绘自动匹配用
     Emotion emotion;
-    // 面部位置左上角
     int faceX;
     int faceY;
-    // 面部长宽 1:1
     int length;
-    // 用户手动调整偏差
     int adjX;
     int adjY;
-    // 缩略图路径
     String thumbnailPath;
+    @JsonIgnore
+    BufferedImage thumbnail;
 
     // 默认值
     private static final String DEFAULT_PORTRAITID = null;
@@ -127,7 +129,13 @@ public class Portrait {
         this.emotion = emotion;
     }
 
+    @JsonIgnore
+    public String getEmotionName() {
+        return emotion != null ? emotion.name() : null;
+    }
+
     // 修改之后记得更新缩略图
+    // TODO 缩略图生成
     public int getFaceX() {
         return faceX;
     }
@@ -176,7 +184,27 @@ public class Portrait {
         this.thumbnailPath = thumbnailPath;
     }
 
-
+    /**
+     * 带懒加载的getter方法
+     * 如果image为null，会根据imagePath自动加载图像
+     */
+    public BufferedImage getThumbnail() {
+        if (this.thumbnail == null && this.thumbnailPath != null && !this.thumbnailPath.trim().isEmpty()) {
+            try {
+                // 使用ImageReader加载图像
+                this.thumbnail = ImageReader.readCharacters(thumbnailPath);
+                if (this.thumbnail == null) {
+                    logger.warn("无法加载图像: {}", thumbnailPath);
+                    // 可以返回一个默认图像或者抛出异常
+                    this.thumbnail = createDefaultImage();
+                }
+            } catch (Exception e) {
+                logger.error("加载图像失败: {}", thumbnailPath, e);
+                this.thumbnail = createDefaultImage();
+            }
+        }
+        return this.thumbnail;
+    }
 
 
 
@@ -248,20 +276,35 @@ public class Portrait {
      */
     public static class Builder {
         // 必需参数
+        @JsonProperty
         private String portraitID;
+        @JsonProperty
         private String characterID;
+        @JsonProperty
         private String imagePath;
-        
-        // 可选参数（有默认值）
-        private BufferedImage image;
+
+        // 可选参数（带默认值）
+        @JsonIgnore
+        private transient BufferedImage image; // 不序列化
+        @JsonProperty
         private String portName;
+        @JsonProperty
         private Emotion emotion = DEFAULT_EMOTION;
+        @JsonProperty
         private int faceX = DEFAULT_FACE_X;
+        @JsonProperty
         private int faceY = DEFAULT_FACE_Y;
+        @JsonProperty
         private int length = DEFAULT_LENGTH;
+        @JsonProperty
         private int adjX = DEFAULT_ADJ_X;
+        @JsonProperty
         private int adjY = DEFAULT_ADJ_Y;
+        @JsonProperty
         private String thumbnailPath;
+
+        // 无参构造器（JSON反序列化必需）
+        public Builder() {}
 
         /**
          * 必需参数构造函数
@@ -271,6 +314,11 @@ public class Portrait {
         }
         
         // 链式设置方法
+        public Builder portraitID() {
+            this.portraitID = UUID.randomUUID().toString();;
+            return this;
+        }
+
         public Builder portraitID(String portraitID) {
             this.portraitID = portraitID;
             return this;

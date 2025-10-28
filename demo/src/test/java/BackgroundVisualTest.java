@@ -19,8 +19,8 @@ public class BackgroundVisualTest {
     
     @BeforeEach
     void setUp() throws IOException {
-        // 在每个测试前创建Background实例
-        testBackground = new Background("test_bg.png");
+    // 在每个测试前创建Background实例
+    testBackground = new Background("test_bg.png", "办公室");
     }
     
     @Test
