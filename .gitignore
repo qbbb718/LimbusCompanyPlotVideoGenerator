@@ -1,0 +1,10 @@
+/note
+demo/target/classes/com/lbc_plot/DAO/CharacterMapper.class
+demo/target/classes/com/lbc_plot/DAO/ColorMapper.class
+demo/target/classes/com/lbc_plot/DAO/EmotionMapper.class
+demo/target/classes/com/lbc_plot/DAO/PortraitMapper.class
+demo/target/classes/com/lbc_plot/model/video/CharacterRef.class
+demo/target/classes/com/lbc_plot/util/json/ColorDeserializer.class
+demo/target/classes/com/lbc_plot/util/json/ColorSerializer.class
+demo/target/classes/com/lbc_plot/util/json/RecordsIO.class
+demo/target/test-classes/helpers/SQLiteTestDatabaseManager.class
