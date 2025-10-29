@@ -3,23 +3,21 @@
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  padding: 15px;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .editor-top {
-  flex: 2;
-  margin-bottom: 15px;
-  overflow: hidden;
   display: flex;
-  gap: 15px;
+  height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 .editor-bottom {
-  flex: 1;
-  min-height: 150px;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -49,6 +47,7 @@
   flex: 1;
   overflow: auto;
   border: 1px solid #ddd;
+  height: 100%;
 }
 
 .record-list table {
@@ -83,11 +82,12 @@
 }
 
 .preview-container {
-  flex: 1;
+  height: 100%;
   border: 1px solid #ddd;
   padding: 10px;
   display: flex;
   flex-direction: column;
+  overflow: auto;
 }
 
 .preview-header {
@@ -128,10 +128,11 @@
 }
 
 .properties-container {
-  flex: 1;
+  height: 100%;
   border: 1px solid #ddd;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .property-tabs {
@@ -156,6 +157,7 @@
   flex: 1;
   padding: 15px;
   overflow: auto;
+  height: 0;
 }
 
 .form-group {
@@ -313,15 +315,19 @@
 /* 新的面板样式 */
 .editor-top-panel {
   width: 100%;
-  flex: 2;
   display: flex;
   flex-direction: column;
 }
 
 .editor-bottom-panel {
   width: 100%;
-  flex: 1;
-  min-height: 150px;
+  height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.properties-panel {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
 }

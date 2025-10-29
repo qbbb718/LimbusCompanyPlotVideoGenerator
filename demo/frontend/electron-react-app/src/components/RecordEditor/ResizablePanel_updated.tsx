@@ -71,18 +71,18 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
     e.stopPropagation();
   };
 
-  const panelStyle = direction === 'horizontal' 
-    ? { width: `${size}px`, ...(style || {}) }
-    : { height: `${size}px`, ...(style || {}) };
+  const panelStyle = direction === 'horizontal'
+    ? { width: `${size}px`, minWidth: `${minSize}px`, ...(style || {}) }
+    : { height: `${size}px`, minHeight: `${minSize}px`, ...(style || {}) };
 
   return (
-    <div 
-      ref={panelRef} 
+    <div
+      ref={panelRef}
       className={`resizable-panel ${direction} ${className}`}
       style={panelStyle}
     >
       {children}
-      <div 
+      <div
         className={`resize-handle ${direction}`}
         onMouseDown={handleMouseDown}
       />

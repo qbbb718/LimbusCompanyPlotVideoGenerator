@@ -75,7 +75,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>LimbusCompany 剧情视频生成器</h1>
+        {/* <h1>LimbusCompany 剧情视频生成器</h1> */}
         <div className="tab-navigation">
           <button 
             className={activeTab === 'editor' ? 'active' : ''}

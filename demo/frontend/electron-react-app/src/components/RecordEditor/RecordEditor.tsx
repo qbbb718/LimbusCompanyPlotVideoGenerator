@@ -12,7 +12,7 @@ import BackgroundProperties from './properties/BackgroundProperties';
 import AudioProperties from './properties/AudioProperties';
 import GlobalProperties from './properties/GlobalProperties';
 import { generateUUID } from './utils';
-import ResizablePanel from './ResizablePanel';
+import ResizablePanel from './ResizablePanel_updated';
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
@@ -239,7 +239,13 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ projectSettings }) => {
 
   return (
     <div className="record-editor">
-      <div className="editor-top-panel" style={{ height: `${topPanelHeight}px` }}>
+      <ResizablePanel 
+        direction="vertical" 
+        defaultSize={topPanelHeight} 
+        minSize={200}
+        className="editor-top-panel"
+        onResize={(size) => setTopPanelHeight(size)}
+      >
         <div className="editor-top">
           <ResizablePanel 
             direction="horizontal" 
@@ -268,14 +274,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ projectSettings }) => {
             </div>
           </ResizablePanel>
         </div>
-      </div>
+      </ResizablePanel>
 
-      <div 
-        className="resize-handle vertical" 
-        onMouseDown={handleVerticalResize}
-      />
-
-      <div className="editor-bottom-panel" style={{ height: `calc(100vh - ${topPanelHeight}px - 30px)` }}>
+      <div className="editor-bottom-panel">
         <div className="editor-bottom">
           <RecordList
             records={records}
