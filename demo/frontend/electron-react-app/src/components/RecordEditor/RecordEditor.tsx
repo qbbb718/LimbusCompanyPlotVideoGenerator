@@ -276,7 +276,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ projectSettings }) => {
         </div>
       </ResizablePanel>
 
-      <div className="editor-bottom-panel">
+      <div className="editor-bottom-panel" style={{ minHeight: "150px" }}>
         <div className="editor-bottom">
           <RecordList
             records={records}

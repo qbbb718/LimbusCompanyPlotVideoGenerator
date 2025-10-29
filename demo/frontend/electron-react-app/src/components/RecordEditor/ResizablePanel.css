@@ -2,6 +2,8 @@
 .resizable-panel {
   position: relative;
   overflow: hidden;
+  min-height: 0;
+  min-width: 0;
 }
 
 .resizable-panel.horizontal {
