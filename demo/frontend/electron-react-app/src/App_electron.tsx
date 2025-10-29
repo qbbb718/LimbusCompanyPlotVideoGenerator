@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
+import './App_electron.css';
 import ProjectSettings from './components/Settings';
 import RecordEditor from './components/RecordEditor';
 import { ProjectSettings as IProjectSettings } from './types';
@@ -98,13 +98,6 @@ function App() {
     <div className="App">
       <header className="app-header">
         <h1>LimbusCompany Plot Video Generator</h1>
-        {isElectron && (
-          <div className="window-controls">
-            <button onClick={() => window.electronAPI.minimizeWindow()}>_</button>
-            <button onClick={() => window.electronAPI.maximizeWindow()}>□</button>
-            <button onClick={() => window.electronAPI.closeWindow()}>✕</button>
-          </div>
-        )}
       </header>
 
       <main className="app-main">

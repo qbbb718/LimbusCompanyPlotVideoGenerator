@@ -2,14 +2,18 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import AppElectron from './App_electron';
 import reportWebVitals from './reportWebVitals';
+
+// 检测是否在Electron环境中运行
+const isElectron = window.navigator.userAgent.toLowerCase().indexOf('electron') > -1;
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <App />
+    {isElectron ? <AppElectron /> : <App />}
   </React.StrictMode>
 );
 

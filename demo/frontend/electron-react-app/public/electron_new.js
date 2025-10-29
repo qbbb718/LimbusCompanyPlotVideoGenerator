@@ -1,4 +1,3 @@
-
 const { app, BrowserWindow, Menu, shell, ipcMain, dialog, Notification } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV !== 'production';
@@ -9,15 +8,16 @@ let mainWindow;
 function createWindow() {
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1200,
-    minHeight: 800,
+    width: 1200,
+    height: 800,
+    minWidth: 1000,
+    minHeight: 700,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      zoomFactor: 1.0 // 设置默认缩放因子为1.0
     },
     icon: path.join(__dirname, 'favicon.ico'),
     show: false, // 先不显示，等加载完成后再显示
@@ -27,9 +27,9 @@ function createWindow() {
   });
 
   // 加载应用
-  const startUrl = isDev 
-    ? 'http://localhost:3000' 
-    : `file://${path.join(__dirname, '../build/index.html')}`;
+  const startUrl = isDev
+    ? 'http://localhost:3000'
+    : `file://${path.join(__dirname, '../build/index.html').replace(/\\/g, '/')}`;
 
   mainWindow.loadURL(startUrl);
 
