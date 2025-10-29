@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: limbus-company-plot-video-generator
+  datasource:
+    url: jdbc:sqlite:./data/project.db
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+# 自定义配置
+audio:
+  bgm:
+    volume: 0.7
+    gain: 1.2
+  voice:
+    volume: 1.0
+    gain: 1.0
+  sfx:
+    volume: 0.8
+    gain: 1.5
+
+# 日志配置
+logging:
+  level:
+    com.lbc_plot: DEBUG
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 30

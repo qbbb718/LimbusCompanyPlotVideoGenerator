@@ -14,6 +14,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\CharacterDAO.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\RecordDurationCalculator.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\json\RecordsIO.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\SpringBootConfig.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\SequenceFrameExporter.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\contract\TextLayerOperations.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\TimelineToFFmpegConverter.java
@@ -29,6 +30,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\PortraitD
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\BatchVideoProcessor.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\EffectVisual.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\TimelineController.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\main\Application.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\ImageReader.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\impl\ThumbnailServiceImpl.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\manager\TextLayerManager.java
@@ -52,6 +54,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\json\Col
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\ResourceChecker.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\ImageExporter.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\VideoAudioMerger.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\PlotVideoController.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\ThumbnailService.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\ProjectConfig.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\model\AudioCommand.java
