@@ -1,0 +1,65 @@
+
+.resizable-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.resizable-panel.horizontal {
+  min-width: 100px;
+}
+
+.resizable-panel.vertical {
+  min-height: 100px;
+}
+
+.resize-handle {
+  position: absolute;
+  background-color: transparent;
+  z-index: 10;
+}
+
+.resize-handle.horizontal {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+}
+
+.resize-handle.horizontal {
+  background-color: #ddd;
+  border-left: 2px solid #1890ff;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  position: relative;
+}
+
+.resize-handle.horizontal:hover {
+  background-color: rgba(24, 144, 255, 0.7);
+  border-left: 2px solid #096dd9;
+}
+
+.resize-handle.vertical {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  cursor: row-resize;
+}
+
+.resize-handle.vertical {
+  background-color: #ddd;
+  border-top: 2px solid #1890ff;
+  height: 10px;
+  width: 100%;
+  cursor: row-resize;
+  z-index: 10;
+  position: relative;
+}
+
+.resize-handle.vertical:hover {
+  background-color: rgba(24, 144, 255, 0.7);
+  border-top: 2px solid #096dd9;
+}
