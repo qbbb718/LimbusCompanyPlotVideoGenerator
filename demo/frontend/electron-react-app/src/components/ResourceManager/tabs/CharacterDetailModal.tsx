@@ -1,13 +1,12 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MyCharacter, Portrait, Emotion } from '../../../types';
 import ApiService from '../../../services/ApiService';
+import { HexColorPicker } from 'react-colorful';
+
 import './CharacterModal.css';
 
 // 添加立绘功能相关
 import PortraitModal from './PortraitModal';
-
-
 
 interface CharacterDetailModalProps {
   character: MyCharacter | null;
@@ -29,7 +28,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   const [editingCharacter, setEditingCharacter] = useState<MyCharacter | null>(
     character ? { ...character, portraits: character.portraits || [] } : null
   );
-  const [showColorPalette, setShowColorPalette] = useState<{ text: boolean, bg: boolean }>({ text: false, bg: false });
+  const [showColorPicker, setShowColorPicker] = useState<{ text: boolean, bg: boolean }>({ text: false, bg: false });
   const [newTagInput, setNewTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
@@ -43,10 +42,10 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     setShowPortraitModal(true);
   };
 
-const handleEditPortrait = (portrait: Portrait) => {
-  setEditingPortrait(portrait);
-  setShowPortraitModal(true);
-};
+  const handleEditPortrait = (portrait: Portrait) => {
+    setEditingPortrait(portrait);
+    setShowPortraitModal(true);
+  };
 
   useEffect(() => {
     if (character) {
@@ -112,16 +111,9 @@ const handleEditPortrait = (portrait: Portrait) => {
     });
   };
 
-  const predefinedColors = [
-    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
-    '#FFFF00', '#FF00FF', '#00FFFF', '#800000', '#008000',
-    '#000080', '#808000', '#800080', '#008080', '#C0C0C0',
-    '#808080', '#FFA500', '#A52A2A', '#8B4513', '#FFD700'
-  ];
-
   const handleDeleteCharacter = () => {
     if (!editingCharacter || !onDelete) return;
-    
+
     onDelete(editingCharacter.characterID, deleteFiles);
     setShowDeleteConfirm(false);
     onClose();
@@ -184,22 +176,23 @@ const handleEditPortrait = (portrait: Portrait) => {
                   <div 
                     className="color-preview-box" 
                     style={{ backgroundColor: editingCharacter.colorText }}
-                    onClick={() => setShowColorPalette({ ...showColorPalette, text: !showColorPalette.text })}
+                    onClick={() => setShowColorPicker({ ...showColorPicker, text: !showColorPicker.text })}
                   ></div>
 
-                  {showColorPalette.text && (
-                    <div className="color-palette visible">
-                      {predefinedColors.map(color => (
-                        <div
-                          key={color}
-                          className="color-preset"
-                          style={{ backgroundColor: color }}
-                          onClick={() => {
-                            handleColorChange('text', color);
-                            setShowColorPalette({ ...showColorPalette, text: false });
-                          }}
-                        ></div>
-                      ))}
+                  {showColorPicker.text && (
+                    <div className="color-picker-dropdown">
+                      <HexColorPicker 
+                        color={editingCharacter.colorText} 
+                        onChange={(color: string) => handleColorChange('text', color)} 
+                      />
+                      <div className="color-picker-actions">
+                        <button 
+                          className="btn-small btn-primary" 
+                          onClick={() => setShowColorPicker({ ...showColorPicker, text: false })}
+                        >
+                          确定
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -216,22 +209,23 @@ const handleEditPortrait = (portrait: Portrait) => {
                   <div 
                     className="color-preview-box" 
                     style={{ backgroundColor: editingCharacter.colorBg }}
-                    onClick={() => setShowColorPalette({ ...showColorPalette, bg: !showColorPalette.bg })}
+                    onClick={() => setShowColorPicker({ ...showColorPicker, bg: !showColorPicker.bg })}
                   ></div>
 
-                  {showColorPalette.bg && (
-                    <div className="color-palette visible">
-                      {predefinedColors.map(color => (
-                        <div
-                          key={color}
-                          className="color-preset"
-                          style={{ backgroundColor: color }}
-                          onClick={() => {
-                            handleColorChange('bg', color);
-                            setShowColorPalette({ ...showColorPalette, bg: false });
-                          }}
-                        ></div>
-                      ))}
+                  {showColorPicker.bg && (
+                    <div className="color-picker-dropdown">
+                      <HexColorPicker 
+                        color={editingCharacter.colorBg} 
+                        onChange={(color: string) => handleColorChange('bg', color)} 
+                      />
+                      <div className="color-picker-actions">
+                        <button 
+                          className="btn-small btn-primary" 
+                          onClick={() => setShowColorPicker({ ...showColorPicker, bg: false })}
+                        >
+                          确定
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -275,34 +269,32 @@ const handleEditPortrait = (portrait: Portrait) => {
             </div>
           </div>
 
-
           <div className="portraits-section">
-  <div className="section-header">
-    <h3>立绘列表</h3>
-    <button className="btn-primary" onClick={handleAddPortrait}>添加立绘</button>
-  </div>
+            <div className="section-header">
+              <h3>立绘列表</h3>
+              <button className="btn-primary" onClick={handleAddPortrait}>添加立绘</button>
+            </div>
 
-  <div className="portraits-grid">
-    {editingCharacter.portraits?.map(portrait => (
-      <div key={portrait.portraitID} className="portrait-card">
-        <div className="portrait-thumbnail">
-          {/* 这里应该显示立绘缩略图 */}
-          {portrait.thumbnailPath ? (
-            <img src={portrait.thumbnailPath} alt={portrait.portName} />
-          ) : (
-            <div className="thumbnail-placeholder">缩略图</div>
-          )}
-        </div>
-        <div className="portrait-info">
-          <h4>{portrait.portName}</h4>
-          <p>情绪: {portrait.emotion}</p>
-          <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
-
+            <div className="portraits-grid">
+              {editingCharacter.portraits?.map(portrait => (
+                <div key={portrait.portraitID} className="portrait-card">
+                  <div className="portrait-thumbnail">
+                    {/* 这里应该显示立绘缩略图 */}
+                    {portrait.thumbnailPath ? (
+                      <img src={portrait.thumbnailPath} alt={portrait.portName} />
+                    ) : (
+                      <div className="thumbnail-placeholder">缩略图</div>
+                    )}
+                  </div>
+                  <div className="portrait-info">
+                    <h4>{portrait.portName}</h4>
+                    <p>情绪: {portrait.emotion}</p>
+                    <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="form-actions">
@@ -312,13 +304,13 @@ const handleEditPortrait = (portrait: Portrait) => {
             <button className="btn-danger" onClick={() => setShowDeleteConfirm(true)}>删除角色</button>
           )}
         </div>
-        
+
         {/* 删除确认对话框 */}
         {showDeleteConfirm && (
           <div className="modal-overlay">
             <div className="confirm-dialog">
               <h3>确认删除</h3>
-              <p>确定要删除角色 "{editingCharacter?.characterName}" 吗？</p>
+              <p>确定要删除角色 "{editingCharacter.characterName}" 吗？</p>
               <div className="checkbox-container">
                 <label>
                   <input
@@ -336,7 +328,7 @@ const handleEditPortrait = (portrait: Portrait) => {
             </div>
           </div>
         )}
-        
+
         {/* 立绘编辑弹窗 */}
         {showPortraitModal && editingCharacter && (
           <PortraitModal

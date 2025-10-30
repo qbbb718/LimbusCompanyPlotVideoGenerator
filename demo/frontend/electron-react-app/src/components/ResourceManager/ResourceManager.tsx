@@ -29,7 +29,7 @@ const ResourceManager: React.FC = () => {
       const mockCharacters: MyCharacter[] = [
         {
           characterID: "char001",
-          characterName: "格里高尔",
+          characterName: "角色1",
           height: 180,
           faction: "辛迪加",
           tags: [],
@@ -66,7 +66,7 @@ const ResourceManager: React.FC = () => {
         },
         {
           characterID: "char002",
-          characterName: "默尔索",
+          characterName: "角色2",
           height: 175,
           faction: "K公司",
           tags: [],
