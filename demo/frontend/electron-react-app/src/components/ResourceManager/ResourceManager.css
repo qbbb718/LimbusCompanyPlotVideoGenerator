@@ -282,3 +282,142 @@
   height: 100%;
   font-size: 18px;
 }
+
+/* 标签相关样式 */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.tag {
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tag-remove {
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tag-input-container {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.tag-input {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 5px;
+}
+
+/* 拖拽相关样式 */
+.dragging {
+  opacity: 0.5;
+}
+
+.drop-zone {
+  border: 2px dashed #1890ff;
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+/* 编辑表单样式 */
+.edit-form {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.form-actions button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: #1890ff;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.btn-danger {
+  background-color: #ff4d4f;
+  color: white;
+}
+
+/* 文件上传样式 */
+.file-upload {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.file-upload input[type=file] {
+  position: absolute;
+  left: -9999px;
+}
+
+.file-upload-label {
+  display: inline-block;
+  padding: 8px 15px;
+  background-color: #1890ff;
+  color: white;
+  border-radius: 4px;
+}
+
+/* 立绘编辑器样式 */
+.portrait-editor {
+  display: flex;
+  gap: 20px;
+}
+
+.portrait-preview {
+  flex: 1;
+}
+
+.portrait-preview img {
+  max-width: 100%;
+  border: 1px solid #ddd;
+}
+
+.portrait-settings {
+  flex: 1;
+}
+
+.crop-controls {
+  margin-top: 10px;
+}
+
+.crop-preview {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  margin-top: 10px;
+}
+
+.crop-preview img {
+  width: 100%;
+}

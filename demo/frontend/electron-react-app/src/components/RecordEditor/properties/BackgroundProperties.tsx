@@ -53,17 +53,20 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
         {
           uuid: "bg001",
           name: "办公室",
-          path: "/images/backgrounds/office.png"
+          path: "/images/backgrounds/office.png",
+          tags: ["室内", "工作"]
         },
         {
           uuid: "bg002",
           name: "街道",
-          path: "/images/backgrounds/street.png"
+          path: "/images/backgrounds/street.png",
+          tags: ["室外", "城市"]
         },
         {
           uuid: "bg003",
           name: "图书馆",
-          path: "/images/backgrounds/library.png"
+          path: "/images/backgrounds/library.png",
+          tags: ["室内", "安静"]
         }
       ];
       setBackgrounds(mockBackgrounds);

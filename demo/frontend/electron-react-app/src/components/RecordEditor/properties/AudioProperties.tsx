@@ -55,19 +55,22 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
           uuid: "audio001",
           name: "背景音乐1",
           path: "/audio/bgm1.mp3",
-          type: "BGM"
+          type: "BGM",
+          tags: ["轻松", "日常"]
         },
         {
           uuid: "audio002",
           name: "脚步声",
           path: "/audio/footsteps.mp3",
-          type: "SFX"
+          type: "SFX",
+          tags: ["动作", "环境"]
         },
         {
           uuid: "audio003",
           name: "对话语音1",
           path: "/audio/voice1.mp3",
-          type: "VOICE"
+          type: "VOICE",
+          tags: ["对话", "剧情"]
         }
       ];
       setAudios(mockAudios);

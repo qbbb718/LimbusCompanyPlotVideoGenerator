@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import RecordEditor from './components/RecordEditor';
-import ResourceManager from './components/ResourceManager';
+import ResourceManager from './components/ResourceManager/ResourceManager';
 import Settings from './components/Settings';
 import TextToRecords from './components/TextToRecords';
 import ApiService from './services/ApiService';

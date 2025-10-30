@@ -133,6 +133,116 @@ class ApiService {
       throw error;
     }
   }
+
+  // 更新角色
+  async updateCharacter(id: string, characterData: any) {
+    try {
+      const response = await apiClient.put(`/characters/${id}`, characterData);
+      return response.data;
+    } catch (error) {
+      console.error('更新角色失败:', error);
+      throw error;
+    }
+  }
+
+  // 添加立绘
+  async addPortrait(characterId: string, portraitData: any) {
+    try {
+      const response = await apiClient.post(`/characters/${characterId}/portraits`, portraitData);
+      return response.data;
+    } catch (error) {
+      console.error('添加立绘失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新立绘
+  async updatePortrait(characterId: string, portraitId: string, portraitData: any) {
+    try {
+      const response = await apiClient.put(`/characters/${characterId}/portraits/${portraitId}`, portraitData);
+      return response.data;
+    } catch (error) {
+      console.error('更新立绘失败:', error);
+      throw error;
+    }
+  }
+
+  // 删除立绘
+  async deletePortrait(characterId: string, portraitId: string) {
+    try {
+      const response = await apiClient.delete(`/characters/${characterId}/portraits/${portraitId}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除立绘失败:', error);
+      throw error;
+    }
+  }
+
+  // 添加背景
+  async addBackground(backgroundData: any) {
+    try {
+      const response = await apiClient.post('/backgrounds', backgroundData);
+      return response.data;
+    } catch (error) {
+      console.error('添加背景失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新背景
+  async updateBackground(id: string, backgroundData: any) {
+    try {
+      const response = await apiClient.put(`/backgrounds/${id}`, backgroundData);
+      return response.data;
+    } catch (error) {
+      console.error('更新背景失败:', error);
+      throw error;
+    }
+  }
+
+  // 删除背景
+  async deleteBackground(id: string) {
+    try {
+      const response = await apiClient.delete(`/backgrounds/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除背景失败:', error);
+      throw error;
+    }
+  }
+
+  // 添加音频
+  async addAudio(audioData: any) {
+    try {
+      const response = await apiClient.post('/audios', audioData);
+      return response.data;
+    } catch (error) {
+      console.error('添加音频失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新音频
+  async updateAudio(id: string, audioData: any) {
+    try {
+      const response = await apiClient.put(`/audios/${id}`, audioData);
+      return response.data;
+    } catch (error) {
+      console.error('更新音频失败:', error);
+      throw error;
+    }
+  }
+
+  // 删除音频
+  async deleteAudio(id: string) {
+    try {
+      const response = await apiClient.delete(`/audios/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除音频失败:', error);
+      throw error;
+    }
+  }
 }
 
 // 导出单例

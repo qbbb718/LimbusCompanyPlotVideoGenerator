@@ -118,6 +118,7 @@ export interface Background {
   uuid: string;
   path: string;
   name: string;
+  tags: string[];
 }
 
 // 音频资源
@@ -126,6 +127,7 @@ export interface Audio {
   path: string;
   name: string;
   type: string; // BGM, VOICE, SFX等
+  tags: string[];
 }
 
 // 项目设置
