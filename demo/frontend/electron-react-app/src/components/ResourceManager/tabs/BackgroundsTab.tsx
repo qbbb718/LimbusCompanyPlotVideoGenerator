@@ -24,6 +24,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   const [draggedItem, setDraggedItem] = useState<Background | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [newTagInput, setNewTagInput] = useState<{ [key: string]: string }>({});
+  const [backgroundPreview, setBackgroundPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEditBackground = (background: Background) => {
@@ -76,6 +77,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   const handleCancelEdit = () => {
     setEditingBackground(null);
     setIsAddingBackground(false);
+    setBackgroundPreview(null);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,6 +88,13 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     // 实际实现可能需要调用Electron的API将文件复制到资源目录
     const filePath = file.path || URL.createObjectURL(file);
     const fileName = file.name;
+    
+    // 创建预览URL
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setBackgroundPreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
 
     setEditingBackground({
       uuid: '',
@@ -183,6 +192,12 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
 
           {editingBackground && (
             <>
+              {backgroundPreview && (
+                <div className="background-preview-large">
+                  <h4>背景预览</h4>
+                  <img src={backgroundPreview} alt="背景预览" />
+                </div>
+              )}
               <div className="form-group">
                 <label>名称</label>
                 <input

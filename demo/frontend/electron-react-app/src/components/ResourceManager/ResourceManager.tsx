@@ -32,6 +32,7 @@ const ResourceManager: React.FC = () => {
           characterName: "格里高尔",
           height: 180,
           faction: "辛迪加",
+          tags: [],
           portraits: [
             {
               portraitID: "portrait001",
@@ -68,6 +69,7 @@ const ResourceManager: React.FC = () => {
           characterName: "默尔索",
           height: 175,
           faction: "K公司",
+          tags: [],
           portraits: [
             {
               portraitID: "portrait003",

@@ -269,11 +269,11 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
         </div>
       )}
 
-      <div className="audios-list">
+      <div className="audios-grid">
         {audios.map((audio, index) => (
           <div
             key={audio.uuid}
-            className={`audio-item ${dragOverIndex === index ? 'drop-zone' : ''}`}
+            className={`audio-card ${dragOverIndex === index ? 'drop-zone' : ''}`}
             draggable
             onDragStart={(e) => handleDragStart(e, audio)}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -283,7 +283,7 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
             <div className="audio-info">
               <h3>{audio.name}</h3>
               <p>类型: {audio.type}</p>
-              <p>路径: {audio.path}</p>
+
               
               <div className="tags-container">
                 {audio.tags.map(tag => (

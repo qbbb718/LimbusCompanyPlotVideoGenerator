@@ -46,6 +46,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
           faction: "事务所",
           colorBg: "#FF0000",
           colorText: "#FFFFFF",
+          tags: [],
           portraits: [
             {
               portraitID: "port001",
@@ -82,6 +83,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
           faction: "事务所",
           colorBg: "#0000FF",
           colorText: "#FFFFFF",
+          tags: [],
           portraits: [
             {
               portraitID: "port003",
@@ -118,6 +120,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
           faction: "事务所",
           colorBg: "#00FF00",
           colorText: "#000000",
+          tags: [],
           portraits: [
             {
               portraitID: "port005",

@@ -1,8 +1,11 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MyCharacter, Portrait, Emotion } from '../../../types';
 import ApiService from '../../../services/ApiService';
 import '../ResourceManager.css';
+import './CharacterModal.css';
+import CharacterDetailModal from './CharacterDetailModal';
+import PortraitModal from './PortraitModal';
 
 interface CharactersTabProps {
   characters: MyCharacter[];
@@ -31,7 +34,15 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
   const [cropPosition, setCropPosition] = useState({ x: 0, y: 0 });
   const [cropSize, setCropSize] = useState({ width: 100, height: 100 });
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
+  const [showPortraitModal, setShowPortraitModal] = useState(false);
+  const [newTagInput, setNewTagInput] = useState<{ [key: string]: string }>({});
+  const [showColorPalette, setShowColorPalette] = useState<{ text: boolean, bg: boolean }>({ text: false, bg: false });
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [isResizingCrop, setIsResizingCrop] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cropContainerRef = useRef<HTMLDivElement>(null);
 
   const handleEditCharacter = () => {
     if (!selectedCharacter) return;
@@ -60,12 +71,9 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
   };
 
   const handleAddPortrait = () => {
-    setIsAddingPortrait(true);
+    if (!selectedCharacter) return;
     setEditingPortrait(null);
-    setPortraitFile(null);
-    setPortraitPreview(null);
-    setCropPosition({ x: 0, y: 0 });
-    setCropSize({ width: 100, height: 100 });
+    setShowPortraitModal(true);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,11 +106,11 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     });
   };
 
-  const handleSavePortrait = async () => {
-    if (!editingPortrait || !selectedCharacter) return;
+  const handleSavePortrait = async (portrait: Portrait) => {
+    if (!selectedCharacter) return;
 
     try {
-      const newPortrait = await ApiService.addPortrait(selectedCharacter.characterID, editingPortrait);
+      const newPortrait = await ApiService.addPortrait(selectedCharacter.characterID, portrait);
       const updatedCharacter = {
         ...selectedCharacter,
         portraits: [...selectedCharacter.portraits, newPortrait]
@@ -111,10 +119,8 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
       
-      setIsAddingPortrait(false);
+      setShowPortraitModal(false);
       setEditingPortrait(null);
-      setPortraitFile(null);
-      setPortraitPreview(null);
     } catch (error) {
       console.error('添加立绘失败:', error);
       alert('添加立绘失败，请重试');
@@ -123,22 +129,23 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
 
   const handleEditPortrait = (portrait: Portrait) => {
     setEditingPortrait({ ...portrait });
-    setIsAddingPortrait(false);
+    setShowPortraitModal(true);
   };
 
-  const handleUpdatePortrait = async () => {
-    if (!editingPortrait || !selectedCharacter) return;
+  const handleUpdatePortrait = async (portrait: Portrait) => {
+    if (!selectedCharacter) return;
 
     try {
-      const updatedPortrait = await ApiService.updatePortrait(selectedCharacter.characterID, editingPortrait.portraitID, editingPortrait);
+      const updatedPortrait = await ApiService.updatePortrait(selectedCharacter.characterID, portrait.portraitID, portrait);
       const updatedCharacter = {
         ...selectedCharacter,
-        portraits: selectedCharacter.portraits.map(p => p.portraitID === editingPortrait.portraitID ? updatedPortrait : p)
+        portraits: selectedCharacter.portraits.map(p => p.portraitID === portrait.portraitID ? updatedPortrait : p)
       };
       
       setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
       
+      setShowPortraitModal(false);
       setEditingPortrait(null);
     } catch (error) {
       console.error('更新立绘失败:', error);
@@ -181,7 +188,8 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       faction: "未设定",
       portraits: [],
       colorBg: "#FFFFFF",
-      colorText: "#000000"
+      colorText: "#000000",
+      tags: []
     };
     
     setCharacters([...characters, newCharacter]);
@@ -209,6 +217,11 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
             key={character.characterID}
             className={`character-card ${selectedCharacter?.characterID === character.characterID ? 'selected' : ''}`}
             onClick={() => setSelectedCharacter(character)}
+            onDoubleClick={() => {
+              setSelectedCharacter(character);
+              setEditingCharacter({ ...character });
+              setShowCharacterModal(true);
+            }}
           >
             <div className="character-avatar">
               {/* 这里应该显示角色头像 */}
@@ -442,7 +455,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
                       </div>
                       
                       <div className="form-actions">
-                        <button className="btn-primary" onClick={handleSavePortrait}>保存</button>
+                        <button className="btn-primary" onClick={() => editingPortrait ? handleUpdatePortrait(editingPortrait) : null}>保存</button>
                         <button className="btn-secondary" onClick={handleCancelEditPortrait}>取消</button>
                       </div>
                     </div>
@@ -552,7 +565,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
                   </div>
                   
                   <div className="form-actions">
-                    <button className="btn-primary" onClick={handleUpdatePortrait}>保存</button>
+                    <button className="btn-primary" onClick={() => editingPortrait ? handleUpdatePortrait(editingPortrait) : null}>保存</button>
                     <button className="btn-secondary" onClick={handleCancelEditPortrait}>取消</button>
                     <button className="btn-danger" onClick={() => handleDeletePortrait(editingPortrait.portraitID)}>删除</button>
                   </div>
@@ -581,6 +594,40 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 角色详情弹窗 */}
+      {showCharacterModal && editingCharacter && (
+        <CharacterDetailModal
+          character={editingCharacter}
+          onClose={() => setShowCharacterModal(false)}
+          onSave={(character) => {
+            if (editingCharacter?.characterID && characters.find(c => c.characterID === editingCharacter.characterID)) {
+              // 更新现有角色
+              setCharacters(characters.map(c => c.characterID === editingCharacter.characterID ? character : c));
+              setSelectedCharacter(character);
+            } else {
+              // 添加新角色
+              setCharacters([...characters, character]);
+              setSelectedCharacter(character);
+            }
+            setShowCharacterModal(false);
+          }}
+          isNewCharacter={!characters.find(c => c.characterID === editingCharacter.characterID)}
+        />
+      )}
+
+      {/* 立绘编辑弹窗 */}
+      {showPortraitModal && selectedCharacter && (
+        <PortraitModal
+          characterId={selectedCharacter.characterID}
+          portrait={editingPortrait}
+          onClose={() => setShowPortraitModal(false)}
+          onSave={editingPortrait?.portraitID && selectedCharacter.portraits.find(p => p.portraitID === editingPortrait.portraitID)
+            ? handleUpdatePortrait
+            : handleSavePortrait}
+          isNewPortrait={!editingPortrait?.portraitID || !selectedCharacter.portraits.find(p => p.portraitID === editingPortrait.portraitID)}
+        />
       )}
     </div>
   );

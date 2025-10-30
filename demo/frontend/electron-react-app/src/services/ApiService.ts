@@ -134,6 +134,17 @@ class ApiService {
     }
   }
 
+  // 添加新角色
+  async addCharacter(characterData: any) {
+    try {
+      const response = await apiClient.post('/characters', characterData);
+      return response.data;
+    } catch (error) {
+      console.error('添加角色失败:', error);
+      throw error;
+    }
+  }
+
   // 更新角色
   async updateCharacter(id: string, characterData: any) {
     try {

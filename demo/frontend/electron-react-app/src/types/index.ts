@@ -111,6 +111,7 @@ export interface MyCharacter {
   portraits: Portrait[];
   colorBg: string; // 转换为hex字符串
   colorText: string; // 转换为hex字符串
+  tags: string[];
 }
 
 // 背景资源
