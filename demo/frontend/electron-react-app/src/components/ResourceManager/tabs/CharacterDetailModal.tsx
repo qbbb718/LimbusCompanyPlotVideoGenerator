@@ -4,27 +4,58 @@ import { MyCharacter, Portrait, Emotion } from '../../../types';
 import ApiService from '../../../services/ApiService';
 import './CharacterModal.css';
 
+// 添加立绘功能相关
+import PortraitModal from './PortraitModal';
+
+
+
 interface CharacterDetailModalProps {
   character: MyCharacter | null;
   onClose: () => void;
   onSave: (character: MyCharacter) => void;
+  onDelete?: (characterId: string, deleteFiles: boolean) => void;
   isNewCharacter: boolean;
+  portraits: Portrait[];
 }
 
 const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   character,
   onClose,
   onSave,
-  isNewCharacter
+  onDelete,
+  isNewCharacter,
+  portraits
 }) => {
-  const [editingCharacter, setEditingCharacter] = useState<MyCharacter | null>(character);
+  const [editingCharacter, setEditingCharacter] = useState<MyCharacter | null>(
+    character ? { ...character, portraits: character.portraits || [] } : null
+  );
   const [showColorPalette, setShowColorPalette] = useState<{ text: boolean, bg: boolean }>({ text: false, bg: false });
   const [newTagInput, setNewTagInput] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
+  const [showPortraitModal, setShowPortraitModal] = useState(false);
+  const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleAddPortrait = () => {
+    if (!editingCharacter) return;
+    setEditingPortrait(null);
+    setShowPortraitModal(true);
+  };
+
+const handleEditPortrait = (portrait: Portrait) => {
+  setEditingPortrait(portrait);
+  setShowPortraitModal(true);
+};
+
   useEffect(() => {
-    setEditingCharacter(character);
-  }, [character]);
+    if (character) {
+      setEditingCharacter({
+        ...character,
+        portraits: character.portraits || portraits || []
+      });
+    }
+  }, [character, portraits]);
 
   const handleSave = async () => {
     if (!editingCharacter) return;
@@ -88,6 +119,14 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     '#808080', '#FFA500', '#A52A2A', '#8B4513', '#FFD700'
   ];
 
+  const handleDeleteCharacter = () => {
+    if (!editingCharacter || !onDelete) return;
+    
+    onDelete(editingCharacter.characterID, deleteFiles);
+    setShowDeleteConfirm(false);
+    onClose();
+  };
+
   if (!editingCharacter) return null;
 
   return (
@@ -108,6 +147,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                 onChange={(e) => setEditingCharacter({ ...editingCharacter, characterName: e.target.value })}
               />
             </div>
+          </div>
+
+          <div className="info-row">
             <div className="info-item">
               <label>阵营</label>
               <input
@@ -232,12 +274,100 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
               <button onClick={handleAddTag}>添加</button>
             </div>
           </div>
+
+
+          <div className="portraits-section">
+  <div className="section-header">
+    <h3>立绘列表</h3>
+    <button className="btn-primary" onClick={handleAddPortrait}>添加立绘</button>
+  </div>
+
+  <div className="portraits-grid">
+    {editingCharacter.portraits?.map(portrait => (
+      <div key={portrait.portraitID} className="portrait-card">
+        <div className="portrait-thumbnail">
+          {/* 这里应该显示立绘缩略图 */}
+          {portrait.thumbnailPath ? (
+            <img src={portrait.thumbnailPath} alt={portrait.portName} />
+          ) : (
+            <div className="thumbnail-placeholder">缩略图</div>
+          )}
+        </div>
+        <div className="portrait-info">
+          <h4>{portrait.portName}</h4>
+          <p>情绪: {portrait.emotion}</p>
+          <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
         </div>
 
         <div className="form-actions">
           <button className="btn-primary" onClick={handleSave}>保存</button>
           <button className="btn-secondary" onClick={onClose}>取消</button>
+          {!isNewCharacter && (
+            <button className="btn-danger" onClick={() => setShowDeleteConfirm(true)}>删除角色</button>
+          )}
         </div>
+        
+        {/* 删除确认对话框 */}
+        {showDeleteConfirm && (
+          <div className="modal-overlay">
+            <div className="confirm-dialog">
+              <h3>确认删除</h3>
+              <p>确定要删除角色 "{editingCharacter?.characterName}" 吗？</p>
+              <div className="checkbox-container">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={deleteFiles}
+                    onChange={(e) => setDeleteFiles(e.target.checked)}
+                  />
+                  同时删除相关文件
+                </label>
+              </div>
+              <div className="dialog-actions">
+                <button className="btn-danger" onClick={handleDeleteCharacter}>确认删除</button>
+                <button className="btn-secondary" onClick={() => setShowDeleteConfirm(false)}>取消</button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* 立绘编辑弹窗 */}
+        {showPortraitModal && editingCharacter && (
+          <PortraitModal
+            characterId={editingCharacter.characterID}
+            portrait={editingPortrait}
+            isNewPortrait={!editingPortrait}
+            onClose={() => {
+              setShowPortraitModal(false);
+              setEditingPortrait(null);
+            }}
+            onSave={(portrait) => {
+              if (editingPortrait) {
+                // 更新现有立绘
+                setEditingCharacter({
+                  ...editingCharacter,
+                  portraits: editingCharacter.portraits.map(p => 
+                    p.portraitID === portrait.portraitID ? portrait : p
+                  )
+                });
+              } else {
+                // 添加新立绘
+                setEditingCharacter({
+                  ...editingCharacter,
+                  portraits: [...editingCharacter.portraits, portrait]
+                });
+              }
+              setShowPortraitModal(false);
+              setEditingPortrait(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

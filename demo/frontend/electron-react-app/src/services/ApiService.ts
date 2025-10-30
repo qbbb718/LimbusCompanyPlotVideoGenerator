@@ -156,6 +156,17 @@ class ApiService {
     }
   }
 
+  // 删除角色
+  async deleteCharacter(id: string, deleteFiles: boolean = false) {
+    try {
+      const response = await apiClient.delete(`/characters/${id}?deleteFiles=${deleteFiles}`);
+      return response.data;
+    } catch (error) {
+      console.error('删除角色失败:', error);
+      throw error;
+    }
+  }
+
   // 添加立绘
   async addPortrait(characterId: string, portraitData: any) {
     try {

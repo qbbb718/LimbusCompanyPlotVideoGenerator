@@ -133,7 +133,23 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     setCropPosition({ x: newX, y: newY });
   };
 
-  if (!editingPortrait) return null;
+  // 在添加新立绘时，editingPortrait 可能为 null，但组件仍应显示
+  if (!editingPortrait && !isNewPortrait) return null;
+  
+  // 如果是添加新立绘且 editingPortrait 为 null，创建一个默认的空对象
+  const currentPortrait = editingPortrait || {
+    portraitID: '',
+    characterID: characterId,
+    imagePath: '',
+    portName: '',
+    emotion: Emotion.NORMAL,
+    faceX: 0,
+    faceY: 0,
+    length: 100,
+    adjX: 0,
+    adjY: 0,
+    thumbnailPath: ''
+  };
 
   return (
     <div className="modal-overlay">
@@ -157,7 +173,15 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
                   onMouseLeave={handleMouseUp}
                 >
                   <img src={portraitPreview} alt="立绘预览" className="crop-image" />
-                  <div className="crop-overlay"></div>
+                  <div 
+                    className="crop-overlay"
+                    style={{
+                      '--crop-left': `${cropPosition.x}px`,
+                      '--crop-top': `${cropPosition.y}px`,
+                      '--crop-width': `${cropSize.width}px`,
+                      '--crop-height': `${cropSize.height}px`
+                    } as React.CSSProperties}
+                  ></div>
                   <div 
                     className="crop-box"
                     style={{
@@ -198,16 +222,16 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               <label>立绘名称</label>
               <input
                 type="text"
-                value={editingPortrait.portName}
-                onChange={(e) => setEditingPortrait({ ...editingPortrait, portName: e.target.value })}
+                value={currentPortrait.portName}
+                onChange={(e) => setEditingPortrait({ ...currentPortrait, portName: e.target.value })}
               />
             </div>
 
             <div className="form-group">
               <label>情绪</label>
               <select
-                value={editingPortrait.emotion}
-                onChange={(e) => setEditingPortrait({ ...editingPortrait, emotion: e.target.value as Emotion })}
+                value={currentPortrait.emotion}
+                onChange={(e) => setEditingPortrait({ ...currentPortrait, emotion: e.target.value as Emotion })}
               >
                 <option value={Emotion.NORMAL}>普通</option>
                 <option value={Emotion.HAPPY}>开心</option>
@@ -223,8 +247,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               <label>调整位置 X</label>
               <input
                 type="number"
-                value={editingPortrait.adjX}
-                onChange={(e) => setEditingPortrait({ ...editingPortrait, adjX: parseInt(e.target.value) || 0 })}
+                value={currentPortrait.adjX}
+                onChange={(e) => setEditingPortrait({ ...currentPortrait, adjX: parseInt(e.target.value) || 0 })}
               />
             </div>
 
@@ -232,8 +256,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               <label>调整位置 Y</label>
               <input
                 type="number"
-                value={editingPortrait.adjY}
-                onChange={(e) => setEditingPortrait({ ...editingPortrait, adjY: parseInt(e.target.value) || 0 })}
+                value={currentPortrait.adjY}
+                onChange={(e) => setEditingPortrait({ ...currentPortrait, adjY: parseInt(e.target.value) || 0 })}
               />
             </div>
           </div>

@@ -238,6 +238,17 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
               </div>
 
               <div className="form-group">
+                <label>音频预览</label>
+                <button 
+                  className="btn-audio-play"
+                  onClick={() => handlePlayAudio(editingAudio)}
+                  disabled={!editingAudio.path}
+                >
+                  {playingAudio === editingAudio.uuid ? '停止' : '播放'}
+                </button>
+              </div>
+
+              <div className="form-group">
                 <label>标签</label>
                 <div className="tags-container">
                   {editingAudio.tags.map(tag => (
