@@ -1,7 +1,9 @@
 
-import React from 'react';
-import { Record } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import { Record, Audio, AudioCommand } from '../../../types';
+import ApiService from '../../../services/ApiService';
 import '../RecordEditor.css';
+import './AudioProperties.css';
 
 interface AudioPropertiesProps {
   selectedRecord: Record;
@@ -14,6 +16,91 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
   selectedRecordIndex, 
   updateRecord 
 }) => {
+  const [audios, setAudios] = useState<Audio[]>([]);
+  const [showSelector, setShowSelector] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null);
+  const [filteredAudios, setFilteredAudios] = useState<Audio[]>([]);
+  const [audioType, setAudioType] = useState('BGM');
+
+  useEffect(() => {
+    fetchAudios();
+  }, []);
+
+  useEffect(() => {
+    // 根据搜索词过滤音频
+    if (searchTerm.trim() === '') {
+      setFilteredAudios(audios);
+    } else {
+      const term = searchTerm.toLowerCase();
+      const filtered = audios.filter((audio: Audio) => 
+        audio.name.toLowerCase().includes(term) || 
+        audio.path.toLowerCase().includes(term)
+      );
+      setFilteredAudios(filtered);
+    }
+  }, [searchTerm, audios]);
+
+  const fetchAudios = async () => {
+    try {
+      // 尝试从API获取数据
+      const data = await ApiService.getAudios();
+      setAudios(data);
+      setFilteredAudios(data);
+    } catch (error) {
+      console.error('获取音频列表失败，使用模拟数据:', error);
+      // 使用模拟数据
+      const mockAudios: Audio[] = [
+        {
+          uuid: "audio001",
+          name: "背景音乐1",
+          path: "/audio/bgm1.mp3",
+          type: "BGM"
+        },
+        {
+          uuid: "audio002",
+          name: "脚步声",
+          path: "/audio/footsteps.mp3",
+          type: "SFX"
+        },
+        {
+          uuid: "audio003",
+          name: "对话语音1",
+          path: "/audio/voice1.mp3",
+          type: "VOICE"
+        }
+      ];
+      setAudios(mockAudios);
+      setFilteredAudios(mockAudios);
+    }
+  };
+
+  const addAudio = () => {
+    if (!selectedAudio) {
+      alert('请选择音频');
+      return;
+    }
+
+    const newAudio: AudioCommand = {
+      type: audioType,
+      path: selectedAudio.path,
+      volume: 1.0,
+      startTime: 0,
+      duration: 5.0
+    };
+
+    const updatedAudios = [...selectedRecord.audioCommands, newAudio];
+    const updatedRecord = {
+      ...selectedRecord,
+      audioCommands: updatedAudios
+    };
+    updateRecord(selectedRecordIndex, updatedRecord);
+
+    // 重置表单
+    setSelectedAudio(null);
+    setShowSelector(false);
+    setAudioType('BGM');
+  };
   const updateAudio = (index: number, field: string, value: any) => {
     const updatedAudios = [...selectedRecord.audioCommands];
     updatedAudios[index] = {
@@ -38,86 +125,135 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
   };
 
   return (
-    <div className="audio-properties">
-      <h4>音效设置</h4>
-      <div className="audio-list">
-        {selectedRecord.audioCommands.map((audio, index) => (
-          <div key={index} className="audio-item">
-            <div className="audio-header">
-              <h5>{audio.type}: {audio.path}</h5>
-              <button onClick={() => deleteAudio(index)}>删除</button>
-            </div>
+    <>
+      <div className="audio-properties">
+        <h4>音效设置</h4>
+        <div className="audio-list">
+          {selectedRecord.audioCommands.map((audio, index) => (
+            <div key={index} className="audio-item">
+              <div className="audio-header">
+                <h5>{audio.type}: {audio.path}</h5>
+                <button onClick={() => deleteAudio(index)}>删除</button>
+              </div>
 
-            <div className="audio-details">
-              <div className="form-group">
-                <label>类型</label>
+              <div className="audio-details" style={{ padding: '10px' }}>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label>类型</label>
+                  <select
+                    value={audio.type}
+                    onChange={(e) => updateAudio(index, 'type', e.target.value)}
+                    style={{ padding: '6px 8px', width: '100%' }}
+                  >
+                    <option value="BGM">背景音乐</option>
+                    <option value="VOICE">语音</option>
+                    <option value="SFX">音效</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label>文件路径</label>
+                  <input
+                    type="text"
+                    value={audio.path}
+                    onChange={(e) => updateAudio(index, 'path', e.target.value)}
+                    style={{ padding: '6px 8px', width: '100%' }}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label>音量</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={audio.volume}
+                    onChange={(e) => updateAudio(index, 'volume', parseFloat(e.target.value))}
+                    style={{ padding: '6px 8px', width: '100%' }}
+                  />
+                </div>
+
+              </div>
+            </div>
+          ))}
+
+          <button
+            className="add-audio-btn"
+            onClick={() => setShowSelector(true)}
+          >
+            添加音频
+          </button>
+        </div>
+      </div>
+
+      {/* 音频选择对话框 */}
+      {showSelector && (
+        <div className="audio-selector">
+          <div className="audio-selector-content">
+            <div className="audio-selector-header">
+              <h3>选择音频</h3>
+              <button className="cancel-btn" onClick={() => setShowSelector(false)}>
+                取消
+              </button>
+            </div>
+            
+            <div className="audio-selector-body">
+              <div className="audio-search-fixed">
+                <input
+                  type="text"
+                  placeholder="搜索音频名称或文件路径..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="audio-list-container">
+                <div className="audio-list">
+                  {filteredAudios.map((audio: Audio) => (
+                    <div
+                      key={audio.uuid}
+                      className={`audio-item ${selectedAudio?.uuid === audio.uuid ? 'selected' : ''}`}
+                      onClick={() => setSelectedAudio(audio)}
+                    >
+                      <div className="audio-icon">
+                        🎵
+                      </div>
+                      <div className="audio-info">
+                        <div className="audio-name">{audio.name}</div>
+                        <div className="audio-path">{audio.path}</div>
+                        <div className="audio-duration">时长: 3:45</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="audio-type-selector">
+                <label>音频类型</label>
                 <select
-                  value={audio.type}
-                  onChange={(e) => updateAudio(index, 'type', e.target.value)}
+                  value={audioType}
+                  onChange={(e) => setAudioType(e.target.value)}
                 >
                   <option value="BGM">背景音乐</option>
                   <option value="VOICE">语音</option>
                   <option value="SFX">音效</option>
                 </select>
               </div>
-
-              <div className="form-group">
-                <label>文件路径</label>
-                <input
-                  type="text"
-                  value={audio.path}
-                  onChange={(e) => updateAudio(index, 'path', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>音量</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  value={audio.volume}
-                  onChange={(e) => updateAudio(index, 'volume', parseFloat(e.target.value))}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>开始时间(秒)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={audio.startTime}
-                  onChange={(e) => updateAudio(index, 'startTime', parseFloat(e.target.value))}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>持续时间(秒)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={audio.duration}
-                  onChange={(e) => updateAudio(index, 'duration', parseFloat(e.target.value))}
-                />
-              </div>
+            </div>
+            
+            <div className="audio-selector-footer">
+              <button
+                className="confirm-btn"
+                onClick={addAudio}
+                disabled={!selectedAudio}
+              >
+                确认添加
+              </button>
             </div>
           </div>
-        ))}
-
-        <button
-          className="add-audio-btn"
-          onClick={() => {
-            // 这里应该打开一个对话框，让用户选择音频
-            alert('添加音频功能待实现');
-          }}
-        >
-          添加音频
-        </button>
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 };
 

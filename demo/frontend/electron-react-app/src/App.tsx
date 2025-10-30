@@ -8,7 +8,7 @@ import ApiService from './services/ApiService';
 import { ProjectSettings } from './types';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'editor' | 'resources' | 'settings' | 'textToRecords'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'resources' | 'settings' | 'textToRecords'>('textToRecords');
   const [appInitialized, setAppInitialized] = useState(false);
   const [projectSettings, setProjectSettings] = useState<ProjectSettings>({
     name: '新项目',
@@ -59,7 +59,7 @@ function App() {
       case 'textToRecords':
         return <TextToRecords />;
       default:
-        return <RecordEditor projectSettings={projectSettings} />;
+        return <TextToRecords />;
     }
   };
 
@@ -78,6 +78,12 @@ function App() {
         {/* <h1>LimbusCompany 剧情视频生成器</h1> */}
         <div className="tab-navigation">
           <button 
+            className={activeTab === 'textToRecords' ? 'active' : ''}
+            onClick={() => setActiveTab('textToRecords')}
+          >
+            文本转记录
+          </button>
+          <button 
             className={activeTab === 'editor' ? 'active' : ''}
             onClick={() => setActiveTab('editor')}
           >
@@ -90,12 +96,6 @@ function App() {
             资源管理
           </button>
           <button 
-            className={activeTab === 'textToRecords' ? 'active' : ''}
-            onClick={() => setActiveTab('textToRecords')}
-          >
-            文本转记录
-          </button>
-          <button 
             className={activeTab === 'settings' ? 'active' : ''}
             onClick={() => setActiveTab('settings')}
           >
@@ -104,7 +104,7 @@ function App() {
         </div>
       </header>
 
-      <main className="app-main">
+      <main className="app-main" >
         {renderActiveTab()}
       </main>
     </div>

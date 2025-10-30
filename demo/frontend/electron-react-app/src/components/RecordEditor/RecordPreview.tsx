@@ -10,9 +10,9 @@ interface RecordPreviewProps {
 const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord }) => {
   return (
     <div className="preview-container">
-      <div className="preview-header">
+      {/* <div className="preview-header">
         <h3>预览</h3>
-      </div>
+      </div> */}
       <div className="preview-image">
         {/* 这里应该显示当前记录的预览图 */}
         <div className="preview-placeholder">预览图区域</div>

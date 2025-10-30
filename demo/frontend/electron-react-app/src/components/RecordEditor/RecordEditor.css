@@ -1,8 +1,8 @@
 .record-editor {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   padding: 0;
   box-sizing: border-box;
   overflow: hidden;
@@ -83,11 +83,13 @@
 
 .preview-container {
   height: 100%;
+  width: 100%;
   border: 1px solid #ddd;
   padding: 10px;
   display: flex;
   flex-direction: column;
   overflow: auto;
+  box-sizing: border-box;
 }
 
 .preview-header {
@@ -170,7 +172,7 @@
   font-weight: bold;
 }
 
-.form-group input,
+.form-group input:not([type="range"]),
 .form-group select,
 .form-group textarea {
   width: 100%;
@@ -300,6 +302,9 @@
 /* ResizablePanel 特定样式 */
 .preview-panel {
   min-width: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .properties-panel {
@@ -332,4 +337,17 @@
   flex: 1;
   height: 100%;
   overflow: hidden;
+}
+
+/* Checkbox 样式修复 */
+.form-group label input[type="checkbox"] {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.form-group label {
+  display: inline-flex;
+  align-items: center;
+  font-weight: normal;
+  flex-direction: row;
 }

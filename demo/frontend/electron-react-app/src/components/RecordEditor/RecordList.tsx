@@ -40,7 +40,6 @@ const RecordList: React.FC<RecordListProps> = ({
               <th>#</th>
               <th>说话人</th>
               <th>对话内容</th>
-              <th>情绪</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -54,7 +53,7 @@ const RecordList: React.FC<RecordListProps> = ({
                 <td>{index + 1}</td>
                 <td>{record.dialogue.speakerName || '旁白'}</td>
                 <td>{record.dialogue.text.substring(0, 30) + (record.dialogue.text.length > 30 ? '...' : '')}</td>
-                <td>{record.dialogue.emotion}</td>
+           
                 <td>
                   <button onClick={(e) => { e.stopPropagation(); moveRecord(index, 'up'); }} disabled={index === 0}>↑</button>
                   <button onClick={(e) => { e.stopPropagation(); moveRecord(index, 'down'); }} disabled={index === records.length - 1}>↓</button>

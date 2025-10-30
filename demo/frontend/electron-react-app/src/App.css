@@ -46,6 +46,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  height: calc(100% - 50px);
 }
 
 .loading-container {

@@ -3,15 +3,7 @@ import './TextToRecords.css';
 import ApiService from '../services/ApiService';
 
 const TextToRecords: React.FC = () => {
-  const [inputText, setInputText] = useState(`[BGM名称]
-{背景图片名称}
-说话人: 对话内容(情绪)
-旁白: 对话内容
-
-BGM名称与图片名称会使用搜索匹配BGM库中的名称/文件名
-情绪用于设置立绘
-当设置新BGM时, 之前的BGM会自动停止
-[-STOP]可以停止当前BGM`);
+  const [inputText, setInputText] = useState(``);
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<string>('');
 

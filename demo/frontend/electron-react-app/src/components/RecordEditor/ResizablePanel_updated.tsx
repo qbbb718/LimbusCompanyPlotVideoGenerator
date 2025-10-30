@@ -72,8 +72,8 @@ const ResizablePanel: React.FC<ResizablePanelProps> = ({
   };
 
   const panelStyle = direction === 'horizontal'
-    ? { width: `${size}px`, minWidth: `${minSize}px`, ...(style || {}) }
-    : { height: `${size}px`, minHeight: `${minSize}px`, ...(style || {}) };
+    ? { width: `${size}px`, minWidth: `${minSize}px`, overflow: 'hidden', ...(style || {}) }
+    : { height: `${size}px`, minHeight: `${minSize}px`, overflow: 'hidden', ...(style || {}) };
 
   return (
     <div
