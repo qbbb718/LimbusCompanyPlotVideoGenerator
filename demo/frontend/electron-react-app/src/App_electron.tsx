@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './App_electron.css';
 import ProjectSettings from './components/Settings';
 import RecordEditor from './components/RecordEditor';
+import ResourceManager from './components/ResourceManager/ResourceManager';
+import TextToRecords from './components/TextToRecords';
 import { ProjectSettings as IProjectSettings } from './types';
 
 /**
@@ -9,8 +11,11 @@ import { ProjectSettings as IProjectSettings } from './types';
  * 负责管理应用状态和视图切换，处理 Electron 环境下的菜单事件
  */
 function App() {
-  // 状态管理：当前视图（设置或编辑器）
-  const [currentView, setCurrentView] = useState<'settings' | 'editor'>('settings');
+  // 状态管理：当前视图
+  const [activeTab, setActiveTab] = useState<'editor' | 'resources' | 'settings' | 'textToRecords'>('textToRecords');
+  // 状态管理：项目设置
+  // 状态管理：应用是否已初始化
+  const [appInitialized, setAppInitialized] = useState(false);
   // 状态管理：项目设置
   const [projectSettings, setProjectSettings] = useState<IProjectSettings>({
     name: '新项目',                    // 项目名称
@@ -25,6 +30,28 @@ function App() {
     storyType: 'STORY'               // 故事类型
   });
 
+  // 初始化应用
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // 检查后端连接
+        // await ApiService.healthCheck();
+
+        // 初始化音频系统
+        // await ApiService.initAudio();
+
+        console.log("跳过后端初始化检查，直接启动应用");
+        setAppInitialized(true);
+      } catch (error) {
+        console.error('应用初始化失败:', error);
+        // 可以在这里添加错误提示UI
+        setAppInitialized(true); // 即使出错也继续启动应用
+      }
+    };
+
+    initializeApp();
+  }, []);
+
   // 检测是否在 Electron 环境中运行
   const isElectron = window.navigator.userAgent.toLowerCase().indexOf('electron') > -1;
 
@@ -34,7 +61,7 @@ function App() {
     if (isElectron && window.electronAPI) {
       // 菜单事件处理：新建项目
       const handleNewProject = () => {
-        setCurrentView('settings');
+        setActiveTab('settings');
       };
 
       // 菜单事件处理：打开项目
@@ -100,31 +127,79 @@ function App() {
     }
   }, [isElectron, projectSettings]);
 
-  // 处理项目设置提交
-  const handleProjectSettingsSubmit = (settings: IProjectSettings) => {
-    setProjectSettings(settings);
-    setCurrentView('editor');
+  // 渲染当前激活的标签页内容
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'editor':
+        return <RecordEditor projectSettings={projectSettings} />;
+      case 'resources':
+        return <ResourceManager />;
+      case 'settings':
+        return <ProjectSettings
+                  projectSettings={projectSettings}
+                  setProjectSettings={setProjectSettings}
+                />;
+      case 'textToRecords':
+        return <TextToRecords />;
+      default:
+        return <TextToRecords />;
+    }
   };
+
+  // 如果应用未初始化，显示加载界面
+  if (!appInitialized) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>正在初始化应用...</p>
+      </div>
+    );
+  }
 
   // 渲染应用界面
   return (
     <div className="App">
       {/* 应用头部 */}
       <header className="app-header">
-        <h1>LimbusCompany Plot Video Generator</h1>
+        <div className="app-title">
+          <h1>LimbusCompany Plot Video Generator</h1>
+
+        </div>
+        
+        {/* 标签导航 */}
+        <div className="tab-navigation">
+          <button
+            className={activeTab === 'textToRecords' ? 'active' : ''}
+            onClick={() => setActiveTab('textToRecords')}
+          >
+            文本转记录
+          </button>
+          <button
+            className={activeTab === 'editor' ? 'active' : ''}
+            onClick={() => setActiveTab('editor')}
+          >
+            剧情编辑
+          </button>
+          <button
+            className={activeTab === 'resources' ? 'active' : ''}
+            onClick={() => setActiveTab('resources')}
+          >
+            资源管理
+          </button>
+          <button
+            className={activeTab === 'settings' ? 'active' : ''}
+            onClick={() => setActiveTab('settings')}
+          >
+            设置
+          </button>
+        </div>
+        
+
       </header>
 
       {/* 应用主体内容 */}
       <main className="app-main">
-        {/* 根据当前视图渲染设置或编辑器 */}
-        {currentView === 'settings' ? (
-          <ProjectSettings
-            projectSettings={projectSettings}
-            setProjectSettings={setProjectSettings}
-          />
-        ) : (
-          <RecordEditor projectSettings={projectSettings} />
-        )}
+        {renderActiveTab()}
       </main>
     </div>
   );
