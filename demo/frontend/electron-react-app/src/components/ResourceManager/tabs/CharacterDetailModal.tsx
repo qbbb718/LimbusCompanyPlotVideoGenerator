@@ -126,11 +126,18 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       <div className="modal-content">
         <div className="modal-header">
           <h2>{isNewCharacter ? '添加新角色' : `编辑角色: ${editingCharacter.characterName}`}</h2>
-          <button className="close-button" onClick={onClose}>×</button>
+          <div className="header-actions">
+            <button className="btn-primary" onClick={handleSave}>保存</button>
+            <button className="btn-secondary" onClick={onClose}>取消</button>
+            {!isNewCharacter && (
+              <button className="btn-danger" onClick={() => setShowDeleteConfirm(true)}>删除角色</button>
+            )}
+            <button className="close-button" onClick={onClose}>×</button>
+          </div>
         </div>
 
         <div className="character-info-section">
-          <div className="info-row">
+          <div className="info-grid">
             <div className="info-item">
               <label>角色名称</label>
               <input
@@ -139,9 +146,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                 onChange={(e) => setEditingCharacter({ ...editingCharacter, characterName: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="info-row">
             <div className="info-item">
               <label>阵营</label>
               <input
@@ -150,9 +155,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                 onChange={(e) => setEditingCharacter({ ...editingCharacter, faction: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="info-row">
             <div className="info-item">
               <label>身高</label>
               <input
@@ -162,78 +165,77 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
               />
             </div>
           </div>
+          <div className="info-grid">
+            <div className="info-item">
+              <label>名片文字颜色</label>
+              <div className="color-picker-wrapper">
+                <input
+                  type="text"
+                  value={editingCharacter.colorText}
+                  onChange={(e) => handleColorChange('text', e.target.value)}
+                />
+                <div 
+                  className="color-preview-box" 
+                  style={{ backgroundColor: editingCharacter.colorText }}
+                  onClick={() => setShowColorPicker({ ...showColorPicker, text: !showColorPicker.text })}
+                ></div>
 
-          <div className="color-section">
-            <div className="color-picker">
-              <div className="color-input-group">
-                <label>名片文字颜色</label>
-                <div className="color-picker-wrapper">
-                  <input
-                    type="text"
-                    value={editingCharacter.colorText}
-                    onChange={(e) => handleColorChange('text', e.target.value)}
-                  />
-                  <div 
-                    className="color-preview-box" 
-                    style={{ backgroundColor: editingCharacter.colorText }}
-                    onClick={() => setShowColorPicker({ ...showColorPicker, text: !showColorPicker.text })}
-                  ></div>
-
-                  {showColorPicker.text && (
-                    <div className="color-picker-dropdown">
-                      <HexColorPicker 
-                        color={editingCharacter.colorText} 
-                        onChange={(color: string) => handleColorChange('text', color)} 
-                      />
-                      <div className="color-picker-actions">
-                        <button 
-                          className="btn-small btn-primary" 
-                          onClick={() => setShowColorPicker({ ...showColorPicker, text: false })}
-                        >
-                          确定
-                        </button>
-                      </div>
+                {showColorPicker.text && (
+                  <div className="color-picker-dropdown">
+                    <HexColorPicker 
+                      color={editingCharacter.colorText} 
+                      onChange={(color: string) => handleColorChange('text', color)} 
+                    />
+                    <div className="color-picker-actions">
+                      <button 
+                        className="btn-small btn-primary" 
+                        onClick={() => setShowColorPicker({ ...showColorPicker, text: false })}
+                      >
+                        确定
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="color-input-group">
-                <label>名片背景颜色</label>
-                <div className="color-picker-wrapper">
-                  <input
-                    type="text"
-                    value={editingCharacter.colorBg}
-                    onChange={(e) => handleColorChange('bg', e.target.value)}
-                  />
-                  <div 
-                    className="color-preview-box" 
-                    style={{ backgroundColor: editingCharacter.colorBg }}
-                    onClick={() => setShowColorPicker({ ...showColorPicker, bg: !showColorPicker.bg })}
-                  ></div>
-
-                  {showColorPicker.bg && (
-                    <div className="color-picker-dropdown">
-                      <HexColorPicker 
-                        color={editingCharacter.colorBg} 
-                        onChange={(color: string) => handleColorChange('bg', color)} 
-                      />
-                      <div className="color-picker-actions">
-                        <button 
-                          className="btn-small btn-primary" 
-                          onClick={() => setShowColorPicker({ ...showColorPicker, bg: false })}
-                        >
-                          确定
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="color-preview">
-              <label>名片预览</label>
+            <div className="info-item">
+              <label>名片背景颜色</label>
+              <div className="color-picker-wrapper">
+                <input
+                  type="text"
+                  value={editingCharacter.colorBg}
+                  onChange={(e) => handleColorChange('bg', e.target.value)}
+                />
+                <div 
+                  className="color-preview-box" 
+                  style={{ backgroundColor: editingCharacter.colorBg }}
+                  onClick={() => setShowColorPicker({ ...showColorPicker, bg: !showColorPicker.bg })}
+                ></div>
+
+                {showColorPicker.bg && (
+                  <div className="color-picker-dropdown">
+                    <HexColorPicker 
+                      color={editingCharacter.colorBg} 
+                      onChange={(color: string) => handleColorChange('bg', color)} 
+                    />
+                    <div className="color-picker-actions">
+                      <button 
+                        className="btn-small btn-primary" 
+                        onClick={() => setShowColorPicker({ ...showColorPicker, bg: false })}
+                      >
+                        确定
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="preview-section">
+            <label>名片预览</label>
+            <div className="name-preview-container">
               <div 
                 className="name-preview"
                 style={{
@@ -243,104 +245,100 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
               >
                 {editingCharacter.characterName}
               </div>
-            </div>
-          </div>
-
-          <div className="tags-section">
-            <label>角色标签</label>
-            <div className="tags-container">
-              {editingCharacter.tags?.map(tag => (
-                <div key={tag} className="tag">
-                  {tag}
-                  <span className="tag-remove" onClick={() => handleRemoveTag(tag)}>×</span>
-                </div>
-              ))}
-            </div>
-            <div className="tag-input-container">
-              <input
-                type="text"
-                className="tag-input"
-                placeholder="添加新标签"
-                value={newTagInput}
-                onChange={(e) => setNewTagInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-              />
-              <button onClick={handleAddTag}>添加</button>
-            </div>
-          </div>
-
-          <div className="portraits-section">
-            <div className="section-header">
-              <h3>立绘列表</h3>
-              <button className="btn-primary" onClick={handleAddPortrait}>添加立绘</button>
-            </div>
-
-            <div className="portraits-grid">
-              {editingCharacter.portraits?.map(portrait => (
-                <div key={portrait.portraitID} className="portrait-card">
-                  <div className="portrait-thumbnail">
-                    {/* 这里应该显示立绘缩略图 */}
-                    {portrait.thumbnailPath ? (
-                      <img src={portrait.thumbnailPath} alt={portrait.portName} />
-                    ) : (
-                      <div className="thumbnail-placeholder">缩略图</div>
-                    )}
-                  </div>
-                  <div className="portrait-info">
-                    <h4>{portrait.portName}</h4>
-                    <p>情绪: {portrait.emotion}</p>
-                    <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
-                  </div>
-                </div>
-              ))}
+              <div className="preview-note">
+                完整预览将从后端获取
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="form-actions">
-          <button className="btn-primary" onClick={handleSave}>保存</button>
-          <button className="btn-secondary" onClick={onClose}>取消</button>
-          {!isNewCharacter && (
-            <button className="btn-danger" onClick={() => setShowDeleteConfirm(true)}>删除角色</button>
-          )}
+        <div className="tags-section">
+          <label>角色标签</label>
+          <div className="tags-container">
+            {editingCharacter.tags?.map(tag => (
+              <div key={tag} className="tag">
+                {tag}
+                <span className="tag-remove" onClick={() => handleRemoveTag(tag)}>×</span>
+              </div>
+            ))}
+          </div>
+          <div className="tag-input-container">
+            <input
+              type="text"
+              className="tag-input"
+              placeholder="添加新标签"
+              value={newTagInput}
+              onChange={(e) => setNewTagInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+            />
+            <button onClick={handleAddTag}>添加</button>
+          </div>
         </div>
 
-        {/* 删除确认对话框 */}
-        {showDeleteConfirm && (
-          <div className="modal-overlay">
-            <div className="confirm-dialog">
-              <h3>确认删除</h3>
-              <p>确定要删除角色 "{editingCharacter.characterName}" 吗？</p>
-              <div className="checkbox-container">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={deleteFiles}
-                    onChange={(e) => setDeleteFiles(e.target.checked)}
-                  />
-                  同时删除相关文件
-                </label>
+        <div className="portraits-section">
+          <div className="section-header">
+            <h3>立绘列表</h3>
+            <button className="btn-primary" onClick={handleAddPortrait}>添加立绘</button>
+          </div>
+
+          <div className="portraits-grid">
+            {editingCharacter.portraits?.map(portrait => (
+              <div key={portrait.portraitID} className="portrait-card">
+                <div className="portrait-thumbnail">
+                  {/* 这里应该显示立绘缩略图 */}
+                  {portrait.thumbnailPath ? (
+                    <img src={portrait.thumbnailPath} alt={portrait.portName} />
+                  ) : (
+                    <div className="thumbnail-placeholder">缩略图</div>
+                  )}
+                </div>
+                <div className="portrait-info">
+                  <h4>{portrait.portName}</h4>
+                  <p>情绪: {portrait.emotion}</p>
+                  <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
+                </div>
               </div>
-              <div className="dialog-actions">
-                <button className="btn-danger" onClick={handleDeleteCharacter}>确认删除</button>
-                <button className="btn-secondary" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 删除确认对话框 */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay">
+          <div className="confirm-dialog">
+            <h3>确认删除</h3>
+            <p>确定要删除角色 "{editingCharacter.characterName}" 吗？</p>
+            <div className="checkbox-container">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={deleteFiles}
+                  onChange={(e) => setDeleteFiles(e.target.checked)}
+                />
+                同时删除相关文件
+              </label>
+            </div>
+            <div className="dialog-actions">
+              <button className="btn-danger" onClick={handleDeleteCharacter}>确认删除</button>
+              <button className="btn-secondary" onClick={() => setShowDeleteConfirm(false)}>取消</button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 立绘编辑弹窗 */}
-        {showPortraitModal && editingCharacter && (
-          <PortraitModal
-            characterId={editingCharacter.characterID}
-            portrait={editingPortrait}
-            isNewPortrait={!editingPortrait}
-            onClose={() => {
-              setShowPortraitModal(false);
-              setEditingPortrait(null);
-            }}
-            onSave={(portrait) => {
-              if (editingPortrait) {
+      {/* 立绘编辑弹窗 */}
+      {showPortraitModal && editingCharacter && (
+        <PortraitModal
+          characterId={editingCharacter.characterID}
+          portrait={editingPortrait}
+          isNewPortrait={!editingPortrait}
+          onClose={() => {
+            setShowPortraitModal(false);
+            setEditingPortrait(null);
+          }}
+          onSave={(portrait) => {
+            if (editingPortrait) {
                 // 更新现有立绘
                 setEditingCharacter({
                   ...editingCharacter,
@@ -361,7 +359,6 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           />
         )}
       </div>
-    </div>
   );
 };
 
