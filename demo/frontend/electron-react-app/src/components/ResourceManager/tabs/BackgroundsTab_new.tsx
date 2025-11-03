@@ -38,7 +38,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
       uuid: `bg_${Date.now()}`,
       name: "新背景",
       path: "",
-      source: "本地"
+      tags: []
     };
 
     setBackgrounds([...backgrounds, newBackground]);
@@ -61,7 +61,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
 
     try {
       log('保存背景', editingBackground.name);
-      let updatedBackground;
+      let updatedBackground: Background;
 
       if (editingBackground.uuid && backgrounds.find(bg => bg.uuid === editingBackground.uuid)) {
         // 更新现有背景
@@ -175,7 +175,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
             <div className="background-info">
               <h3>{background.name}</h3>
               <p>路径: {background.path}</p>
-              <p>来源: {background.source}</p>
+              <p>标签: {background.tags.join(", ")}</p>
             </div>
           </div>
         ))}
@@ -222,18 +222,16 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
                 </div>
               </div>
               <div className="form-group">
-                <label>来源</label>
-                <select
-                  value={editingBackground.source || '本地'}
+                <label>标签</label>
+                <input
+                  type="text"
+                  value={editingBackground.tags ? editingBackground.tags.join(', ') : ''}
                   onChange={(e) => setEditingBackground({
                     ...editingBackground,
-                    source: e.target.value
+                    tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
                   })}
-                >
-                  <option value="本地">本地</option>
-                  <option value="网络">网络</option>
-                  <option value="自定义">自定义</option>
-                </select>
+                  placeholder="用逗号分隔多个标签"
+                />
               </div>
               {backgroundPreview && (
                 <div className="form-group">

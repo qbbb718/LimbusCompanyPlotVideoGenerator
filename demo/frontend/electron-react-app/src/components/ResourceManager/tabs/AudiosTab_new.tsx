@@ -75,7 +75,7 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
 
     try {
       log('保存音频', editingAudio.name);
-      let updatedAudio;
+      let updatedAudio: Audio;
 
       if (editingAudio.uuid && audios.find(a => a.uuid === editingAudio.uuid)) {
         // 更新现有音频
