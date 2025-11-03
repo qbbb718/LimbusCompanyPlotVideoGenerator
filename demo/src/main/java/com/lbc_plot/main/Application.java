@@ -9,7 +9,7 @@ import com.lbc_plot.config.AppConfig;
 /**
  * LimbusCompany Plot Video Generator 主应用程序
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.lbc_plot")
 public class Application {
 
     public static void main(String[] args) {

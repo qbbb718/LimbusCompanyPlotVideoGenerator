@@ -143,6 +143,59 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ projectSettings }) => {
     }
   };
 
+  const exportRecords = async () => {
+    try {
+      setIsLoading(true);
+      const response = await ApiService.exportRecords(records);
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `records_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      alert('导出成功！');
+    } catch (error) {
+      console.error('导出记录失败:', error);
+      alert('导出记录失败，请检查控制台日志');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const importRecords = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setIsLoading(true);
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+      
+      const importedRecords = await ApiService.importRecords(file);
+      
+      if (importedRecords && importedRecords.length > 0) {
+        setRecords(importedRecords);
+        setSelectedRecordIndex(0);
+        alert(`成功导入 ${importedRecords.length} 条记录！`);
+      } else {
+        alert('导入的文件中没有找到有效记录');
+      }
+    } catch (error) {
+      console.error('导入记录失败:', error);
+      alert('导入记录失败，请检查文件格式和控制台日志');
+    } finally {
+      setIsLoading(false);
+      // 清空文件输入，以便可以再次选择相同文件
+      event.target.value = '';
+    }
+  };
+
   // 处理垂直方向拖拽
   const handleVerticalResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -287,6 +340,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ projectSettings }) => {
             moveRecord={moveRecord}
             duplicateRecord={duplicateRecord}
             deleteRecord={deleteRecord}
+            exportRecords={exportRecords}
+            importRecords={importRecords}
           />
         </div>
       </div>

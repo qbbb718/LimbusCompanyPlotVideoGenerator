@@ -103,6 +103,15 @@
             <artifactId>jdbi3-sqlobject</artifactId>
             <version>3.37.1</version>
         </dependency>
+        
+        <!-- Spring Data JDBC SQLite方言 -->
+        <!-- 注意：spring-boot-starter-data-jdbc依赖已在上面声明，此处删除重复声明 -->
+        
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-community-dialects</artifactId>
+            <version>6.4.0.Final</version>
+        </dependency>
 
         <!-- JSON -->
         <dependency>

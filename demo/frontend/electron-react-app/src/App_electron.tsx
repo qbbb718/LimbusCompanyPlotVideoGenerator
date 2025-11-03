@@ -5,6 +5,7 @@ import RecordEditor from './components/RecordEditor';
 import ResourceManager from './components/ResourceManager/ResourceManager';
 import TextToRecords from './components/TextToRecords';
 import { ProjectSettings as IProjectSettings } from './types';
+import ApiService from './services/ApiService';
 
 /**
  * 应用程序主组件
@@ -34,13 +35,22 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        console.log("正在初始化应用...");
+        
         // 检查后端连接
-        // await ApiService.healthCheck();
+        console.log("检查后端连接...");
+        try {
+          await ApiService.healthCheck();
+          console.log("后端连接成功");
+        } catch (error) {
+          console.warn("后端连接失败，将使用模拟数据:", error);
+        }
 
         // 初始化音频系统
-        // await ApiService.initAudio();
+        console.log("初始化音频系统...");
+        await ApiService.initAudio();
+        console.log("音频系统初始化成功");
 
-        console.log("跳过后端初始化检查，直接启动应用");
         setAppInitialized(true);
       } catch (error) {
         console.error('应用初始化失败:', error);

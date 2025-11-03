@@ -12,6 +12,9 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+  data:
+    jdbc:
+      dialect: sqlite
 
 # 自定义配置
 audio:

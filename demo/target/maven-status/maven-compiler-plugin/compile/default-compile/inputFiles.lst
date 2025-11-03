@@ -2,6 +2,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\mo
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\RenderQualityUtils.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\FFmpegAudioProcessor.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\FrameComposerService.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\AudioController.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\AudioLoudnessMeasurer.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\VideoConcatenator.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\model\DialogueSpeed.java
@@ -19,8 +20,10 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\Seque
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\contract\TextLayerOperations.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\TimelineToFFmpegConverter.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\Camera.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\RecordController.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\EmotionMapper.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\CharacterMapper.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\storage\Audio.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\BackgroundMapper.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\text\PlainTextRecordsParser.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\CharacterVisualOrderService.java
@@ -29,12 +32,14 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\storage
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\PortraitDAO.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\BatchVideoProcessor.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\EffectVisual.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\CharacterController.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\TimelineController.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\main\Application.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\ImageReader.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\impl\ThumbnailServiceImpl.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\manager\TextLayerManager.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\RenderOfImage.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\SqliteDialectConfig.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\impl\BackgroundServiceImpl.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\AppConfig.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\model\AudioSegment.java
@@ -50,6 +55,7 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\Databa
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\ColorSpaceConverter.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\ImageDarkener.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\TextureColorizer.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\BackgroundController.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\json\ColorDeserializer.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\ResourceChecker.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\ImageExporter.java
@@ -77,4 +83,5 @@ E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\Volume
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\FrameInfo.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\model\AudioCommandType.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\main\Main.java
+E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\AudioDAO.java
 E:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\ColorUtils.java

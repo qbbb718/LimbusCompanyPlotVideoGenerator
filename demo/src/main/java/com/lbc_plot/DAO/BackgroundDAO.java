@@ -15,6 +15,10 @@ public interface BackgroundDAO {
     @SqlQuery("SELECT * FROM backgrounds WHERE background_id = :id")
     @UseRowMapper(BackgroundMapper.class)
     Optional<Background> findById(@Bind("id") String id);
+    
+    @SqlQuery("SELECT * FROM backgrounds WHERE background_id = :id")
+    @UseRowMapper(BackgroundMapper.class)
+    Background getById(@Bind("id") String id);
 
     @SqlQuery("SELECT * FROM backgrounds ORDER BY display_name")
     @UseRowMapper(BackgroundMapper.class)
@@ -32,6 +36,35 @@ public interface BackgroundDAO {
 
     @SqlUpdate("DELETE FROM backgrounds WHERE background_id = :id")
     boolean delete(@Bind("id") String id);
+    
+    // ========== API控制器所需的方法 ==========
+    /**
+     * 获取所有背景（API控制器使用）
+     */
+    default List<Background> getAllBackgrounds() {
+        return findAll();
+    }
+    
+    /**
+     * 添加背景（API控制器使用）
+     */
+    default void addBackground(Background background) {
+        save(background);
+    }
+    
+    /**
+     * 更新背景（API控制器使用）
+     */
+    default void updateBackground(Background background) {
+        update(background);
+    }
+    
+    /**
+     * 删除背景（API控制器使用）
+     */
+    default void deleteBackground(String id) {
+        delete(id);
+    }
 
     @SqlQuery("SELECT COUNT(*) FROM backgrounds")
     int countAll();

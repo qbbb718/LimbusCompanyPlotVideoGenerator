@@ -80,7 +80,7 @@ public class SQLiteDatabaseManager {
 
     private static void createTables() {
         try (InputStream inputStream = SQLiteDatabaseManager.class.getClassLoader()
-                .getResourceAsStream("db/initial_schema.sql");
+                .getResourceAsStream("db/init.sql");
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             
             StringBuilder sqlBuilder = new StringBuilder();

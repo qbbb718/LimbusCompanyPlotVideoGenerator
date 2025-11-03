@@ -21,6 +21,10 @@ public interface PortraitDAO {
     @SqlQuery("SELECT * FROM portraits WHERE portrait_id = :id")
     @UseRowMapper(PortraitMapper.class)
     Optional<Portrait> findById(@Bind("id") String portraitId);
+    
+    @SqlQuery("SELECT * FROM portraits WHERE portrait_id = :id")
+    @UseRowMapper(PortraitMapper.class)
+    Portrait getById(@Bind("id") String portraitId);
 
     @SqlQuery("SELECT * FROM portraits ORDER BY port_name")
     @UseRowMapper(PortraitMapper.class)
@@ -55,6 +59,28 @@ public interface PortraitDAO {
 
     @SqlUpdate("DELETE FROM portraits WHERE portrait_id = :id")
     boolean delete(@Bind("id") String portraitId);
+    
+    // ========== API控制器所需的方法 ==========
+    /**
+     * 添加立绘（API控制器使用）
+     */
+    default void addPortrait(Portrait portrait) {
+        save(portrait);
+    }
+    
+    /**
+     * 更新立绘（API控制器使用）
+     */
+    default void updatePortrait(Portrait portrait) {
+        update(portrait);
+    }
+    
+    /**
+     * 删除立绘（API控制器使用）
+     */
+    default void deletePortrait(String portraitId) {
+        delete(portraitId);
+    }
     
     // ========== 查询操作 ==========
     @SqlQuery("SELECT * FROM portraits WHERE character_id = :characterId ORDER BY port_name")

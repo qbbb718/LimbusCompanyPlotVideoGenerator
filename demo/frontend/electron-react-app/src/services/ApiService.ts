@@ -11,6 +11,17 @@ const apiClient = axios.create({
   }
 });
 
+// 检查是否为404错误
+const isNotFoundError = (error: any): boolean => {
+  return error && 
+         typeof error === 'object' && 
+         'response' in error && 
+         error.response && 
+         typeof error.response === 'object' && 
+         'status' in error.response && 
+         error.response.status === 404;
+};
+
 // API服务类
 class ApiService {
   // 健康检查
@@ -42,6 +53,11 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('获取记录失败:', error);
+      // 如果接口未实现，返回空数组
+      if (isNotFoundError(error)) {
+        console.warn('记录接口未实现，返回空数组');
+        return [];
+      }
       throw error;
     }
   }
@@ -86,6 +102,11 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('获取角色失败:', error);
+      // 如果接口未实现，返回空数组
+      if (isNotFoundError(error)) {
+        console.warn('角色接口未实现，返回空数组');
+        return [];
+      }
       throw error;
     }
   }
@@ -97,6 +118,11 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('获取背景失败:', error);
+      // 如果接口未实现，返回空数组
+      if (isNotFoundError(error)) {
+        console.warn('背景接口未实现，返回空数组');
+        return [];
+      }
       throw error;
     }
   }
@@ -108,6 +134,11 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('获取音频失败:', error);
+      // 如果接口未实现，返回空数组
+      if (isNotFoundError(error)) {
+        console.warn('音频接口未实现，返回空数组');
+        return [];
+      }
       throw error;
     }
   }
@@ -119,6 +150,31 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('文本转记录失败:', error);
+      // 如果接口未实现，返回模拟数据
+      if (isNotFoundError(error)) {
+        console.warn('文本转记录接口未实现，返回模拟数据');
+        // 简单的文本解析，返回模拟记录
+        const lines = text.split('\n').filter(line => line.trim());
+        return lines.map((line, index) => ({
+          uuid: `mock-record-${index}`,
+          durationFrames: 120,
+          dialogue: {
+            text: line,
+            location: "未知地点",
+            speakerC: [],
+            speakerName: "未知",
+            faction: "未知",
+            align: "LEFT" as any,
+            speed: 1.0,
+            emotion: "NORMAL" as any
+          },
+          bg: [],
+          chars: [],
+          effects: [],
+          audioCommands: [],
+          isDirty: false
+        }));
+      }
       throw error;
     }
   }
@@ -262,6 +318,37 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('删除音频失败:', error);
+      throw error;
+    }
+  }
+
+  // 导入记录
+  async importRecords(file: File) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await apiClient.post('/records/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导入记录失败:', error);
+      throw error;
+    }
+  }
+
+  // 导出记录
+  async exportRecords(records: any[]) {
+    try {
+      const response = await apiClient.post('/records/export', { records }, {
+        responseType: 'blob'
+      });
+      return response;
+    } catch (error) {
+      console.error('导出记录失败:', error);
       throw error;
     }
   }

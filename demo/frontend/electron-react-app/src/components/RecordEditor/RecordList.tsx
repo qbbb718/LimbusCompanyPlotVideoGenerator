@@ -11,6 +11,8 @@ interface RecordListProps {
   moveRecord: (index: number, direction: 'up' | 'down') => void;
   duplicateRecord: (index: number) => void;
   deleteRecord: (index: number) => void;
+  exportRecords: () => void;
+  importRecords: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const RecordList: React.FC<RecordListProps> = ({
@@ -21,7 +23,9 @@ const RecordList: React.FC<RecordListProps> = ({
   generateVideo,
   moveRecord,
   duplicateRecord,
-  deleteRecord
+  deleteRecord,
+  exportRecords,
+  importRecords
 }) => {
   return (
     <div className="record-list-container">
@@ -30,6 +34,16 @@ const RecordList: React.FC<RecordListProps> = ({
         <div className="record-list-actions">
           <button onClick={createNewRecord}>添加记录</button>
           <button onClick={generateVideo}>生成视频</button>
+          <button onClick={exportRecords}>导出项目</button>
+          <label className="import-button">
+            导入项目
+            <input
+              type="file"
+              accept=".json"
+              onChange={importRecords}
+              style={{ display: 'none' }}
+            />
+          </label>
         </div>
       </div>
 

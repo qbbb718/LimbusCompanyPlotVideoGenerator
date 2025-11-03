@@ -90,6 +90,36 @@ public interface CharacterDAO {
     // 删除角色
     @SqlUpdate("DELETE FROM characters WHERE character_id = :id")
     boolean delete(@Bind("id") String characterId);
+    
+    // ========== API控制器所需的方法 ==========
+    /**
+     * 获取所有角色（API控制器使用）
+     */
+    default List<MyCharacter> getAllCharacters() {
+        return findAll();
+    }
+    
+    /**
+     * 添加角色（API控制器使用）
+     */
+    default void addCharacter(MyCharacter character) {
+        save(character);
+    }
+    
+    /**
+     * 更新角色（API控制器使用）
+     */
+    default void updateCharacter(MyCharacter character) {
+        update(character);
+    }
+    
+    /**
+     * 删除角色（API控制器使用）
+     */
+    default void deleteCharacter(String id, boolean deleteFiles) {
+        delete(id);
+        // TODO: 如果deleteFiles为true，还需要删除相关文件
+    }
 
 
 
