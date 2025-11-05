@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -30,6 +31,7 @@ public class MyCharacter {
     private int height;
     private String faction; //阵营
     private List<Portrait> portraits; //可能没有立绘（旁白）
+    private List<String> tags; //角色标签
     @JsonSerialize(using = ColorSerializer.class)
     @JsonDeserialize(using = ColorDeserializer.class)
     private Color colorBg;
@@ -129,6 +131,14 @@ public class MyCharacter {
         this.portraits = portraits;
     }
 
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
+
 
 
     public BufferedImage getColorNameImage() throws IOException  {
@@ -179,6 +189,15 @@ public class MyCharacter {
 
 
     /**
+     * 默认构造函数 - 用于JSON反序列化
+     */
+    @JsonCreator
+    public MyCharacter() {
+        // 应用智能默认值
+        applySmartDefaults();
+    }
+    
+    /**
      * 私有构造函数 - 只能通过Builder创建
      */
     private MyCharacter(Builder builder) {
@@ -224,6 +243,11 @@ public class MyCharacter {
             this.portraits = new ArrayList<>();
         }
 
+        // tags列表确保不为null
+        if (this.tags == null) {
+            this.tags = new ArrayList<>();
+        }
+
         
     }
 
@@ -237,6 +261,7 @@ public class MyCharacter {
         private String characterName = DEFAULT_NAME;
         private int height = DEFAULT_HEIGHT;
         private List<Portrait> portraits = new ArrayList<>();
+        private List<String> tags = new ArrayList<>();
         private Color colorBg = DEFAULT_BG_COLOR;
         private Color colorText = DEFAULT_TEXT_COLOR;
         @JsonIgnore
@@ -281,6 +306,19 @@ public class MyCharacter {
                 this.portraits = new ArrayList<>();
             }
             this.portraits.add(portrait);
+            return this;
+        }
+
+        public Builder tags(List<String> tags) {
+            this.tags = tags;
+            return this;
+        }
+
+        public Builder addTag(String tag) {
+            if (this.tags == null) {
+                this.tags = new ArrayList<>();
+            }
+            this.tags.add(tag);
             return this;
         }
         

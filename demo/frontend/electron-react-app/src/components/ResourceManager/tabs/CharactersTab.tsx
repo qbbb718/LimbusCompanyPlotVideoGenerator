@@ -54,14 +54,23 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     if (!editingCharacter) return;
 
     try {
-      const updatedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
-      setCharacters(characters.map(c => c.characterID === editingCharacter.characterID ? updatedCharacter : c));
-      setSelectedCharacter(updatedCharacter);
+      // 检查是否为新角色
+      const isNewCharacter = !characters.find(c => c.characterID === editingCharacter.characterID);
+
+      let savedCharacter: MyCharacter;
+      if (isNewCharacter) {
+        savedCharacter = await ApiService.addCharacter(editingCharacter);
+      } else {
+        savedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
+      }
+
+      setCharacters(characters.map(c => c.characterID === savedCharacter.characterID ? savedCharacter : c));
+      setSelectedCharacter(savedCharacter);
       setEditingCharacter(null);
       setIsEditingCharacter(false);
     } catch (error) {
-      console.error('更新角色失败:', error);
-      alert('更新角色失败，请重试');
+      console.error('保存角色失败:', error);
+      alert('保存角色失败，请重试');
     }
   };
 

@@ -7,6 +7,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import com.lbc_plot.core.Composer.FrameComposerService;
 
 /**
@@ -32,7 +33,9 @@ public class SpringBootConfig {
      */
     @Bean
     public Jdbi jdbi(DataSource dataSource) {
-        return Jdbi.create(dataSource);
+        Jdbi jdbi = Jdbi.create(dataSource);
+        jdbi.installPlugin(new SqlObjectPlugin());
+        return jdbi;
     }
     
     /**

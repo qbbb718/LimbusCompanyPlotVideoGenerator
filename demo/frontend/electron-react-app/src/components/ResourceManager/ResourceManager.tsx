@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import './ResourceManager.css';
 import ApiService from '../../services/ApiService';
@@ -24,110 +23,23 @@ const ResourceManager: React.FC = () => {
   const fetchResources = async () => {
     try {
       setIsLoading(true);
-      
-      // 使用假数据进行演示
-      const mockCharacters: MyCharacter[] = [
-        {
-          characterID: "char001",
-          characterName: "角色1",
-          height: 180,
-          faction: "辛迪加",
-          tags: [],
-          portraits: [
-            {
-              portraitID: "portrait001",
-              characterID: "char001",
-              imagePath: "/characters/gregory_normal.png",
-              portName: "普通",
-              emotion: Emotion.NORMAL,
-              faceX: 100,
-              faceY: 80,
-              length: 150,
-              adjX: 0,
-              adjY: 0,
-              thumbnailPath: "/characters/gregory_thumb.png"
-            },
-            {
-              portraitID: "portrait002",
-              characterID: "char001",
-              imagePath: "/characters/gregory_happy.png",
-              portName: "开心",
-              emotion: Emotion.HAPPY,
-              faceX: 100,
-              faceY: 80,
-              length: 150,
-              adjX: 0,
-              adjY: 0,
-              thumbnailPath: "/characters/gregory_happy_thumb.png"
-            }
-          ],
-          colorBg: "#2A5CAA",
-          colorText: "#FFFFFF"
-        },
-        {
-          characterID: "char002",
-          characterName: "角色2",
-          height: 175,
-          faction: "K公司",
-          tags: [],
-          portraits: [
-            {
-              portraitID: "portrait003",
-              characterID: "char002",
-              imagePath: "/characters/meursault_normal.png",
-              portName: "普通",
-              emotion: Emotion.NORMAL,
-              faceX: 100,
-              faceY: 80,
-              length: 150,
-              adjX: 0,
-              adjY: 0,
-              thumbnailPath: "/characters/meursault_thumb.png"
-            }
-          ],
-          colorBg: "#E60012",
-          colorText: "#FFFFFF"
-        }
-      ];
-      
-      const mockBackgrounds: Background[] = [
-        {
-          uuid: "bg001",
-          name: "办公室",
-          path: "/backgrounds/office.png",
-          tags: ["室内", "工作"]
-        },
-        {
-          uuid: "bg002",
-          name: "街道",
-          path: "/backgrounds/street.png",
-          tags: ["室外", "城市"]
-        }
-      ];
-      
-      const mockAudios: Audio[] = [
-        {
-          uuid: "audio001",
-          name: "背景音乐1",
-          path: "/audio/bgm1.mp3",
-          type: "BGM",
-          tags: ["轻松", "日常"]
-        },
-        {
-          uuid: "audio002",
-          name: "脚步声",
-          path: "/audio/footsteps.mp3",
-          type: "SFX",
-          tags: ["动作", "环境"]
-        }
-      ];
-      
-      setCharacters(mockCharacters);
-      setBackgrounds(mockBackgrounds);
-      setAudios(mockAudios);
+
+      // 从API获取真实数据
+      const [charactersData, backgroundsData, audiosData] = await Promise.all([
+        ApiService.getCharacters(),
+        ApiService.getBackgrounds(),
+        ApiService.getAudios()
+      ]);
+
+      setCharacters(charactersData);
+      setBackgrounds(backgroundsData);
+      setAudios(audiosData);
     } catch (error) {
       console.error('获取资源失败:', error);
-      // 即使获取失败也继续显示界面
+      // 如果API失败，使用空数组作为后备
+      setCharacters([]);
+      setBackgrounds([]);
+      setAudios([]);
     } finally {
       setIsLoading(false);
     }
@@ -157,14 +69,14 @@ const ResourceManager: React.FC = () => {
 
   return (
     <div className="resource-manager">
-      <ResourceTabs 
+      <ResourceTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
 
       <div className="resource-content">
         {activeTab === 'characters' && (
-          <CharactersTab 
+          <CharactersTab
             characters={filteredCharacters}
             selectedCharacter={selectedCharacter}
             setSelectedCharacter={setSelectedCharacter}
@@ -175,7 +87,7 @@ const ResourceManager: React.FC = () => {
           />
         )}
         {activeTab === 'backgrounds' && (
-          <BackgroundsTab 
+          <BackgroundsTab
             backgrounds={filteredBackgrounds}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -184,7 +96,7 @@ const ResourceManager: React.FC = () => {
           />
         )}
         {activeTab === 'audios' && (
-          <AudiosTab 
+          <AudiosTab
             audios={filteredAudios}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}

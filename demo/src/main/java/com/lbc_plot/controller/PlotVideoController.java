@@ -21,7 +21,7 @@ public class PlotVideoController {
     /**
      * 健康检查接口
      */
-    @GetMapping("/health")
+    @GetMapping("/plot-video/health")
     public String health() {
         return "LimbusCompany Plot Video Generator is running!";
     }
@@ -29,7 +29,7 @@ public class PlotVideoController {
     /**
      * 初始化音频系统
      */
-    @GetMapping("/init-audio")
+    @GetMapping("/plot-video/init-audio")
     public String initAudio() {
         try {
             AppConfig.initializeAudioSystem();

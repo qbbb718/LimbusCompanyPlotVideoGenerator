@@ -204,10 +204,24 @@ class ApiService {
   // 更新角色
   async updateCharacter(id: string, characterData: any) {
     try {
+      console.log('开始更新角色，ID:', id);
+      console.log('角色数据:', JSON.stringify(characterData, null, 2));
+
       const response = await apiClient.put(`/characters/${id}`, characterData);
+      console.log('更新角色成功，响应数据:', JSON.stringify(response.data, null, 2));
       return response.data;
-    } catch (error) {
-      console.error('更新角色失败:', error);
+    } catch (error: any) {
+      console.error('更新角色失败，详细信息:');
+      console.error('- 错误对象:', error);
+      if (error.response) {
+        console.error('- 错误状态码:', error.response.status);
+        console.error('- 错误状态文本:', error.response.statusText);
+        console.error('- 错误响应数据:', error.response.data);
+      } else {
+        console.error('- 无响应数据，可能是网络错误或请求未发送');
+      }
+      console.error('- 请求URL:', `/characters/${id}`);
+      console.error('- 请求数据:', JSON.stringify(characterData, null, 2));
       throw error;
     }
   }

@@ -146,7 +146,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.lbc_plot.main.Application</mainClass>
+                    <mainClass>com.lbc_plot.MainApplication</mainClass>
                 </configuration>
                 <executions>
                     <execution>

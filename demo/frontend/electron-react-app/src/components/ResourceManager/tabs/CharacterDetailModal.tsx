@@ -60,15 +60,17 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (!editingCharacter) return;
 
     try {
+      let savedCharacter;
       if (isNewCharacter) {
         // 如果是新角色，需要先创建角色
-        const newCharacter = await ApiService.addCharacter(editingCharacter);
-        onSave(newCharacter);
+        savedCharacter = await ApiService.addCharacter(editingCharacter);
       } else {
         // 如果是现有角色，更新角色信息
-        const updatedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
-        onSave(updatedCharacter);
+        savedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
       }
+
+      // 确保调用onSave更新父组件状态
+      onSave(savedCharacter);
       onClose();
     } catch (error) {
       console.error('保存角色失败:', error);
