@@ -69,6 +69,12 @@ public class CharacterController {
     public MyCharacter addCharacter(@RequestBody MyCharacter character) {
         try {
             logger.info("添加新角色: " + character.getCharacterName());
+            
+            // 确保角色ID存在
+            if (character.getCharacterID() == null || character.getCharacterID().isEmpty()) {
+                character.setNewCharacterID();
+                logger.info("生成新角色ID: " + character.getCharacterID());
+            }
 
             // 确保角色目录存在
             File characterDir = new File(CHARACTERS_DIR, character.getCharacterID());
@@ -76,8 +82,38 @@ public class CharacterController {
                 characterDir.mkdirs();
                 logger.info("创建角色目录: " + characterDir.getAbsolutePath());
             }
+            
+            // 确保颜色值不为空
+            if (character.getColorBg() == null) {
+                character.setColorBg(ProjectConfig.DEFAULT_BG_COLOR);
+                logger.info("设置默认背景颜色");
+            }
+            if (character.getColorText() == null) {
+                character.setColorText(ProjectConfig.DEFAULT_TEXT_COLOR);
+                logger.info("设置默认文字颜色");
+            }
+            
+            // 确保阵营不为空
+            if (character.getFaction() == null || character.getFaction().trim().isEmpty()) {
+                character.setFaction("未设定");
+                logger.info("设置默认阵营");
+            }
+            
+            // 确保集合不为空
+            if (character.getPortraits() == null) {
+                character.setPortraits(new ArrayList<>());
+            }
+            if (character.getTags() == null) {
+                character.setTags(new ArrayList<>());
+            }
 
-            jdbi.useExtension(CharacterDAO.class, dao -> dao.addCharacter(character));
+            // 使用事务保存角色
+            jdbi.inTransaction(handle -> {
+                CharacterDAO dao = handle.attach(CharacterDAO.class);
+                dao.addCharacter(character);
+                return null;
+            });
+            
             logger.info("成功添加角色: " + character.getCharacterName());
             return character;
         } catch (Exception e) {
@@ -132,6 +168,20 @@ public class CharacterController {
                 character.setColorBg(ProjectConfig.DEFAULT_BG_COLOR);
                 character.setColorText(ProjectConfig.DEFAULT_TEXT_COLOR);
             }
+            
+            // 确保阵营不为空
+            if (character.getFaction() == null || character.getFaction().trim().isEmpty()) {
+                character.setFaction("未设定");
+                logger.info("设置默认阵营");
+            }
+            
+            // 确保集合不为空
+            if (character.getPortraits() == null) {
+                character.setPortraits(new ArrayList<>());
+            }
+            if (character.getTags() == null) {
+                character.setTags(new ArrayList<>());
+            }
 
             logger.info("最终背景颜色: " + character.getColorBg());
             logger.info("最终文字颜色: " + character.getColorText());
@@ -141,9 +191,20 @@ public class CharacterController {
             character.setCharacterID(id);
 
             logger.info("准备执行数据库更新操作");
-            jdbi.useExtension(CharacterDAO.class, dao -> dao.updateCharacter(character));
+            
+            // 使用事务更新角色
+            jdbi.inTransaction(handle -> {
+                CharacterDAO dao = handle.attach(CharacterDAO.class);
+                boolean updated = dao.update(character);
+                if (!updated) {
+                    // 如果更新失败，可能是角色不存在，尝试添加
+                    logger.warning("角色更新失败，可能是角色不存在，尝试添加新角色");
+                    dao.addCharacter(character);
+                }
+                return null;
+            });
+            
             logger.info("数据库更新操作完成");
-
             logger.info("成功更新角色: " + character.getCharacterName());
             return character;
         } catch (Exception e) {

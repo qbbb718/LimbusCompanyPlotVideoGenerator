@@ -69,6 +69,7 @@ e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\CorsCo
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\ProjectConfig.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\model\AudioCommand.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\BackgroundService.java
+e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\mappers\MyCharacterMapper.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\VideoExporter.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\DatabaseInitializer.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\storage\MyCharacter.java

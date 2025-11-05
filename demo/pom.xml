@@ -21,6 +21,9 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+        <java.version>21</java.version>
     </properties>
 
     <dependencies>
@@ -147,6 +150,11 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.lbc_plot.MainApplication</mainClass>
+                    <jvmArguments>
+                        -Dfile.encoding=UTF-8
+                        -Dconsole.encoding=UTF-8
+                        -Duser.timezone=Asia/Shanghai
+                    </jvmArguments>
                 </configuration>
                 <executions>
                     <execution>
