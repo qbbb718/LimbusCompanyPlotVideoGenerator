@@ -24,6 +24,7 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
   const [cropPosition, setCropPosition] = useState({ x: 0, y: 0 });
   const [cropSize, setCropSize] = useState({ width: 100, height: 100 });
+  const [initialCropSize, setInitialCropSize] = useState({ width: 100, height: 100 });
   const [actualImageSize, setActualImageSize] = useState({ width: 0, height: 0 });
   const [displayImageSize, setDisplayImageSize] = useState({ width: 0, height: 0 });
   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
@@ -121,20 +122,24 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     
     // 如果正在调整大小，优先处理调整大小的逻辑
     if (isResizingCrop) {
+      // 计算从开始调整大小到现在的鼠标移动距离
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
       
       // 保持1:1长宽比，使用较大的变化值
       const delta = Math.max(deltaX, deltaY);
       
+      // 使用记录的初始裁剪框大小
+      const initialSize = initialCropSize.width;
+      
+      // 计算新的裁剪框大小
+      const newSize = Math.max(50, initialSize + delta);
+      
       // 更新裁剪框大小，保持1:1比例
-      const newSize = Math.max(50, cropSize.width + delta);
       setCropSize({
         width: newSize,
         height: newSize
       });
-      
-      setDragStart({ x: e.clientX, y: e.clientY });
     } else if (isDraggingCrop) {
       // 处理拖动逻辑
       const newX = e.clientX - dragStart.x;
@@ -279,6 +284,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
                       setIsResizingCrop(true);
                       setIsDraggingCrop(false); // 确保不是拖动状态
                       setDragStart({ x: e.clientX, y: e.clientY });
+                      // 记录初始裁剪框大小
+                      setInitialCropSize({ width: cropSize.width, height: cropSize.height });
                     }}
                   />
                 </div>
