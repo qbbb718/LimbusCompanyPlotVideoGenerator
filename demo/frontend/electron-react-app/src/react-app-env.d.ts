@@ -6,6 +6,7 @@ interface Window {
     maximizeWindow: () => void;
     closeWindow: () => void;
     openFile: () => Promise<any>;
+    openImageFile: () => Promise<any>;
     saveFile: (filename: string, data: string) => Promise<any>;
     getAppVersion: () => Promise<string>;
     onMenuNewProject: (callback: () => void) => void;

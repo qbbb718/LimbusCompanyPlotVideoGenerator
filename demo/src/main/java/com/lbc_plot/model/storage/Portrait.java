@@ -64,6 +64,13 @@ public class Portrait {
     public void setPortraitID(String portraitID) {
         this.portraitID = portraitID;
     }
+    
+    /**
+     * 生成新的portraitID
+     */
+    public void setNewPortraitID() {
+        this.portraitID = UUID.randomUUID().toString();
+    }
 
     public String getCharacterID() {
         return characterID;
@@ -132,6 +139,19 @@ public class Portrait {
     @JsonIgnore
     public String getEmotionName() {
         return emotion != null ? emotion.name() : null;
+    }
+    
+    public void setEmotionName(String emotionName) {
+        if (emotionName != null && !emotionName.isEmpty()) {
+            try {
+                this.emotion = Emotion.valueOf(emotionName);
+            } catch (IllegalArgumentException e) {
+                logger.warn("未知的情绪类型: " + emotionName + ", 使用默认情绪");
+                this.emotion = Emotion.NORMAL;
+            }
+        } else {
+            this.emotion = Emotion.NORMAL;
+        }
     }
 
     // 修改之后记得更新缩略图

@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 文件操作
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
+  openImageFile: () => ipcRenderer.invoke('dialog:openImageFile'),
   saveFile: (defaultPath, data) => ipcRenderer.invoke('dialog:saveFile', defaultPath, data),
 
   // 通知

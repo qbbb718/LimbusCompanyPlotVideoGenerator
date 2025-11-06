@@ -190,4 +190,11 @@ public interface PortraitDAO {
             );
         }
     }
+
+    /**
+     * 删除角色的所有立绘关联关系
+     * @param characterId 角色ID
+     */
+    @SqlUpdate("DELETE FROM character_portraits WHERE character_id = :characterId")
+    void deleteCharacterPortraits(@Bind("characterId") String characterId);
 }

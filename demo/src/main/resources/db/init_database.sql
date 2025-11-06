@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS portraits (
     adj_y INTEGER DEFAULT 0,
     dim BOOLEAN DEFAULT 1,
     thumbnail_path TEXT
-    --FOREIGN KEY (character_id) REFERENCES characters (character_id) ON DELETE CASCADE
+    -- 暂时移除外键约束: FOREIGN KEY (character_id) REFERENCES characters (character_id) ON DELETE CASCADE
 );
 
 -- 角色-立绘关联表（多对多关系）
@@ -35,11 +35,7 @@ CREATE TABLE IF NOT EXISTS character_portraits (
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     -- 复合主键确保唯一性
-    UNIQUE(character_id, portrait_id),
-
-    -- 外键约束
-    FOREIGN KEY (character_id) REFERENCES characters (character_id) ON DELETE CASCADE,
-    FOREIGN KEY (portrait_id) REFERENCES portraits (portrait_id) ON DELETE CASCADE
+    UNIQUE(character_id, portrait_id)
 );
 
 -- 背景表：存储背景资源元数据（文件路径、显示名等）

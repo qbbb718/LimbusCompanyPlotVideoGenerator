@@ -171,11 +171,29 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
+// 图片文件对话框
+ipcMain.handle('dialog:openImageFile', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (!canceled) {
+    return { canceled, filePaths };
+  }
+
+  return { canceled };
+});
+
 // 文件对话框
 ipcMain.handle('dialog:openFile', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile'],
     filters: [
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp'] },
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ]

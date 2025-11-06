@@ -127,13 +127,59 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
 
     try {
       log('保存立绘', portrait.portName);
-      const newPortrait = await ApiService.addPortrait(selectedCharacter.characterID, portrait);
+      
+      // 计算基于原始图片尺寸的裁剪参数
+      if (portraitPreview && portraitPreview.startsWith('data:')) {
+        // 从预览中获取图片尺寸
+        const img = new Image();
+        img.onload = () => {
+          // 计算显示尺寸与实际尺寸的比例
+          const scaleX = img.naturalWidth / img.width;
+          const scaleY = img.naturalHeight / img.height;
+          
+          // 计算裁剪框在实际图片中的位置和大小
+          const actualFaceX = Math.round(cropPosition.x * scaleX);
+          const actualFaceY = Math.round(cropPosition.y * scaleY);
+          const actualLength = Math.round(cropSize.width * scaleX);
+          
+          // 更新立绘对象
+          portrait.faceX = actualFaceX;
+          portrait.faceY = actualFaceY;
+          portrait.length = actualLength;
+          
+          log('计算后的裁剪参数', {
+            faceX: actualFaceX,
+            faceY: actualFaceY,
+            length: actualLength,
+            scaleX,
+            scaleY
+          });
+          
+          // 保存立绘
+          savePortraitWithCorrectedParams(portrait);
+        };
+        img.src = portraitPreview;
+      } else {
+        // 如果没有预览，直接保存
+        savePortraitWithCorrectedParams(portrait);
+      }
+    } catch (error) {
+      console.error('添加立绘失败:', error);
+      log('立绘保存失败', error);
+      alert('添加立绘失败，请重试');
+    }
+  };
+  
+  // 辅助函数：使用修正后的参数保存立绘
+  const savePortraitWithCorrectedParams = async (portrait: Portrait) => {
+    try {
+      const newPortrait = await ApiService.addPortrait(selectedCharacter!.characterID, portrait);
       const updatedCharacter = {
-        ...selectedCharacter,
-        portraits: [...selectedCharacter.portraits, newPortrait]
+        ...selectedCharacter!,
+        portraits: [...selectedCharacter!.portraits, newPortrait]
       };
 
-      setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
+      setCharacters(characters.map(c => c.characterID === selectedCharacter!.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
 
       setShowPortraitModal(false);
@@ -157,13 +203,59 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
 
     try {
       log('更新立绘', portrait.portName);
-      const updatedPortrait = await ApiService.updatePortrait(selectedCharacter.characterID, portrait.portraitID, portrait);
+      
+      // 计算基于原始图片尺寸的裁剪参数
+      if (portraitPreview && portraitPreview.startsWith('data:')) {
+        // 从预览中获取图片尺寸
+        const img = new Image();
+        img.onload = () => {
+          // 计算显示尺寸与实际尺寸的比例
+          const scaleX = img.naturalWidth / img.width;
+          const scaleY = img.naturalHeight / img.height;
+          
+          // 计算裁剪框在实际图片中的位置和大小
+          const actualFaceX = Math.round(cropPosition.x * scaleX);
+          const actualFaceY = Math.round(cropPosition.y * scaleY);
+          const actualLength = Math.round(cropSize.width * scaleX);
+          
+          // 更新立绘对象
+          portrait.faceX = actualFaceX;
+          portrait.faceY = actualFaceY;
+          portrait.length = actualLength;
+          
+          log('计算后的裁剪参数', {
+            faceX: actualFaceX,
+            faceY: actualFaceY,
+            length: actualLength,
+            scaleX,
+            scaleY
+          });
+          
+          // 更新立绘
+          updatePortraitWithCorrectedParams(portrait);
+        };
+        img.src = portraitPreview;
+      } else {
+        // 如果没有预览，直接更新
+        updatePortraitWithCorrectedParams(portrait);
+      }
+    } catch (error) {
+      console.error('更新立绘失败:', error);
+      log('立绘更新失败', error);
+      alert('更新立绘失败，请重试');
+    }
+  };
+  
+  // 辅助函数：使用修正后的参数更新立绘
+  const updatePortraitWithCorrectedParams = async (portrait: Portrait) => {
+    try {
+      const updatedPortrait = await ApiService.updatePortrait(selectedCharacter!.characterID, portrait.portraitID, portrait);
       const updatedCharacter = {
-        ...selectedCharacter,
-        portraits: selectedCharacter.portraits.map(p => p.portraitID === portrait.portraitID ? updatedPortrait : p)
+        ...selectedCharacter!,
+        portraits: selectedCharacter!.portraits.map(p => p.portraitID === portrait.portraitID ? updatedPortrait : p)
       };
 
-      setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
+      setCharacters(characters.map(c => c.characterID === selectedCharacter!.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
 
       setShowPortraitModal(false);

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.awt.Color;
 import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 
@@ -24,6 +25,7 @@ import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
 import com.lbc_plot.DAO.CharacterDAO;
 import com.lbc_plot.DAO.PortraitDAO;
+import com.lbc_plot.DAO.CharacterMapper;
 import com.lbc_plot.util.ColorUtils;
 import com.lbc_plot.config.ProjectConfig;
 import org.jdbi.v3.core.Jdbi;
@@ -52,7 +54,17 @@ public class CharacterController {
     public List<MyCharacter> getCharacters() {
         try {
             logger.info("获取所有角色");
-            List<MyCharacter> characters = jdbi.withExtension(CharacterDAO.class, dao -> dao.getAllCharacters());
+
+            // 使用自定义的CharacterMapper，确保加载关联的立绘信息
+            List<MyCharacter> characters = jdbi.withHandle(handle -> {
+                // 注册自定义的CharacterMapper
+                handle.registerRowMapper(new CharacterMapper(jdbi));
+                // 查询所有角色
+                return handle.createQuery("SELECT * FROM characters ORDER BY character_name")
+                        .mapTo(MyCharacter.class)
+                        .list();
+            });
+
             logger.info("成功获取 " + characters.size() + " 个角色");
             return characters;
         } catch (Exception e) {
@@ -69,7 +81,7 @@ public class CharacterController {
     public MyCharacter addCharacter(@RequestBody MyCharacter character) {
         try {
             logger.info("添加新角色: " + character.getCharacterName());
-            
+
             // 确保角色ID存在
             if (character.getCharacterID() == null || character.getCharacterID().isEmpty()) {
                 character.setNewCharacterID();
@@ -82,7 +94,7 @@ public class CharacterController {
                 characterDir.mkdirs();
                 logger.info("创建角色目录: " + characterDir.getAbsolutePath());
             }
-            
+
             // 确保颜色值不为空
             if (character.getColorBg() == null) {
                 character.setColorBg(ProjectConfig.DEFAULT_BG_COLOR);
@@ -92,13 +104,13 @@ public class CharacterController {
                 character.setColorText(ProjectConfig.DEFAULT_TEXT_COLOR);
                 logger.info("设置默认文字颜色");
             }
-            
+
             // 确保阵营不为空
             if (character.getFaction() == null || character.getFaction().trim().isEmpty()) {
                 character.setFaction("未设定");
                 logger.info("设置默认阵营");
             }
-            
+
             // 确保集合不为空
             if (character.getPortraits() == null) {
                 character.setPortraits(new ArrayList<>());
@@ -113,7 +125,7 @@ public class CharacterController {
                 dao.addCharacter(character);
                 return null;
             });
-            
+
             logger.info("成功添加角色: " + character.getCharacterName());
             return character;
         } catch (Exception e) {
@@ -168,13 +180,13 @@ public class CharacterController {
                 character.setColorBg(ProjectConfig.DEFAULT_BG_COLOR);
                 character.setColorText(ProjectConfig.DEFAULT_TEXT_COLOR);
             }
-            
+
             // 确保阵营不为空
             if (character.getFaction() == null || character.getFaction().trim().isEmpty()) {
                 character.setFaction("未设定");
                 logger.info("设置默认阵营");
             }
-            
+
             // 确保集合不为空
             if (character.getPortraits() == null) {
                 character.setPortraits(new ArrayList<>());
@@ -191,19 +203,52 @@ public class CharacterController {
             character.setCharacterID(id);
 
             logger.info("准备执行数据库更新操作");
-            
-            // 使用事务更新角色
+
+            // 使用事务更新角色和立绘
             jdbi.inTransaction(handle -> {
-                CharacterDAO dao = handle.attach(CharacterDAO.class);
-                boolean updated = dao.update(character);
+                CharacterDAO characterDao = handle.attach(CharacterDAO.class);
+                PortraitDAO portraitDao = handle.attach(PortraitDAO.class);
+
+                // 更新角色基本信息
+                boolean updated = characterDao.update(character);
                 if (!updated) {
                     // 如果更新失败，可能是角色不存在，尝试添加
                     logger.warning("角色更新失败，可能是角色不存在，尝试添加新角色");
-                    dao.addCharacter(character);
+                    characterDao.addCharacter(character);
                 }
+
+                // 更新立绘信息
+                if (character.getPortraits() != null && !character.getPortraits().isEmpty()) {
+                    // 先删除旧的关联关系
+                    portraitDao.deleteCharacterPortraits(id);
+
+                    // 更新或添加每个立绘
+                    for (Portrait portrait : character.getPortraits()) {
+                        if (portrait.getPortraitID() == null || portrait.getPortraitID().isEmpty()) {
+                            // 如果是新立绘，生成ID
+                            portrait.setNewPortraitID();
+                        }
+
+                        // 确保立绘属于当前角色
+                        portrait.setCharacterID(id);
+
+                        // 检查立绘是否已存在
+                        if (portraitDao.existsById(portrait.getPortraitID())) {
+                            // 更新现有立绘
+                            portraitDao.update(portrait);
+                        } else {
+                            // 添加新立绘
+                            portraitDao.save(portrait);
+                        }
+                    }
+
+                    // 保存新的关联关系
+                    portraitDao.saveCharacterPortraits(id, character.getPortraits());
+                }
+
                 return null;
             });
-            
+
             logger.info("数据库更新操作完成");
             logger.info("成功更新角色: " + character.getCharacterName());
             return character;
@@ -277,6 +322,12 @@ public class CharacterController {
     public Portrait addPortrait(@PathVariable String characterId, @RequestBody Portrait portrait) {
         try {
             logger.info("为角色 " + characterId + " 添加立绘: " + portrait.getPortName());
+            logger.info("立绘详细信息:");
+            logger.info("- 图片路径: " + portrait.getImagePath());
+            logger.info("- 情绪: " + portrait.getEmotionName());
+            logger.info("- 面部位置: X=" + portrait.getFaceX() + ", Y=" + portrait.getFaceY());
+            logger.info("- 调整位置: X=" + portrait.getAdjX() + ", Y=" + portrait.getAdjY());
+            logger.info("- 长度: " + portrait.getLength());
             portrait.setCharacterID(characterId);
 
             // 确保立绘目录存在
@@ -286,15 +337,212 @@ public class CharacterController {
                 logger.info("创建立绘目录: " + portraitDir.getAbsolutePath());
             }
 
-            // 处理图片裁剪和缩略图
+            // 在addPortrait方法中，删除重复的代码块并修正括号匹配
             if (portrait.getImagePath() != null && !portrait.getImagePath().isEmpty()) {
-                File sourceImage = new File(portrait.getImagePath());
-                if (sourceImage.exists()) {
-                    // 创建缩略图
-                    String thumbnailPath = createThumbnail(portrait, sourceImage);
-                    portrait.setThumbnailPath(thumbnailPath);
-                    logger.info("创建缩略图: " + thumbnailPath);
+                // 检查是否是base64编码的图像
+                if (portrait.getImagePath().startsWith("data:image/")) {
+                    try {
+                        // 处理base64编码的图像
+                        String base64Data = portrait.getImagePath().substring(portrait.getImagePath().indexOf(",") + 1);
+                        byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Data);
+
+                        // 创建临时文件
+                        String tempFileName = "temp_" + portrait.getPortraitID() + ".png";
+                        File tempFile = new File(PORTRAITS_DIR, tempFileName);
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+                        fos.write(imageBytes);
+                        fos.close();
+
+                        // 更新imagePath为临时文件路径
+                        portrait.setImagePath(tempFile.getAbsolutePath());
+
+                        // 创建缩略图
+                        String thumbnailPath = createThumbnail(portrait, tempFile);
+                        portrait.setThumbnailPath(thumbnailPath);
+                        logger.info("从base64创建缩略图: " + thumbnailPath);
+                    } catch (Exception e) {
+                        logger.severe("处理base64图像失败: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    // 处理普通文件路径
+                    String imagePath = portrait.getImagePath();
+                    logger.info("处理立绘路径: " + imagePath);
+
+                    // 如果只有文件名，尝试在resources目录中查找
+                    if (!imagePath.contains("/") && !imagePath.contains("\\")) {
+                        logger.info("检测到只有文件名，尝试在resources/portraits目录中查找: " + imagePath);
+                        // 只有文件名，尝试在resources/portraits目录中查找
+                        File portraitFile = new File(PORTRAITS_DIR, imagePath);
+                        logger.info("查找文件: " + portraitFile.getAbsolutePath());
+                        if (portraitFile.exists()) {
+                            portrait.setImagePath(portraitFile.getAbsolutePath());
+
+                            // 创建缩略图
+                            String thumbnailPath = createThumbnail(portrait, portraitFile);
+                            portrait.setThumbnailPath(thumbnailPath);
+                            logger.info("从文件名创建缩略图: " + thumbnailPath);
+                        } else {
+                            logger.warning("在resources/portraits目录中找不到文件: " + imagePath);
+                        }
+                    }
+                    // 检查是否是相对路径（从resource文件夹开始）
+                    else if (!imagePath.startsWith("/") && !imagePath.startsWith(":\\")) {
+                        logger.info("检测到相对路径: " + imagePath);
+                        // 如果是相对路径，构建绝对路径
+                        // 获取resources目录的绝对路径
+                        // 如果路径以文件名开始（不包含路径分隔符），则假设是characters文件夹下的文件
+                        if (!imagePath.contains("/") && !imagePath.contains("\\")) {
+                            logger.info("检测到只有文件名，尝试在resources/portraits目录中查找: " + imagePath);
+                            // 只有文件名，尝试在resources/portraits目录中查找
+                            File portraitFile = new File(PORTRAITS_DIR, imagePath);
+                            if (portraitFile.exists()) {
+                                portrait.setImagePath(portraitFile.getAbsolutePath());
+
+                                // 创建缩略图
+                                String thumbnailPath = createThumbnail(portrait, portraitFile);
+                                portrait.setThumbnailPath(thumbnailPath);
+                                logger.info("从文件名创建缩略图: " + thumbnailPath);
+                            } else {
+                                // 尝试在classpath中查找
+                                String resourcePath = "assets/characters/" + imagePath;
+                                logger.info("尝试从classpath加载资源: " + resourcePath);
+                                InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath);
+                                if (is != null) {
+                                    is.close();
+                                    logger.info("在classpath中找到资源: " + resourcePath);
+                                    // 使用classpath资源创建临时文件
+                                    File tempFile = File.createTempFile("portrait_", "_" + portrait.getPortName());
+                                    try (InputStream resourceStream = getClass().getClassLoader()
+                                            .getResourceAsStream(resourcePath)) {
+                                        Files.copy(resourceStream, tempFile.toPath(),
+                                                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                        portrait.setImagePath(tempFile.getAbsolutePath());
+
+                                        // 创建缩略图
+                                        String thumbnailPath = createThumbnail(portrait, tempFile);
+                                        portrait.setThumbnailPath(thumbnailPath);
+                                        logger.info("从classpath资源创建缩略图: " + thumbnailPath);
+                                    }
+                                } else {
+                                    logger.warning("在classpath中未找到资源: " + resourcePath);
+                                }
+                            }
+                        }
+                        // 如果路径包含characters，但不包含resources前缀
+                        else if (imagePath.startsWith("characters/") || imagePath.startsWith("characters\\")) {
+                            logger.info("路径包含characters前缀，添加resources/assets前缀: " + imagePath);
+                            // 添加resources/assets前缀
+                            String normalizedPath = imagePath.replace("\\", "/");
+                            String fullPath = "resources/assets/" + normalizedPath;
+
+                            // 尝试在classpath中查找
+                            String resourcePath = fullPath.substring("resources/".length());
+                            logger.info("尝试从classpath加载资源: " + resourcePath);
+                            InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath);
+                            if (is != null) {
+                                is.close();
+                                logger.info("在classpath中找到资源: " + resourcePath);
+                                // 使用classpath资源创建临时文件
+                                File tempFile = File.createTempFile("portrait_", "_" + portrait.getPortName());
+                                try (InputStream resourceStream = getClass().getClassLoader()
+                                        .getResourceAsStream(resourcePath)) {
+                                    Files.copy(resourceStream, tempFile.toPath(),
+                                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                    portrait.setImagePath(tempFile.getAbsolutePath());
+
+                                    // 创建缩略图
+                                    String thumbnailPath = createThumbnail(portrait, tempFile);
+                                    portrait.setThumbnailPath(thumbnailPath);
+                                    logger.info("从classpath资源创建缩略图: " + thumbnailPath);
+                                }
+                            } else {
+                                logger.warning("在classpath中未找到资源: " + resourcePath);
+                            }
+                        }
+                        // 如果路径已经包含"resources/"或"resources\"，直接使用
+                        else if (imagePath.startsWith("resources/") || imagePath.startsWith("resources\\")) {
+                            logger.info("路径包含resources前缀，直接使用: " + imagePath);
+                            // 将Windows路径转换为标准路径
+                            String normalizedPath = imagePath.replace("\\", "/");
+                            // 直接使用相对路径
+                            File fullFile = new File(normalizedPath);
+
+                            // 如果是resources/assets/characters路径，尝试在classpath中查找
+                            if (normalizedPath.startsWith("resources/assets/characters/")) {
+                                String resourcePath = normalizedPath.substring("resources/".length());
+                                logger.info("尝试从classpath加载资源: " + resourcePath);
+                                try (InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
+                                    if (is != null) {
+                                        logger.info("在classpath中找到资源: " + resourcePath);
+                                        // 使用classpath资源创建临时文件
+                                        File tempFile = File.createTempFile("portrait_", "_" + portrait.getPortName());
+                                        Files.copy(is, tempFile.toPath(),
+                                                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                        portrait.setImagePath(tempFile.getAbsolutePath());
+
+                                        // 创建缩略图
+                                        String thumbnailPath = createThumbnail(portrait, tempFile);
+                                        portrait.setThumbnailPath(thumbnailPath);
+                                        logger.info("从classpath资源创建缩略图: " + thumbnailPath);
+                                    } else {
+                                        logger.warning("在classpath中未找到资源: " + resourcePath);
+                                    }
+
+                                }
+                                if (fullFile.exists()) {
+                                    portrait.setImagePath(fullFile.getAbsolutePath());
+
+                                    // 创建缩略图
+                                    String thumbnailPath = createThumbnail(portrait, fullFile);
+                                    portrait.setThumbnailPath(thumbnailPath);
+                                    logger.info("从相对路径创建缩略图: " + thumbnailPath);
+                                } else {
+                                    logger.warning("文件不存在: " + fullFile.getAbsolutePath());
+                                }
+                            } else {
+                                // 获取resources目录的绝对路径
+                                logger.info("路径不包含resources/前缀，尝试获取resources目录");
+                                String resourcePath = getClass().getClassLoader().getResource("").getPath();
+                                if (resourcePath.startsWith("file:")) {
+                                    resourcePath = resourcePath.substring(5); // 移除"file:"前缀
+                                }
+                                logger.info("获取到resources目录: " + resourcePath);
+
+                                // 构建完整的文件路径
+                                File resourceFile = new File(resourcePath, imagePath);
+                                logger.info("构建完整文件路径: " + resourceFile.getAbsolutePath());
+                                if (resourceFile.exists()) {
+                                    portrait.setImagePath(resourceFile.getAbsolutePath());
+
+                                    // 创建缩略图
+                                    String thumbnailPath = createThumbnail(portrait, resourceFile);
+                                    portrait.setThumbnailPath(thumbnailPath);
+                                    logger.info("从绝对路径创建缩略图: " + thumbnailPath);
+                                } else {
+                                    logger.warning("文件不存在: " + resourceFile.getAbsolutePath());
+                                }
+                            }
+                        } else {
+                            // 处理绝对路径
+                            logger.info("检测到绝对路径: " + imagePath);
+                            File sourceImage = new File(imagePath);
+                            if (sourceImage.exists()) {
+                                // 创建缩略图
+                                String thumbnailPath = createThumbnail(portrait, sourceImage);
+                                portrait.setThumbnailPath(thumbnailPath);
+                                logger.info("创建缩略图: " + thumbnailPath);
+                            } else {
+                                logger.warning("图片文件不存在: " + imagePath);
+                            }
+                        }
+                    }
                 }
+            } else {
+                // 即使imagePath为空，也要保存立绘信息
+                logger.info("立绘图片路径为空，仅保存立绘元数据");
+                // 设置默认缩略图路径
+                portrait.setThumbnailPath("");
             }
 
             jdbi.useExtension(PortraitDAO.class, dao -> dao.addPortrait(portrait));
@@ -344,6 +592,14 @@ public class CharacterController {
             @RequestBody Portrait portrait) {
         try {
             logger.info("更新立绘: " + portrait.getPortName());
+            logger.info("立绘详细信息:");
+            logger.info("- 立绘ID: " + portraitId);
+            logger.info("- 角色ID: " + characterId);
+            logger.info("- 图片路径: " + portrait.getImagePath());
+            logger.info("- 情绪: " + portrait.getEmotionName());
+            logger.info("- 面部位置: X=" + portrait.getFaceX() + ", Y=" + portrait.getFaceY());
+            logger.info("- 调整位置: X=" + portrait.getAdjX() + ", Y=" + portrait.getAdjY());
+            logger.info("- 长度: " + portrait.getLength());
             portrait.setCharacterID(characterId);
             portrait.setPortraitID(portraitId);
 
