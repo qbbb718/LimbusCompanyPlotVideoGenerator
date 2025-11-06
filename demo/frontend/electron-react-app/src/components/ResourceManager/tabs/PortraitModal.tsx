@@ -24,6 +24,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
   const [cropPosition, setCropPosition] = useState({ x: 0, y: 0 });
   const [cropSize, setCropSize] = useState({ width: 100, height: 100 });
+  const [actualImageSize, setActualImageSize] = useState({ width: 0, height: 0 });
+  const [displayImageSize, setDisplayImageSize] = useState({ width: 0, height: 0 });
   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
   const [isResizingCrop, setIsResizingCrop] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -31,6 +33,7 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   const [showEmotionSuggestions, setShowEmotionSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropContainerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // 日志函数
   const log = (message: string, data?: any) => {
@@ -59,7 +62,19 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     // 读取文件并设置预览
     const reader = new FileReader();
     reader.onload = (event) => {
-      setPortraitPreview(event.target?.result as string);
+      const imageUrl = event.target?.result as string;
+      setPortraitPreview(imageUrl);
+      
+      // 获取图片实际尺寸
+      const img = new Image();
+      img.onload = () => {
+        setActualImageSize({ width: img.width, height: img.height });
+        
+        // 设置默认裁剪框大小为图片宽度的1/4，但最小100px
+        const defaultSize = Math.max(100, Math.floor(img.width / 4));
+        setCropSize({ width: defaultSize, height: defaultSize });
+      };
+      img.src = imageUrl;
     };
     reader.readAsDataURL(file);
 
@@ -88,19 +103,40 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   
   // 裁剪框拖动处理
   const handleCropMouseDown = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('crop-box')) {
+    // 如果点击的是调整大小的手柄，则不处理
+    if ((e.target as HTMLElement).classList.contains('resize-handle')) {
       return;
     }
     
-    setIsDraggingCrop(true);
-    setDragStart({ x: e.clientX - cropPosition.x, y: e.clientY - cropPosition.y });
+    // 如果点击的是裁剪框本身，则开始拖动
+    if ((e.target as HTMLElement).classList.contains('crop-box')) {
+      setIsDraggingCrop(true);
+      setDragStart({ x: e.clientX - cropPosition.x, y: e.clientY - cropPosition.y });
+    }
   };
   
   // 裁剪框移动处理
   const handleCropMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingCrop && !isResizingCrop) return;
     
-    if (isDraggingCrop) {
+    // 如果正在调整大小，优先处理调整大小的逻辑
+    if (isResizingCrop) {
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+      
+      // 保持1:1长宽比，使用较大的变化值
+      const delta = Math.max(deltaX, deltaY);
+      
+      // 更新裁剪框大小，保持1:1比例
+      const newSize = Math.max(50, cropSize.width + delta);
+      setCropSize({
+        width: newSize,
+        height: newSize
+      });
+      
+      setDragStart({ x: e.clientX, y: e.clientY });
+    } else if (isDraggingCrop) {
+      // 处理拖动逻辑
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
       
@@ -116,21 +152,6 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
           y: Math.max(0, Math.min(newY, maxY))
         });
       }
-    } else if (isResizingCrop) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-      
-      // 保持1:1长宽比，使用较大的变化值
-      const delta = Math.max(deltaX, deltaY);
-      
-      // 更新裁剪框大小，保持1:1比例
-      const newSize = Math.max(50, cropSize.width + delta);
-      setCropSize({
-        width: newSize,
-        height: newSize
-      });
-      
-      setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
   
@@ -205,13 +226,20 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
                 onMouseUp={handleCropMouseUp}
               >
                 <img 
+                  ref={imageRef}
                   src={portraitPreview || currentPortrait.imagePath} 
                   alt="立绘预览" 
                   draggable={false}
+                  onLoad={() => {
+                    // 获取显示中的图片尺寸
+                    if (imageRef.current) {
+                      setDisplayImageSize({
+                        width: imageRef.current.naturalWidth,
+                        height: imageRef.current.naturalHeight
+                      });
+                    }
+                  }}
                 />
-                
-                {/* 外部压暗遮罩 */}
-                <div className="crop-overlay" />
                 
                 {/* 裁剪框 */}
                 <div 
@@ -225,7 +253,21 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
                 >
                   {/* 像素数显示 */}
                   <div className="crop-size-info">
-                    {cropSize.width} × {cropSize.height}px
+                    {(() => {
+                      // 计算实际像素值
+                      if (imageRef.current && actualImageSize.width > 0) {
+                        // 计算显示尺寸与实际尺寸的比例
+                        const scaleX = actualImageSize.width / imageRef.current.clientWidth;
+                        const scaleY = actualImageSize.height / imageRef.current.clientHeight;
+                        
+                        // 计算裁剪框在实际图片中的像素大小
+                        const actualWidth = Math.round(cropSize.width * scaleX);
+                        const actualHeight = Math.round(cropSize.height * scaleY);
+                        
+                        return `${actualWidth} × ${actualHeight}px`;
+                      }
+                      return `${cropSize.width} × ${cropSize.height}px`;
+                    })()}
                   </div>
                   
                   {/* 调整大小的手柄 */}
@@ -233,7 +275,9 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
                     className="resize-handle"
                     onMouseDown={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       setIsResizingCrop(true);
+                      setIsDraggingCrop(false); // 确保不是拖动状态
                       setDragStart({ x: e.clientX, y: e.clientY });
                     }}
                   />
