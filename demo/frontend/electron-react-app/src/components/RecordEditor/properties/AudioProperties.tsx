@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Record, Audio, AudioCommand } from '../../../types';
+import { Record, Audio, AudioCommand, AudioType } from '../../../types';
 import ApiService from '../../../services/ApiService';
 import '../RecordEditor.css';
 import './AudioProperties.css';
@@ -21,7 +21,7 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null);
   const [filteredAudios, setFilteredAudios] = useState<Audio[]>([]);
-  const [audioType, setAudioType] = useState('BGM');
+  const [audioType, setAudioType] = useState<AudioType>(AudioType.BGM);
 
   useEffect(() => {
     fetchAudios();
@@ -55,21 +55,21 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
           uuid: "audio001",
           name: "背景音乐1",
           path: "/audio/bgm1.mp3",
-          type: "BGM",
+          type: AudioType.BGM,
           tags: ["轻松", "日常"]
         },
         {
           uuid: "audio002",
           name: "脚步声",
           path: "/audio/footsteps.mp3",
-          type: "SFX",
+          type: AudioType.SFX,
           tags: ["动作", "环境"]
         },
         {
           uuid: "audio003",
           name: "对话语音1",
           path: "/audio/voice1.mp3",
-          type: "VOICE",
+          type: AudioType.VOICE,
           tags: ["对话", "剧情"]
         }
       ];
@@ -102,7 +102,7 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
     // 重置表单
     setSelectedAudio(null);
     setShowSelector(false);
-    setAudioType('BGM');
+    setAudioType(AudioType.BGM);
   };
   const updateAudio = (index: number, field: string, value: any) => {
     const updatedAudios = [...selectedRecord.audioCommands];
@@ -119,7 +119,7 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
   };
 
   const deleteAudio = (index: number) => {
-    const updatedAudios = selectedRecord.audioCommands.filter((_, i) => i !== index);
+    const updatedAudios = selectedRecord.audioCommands.filter((_: AudioCommand, i: number) => i !== index);
     const updatedRecord = {
       ...selectedRecord,
       audioCommands: updatedAudios
@@ -132,7 +132,7 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
       <div className="audio-properties">
         <h4>音效设置</h4>
         <div className="audio-list">
-          {selectedRecord.audioCommands.map((audio, index) => (
+          {selectedRecord.audioCommands.map((audio: AudioCommand, index: number) => (
             <div key={index} className="audio-item">
               <div className="audio-header">
                 <h5>{audio.type}: {audio.path}</h5>
@@ -147,9 +147,9 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
                     onChange={(e) => updateAudio(index, 'type', e.target.value)}
                     style={{ padding: '6px 8px', width: '100%' }}
                   >
-                    <option value="BGM">背景音乐</option>
-                    <option value="VOICE">语音</option>
-                    <option value="SFX">音效</option>
+                    <option value={AudioType.BGM}>背景音乐</option>
+                    <option value={AudioType.VOICE}>语音</option>
+                    <option value={AudioType.SFX}>音效</option>
                   </select>
                 </div>
 
@@ -235,11 +235,11 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
                 <label>音频类型</label>
                 <select
                   value={audioType}
-                  onChange={(e) => setAudioType(e.target.value)}
+                  onChange={(e) => setAudioType(e.target.value as AudioType)}
                 >
-                  <option value="BGM">背景音乐</option>
-                  <option value="VOICE">语音</option>
-                  <option value="SFX">音效</option>
+                  <option value={AudioType.BGM}>背景音乐</option>
+                  <option value={AudioType.VOICE}>语音</option>
+                  <option value={AudioType.SFX}>音效</option>
                 </select>
               </div>
             </div>

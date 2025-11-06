@@ -63,6 +63,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ projectSettings }) => {
       bg: [],
       chars: [],
       effects: [],
+      audio: [],
       audioCommands: [],
       isDirty: true
     };

@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MyCharacter, Portrait, Emotion } from '../../../types';
 import ApiService from '../../../services/ApiService';
 import '../ResourceManager.css';
 import './CharacterModal.css';
+import './EmotionInput.css';
 import CharacterDetailModal from './CharacterDetailModal';
 import PortraitModal from './PortraitModal';
 
@@ -44,8 +44,14 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropContainerRef = useRef<HTMLDivElement>(null);
 
+  // 日志函数
+  const log = (message: string, data?: any) => {
+    console.log(`[CharactersTab] ${message}`, data);
+  };
+
   const handleEditCharacter = () => {
     if (!selectedCharacter) return;
+    log('编辑角色', selectedCharacter.characterName);
     setEditingCharacter({ ...selectedCharacter });
     setIsEditingCharacter(true);
   };
@@ -54,33 +60,29 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     if (!editingCharacter) return;
 
     try {
-      // 检查是否为新角色
-      const isNewCharacter = !characters.find(c => c.characterID === editingCharacter.characterID);
-
-      let savedCharacter: MyCharacter;
-      if (isNewCharacter) {
-        savedCharacter = await ApiService.addCharacter(editingCharacter);
-      } else {
-        savedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
-      }
-
-      setCharacters(characters.map(c => c.characterID === savedCharacter.characterID ? savedCharacter : c));
-      setSelectedCharacter(savedCharacter);
+      log('保存角色', editingCharacter.characterName);
+      const updatedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
+      setCharacters(characters.map(c => c.characterID === editingCharacter.characterID ? updatedCharacter : c));
+      setSelectedCharacter(updatedCharacter);
       setEditingCharacter(null);
       setIsEditingCharacter(false);
+      log('角色保存成功', updatedCharacter.characterName);
     } catch (error) {
-      console.error('保存角色失败:', error);
-      alert('保存角色失败，请重试');
+      console.error('更新角色失败:', error);
+      log('角色保存失败', error);
+      alert('更新角色失败，请重试');
     }
   };
 
   const handleCancelEditCharacter = () => {
+    log('取消编辑角色');
     setEditingCharacter(null);
     setIsEditingCharacter(false);
   };
 
   const handleAddPortrait = () => {
     if (!selectedCharacter) return;
+    log('添加立绘', selectedCharacter.characterName);
     setEditingPortrait(null);
     setIsAddingPortrait(true);
     setShowPortraitModal(true);
@@ -93,6 +95,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    log('选择立绘文件', file.name);
     setPortraitFile(file);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -103,7 +106,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     // 创建一个新的立绘对象
     const fileName = file.name.replace(/\.[^/.]+$/, "");
     const portraitId = `portrait_${Date.now()}`;
-    
+
     setEditingPortrait({
       portraitID: portraitId,
       characterID: selectedCharacter?.characterID || '',
@@ -123,24 +126,28 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     if (!selectedCharacter) return;
 
     try {
+      log('保存立绘', portrait.portName);
       const newPortrait = await ApiService.addPortrait(selectedCharacter.characterID, portrait);
       const updatedCharacter = {
         ...selectedCharacter,
         portraits: [...selectedCharacter.portraits, newPortrait]
       };
-      
+
       setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
-      
+
       setShowPortraitModal(false);
       setEditingPortrait(null);
+      log('立绘保存成功', portrait.portName);
     } catch (error) {
       console.error('添加立绘失败:', error);
+      log('立绘保存失败', error);
       alert('添加立绘失败，请重试');
     }
   };
 
   const handleEditPortrait = (portrait: Portrait) => {
+    log('编辑立绘', portrait.portName);
     setEditingPortrait({ ...portrait });
     setShowPortraitModal(true);
   };
@@ -149,19 +156,22 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     if (!selectedCharacter) return;
 
     try {
+      log('更新立绘', portrait.portName);
       const updatedPortrait = await ApiService.updatePortrait(selectedCharacter.characterID, portrait.portraitID, portrait);
       const updatedCharacter = {
         ...selectedCharacter,
         portraits: selectedCharacter.portraits.map(p => p.portraitID === portrait.portraitID ? updatedPortrait : p)
       };
-      
+
       setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
-      
+
       setShowPortraitModal(false);
       setEditingPortrait(null);
+      log('立绘更新成功', portrait.portName);
     } catch (error) {
       console.error('更新立绘失败:', error);
+      log('立绘更新失败', error);
       alert('更新立绘失败，请重试');
     }
   };
@@ -171,21 +181,25 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     if (!window.confirm('确定要删除这个立绘吗？')) return;
 
     try {
+      log('删除立绘', portraitId);
       await ApiService.deletePortrait(selectedCharacter.characterID, portraitId);
       const updatedCharacter = {
         ...selectedCharacter,
         portraits: selectedCharacter.portraits.filter(p => p.portraitID !== portraitId)
       };
-      
+
       setCharacters(characters.map(c => c.characterID === selectedCharacter.characterID ? updatedCharacter : c));
       setSelectedCharacter(updatedCharacter);
+      log('立绘删除成功', portraitId);
     } catch (error) {
       console.error('删除立绘失败:', error);
+      log('立绘删除失败', error);
       alert('删除立绘失败，请重试');
     }
   };
 
   const handleCancelEditPortrait = () => {
+    log('取消编辑立绘');
     setEditingPortrait(null);
     setIsAddingPortrait(false);
     setPortraitFile(null);
@@ -193,6 +207,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
   };
 
   const handleAddCharacter = () => {
+    log('添加新角色');
     // 创建一个新的角色对象
     const newCharacter: MyCharacter = {
       characterID: `char_${Date.now()}`,
@@ -204,7 +219,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       colorText: "#000000",
       tags: []
     };
-    
+
     setCharacters([...characters, newCharacter]);
     setSelectedCharacter(newCharacter);
     setEditingCharacter(newCharacter);
@@ -214,21 +229,24 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
 
   const handleDeleteCharacter = async (characterId: string, deleteFiles: boolean) => {
     try {
+      log('删除角色', { characterId, deleteFiles });
       // 调用API删除角色
       await ApiService.deleteCharacter(characterId, deleteFiles);
-      
+
       // 从本地状态中移除角色
       const updatedCharacters = characters.filter(c => c.characterID !== characterId);
       setCharacters(updatedCharacters);
-      
+
       // 如果删除的是当前选中的角色，清除选中状态
       if (selectedCharacter?.characterID === characterId) {
         setSelectedCharacter(null);
       }
-      
+
+      log('角色删除成功', characterId);
       alert('角色删除成功');
     } catch (error) {
       console.error('删除角色失败:', error);
+      log('角色删除失败', error);
       alert('删除角色失败，请重试');
     }
   };
@@ -253,6 +271,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
             className={`character-card ${selectedCharacter?.characterID === character.characterID ? 'selected' : ''}`}
             onClick={() => setSelectedCharacter(character)}
             onDoubleClick={() => {
+              log('双击角色', character.characterName);
               setEditingCharacter({ ...character });
               setShowCharacterModal(true);
             }}
@@ -278,6 +297,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
           onDelete={handleDeleteCharacter}
           onClose={() => setShowCharacterModal(false)}
           onSave={(character) => {
+            log('保存角色详情', character.characterName);
             if (editingCharacter?.characterID && characters.find(c => c.characterID === editingCharacter.characterID)) {
               // 更新现有角色
               setCharacters(characters.map(c => c.characterID === editingCharacter.characterID ? character : c));
@@ -287,7 +307,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
               setCharacters([...characters, character]);
               setSelectedCharacter(character);
             }
-            setShowCharacterModal(false);
+            setShowCharacterModal(false)
           }}
           isNewCharacter={!characters.find(c => c.characterID === editingCharacter.characterID)}
         />
@@ -305,6 +325,15 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
           isNewPortrait={!editingPortrait?.portraitID || !selectedCharacter.portraits.find(p => p.portraitID === editingPortrait.portraitID)}
         />
       )}
+
+      {/* 隐藏的文件输入 */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept="image/*"
+        onChange={handleFileSelect}
+      />
     </div>
   );
 };

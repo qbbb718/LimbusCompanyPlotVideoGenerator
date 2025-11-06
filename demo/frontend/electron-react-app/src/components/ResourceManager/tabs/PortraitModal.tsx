@@ -1,7 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Portrait, Emotion } from '../../../types';
+import { mapEmotion, getStandardEmotions, StandardEmotion } from '../../../utils/emotionMapper';
 import './CharacterModal.css';
+import './EmotionInput.css';
 
 interface PortraitModalProps {
   characterId: string;
@@ -26,14 +27,26 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
   const [isResizingCrop, setIsResizingCrop] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [emotionInput, setEmotionInput] = useState<string>('');
+  const [showEmotionSuggestions, setShowEmotionSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropContainerRef = useRef<HTMLDivElement>(null);
 
+  // 日志函数
+  const log = (message: string, data?: any) => {
+    console.log(`[PortraitModal] ${message}`, data);
+  };
+
   useEffect(() => {
     if (portrait) {
+      log('加载立绘', portrait.portName);
       setEditingPortrait({ ...portrait });
       setCropPosition({ x: portrait.faceX, y: portrait.faceY });
       setCropSize({ width: portrait.length, height: portrait.length });
+
+      // 设置情绪输入框的值为标准情绪对应的显示名称
+      const emotionNames = getStandardEmotions();
+      setEmotionInput(emotionNames[portrait.emotion] || portrait.emotion);
     }
   }, [portrait]);
 
@@ -41,7 +54,9 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setPortraitFile(file);
+    log('选择立绘文件', file.name);
+
+    // 读取文件并设置预览
     const reader = new FileReader();
     reader.onload = (event) => {
       setPortraitPreview(event.target?.result as string);
@@ -65,77 +80,81 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
       adjY: 0,
       thumbnailPath: ''
     });
+    
+    // 重置裁剪框位置和大小
+    setCropPosition({ x: 0, y: 0 });
+    setCropSize({ width: 100, height: 100 });
   };
-
-  const handleSave = () => {
-    if (!editingPortrait) return;
-
-    const updatedPortrait = {
-      ...editingPortrait,
-      faceX: cropPosition.x,
-      faceY: cropPosition.y,
-      length: cropSize.width
-    };
-
-    onSave(updatedPortrait);
-    onClose();
-  };
-
-  const handleMouseDownOnCrop = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  
+  // 裁剪框拖动处理
+  const handleCropMouseDown = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('crop-box')) {
+      return;
+    }
+    
     setIsDraggingCrop(true);
     setDragStart({ x: e.clientX - cropPosition.x, y: e.clientY - cropPosition.y });
   };
-
-  const handleMouseDownOnResize = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizingCrop(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!cropContainerRef.current) return;
-
-    const rect = cropContainerRef.current.getBoundingClientRect();
-
+  
+  // 裁剪框移动处理
+  const handleCropMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingCrop && !isResizingCrop) return;
+    
     if (isDraggingCrop) {
-      const newX = Math.max(0, Math.min(e.clientX - dragStart.x, rect.width - cropSize.width));
-      const newY = Math.max(0, Math.min(e.clientY - dragStart.y, rect.height - cropSize.height));
-      setCropPosition({ x: newX, y: newY });
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      
+      // 限制在容器内
+      const container = cropContainerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const maxX = rect.width - cropSize.width;
+        const maxY = rect.height - cropSize.height;
+        
+        setCropPosition({
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
+        });
+      }
     } else if (isResizingCrop) {
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
-      const delta = Math.max(deltaX, deltaY); // 保持1:1比例
-      const newSize = Math.max(50, Math.min(cropSize.width + delta, Math.min(rect.width - cropPosition.x, rect.height - cropPosition.y)));
-      setCropSize({ width: newSize, height: newSize });
+      
+      // 保持1:1长宽比，使用较大的变化值
+      const delta = Math.max(deltaX, deltaY);
+      
+      // 更新裁剪框大小，保持1:1比例
+      const newSize = Math.max(50, cropSize.width + delta);
+      setCropSize({
+        width: newSize,
+        height: newSize
+      });
+      
       setDragStart({ x: e.clientX, y: e.clientY });
     }
   };
-
-  const handleMouseUp = () => {
+  
+  // 裁剪框释放处理
+  const handleCropMouseUp = () => {
+    if (isDraggingCrop) {
+      // 更新立绘的面部位置
+      if (editingPortrait) {
+        setEditingPortrait({
+          ...editingPortrait,
+          faceX: cropPosition.x,
+          faceY: cropPosition.y,
+          length: cropSize.width
+        });
+      }
+    }
+    
     setIsDraggingCrop(false);
     setIsResizingCrop(false);
   };
 
-  const handleCropBackgroundClick = (e: React.MouseEvent) => {
-    if (!cropContainerRef.current) return;
-
-    const rect = cropContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // 设置新裁剪框的中心位置
-    const newX = Math.max(0, Math.min(x - cropSize.width / 2, rect.width - cropSize.width));
-    const newY = Math.max(0, Math.min(y - cropSize.height / 2, rect.height - cropSize.height));
-
-    setCropPosition({ x: newX, y: newY });
-  };
-
   // 在添加新立绘时，editingPortrait 可能为 null，但组件仍应显示
   if (!editingPortrait && !isNewPortrait) return null;
-  
+
   // 如果是添加新立绘且 editingPortrait 为 null，创建一个默认的空对象
   const currentPortrait = editingPortrait || {
     portraitID: '',
@@ -151,6 +170,9 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     thumbnailPath: ''
   };
 
+  // 获取标准情绪列表
+  const standardEmotions = getStandardEmotions();
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -161,58 +183,61 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
 
         <div className="portrait-editor">
           <div className="portrait-preview">
-            {portraitPreview ? (
-              <>
-                <h4>预览与裁剪</h4>
+            <div className="file-upload">
+              <label className="file-upload-label">
+                选择立绘文件
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                />
+              </label>
+            </div>
+            
+            {/* 图片预览和裁剪区域 */}
+            {(portraitPreview || currentPortrait.imagePath) && (
+              <div 
+                className="crop-container" 
+                ref={cropContainerRef}
+                onMouseDown={handleCropMouseDown}
+                onMouseMove={handleCropMouseMove}
+                onMouseUp={handleCropMouseUp}
+              >
+                <img 
+                  src={portraitPreview || currentPortrait.imagePath} 
+                  alt="立绘预览" 
+                  draggable={false}
+                />
+                
+                {/* 外部压暗遮罩 */}
+                <div className="crop-overlay" />
+                
+                {/* 裁剪框 */}
                 <div 
-                  className="portrait-crop-container"
-                  ref={cropContainerRef}
-                  onClick={handleCropBackgroundClick}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
+                  className="crop-box"
+                  style={{
+                    left: `${cropPosition.x}px`,
+                    top: `${cropPosition.y}px`,
+                    width: `${cropSize.width}px`,
+                    height: `${cropSize.height}px`
+                  }}
                 >
-                  <img src={portraitPreview} alt="立绘预览" className="crop-image" />
-                  <div 
-                    className="crop-overlay"
-                    style={{
-                      '--crop-left': `${cropPosition.x}px`,
-                      '--crop-top': `${cropPosition.y}px`,
-                      '--crop-width': `${cropSize.width}px`,
-                      '--crop-height': `${cropSize.height}px`
-                    } as React.CSSProperties}
-                  ></div>
-                  <div 
-                    className="crop-box"
-                    style={{
-                      left: `${cropPosition.x}px`,
-                      top: `${cropPosition.y}px`,
-                      width: `${cropSize.width}px`,
-                      height: `${cropSize.height}px`
-                    }}
-                    onMouseDown={handleMouseDownOnCrop}
-                  >
-                    <div className="crop-handle nw" onMouseDown={handleMouseDownOnResize}></div>
-                    <div className="crop-handle ne" onMouseDown={handleMouseDownOnResize}></div>
-                    <div className="crop-handle sw" onMouseDown={handleMouseDownOnResize}></div>
-                    <div className="crop-handle se" onMouseDown={handleMouseDownOnResize}></div>
-                    <div className="crop-size-display">
-                      {cropSize.width} x {cropSize.height}
-                    </div>
+                  {/* 像素数显示 */}
+                  <div className="crop-size-info">
+                    {cropSize.width} × {cropSize.height}px
                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="file-upload">
-                <label className="file-upload-label">
-                  选择立绘文件
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
+                  
+                  {/* 调整大小的手柄 */}
+                  <div 
+                    className="resize-handle"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setIsResizingCrop(true);
+                      setDragStart({ x: e.clientX, y: e.clientY });
+                    }}
                   />
-                </label>
+                </div>
               </div>
             )}
           </div>
@@ -227,20 +252,51 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group emotion-input-group">
               <label>情绪</label>
-              <select
-                value={currentPortrait.emotion}
-                onChange={(e) => setEditingPortrait({ ...currentPortrait, emotion: e.target.value as Emotion })}
-              >
-                <option value={Emotion.NORMAL}>普通</option>
-                <option value={Emotion.HAPPY}>开心</option>
-                <option value={Emotion.SAD}>悲伤</option>
-                <option value={Emotion.ANGRY}>愤怒</option>
-                <option value={Emotion.SURPRISED}>惊讶</option>
-                <option value={Emotion.FEAR}>恐惧</option>
-                <option value={Emotion.DISGUST}>厌恶</option>
-              </select>
+              <div className="emotion-input-container">
+                <input
+                  type="text"
+                  value={emotionInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEmotionInput(value);
+                    setShowEmotionSuggestions(value.length > 0);
+                  }}
+                  onFocus={() => setShowEmotionSuggestions(true)}
+                  placeholder="输入情绪，如：开心、悲伤、惊讶等"
+                />
+                {showEmotionSuggestions && (
+                  <div className="emotion-suggestions">
+                    {Object.entries(standardEmotions).map(([value, label]) => (
+                      <div
+                        key={value}
+                        className="emotion-suggestion"
+                        onClick={() => {
+                          setEmotionInput(label);
+                          setShowEmotionSuggestions(false);
+
+                          // 映射到标准情绪
+                          const standardEmotion = mapEmotion(label);
+
+                          // 更新立绘的情绪
+                          if (editingPortrait) {
+                            setEditingPortrait({
+                              ...editingPortrait,
+                              emotion: standardEmotion as unknown as Emotion
+                            });
+                          }
+                        }}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="emotion-info">
+                系统将自动匹配最接近的标准情绪
+              </div>
             </div>
 
             <div className="form-group">
@@ -263,9 +319,25 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
           </div>
         </div>
 
-        <div className="form-actions">
-          <button className="btn-primary" onClick={handleSave}>保存</button>
-          <button className="btn-secondary" onClick={onClose}>取消</button>
+        <div className="modal-footer">
+          <button className="cancel-button" onClick={onClose}>取消</button>
+          <button
+            className="save-button"
+            onClick={() => {
+              if (editingPortrait) {
+                // 确保情绪已映射到标准情绪
+                if (emotionInput) {
+                  const standardEmotion = mapEmotion(emotionInput);
+                  editingPortrait.emotion = standardEmotion as unknown as Emotion;
+                }
+
+                log('保存立绘', editingPortrait);
+                onSave(editingPortrait);
+              }
+            }}
+          >
+            保存
+          </button>
         </div>
       </div>
     </div>

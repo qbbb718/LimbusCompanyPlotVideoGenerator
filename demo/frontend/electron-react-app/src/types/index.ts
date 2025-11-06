@@ -4,15 +4,16 @@ export enum DialogueAlign {
   CENTER = 'CENTER'
 }
 
-// 情绪枚举
+// 情绪枚举 - 与后端保持一致
 export enum Emotion {
-  NORMAL = 'NORMAL',
-  HAPPY = 'HAPPY',
-  SAD = 'SAD',
-  ANGRY = 'ANGRY',
-  SURPRISED = 'SURPRISED',
-  FEAR = 'FEAR',
-  DISGUST = 'DISGUST'
+  NORMAL = 'normal',
+  HAPPY = 'happy',
+  SAD = 'sad',
+  ANGRY = 'angry',
+  SURPRISED = 'surprised',
+  CONFUSED = 'confused',
+  BLUSH = 'blush',
+  HURT = 'hurt'
 }
 
 // 角色引用
@@ -81,9 +82,16 @@ export interface EffectVisual {
   // 特效属性，根据需要扩展
 }
 
+// 音频类型枚举
+export enum AudioType {
+  BGM = 'bgm',
+  VOICE = 'voice',
+  SFX = 'sfx'
+}
+
 // 音频命令
 export interface AudioCommand {
-  type: string; // BGM, VOICE, SFX等
+  type: AudioType;
   path: string;
   volume: number;
   startTime: number;
@@ -98,8 +106,9 @@ export interface Record {
   bg: BackgroundVisual[];
   chars: CharacterVisual[];
   effects: EffectVisual[];
+  audio: AudioCommand[];
   audioCommands: AudioCommand[];
-  isDirty: boolean;
+  isDirty?: boolean;
 }
 
 // 角色
@@ -108,39 +117,58 @@ export interface MyCharacter {
   characterName: string;
   height: number;
   faction: string;
+  colorBg: string;
+  colorText: string;
+  tags: string[];
   portraits: Portrait[];
-  colorBg: string; // 转换为hex字符串
-  colorText: string; // 转换为hex字符串
-  tags: string[];
 }
 
-// 背景资源
-export interface Background {
-  uuid: string;
-  path: string;
-  name: string;
-  tags: string[];
-}
-
-// 音频资源
+// 音频
 export interface Audio {
   uuid: string;
-  path: string;
   name: string;
-  type: string; // BGM, VOICE, SFX等
+  path: string;
+  type: AudioType;
+  tags: string[];
+}
+
+// 背景
+export interface Background {
+  uuid: string;
+  name: string;
+  path: string;
   tags: string[];
 }
 
 // 项目设置
 export interface ProjectSettings {
   name: string;
+  storyType: string;
+  outputPath: string;
+  theme: string;
   bgmVolume: number;
   voiceVolume: number;
   sfxVolume: number;
   bgmGain: number;
   voiceGain: number;
   sfxGain: number;
-  outputPath: string;
-  theme: string;
-  storyType: 'STORY' | 'PERSONALITY'; // 剧情或人格故事
+  projectName?: string;
+  projectVersion?: string;
+  author?: string;
+  description?: string;
+  outputDirectory?: string;
+  fps?: number;
+  resolution?: {
+    width: number;
+    height: number;
+  };
+  audioSettings?: {
+    bgmVolume: number;
+    sfxVolume: number;
+    voiceVolume: number;
+  };
+  uiSettings?: {
+    theme: 'light' | 'dark';
+    language: string;
+  };
 }

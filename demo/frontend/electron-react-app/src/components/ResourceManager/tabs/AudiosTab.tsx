@@ -1,6 +1,5 @@
-
-import React, { useState, useRef } from 'react';
-import { Audio } from '../../../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { Audio, AudioType } from '../../../types';
 import ApiService from '../../../services/ApiService';
 import '../ResourceManager.css';
 
@@ -19,172 +18,166 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
   openResourceFolder,
   setAudios
 }) => {
+  const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [editingAudio, setEditingAudio] = useState<Audio | null>(null);
-  const [isAddingAudio, setIsAddingAudio] = useState(false);
-  const [draggedItem, setDraggedItem] = useState<Audio | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [newTagInput, setNewTagInput] = useState<{ [key: string]: string }>({});
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isPlaying, setIsPlaying] = useState<string | null>(null);
+  const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // 日志函数
+  const log = (message: string, data?: any) => {
+    console.log(`[AudiosTab] ${message}`, data);
+  };
+
+  useEffect(() => {
+    // 初始化音频播放器
+    if (audioRef.current && !audioPlayer) {
+      const player = audioRef.current;
+      player.addEventListener('ended', () => {
+        setIsPlaying(null);
+      });
+      setAudioPlayer(player);
+    }
+  }, [audioRef.current, audioPlayer]);
+
+  const handleAddAudio = () => {
+    log('添加新音频');
+    // 创建一个新的音频对象
+    const newAudio: Audio = {
+      uuid: `audio_${Date.now()}`,
+      name: "新音频",
+      path: "",
+      type: AudioType.BGM,
+      tags: []
+    };
+
+    setAudios([...audios, newAudio]);
+    setSelectedAudio(newAudio);
+    setEditingAudio(newAudio);
+    setIsEditing(true);
+    setShowAudioModal(true);
+  };
+
   const handleEditAudio = (audio: Audio) => {
+    log('编辑音频', audio.name);
+    setSelectedAudio(audio);
     setEditingAudio({ ...audio });
+    setIsEditing(true);
+    setShowAudioModal(true);
   };
 
   const handleSaveAudio = async () => {
     if (!editingAudio) return;
 
     try {
-      const updatedAudio = await ApiService.updateAudio(editingAudio.uuid, editingAudio);
-      setAudios(audios.map(a => a.uuid === editingAudio.uuid ? updatedAudio : a));
+      log('保存音频', editingAudio.name);
+      let updatedAudio: Audio;
+
+      if (editingAudio.uuid && audios.find(a => a.uuid === editingAudio.uuid)) {
+        // 更新现有音频
+        updatedAudio = await ApiService.updateAudio(editingAudio.uuid, editingAudio);
+        setAudios(audios.map(a => a.uuid === editingAudio.uuid ? updatedAudio : a));
+        log('音频更新成功', editingAudio.name);
+      } else {
+        // 添加新音频
+        updatedAudio = await ApiService.addAudio(editingAudio);
+        setAudios([...audios, updatedAudio]);
+        log('音频添加成功', editingAudio.name);
+      }
+
+      setSelectedAudio(updatedAudio);
       setEditingAudio(null);
+      setIsEditing(false);
+      setShowAudioModal(false);
     } catch (error) {
-      console.error('更新音频失败:', error);
-      alert('更新音频失败，请重试');
+      console.error('保存音频失败:', error);
+      log('音频保存失败', error);
+      alert('保存音频失败，请重试');
     }
   };
 
-  const handleDeleteAudio = async (uuid: string) => {
+  const handleDeleteAudio = async (audioId: string) => {
     if (!window.confirm('确定要删除这个音频吗？')) return;
 
     try {
-      await ApiService.deleteAudio(uuid);
-      setAudios(audios.filter(a => a.uuid !== uuid));
+      log('删除音频', audioId);
+      await ApiService.deleteAudio(audioId);
+
+      // 从本地状态中移除音频
+      const updatedAudios = audios.filter(a => a.uuid !== audioId);
+      setAudios(updatedAudios);
+
+      // 如果删除的是当前选中的音频，清除选中状态
+      if (selectedAudio?.uuid === audioId) {
+        setSelectedAudio(null);
+      }
+
+      // 如果正在播放被删除的音频，停止播放
+      if (isPlaying === audioId && audioPlayer) {
+        audioPlayer.pause();
+        setIsPlaying(null);
+      }
+
+      log('音频删除成功', audioId);
+      alert('音频删除成功');
     } catch (error) {
       console.error('删除音频失败:', error);
+      log('音频删除失败', error);
       alert('删除音频失败，请重试');
     }
   };
 
-  const handleAddAudio = () => {
-    setIsAddingAudio(true);
-  };
-
-  const handleSaveNewAudio = async () => {
-    if (!editingAudio) return;
-
-    try {
-      const newAudio = await ApiService.addAudio(editingAudio);
-      setAudios([...audios, newAudio]);
-      setEditingAudio(null);
-      setIsAddingAudio(false);
-    } catch (error) {
-      console.error('添加音频失败:', error);
-      alert('添加音频失败，请重试');
-    }
-  };
-
-  const handleCancelEdit = () => {
+  const handleCancelEditAudio = () => {
+    log('取消编辑音频');
     setEditingAudio(null);
-    setIsAddingAudio(false);
+    setIsEditing(false);
+    setAudioFile(null);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 这里应该处理文件上传并设置路径
-    // 实际实现可能需要调用Electron的API将文件复制到资源目录
-    const filePath = file.path || URL.createObjectURL(file);
-    const fileName = file.name;
-    const fileExtension = fileName.split('.').pop()?.toLowerCase();
-    
-    // 根据文件扩展名确定音频类型
-    let audioType = 'SFX'; // 默认为音效
-    if (fileExtension === 'mp3' || fileExtension === 'wav') {
-      // 可以根据文件名或文件夹路径判断是BGM还是VOICE
-      if (fileName.toLowerCase().includes('bgm') || fileName.toLowerCase().includes('background')) {
-        audioType = 'BGM';
-      } else if (fileName.toLowerCase().includes('voice') || fileName.toLowerCase().includes('dialog')) {
-        audioType = 'VOICE';
-      }
-    }
+    log('选择音频文件', file.name);
+    setAudioFile(file);
 
-    setEditingAudio({
-      uuid: '',
-      name: fileName.replace(/\.[^/.]+$/, ""), // 移除文件扩展名
-      path: filePath,
-      type: audioType,
-      tags: []
-    });
-  };
-
-  const handleAddTag = (audioUuid: string) => {
-    const tagValue = newTagInput[audioUuid]?.trim();
-    if (!tagValue) return;
-
+    // 更新编辑中的音频路径
     if (editingAudio) {
-      if (editingAudio.tags.includes(tagValue)) {
-        alert('该标签已存在');
-        return;
-      }
       setEditingAudio({
         ...editingAudio,
-        tags: [...editingAudio.tags, tagValue]
+        path: file.path || '',
+        name: file.name.replace(/\.[^/.]+$/, "") // 移除文件扩展名
       });
     }
-
-    setNewTagInput({ ...newTagInput, [audioUuid]: '' });
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (!editingAudio) return;
-    setEditingAudio({
-      ...editingAudio,
-      tags: editingAudio.tags.filter(t => t !== tag)
-    });
-  };
-
-  const handleDragStart = (e: React.DragEvent, audio: Audio) => {
-    setDraggedItem(audio);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverIndex(index);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    setDragOverIndex(null);
-
-    if (!draggedItem) return;
-
-    const draggedIndex = audios.findIndex(a => a.uuid === draggedItem.uuid);
-    if (draggedIndex === dropIndex) return;
-
-    const newAudios = [...audios];
-    newAudios.splice(draggedIndex, 1);
-    newAudios.splice(dropIndex, 0, draggedItem);
-
-    setAudios(newAudios);
-    setDraggedItem(null);
   };
 
   const handlePlayAudio = (audio: Audio) => {
-    if (playingAudio === audio.uuid) {
-      // 如果已经在播放这个音频，则停止播放
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-      setPlayingAudio(null);
+    if (!audioPlayer) return;
+
+    if (isPlaying === audio.uuid) {
+      // 如果正在播放，则暂停
+      audioPlayer.pause();
+      setIsPlaying(null);
+      log('暂停音频', audio.name);
     } else {
-      // 播放选中的音频
-      if (audioRef.current) {
-        audioRef.current.src = audio.path;
-        audioRef.current.play();
-        setPlayingAudio(audio.uuid);
-      }
+      // 播放音频
+      audioPlayer.src = audio.path;
+      audioPlayer.play().catch(error => {
+        console.error('播放音频失败:', error);
+        log('音频播放失败', { audio: audio.name, error });
+      });
+      setIsPlaying(audio.uuid);
+      log('播放音频', audio.name);
     }
   };
+
+  const filteredAudios = audios.filter(audio =>
+    audio.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="resource-tab">
@@ -196,190 +189,129 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <button onClick={() => openResourceFolder('audios')}>打开音频文件夹</button>
-        <button onClick={handleAddAudio}>添加音频</button>
+        <button className="btn-primary" onClick={handleAddAudio}>添加音频</button>
       </div>
 
-      {isAddingAudio && (
-        <div className="edit-form">
-          <h3>添加新音频</h3>
-          <div className="file-upload">
-            <label className="file-upload-label">
-              选择音频文件
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                onChange={handleFileSelect}
-              />
-            </label>
-          </div>
-
-          {editingAudio && (
-            <>
-              <div className="form-group">
-                <label>名称</label>
-                <input
-                  type="text"
-                  value={editingAudio.name}
-                  onChange={(e) => setEditingAudio({ ...editingAudio, name: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>类型</label>
-                <select
-                  value={editingAudio.type}
-                  onChange={(e) => setEditingAudio({ ...editingAudio, type: e.target.value })}
-                >
-                  <option value="BGM">背景音乐</option>
-                  <option value="VOICE">语音</option>
-                  <option value="SFX">音效</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>音频预览</label>
-                <button 
-                  className="btn-audio-play"
-                  onClick={() => handlePlayAudio(editingAudio)}
-                  disabled={!editingAudio.path}
-                >
-                  {playingAudio === editingAudio.uuid ? '停止' : '播放'}
-                </button>
-              </div>
-
-              <div className="form-group">
-                <label>标签</label>
-                <div className="tags-container">
-                  {editingAudio.tags.map(tag => (
-                    <div key={tag} className="tag">
-                      {tag}
-                      <span className="tag-remove" onClick={() => handleRemoveTag(tag)}>×</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="tag-input-container">
-                  <input
-                    type="text"
-                    className="tag-input"
-                    placeholder="添加新标签"
-                    value={newTagInput[editingAudio.uuid] || ''}
-                    onChange={(e) => setNewTagInput({ ...newTagInput, [editingAudio.uuid]: e.target.value })}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddTag(editingAudio.uuid)}
-                  />
-                  <button onClick={() => handleAddTag(editingAudio.uuid)}>添加</button>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button className="btn-primary" onClick={handleSaveNewAudio}>保存</button>
-                <button className="btn-secondary" onClick={handleCancelEdit}>取消</button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      <div className="audios-grid">
-        {audios.map((audio, index) => (
+      <div className="audios-list">
+        {filteredAudios.map(audio => (
           <div
             key={audio.uuid}
-            className={`audio-card ${dragOverIndex === index ? 'drop-zone' : ''}`}
-            draggable
-            onDragStart={(e) => handleDragStart(e, audio)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, index)}
+            className={`audio-item ${selectedAudio?.uuid === audio.uuid ? 'selected' : ''}`}
+            onClick={() => setSelectedAudio(audio)}
+            onDoubleClick={() => handleEditAudio(audio)}
           >
             <div className="audio-info">
               <h3>{audio.name}</h3>
-              <p>类型: {audio.type}</p>
-
-              
-              <div className="tags-container">
-                {audio.tags.map(tag => (
-                  <div key={tag} className="tag">{tag}</div>
-                ))}
-              </div>
-              
-              <div className="form-actions">
-                <button className="btn-primary" onClick={() => handleEditAudio(audio)}>编辑</button>
-                <button className="btn-danger" onClick={() => handleDeleteAudio(audio.uuid)}>删除</button>
-              </div>
+              <p>类型: {audio.type === 'bgm' ? '背景音乐' : '音效'}</p>
+              <p>路径: {audio.path}</p>
+              {audio.tags && audio.tags.length > 0 && (
+                <div className="audio-tags">
+                  {audio.tags.map((tag, index) => (
+                    <span key={index} className="tag">{tag}</span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="audio-controls">
-              <button onClick={() => handlePlayAudio(audio)}>
-                {playingAudio === audio.uuid ? '停止' : '播放'}
+              <button
+                className={isPlaying === audio.uuid ? 'playing' : ''}
+                onClick={() => handlePlayAudio(audio)}
+              >
+                {isPlaying === audio.uuid ? '暂停' : '播放'}
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {editingAudio && !isAddingAudio && (
-        <div className="edit-form">
-          <h3>编辑音频</h3>
-          <div className="form-group">
-            <label>名称</label>
-            <input
-              type="text"
-              value={editingAudio.name}
-              onChange={(e) => setEditingAudio({ ...editingAudio, name: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>路径</label>
-            <input
-              type="text"
-              value={editingAudio.path}
-              onChange={(e) => setEditingAudio({ ...editingAudio, path: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>类型</label>
-            <select
-              value={editingAudio.type}
-              onChange={(e) => setEditingAudio({ ...editingAudio, type: e.target.value })}
-            >
-              <option value="BGM">背景音乐</option>
-              <option value="VOICE">语音</option>
-              <option value="SFX">音效</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>标签</label>
-            <div className="tags-container">
-              {editingAudio.tags.map(tag => (
-                <div key={tag} className="tag">
-                  {tag}
-                  <span className="tag-remove" onClick={() => handleRemoveTag(tag)}>×</span>
+      {/* 音频编辑弹窗 */}
+      {showAudioModal && editingAudio && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h2>{isEditing ? '编辑音频' : '添加音频'}</h2>
+              <button className="close-btn" onClick={handleCancelEditAudio}>×</button>
+            </div>
+            <div className="modal-content">
+              <div className="form-group">
+                <label>音频名称</label>
+                <input
+                  type="text"
+                  value={editingAudio.name || ''}
+                  onChange={(e) => setEditingAudio({
+                    ...editingAudio,
+                    name: e.target.value
+                  })}
+                />
+              </div>
+              <div className="form-group">
+                <label>音频路径</label>
+                <div className="file-input-container">
+                  <input
+                    type="text"
+                    value={editingAudio.path || ''}
+                    onChange={(e) => setEditingAudio({
+                      ...editingAudio,
+                      path: e.target.value
+                    })}
+                    readOnly
+                  />
+                  <button
+                    className="file-select-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    选择文件
+                  </button>
                 </div>
-              ))}
+              </div>
+              <div className="form-group">
+                <label>音频类型</label>
+                <select
+                  value={editingAudio.type || 'bgm'}
+                  onChange={(e) => setEditingAudio({
+                    ...editingAudio,
+                    type: e.target.value as AudioType
+                  })}
+                >
+                  <option value={AudioType.BGM}>背景音乐</option>
+                  <option value={AudioType.SFX}>音效</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>标签</label>
+                <input
+                  type="text"
+                  value={editingAudio.tags ? editingAudio.tags.join(', ') : ''}
+                  onChange={(e) => setEditingAudio({
+                    ...editingAudio,
+                    tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+                  })}
+                  placeholder="用逗号分隔多个标签"
+                />
+              </div>
             </div>
-            <div className="tag-input-container">
-              <input
-                type="text"
-                className="tag-input"
-                placeholder="添加新标签"
-                value={newTagInput[editingAudio.uuid] || ''}
-                onChange={(e) => setNewTagInput({ ...newTagInput, [editingAudio.uuid]: e.target.value })}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddTag(editingAudio.uuid)}
-              />
-              <button onClick={() => handleAddTag(editingAudio.uuid)}>添加</button>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={handleCancelEditAudio}>取消</button>
+              <button className="btn-primary" onClick={handleSaveAudio}>保存</button>
             </div>
-          </div>
-
-          <div className="form-actions">
-            <button className="btn-primary" onClick={handleSaveAudio}>保存</button>
-            <button className="btn-secondary" onClick={handleCancelEdit}>取消</button>
           </div>
         </div>
       )}
 
-      <audio ref={audioRef} onEnded={() => setPlayingAudio(null)} />
+      {/* 隐藏的文件输入 */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept="audio/*"
+        onChange={handleFileSelect}
+      />
+
+      {/* 隐藏的音频播放器 */}
+      <audio
+        ref={audioRef}
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };

@@ -1,5 +1,11 @@
 {
   "java.configuration.updateBuildConfiguration": "automatic",
   "Codegeex.RepoIndex": true,
-  "java.compile.nullAnalysis.mode": "automatic"
+  "java.compile.nullAnalysis.mode": "automatic",
+  "Codegeex.Chat.LanguagePreference": "中文",
+  "Codegeex.Comment.LanguagePreference": "中文",
+  "Codegeex.SidebarUI.LanguagePreference": "中文",
+  "Codegeex.Chat.fontSize": 23,
+  "Codegeex.Privacy": true,
+  "Codegeex.CommitMessage.LanguagePreference": "中文"
 }
