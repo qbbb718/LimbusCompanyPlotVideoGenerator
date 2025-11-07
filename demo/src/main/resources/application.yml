@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: limbus-company-plot-video-generator
+  web:
+    resources:
+      static-locations: classpath:/static/,classpath:/public/,classpath:/resources/,classpath:/assets/,file:./src/main/resources/assets/
   datasource:
     url: jdbc:sqlite:./data/project.db
     driver-class-name: org.sqlite.JDBC

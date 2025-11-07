@@ -24,6 +24,7 @@ e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\He
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\Camera.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\RecordController.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\EmotionMapper.java
+e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\WebMvcConfig.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\CharacterMapper.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\storage\Audio.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\BackgroundMapper.java

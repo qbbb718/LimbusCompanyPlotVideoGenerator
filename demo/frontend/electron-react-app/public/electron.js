@@ -248,6 +248,30 @@ ipcMain.handle('file:read', async (event, filePath) => {
   }
 });
 
+// 保存缩略图
+ipcMain.handle('saveThumbnail', async (event, fileName, data) => {
+  const fs = require('fs');
+  const path = require('path');
+
+  try {
+    // 创建缩略图目录（如果不存在）
+    const thumbnailDir = path.join(__dirname, '..', '..', '..', 'src', 'main', 'resources', 'assets', 'thumbnails');
+    if (!fs.existsSync(thumbnailDir)) {
+      fs.mkdirSync(thumbnailDir, { recursive: true });
+    }
+
+    // 保存缩略图文件
+    const thumbnailPath = path.join(thumbnailDir, fileName);
+    fs.writeFileSync(thumbnailPath, Buffer.from(data));
+
+    // 返回相对路径，以便前端可以访问
+    return `/assets/thumbnails/${fileName}`;
+  } catch (error) {
+    console.error('保存缩略图失败:', error);
+    throw error;
+  }
+});
+
 // 窗口控制
 ipcMain.handle('window:minimize', () => {
   if (mainWindow) {

@@ -1,6 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Portrait, Emotion } from '../../../types';
 import { mapEmotion, getStandardEmotions, StandardEmotion } from '../../../utils/emotionMapper';
+import { createCroppedImage, blobToBase64 } from '../../../utils/imageUtils';
+import ImageCropper from '../ImageCropper';
+import { Area } from 'react-easy-crop';
 import './CharacterModal.css';
 import './EmotionInput.css';
 
@@ -22,35 +25,78 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(portrait);
   const [portraitFile, setPortraitFile] = useState<File | null>(null);
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
-  const [cropPosition, setCropPosition] = useState({ x: 0, y: 0 });
-  const [cropSize, setCropSize] = useState({ width: 100, height: 100 });
-  const [initialCropSize, setInitialCropSize] = useState({ width: 100, height: 100 });
-  const [actualImageSize, setActualImageSize] = useState({ width: 0, height: 0 });
-  const [displayImageSize, setDisplayImageSize] = useState({ width: 0, height: 0 });
-  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
-  const [isResizingCrop, setIsResizingCrop] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [emotionInput, setEmotionInput] = useState<string>('');
   const [showEmotionSuggestions, setShowEmotionSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cropContainerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
 
   // 日志函数
   const log = (message: string, data?: any) => {
     console.log(`[PortraitModal] ${message}`, data);
   };
 
+  // 裁剪完成回调
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedArea(croppedArea);
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
   useEffect(() => {
     if (portrait) {
       log('加载立绘', portrait.portName);
       setEditingPortrait({ ...portrait });
-      setCropPosition({ x: portrait.faceX, y: portrait.faceY });
-      setCropSize({ width: portrait.length, height: portrait.length });
+      setCrop({ x: portrait.faceX, y: portrait.faceY });
 
       // 设置情绪输入框的值为标准情绪对应的显示名称
       const emotionNames = getStandardEmotions();
       setEmotionInput(emotionNames[portrait.emotion] || portrait.emotion);
+
+      // 如果有图片路径，加载图片预览
+      if (portrait.imagePath) {
+        // 检查是否是相对路径（后端资源）
+        if (!portrait.imagePath.startsWith('http') && !portrait.imagePath.startsWith('data:')) {
+          // 在Electron环境中，使用file协议加载本地文件
+          if (window.electronAPI) {
+            // 使用Electron API读取文件并转换为data URL
+            const charactersPath = '../../../src/main/resources/assets/characters';
+            const fullImagePath = `${charactersPath}/${portrait.imagePath}`;
+
+            // 创建一个异步函数来处理文件读取
+            const loadImage = async () => {
+              try {
+                const fileBuffer = await window.electronAPI.readFile(fullImagePath);
+                const uint8Array = new Uint8Array(fileBuffer);
+                const blob = new Blob([uint8Array]);
+                const dataUrl = await blobToBase64(blob);
+
+                log('图片路径转换', { from: portrait.imagePath, to: 'data URL' });
+                setPortraitPreview(dataUrl);
+              } catch (error) {
+                log('读取图片文件失败', error);
+                // 如果读取失败，尝试使用HTTP URL
+                const imageUrl = `http://localhost:8080/assets/characters/${portrait.imagePath}`;
+                log('回退到HTTP URL', imageUrl);
+                setPortraitPreview(imageUrl);
+              }
+            };
+
+            // 调用异步函数
+            loadImage();
+          } else {
+            // 非Electron环境，使用HTTP URL
+            const imageUrl = `http://localhost:8080/assets/characters/${portrait.imagePath}`;
+            log('图片路径转换', { from: portrait.imagePath, to: imageUrl });
+            setPortraitPreview(imageUrl);
+          }
+        } else {
+          // 如果是绝对路径或data URL，直接使用
+          log('直接使用图片路径', portrait.imagePath);
+          setPortraitPreview(portrait.imagePath);
+        }
+      }
     }
   }, [portrait]);
 
@@ -77,25 +123,20 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
           try {
             // 在Electron环境中，使用electronAPI读取文件
             const fileBuffer = await window.electronAPI.readFile(selectedPath);
-            const blob = new Blob([fileBuffer]);
+            const uint8Array = new Uint8Array(fileBuffer);
+            const blob = new Blob([uint8Array]);
             const file = new File([blob], fileName, { type: `image/${fileExtension}` });
 
             // 使用FileReader读取文件
             const reader = new FileReader();
             reader.onload = (event) => {
               const imageUrl = event.target?.result as string;
+              log('图片预览URL', imageUrl);
               setPortraitPreview(imageUrl);
 
-              // 获取图片实际尺寸
-              const img = new Image();
-              img.onload = () => {
-                setActualImageSize({ width: img.width, height: img.height });
-
-                // 设置默认裁剪框大小为图片宽度的1/4，但最小100px
-                const defaultSize = Math.max(100, Math.floor(img.width / 4));
-                setCropSize({ width: defaultSize, height: defaultSize });
-              };
-              img.src = imageUrl;
+              // 设置默认裁剪位置和缩放
+              setCrop({ x: 0, y: 0 });
+              setZoom(1);
             };
             reader.readAsDataURL(file);
 
@@ -143,8 +184,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             });
 
             // 重置裁剪框位置和大小
-            setCropPosition({ x: 0, y: 0 });
-            setCropSize({ width: 100, height: 100 });
+            setCrop({ x: 0, y: 0 });
+            setZoom(1);
 
           } catch (error) {
             console.error('读取文件错误:', error);
@@ -195,16 +236,9 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
       const imageUrl = event.target?.result as string;
       setPortraitPreview(imageUrl);
 
-      // 获取图片实际尺寸
-      const img = new Image();
-      img.onload = () => {
-        setActualImageSize({ width: img.width, height: img.height });
-
-        // 设置默认裁剪框大小为图片宽度的1/4，但最小100px
-        const defaultSize = Math.max(100, Math.floor(img.width / 4));
-        setCropSize({ width: defaultSize, height: defaultSize });
-      };
-      img.src = imageUrl;
+      // 设置默认裁剪位置和缩放
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
     };
     reader.readAsDataURL(file);
 
@@ -230,85 +264,11 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     });
 
     // 重置裁剪框位置和大小
-    setCropPosition({ x: 0, y: 0 });
-    setCropSize({ width: 100, height: 100 });
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
   };
 
-  // 裁剪框拖动处理
-  const handleCropMouseDown = (e: React.MouseEvent) => {
-    // 如果点击的是调整大小的手柄，则不处理
-    if ((e.target as HTMLElement).classList.contains('resize-handle')) {
-      return;
-    }
-
-    // 如果点击的是裁剪框本身，则开始拖动
-    if ((e.target as HTMLElement).classList.contains('crop-box')) {
-      setIsDraggingCrop(true);
-      setDragStart({ x: e.clientX - cropPosition.x, y: e.clientY - cropPosition.y });
-    }
-  };
-
-  // 裁剪框移动处理
-  const handleCropMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingCrop && !isResizingCrop) return;
-
-    // 如果正在调整大小，优先处理调整大小的逻辑
-    if (isResizingCrop) {
-      // 计算从开始调整大小到现在的鼠标移动距离
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-
-      // 保持1:1长宽比，使用较大的变化值
-      const delta = Math.max(deltaX, deltaY);
-
-      // 使用记录的初始裁剪框大小
-      const initialSize = initialCropSize.width;
-
-      // 计算新的裁剪框大小
-      const newSize = Math.max(50, initialSize + delta);
-
-      // 更新裁剪框大小，保持1:1比例
-      setCropSize({
-        width: newSize,
-        height: newSize
-      });
-    } else if (isDraggingCrop) {
-      // 处理拖动逻辑
-      const newX = e.clientX - dragStart.x;
-      const newY = e.clientY - dragStart.y;
-
-      // 限制在容器内
-      const container = cropContainerRef.current;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const maxX = rect.width - cropSize.width;
-        const maxY = rect.height - cropSize.height;
-
-        setCropPosition({
-          x: Math.max(0, Math.min(newX, maxX)),
-          y: Math.max(0, Math.min(newY, maxY))
-        });
-      }
-    }
-  };
-
-  // 裁剪框释放处理
-  const handleCropMouseUp = () => {
-    if (isDraggingCrop) {
-      // 更新立绘的面部位置
-      if (editingPortrait) {
-        setEditingPortrait({
-          ...editingPortrait,
-          faceX: cropPosition.x,
-          faceY: cropPosition.y,
-          length: cropSize.width
-        });
-      }
-    }
-
-    setIsDraggingCrop(false);
-    setIsResizingCrop(false);
-  };
+  // 使用react-easy-crop库，不再需要自定义的裁剪处理函数
 
   // 在添加新立绘时，editingPortrait 可能为 null，但组件仍应显示
   if (!editingPortrait && !isNewPortrait) return null;
@@ -364,74 +324,13 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             </div>
 
             {/* 图片预览和裁剪区域 */}
-            {(portraitPreview || currentPortrait.imagePath) && (
-              <div
-                className="crop-container"
-                ref={cropContainerRef}
-                onMouseDown={handleCropMouseDown}
-                onMouseMove={handleCropMouseMove}
-                onMouseUp={handleCropMouseUp}
-              >
-                <img
-                  ref={imageRef}
-                  src={portraitPreview || currentPortrait.imagePath}
-                  alt="立绘预览"
-                  draggable={false}
-                  onLoad={() => {
-                    // 获取显示中的图片尺寸
-                    if (imageRef.current) {
-                      setDisplayImageSize({
-                        width: imageRef.current.naturalWidth,
-                        height: imageRef.current.naturalHeight
-                      });
-                    }
-                  }}
-                />
-
-                {/* 裁剪框 */}
-                <div
-                  className="crop-box"
-                  style={{
-                    left: `${cropPosition.x}px`,
-                    top: `${cropPosition.y}px`,
-                    width: `${cropSize.width}px`,
-                    height: `${cropSize.height}px`
-                  }}
-                >
-                  {/* 像素数显示 */}
-                  <div className="crop-size-info">
-                    {(() => {
-                      // 计算实际像素值
-                      if (imageRef.current && actualImageSize.width > 0) {
-                        // 计算显示尺寸与实际尺寸的比例
-                        const scaleX = actualImageSize.width / imageRef.current.clientWidth;
-                        const scaleY = actualImageSize.height / imageRef.current.clientHeight;
-
-                        // 计算裁剪框在实际图片中的像素大小
-                        const actualWidth = Math.round(cropSize.width * scaleX);
-                        const actualHeight = Math.round(cropSize.height * scaleY);
-
-                        return `${actualWidth} × ${actualHeight}px`;
-                      }
-                      return `${cropSize.width} × ${cropSize.height}px`;
-                    })()}
-                  </div>
-
-                  {/* 调整大小的手柄 */}
-                  <div
-                    className="resize-handle"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setIsResizingCrop(true);
-                      setIsDraggingCrop(false); // 确保不是拖动状态
-                      setDragStart({ x: e.clientX, y: e.clientY });
-                      // 记录初始裁剪框大小
-                      setInitialCropSize({ width: cropSize.width, height: cropSize.height });
-                    }}
-                  />
-                </div>
-              </div>
+            {portraitPreview && (
+              <ImageCropper
+                imageSrc={portraitPreview}
+                onCropComplete={onCropComplete}
+                initialCrop={crop}
+                initialZoom={zoom}
+              />
             )}
           </div>
 
@@ -516,12 +415,51 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
           <button className="cancel-button" onClick={onClose}>取消</button>
           <button
             className="save-button"
-            onClick={() => {
+            onClick={async () => {
               if (editingPortrait) {
                 // 确保情绪已映射到标准情绪
                 if (emotionInput) {
                   const standardEmotion = mapEmotion(emotionInput);
                   editingPortrait.emotion = standardEmotion as unknown as Emotion;
+                }
+
+                // 生成缩略图
+                if (portraitPreview && croppedAreaPixels) {
+                  try {
+                    // 使用createCroppedImage函数生成缩略图
+                    const thumbnailBlob = await createCroppedImage(portraitPreview, croppedAreaPixels);
+
+                    // 创建缩略图文件名
+                    const thumbnailFileName = `thumbnail_${editingPortrait.portraitID}.png`;
+
+                    // 如果在Electron环境中，保存缩略图到本地
+                    if (window.electronAPI) {
+                      // 将blob转换为arrayBuffer
+                      const arrayBuffer = await thumbnailBlob.arrayBuffer();
+
+                      // 保存缩略图到本地
+                      const thumbnailPath = await window.electronAPI.saveThumbnail(
+                        thumbnailFileName, 
+                        new Uint8Array(arrayBuffer)
+                      );
+
+                      // 更新立绘的缩略图路径
+                      editingPortrait.thumbnailPath = thumbnailPath;
+                    } else {
+                      // 非Electron环境，创建临时URL
+                      editingPortrait.thumbnailPath = URL.createObjectURL(thumbnailBlob);
+                    }
+                  } catch (error) {
+                    console.error('生成缩略图失败:', error);
+                    log('生成缩略图失败', error);
+                  }
+                }
+
+                // 更新裁剪相关值
+                if (croppedAreaPixels) {
+                  editingPortrait.faceX = Math.round(croppedAreaPixels.x);
+                  editingPortrait.faceY = Math.round(croppedAreaPixels.y);
+                  editingPortrait.length = Math.round(croppedAreaPixels.width);
                 }
 
                 log('保存立绘', editingPortrait);

@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openImageFile: () => ipcRenderer.invoke('dialog:openImageFile'),
   saveFile: (defaultPath, data) => ipcRenderer.invoke('dialog:saveFile', defaultPath, data),
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
+  saveThumbnail: (fileName, data) => ipcRenderer.invoke('saveThumbnail', fileName, data),
 
   // 通知
   showNotification: (title, body) => ipcRenderer.invoke('notification:show', title, body),

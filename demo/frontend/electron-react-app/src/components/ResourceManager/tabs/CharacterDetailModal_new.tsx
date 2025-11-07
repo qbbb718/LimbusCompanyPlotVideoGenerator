@@ -308,71 +308,45 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                   {/* 这里应该显示立绘缩略图 */}
                   {portrait.thumbnailPath ? (
                     (() => {
-                      // 优先使用Electron API直接读取本地文件
-                      if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
-                        const filePath = portrait.thumbnailPath.substring(1); // 移除开头的/
-
-                        console.log('[CharacterDetailModal] 尝试使用Electron API加载缩略图', {
-                          portraitID: portrait.portraitID,
-                          portName: portrait.portName,
-                          filePath: filePath
-                        });
-
-                        // 创建一个img元素用于显示
-                        return React.createElement('img', {
-                          src: "",
-                          alt: portrait.portName,
-                          ref: (imgElement) => {
-                            if (imgElement) {
-                              const img = imgElement as HTMLImageElement;
-                              window.electronAPI.readFile(filePath)
+                      const thumbnailUrl = portrait.thumbnailPath.startsWith('/')
+                        ? `http://localhost:8080${portrait.thumbnailPath}?t=${Date.now()}`
+                        : `${portrait.thumbnailPath}?t=${Date.now()}`;
+                      
+                      console.log('[CharacterDetailModal] 准备加载缩略图', {
+                        portraitID: portrait.portraitID,
+                        portName: portrait.portName,
+                        originalPath: portrait.thumbnailPath,
+                        finalUrl: thumbnailUrl
+                      });
+                      
+                      return (
+                        <img
+                          src={thumbnailUrl}
+                          alt={portrait.portName}
+                          onLoad={() => console.log('[CharacterDetailModal] 缩略图加载成功', thumbnailUrl)}
+                          onError={(e) => {
+                            console.error('[CharacterDetailModal] 缩略图加载失败', {
+                              url: thumbnailUrl,
+                              error: e,
+                              portraitID: portrait.portraitID
+                            });
+                            
+                            // 如果HTTP加载失败，尝试使用Electron API
+                            if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
+                              window.electronAPI.readFile(portrait.thumbnailPath.substring(1))
                                 .then((buffer) => {
                                   const blob = new Blob([new Uint8Array(buffer)]);
                                   const url = URL.createObjectURL(blob);
-                                  img.src = url;
-                                  console.log('[CharacterDetailModal] Electron API加载缩略图成功', filePath);
+                                  e.currentTarget.src = url;
+                                  console.log('[CharacterDetailModal] 使用Electron API加载缩略图成功', portrait.thumbnailPath);
                                 })
                                 .catch((err) => {
                                   console.error('[CharacterDetailModal] Electron API加载缩略图失败', err);
-
-                                  // 回退到HTTP请求
-                                  const httpUrl = "http://localhost:8080" + portrait.thumbnailPath + "?t=" + Date.now();
-                                  img.src = httpUrl;
-                                  console.log('[CharacterDetailModal] 回退到HTTP URL', httpUrl);
                                 });
                             }
-                          },
-                          onLoad: (e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            console.log('[CharacterDetailModal] 缩略图加载成功', target.src);
-                          },
-                          onError: (e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            console.error('[CharacterDetailModal] 缩略图加载失败', target.src);
-                          }
-                        });
-                      } else {
-                        // 如果没有Electron API或路径不是以/开头，使用HTTP请求
-                        const httpUrl = portrait.thumbnailPath.startsWith('/')
-                          ? "http://localhost:8080" + portrait.thumbnailPath + "?t=" + Date.now()
-                          : portrait.thumbnailPath + "?t=" + Date.now();
-
-                        console.log('[CharacterDetailModal] 使用HTTP加载缩略图', {
-                          portraitID: portrait.portraitID,
-                          portName: portrait.portName,
-                          originalPath: portrait.thumbnailPath,
-                          httpUrl: httpUrl
-                        });
-
-                        return React.createElement('img', {
-                          src: httpUrl,
-                          alt: portrait.portName,
-                          onLoad: () => console.log('[CharacterDetailModal] HTTP缩略图加载成功', httpUrl),
-                          onError: (e) => {
-                            console.error('[CharacterDetailModal] HTTP缩略图加载失败', httpUrl);
-                          }
-                        });
-                      }
+                          }}
+                        />
+                      );
                     })()
                   ) : (
                     <div className="thumbnail-placeholder">缩略图</div>
