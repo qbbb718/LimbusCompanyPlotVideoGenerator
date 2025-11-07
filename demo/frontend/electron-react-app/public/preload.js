@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
   openImageFile: () => ipcRenderer.invoke('dialog:openImageFile'),
   saveFile: (defaultPath, data) => ipcRenderer.invoke('dialog:saveFile', defaultPath, data),
+  readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
 
   // 通知
   showNotification: (title, body) => ipcRenderer.invoke('notification:show', title, body),

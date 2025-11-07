@@ -4,6 +4,44 @@ export enum DialogueAlign {
   CENTER = 'CENTER'
 }
 
+// Electron API类型定义
+export interface ElectronAPI {
+  // 获取应用版本
+  getAppVersion: () => Promise<string>;
+
+  // 菜单事件监听
+  onMenuNewProject: (callback: () => void) => void;
+  onMenuOpenProject: (callback: () => void) => void;
+  onMenuSaveProject: (callback: () => void) => void;
+  onMenuExportVideo: (callback: () => void) => void;
+  onMenuAbout: (callback: () => void) => void;
+
+  // 移除监听器
+  removeAllListeners: (channel: string) => void;
+
+  // 文件操作
+  openFile: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
+  openImageFile: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
+  saveFile: (defaultPath: string, data: string) => Promise<{ canceled: boolean; filePath?: string }>;
+  readFile: (filePath: string) => Promise<Buffer>;
+
+  // 通知
+  showNotification: (title: string, body: string) => Promise<void>;
+
+  // 开发者工具
+  openDevTools: () => Promise<void>;
+
+  // 窗口控制
+  minimizeWindow: () => void;
+  maximizeWindow: () => void;
+  closeWindow: () => void;
+
+  // 获取系统信息
+  getPlatform: () => string;
+}
+
+// 注意：Window接口已在react-app-env.d.ts中定义
+
 // 情绪枚举 - 与后端保持一致
 export enum Emotion {
   NORMAL = 'normal',

@@ -8,6 +8,7 @@ interface Window {
     openFile: () => Promise<any>;
     openImageFile: () => Promise<any>;
     saveFile: (filename: string, data: string) => Promise<any>;
+    readFile: (filePath: string) => Promise<Buffer>;
     getAppVersion: () => Promise<string>;
     onMenuNewProject: (callback: () => void) => void;
     onMenuOpenProject: (callback: () => void) => void;

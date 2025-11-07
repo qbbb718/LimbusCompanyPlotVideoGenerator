@@ -47,6 +47,24 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     setShowPortraitModal(true);
   };
 
+  const handleDeletePortrait = async (portraitId: string) => {
+    if (!editingCharacter) return;
+
+    try {
+      // 调用API删除立绘
+      await ApiService.deletePortrait(editingCharacter.characterID, portraitId);
+
+      // 从本地状态中移除立绘
+      setEditingCharacter({
+        ...editingCharacter,
+        portraits: editingCharacter.portraits.filter(p => p.portraitID !== portraitId)
+      });
+    } catch (error) {
+      console.error('删除立绘失败:', error);
+      alert('删除立绘失败，请重试');
+    }
+  };
+
   useEffect(() => {
     if (character) {
       setEditingCharacter({
@@ -297,7 +315,10 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                 <div className="portrait-info">
                   <h4>{portrait.portName}</h4>
                   <p>情绪: {portrait.emotion}</p>
-                  <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
+                  <div className="portrait-actions">
+                    <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
+                    <button className="btn-danger" onClick={() => handleDeletePortrait(portrait.portraitID)}>删除</button>
+                  </div>
                 </div>
               </div>
             ))}

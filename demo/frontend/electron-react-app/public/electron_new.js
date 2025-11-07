@@ -236,6 +236,18 @@ ipcMain.handle('notification:show', (event, title, body) => {
   }
 });
 
+// 读取文件
+ipcMain.handle('file:read', async (event, filePath) => {
+  const fs = require('fs');
+  try {
+    const data = fs.readFileSync(filePath);
+    return data;
+  } catch (error) {
+    console.error('读取文件失败:', error);
+    throw error;
+  }
+});
+
 // 窗口控制
 ipcMain.handle('window:minimize', () => {
   if (mainWindow) {

@@ -75,9 +75,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
 
           // 读取文件并设置预览
           try {
-            // 在Electron环境中，我们需要使用fs模块读取文件
-            const fs = require('fs');
-            const fileBuffer = fs.readFileSync(selectedPath);
+            // 在Electron环境中，使用electronAPI读取文件
+            const fileBuffer = await window.electronAPI.readFile(selectedPath);
             const blob = new Blob([fileBuffer]);
             const file = new File([blob], fileName, { type: `image/${fileExtension}` });
 
@@ -343,17 +342,25 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
         <div className="portrait-editor">
           <div className="portrait-preview">
             <div className="file-upload">
-              <label className="file-upload-label" onClick={selectImageFile}>
-                选择立绘文件
-                {/* 隐藏的文件输入框，仅在非Electron环境使用 */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              {window.electronAPI ? (
+                <button className="file-upload-button" onClick={selectImageFile}>
+                  选择立绘文件
+                </button>
+              ) : (
+                <>
+                  <label className="file-upload-label">
+                    选择立绘文件
+                    {/* 隐藏的文件输入框，仅在非Electron环境使用 */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </>
+              )}
             </div>
 
             {/* 图片预览和裁剪区域 */}

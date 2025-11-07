@@ -86,9 +86,6 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     setEditingPortrait(null);
     setIsAddingPortrait(true);
     setShowPortraitModal(true);
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
