@@ -92,6 +92,10 @@ public interface CharacterDAO {
     @SqlUpdate("DELETE FROM characters WHERE character_id = :id")
     boolean delete(@Bind("id") String characterId);
     
+    // 更新角色名片图片路径
+    @SqlUpdate("UPDATE characters SET character_card_image_path = :cardImagePath WHERE character_id = :characterId")
+    void updateCardImagePath(@Bind("characterId") String characterId, @Bind("cardImagePath") String cardImagePath);
+    
     // ========== API控制器所需的方法 ==========
     /**
      * 获取所有角色（API控制器使用）

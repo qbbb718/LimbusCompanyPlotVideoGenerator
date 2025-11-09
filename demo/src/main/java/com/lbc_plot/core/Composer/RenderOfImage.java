@@ -3,8 +3,10 @@ package com.lbc_plot.core.Composer;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import javax.imageio.ImageIO;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -327,6 +329,7 @@ public class RenderOfImage {
      * @param chara
      */
     public static BufferedImage renderCharaNameUI(CharacterRef myCharacter){
+        // 直接生成名片图片，避免循环依赖
         FrameComposerService composer = new FrameComposerService();
         composer.addImageLayer(speaker_camp, 0,0);
 

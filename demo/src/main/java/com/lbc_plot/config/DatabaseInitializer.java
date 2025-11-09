@@ -113,7 +113,26 @@ public class DatabaseInitializer implements CommandLineRunner {
 
                     logger.info("数据库表创建完成！");
                 } else {
-                    logger.info("所有必要的表都已存在，跳过初始化");
+                    logger.info("所有必要的表都已存在，检查是否需要更新表结构...");
+                    
+                    // 检查characters表是否有character_card_image_path列
+                    try {
+                        Integer columnCount = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('characters') WHERE name='character_card_image_path'", 
+                                Integer.class);
+                        
+                        if (columnCount != null && columnCount == 0) {
+                            logger.info("characters表缺少character_card_image_path列，正在添加...");
+                            jdbcTemplate.execute("ALTER TABLE characters ADD COLUMN character_card_image_path TEXT");
+                            logger.info("成功添加character_card_image_path列");
+                        } else {
+                            logger.info("characters表已包含character_card_image_path列");
+                        }
+                    } catch (Exception e) {
+                        logger.error("检查或添加character_card_image_path列时出错: " + e.getMessage(), e);
+                    }
+                    
+                    logger.info("表结构检查完成");
                 }
             }
         } catch (Exception e) {

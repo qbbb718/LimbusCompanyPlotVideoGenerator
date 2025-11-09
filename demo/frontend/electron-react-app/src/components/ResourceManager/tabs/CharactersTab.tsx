@@ -305,8 +305,8 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       height: 170,
       faction: "未设定",
       portraits: [],
-      colorBg: "#FFFFFF",
-      colorText: "#000000",
+      colorBg: "#4C361F",
+      colorText: "#FBDB3",
       tags: []
     };
 

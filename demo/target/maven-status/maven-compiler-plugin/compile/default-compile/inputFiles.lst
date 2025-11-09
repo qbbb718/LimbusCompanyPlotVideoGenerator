@@ -20,6 +20,7 @@ e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\Spring
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\io\SequenceFrameExporter.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\contract\TextLayerOperations.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\TimelineToFFmpegConverter.java
+e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\CharacterCardImageCache.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\HealthController.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\Camera.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\controller\RecordController.java

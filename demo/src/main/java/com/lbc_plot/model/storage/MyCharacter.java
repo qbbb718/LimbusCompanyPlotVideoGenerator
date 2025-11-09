@@ -40,6 +40,7 @@ public class MyCharacter {
     private Color colorText;
     @JsonIgnore
     private BufferedImage colorNameImage; //人设界面预览用，然后可以直接用到剧情渲染里
+    private String characterCardImagePath; //名片图片路径
 
 
     // 默认值
@@ -152,6 +153,14 @@ public class MyCharacter {
         CharacterRef ref = CharacterRef.from(this);
         colorNameImage = RenderOfImage.renderCharaNameUI(ref);
     }
+    
+    public String getCharacterCardImagePath() {
+        return characterCardImagePath;
+    }
+    
+    public void setCharacterCardImagePath(String characterCardImagePath) {
+        this.characterCardImagePath = characterCardImagePath;
+    }
 
 
 
@@ -209,6 +218,7 @@ public class MyCharacter {
         this.colorText = builder.colorText;
         this.colorNameImage = builder.colorNameImage;
         this.faction = builder.faction;
+        this.characterCardImagePath = builder.characterCardImagePath;
         
         // 应用智能默认值
         applySmartDefaults();
@@ -267,6 +277,7 @@ public class MyCharacter {
         @JsonIgnore
         private BufferedImage colorNameImage;
         private String faction = DEFAULT_FACTION;
+        private String characterCardImagePath;
 
         /**
          * 必需参数构造函数
@@ -339,6 +350,11 @@ public class MyCharacter {
         
         public Builder faction(String faction) {
             this.faction = faction;
+            return this;
+        }
+
+        public Builder characterCardImagePath(String characterCardImagePath) {
+            this.characterCardImagePath = characterCardImagePath;
             return this;
         }
         

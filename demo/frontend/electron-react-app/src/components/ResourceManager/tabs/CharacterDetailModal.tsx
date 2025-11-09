@@ -36,6 +36,41 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   const [showPortraitModal, setShowPortraitModal] = useState(false);
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 图片缓存状态，避免重复加载
+  const [loadedImages, setLoadedImages] = useState<{[key: string]: string}>({});
+  
+  // 使用useRef来持久化缓存，避免组件重新渲染时丢失
+  const imageCacheRef = useRef<{[key: string]: string}>({});
+  
+  // 只在角色ID真正变化时清空缓存
+  useEffect(() => {
+    const currentCharacterID = editingCharacter?.characterID;
+    const previousCharacterID = imageCacheRef.current._lastCharacterID;
+    
+    if (currentCharacterID !== previousCharacterID) {
+      console.log('[CharacterDetailModal] 角色ID变化，清空缓存', {
+        previousCharacterID,
+        currentCharacterID,
+        characterName: editingCharacter?.characterName,
+        previousCacheSize: Object.keys(imageCacheRef.current).length
+      });
+      
+      // 保留当前角色的缓存，只清空其他角色的缓存
+      const newCache: {[key: string]: string} = {};
+      Object.keys(imageCacheRef.current).forEach(key => {
+        if (key.startsWith(currentCharacterID + '_')) {
+          newCache[key] = imageCacheRef.current[key];
+        }
+      });
+      
+      imageCacheRef.current = newCache;
+      if (currentCharacterID) {
+        imageCacheRef.current._lastCharacterID = currentCharacterID;
+      }
+      setLoadedImages(newCache);
+    }
+  }, [editingCharacter?.characterID]);
 
   const handleAddPortrait = () => {
     if (!editingCharacter) return;
@@ -102,6 +137,13 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
   const handleSave = async () => {
     if (!editingCharacter) return;
+    
+    console.log('[CharacterDetailModal] 保存角色详情', {
+      characterName: editingCharacter.characterName,
+      characterID: editingCharacter.characterID,
+      hasCardImagePath: !!editingCharacter.characterCardImagePath,
+      cardImagePath: editingCharacter.characterCardImagePath
+    });
 
     try {
       let savedCharacter;
@@ -282,18 +324,59 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           <div className="preview-section">
             <label>名片预览</label>
             <div className="name-preview-container">
-              <div
-                className="name-preview"
-                style={{
-                  backgroundColor: editingCharacter.colorBg,
-                  color: editingCharacter.colorText
-                }}
-              >
-                {editingCharacter.characterName}
-              </div>
-              <div className="preview-note">
-                完整预览将从后端获取
-              </div>
+              {(() => {
+                console.log('[CharacterDetailModal] 检查名片图片路径', {
+                  characterId: editingCharacter?.characterID,
+                  characterName: editingCharacter?.characterName,
+                  hasCardImagePath: !!editingCharacter.characterCardImagePath,
+                  cardImagePath: editingCharacter.characterCardImagePath
+                });
+                
+                if (editingCharacter.characterCardImagePath) {
+                  return (
+                <div className="character-card-image-preview">
+                  <img 
+                    src={`${AppConfig.api.baseUrl}${editingCharacter.characterCardImagePath}?t=${Date.now()}`}
+                    onLoad={() => console.log('[CharacterDetailModal] 名片图片加载成功', editingCharacter.characterCardImagePath)} 
+                    alt="角色名片" 
+                    onError={(e) => {
+                      console.error('[CharacterDetailModal] 名片图片加载失败', editingCharacter.characterCardImagePath);
+                      // 如果加载失败，显示简单的文字预览
+                      const container = e.currentTarget.parentElement;
+                      if (container) {
+                        container.innerHTML = `
+                          <div 
+                            className="name-preview" 
+                            style="background-color: ${editingCharacter.colorBg}; color: ${editingCharacter.colorText};"
+                          >
+                            ${editingCharacter.characterName}
+                          </div>
+                          <div className="preview-note">名片图片加载失败</div>
+                        `;
+                      }
+                    }}
+                  />
+                </div>
+                  );
+                } else {
+                  return (
+                    <>
+                      <div
+                        className="name-preview"
+                        style={{
+                          backgroundColor: editingCharacter.colorBg,
+                          color: editingCharacter.colorText
+                        }}
+                      >
+                        {editingCharacter.characterName}
+                      </div>
+                      <div className="preview-note">
+                        保存角色后将生成名片图片
+                      </div>
+                    </>
+                  );
+                }
+                })()}
             </div>
           </div>
         </div>
@@ -346,18 +429,65 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                           filePath: filePath
                         });
 
+                        // 使用角色ID+缩略图ID作为缓存键，避免不同角色间的缩略图冲突
+                        const characterId = editingCharacter.characterID || 'unknown';
+                        const cacheKey = `${characterId}_${portrait.portraitID}`;
+                        
+                        // 优先使用持久化缓存，避免重复加载
+                        let cachedImage = imageCacheRef.current[cacheKey];
+                        if (!cachedImage) {
+                          cachedImage = loadedImages[portrait.portraitID];
+                        }
+                        
+                        console.log('[CharacterDetailModal] 检查缩略图缓存', {
+                          portraitID: portrait.portraitID,
+                          portName: portrait.portName,
+                          cacheKey,
+                          hasCachedImage: !!cachedImage,
+                          isLoading: loadedImages[portrait.portraitID] === "loading",
+                          cacheState: loadedImages[portrait.portraitID],
+                          persistentCacheState: imageCacheRef.current[cacheKey]
+                        });
+                        
                         // 创建一个img元素用于显示
                         return React.createElement('img', {
-                          src: "",
+                          src: cachedImage || null, // 使用缓存或null
                           alt: portrait.portName,
                           ref: (imgElement) => {
-                            if (imgElement) {
+                            // 检查持久化缓存和状态缓存
+                            const hasCachedImage = !!cachedImage;
+                            const isLoading = loadedImages[portrait.portraitID] === "loading";
+                            const hasPersistentCachedImage = imageCacheRef.current[cacheKey] && imageCacheRef.current[cacheKey] !== "loading";
+                            
+                            // 只有当没有缓存且不是正在加载时才加载
+                            if (imgElement && !hasCachedImage && !isLoading && !hasPersistentCachedImage) {
                               const img = imgElement as HTMLImageElement;
+                              console.log('[CharacterDetailModal] 开始加载缩略图', {
+                                portraitID: portrait.portraitID,
+                                portName: portrait.portName,
+                                filePath: filePath
+                              });
+                              
+                              // 标记为正在加载，避免重复加载
+                              setLoadedImages(prev => ({
+                                ...prev,
+                                [portrait.portraitID]: "loading"
+                              }));
+                              imageCacheRef.current[cacheKey] = "loading";
+                              
                               window.electronAPI.readFile(filePath)
                                 .then((buffer) => {
                                   const blob = new Blob([new Uint8Array(buffer)]);
                                   const url = URL.createObjectURL(blob);
                                   img.src = url;
+                                  
+                                  // 更新缓存
+                                  setLoadedImages(prev => ({
+                                    ...prev,
+                                    [portrait.portraitID]: url
+                                  }));
+                                  imageCacheRef.current[cacheKey] = url;
+                                  
                                   console.log('[CharacterDetailModal] Electron API加载缩略图成功', filePath);
                                 })
                                 .catch((err) => {
@@ -366,6 +496,14 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                                   // 回退到HTTP请求
                                   const httpUrl = AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now();
                                   img.src = httpUrl;
+                                  
+                                  // 更新缓存
+                                  setLoadedImages(prev => ({
+                                    ...prev,
+                                    [portrait.portraitID]: httpUrl
+                                  }));
+                                  imageCacheRef.current[cacheKey] = httpUrl;
+                                  
                                   console.log('[CharacterDetailModal] 回退到HTTP URL', httpUrl);
                                 });
                             }

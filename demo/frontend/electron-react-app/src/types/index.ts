@@ -159,6 +159,7 @@ export interface MyCharacter {
   colorText: string;
   tags: string[];
   portraits: Portrait[];
+  characterCardImagePath?: string;
 }
 
 // 音频

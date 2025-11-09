@@ -35,6 +35,7 @@ public class CharacterMapper implements RowMapper<MyCharacter> {
             .colorBg(ColorUtils.stringToColor(rs.getString("color_bg")))
             .colorText(ColorUtils.stringToColor(rs.getString("color_text")))
             .faction(rs.getString("faction"))
+            .characterCardImagePath(rs.getString("character_card_image_path"))
             .portraits(portraits)
             .build();
     }

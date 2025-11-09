@@ -4,10 +4,17 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Paths;
 import java.nio.file.Files;
+import javax.imageio.ImageIO;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -27,6 +34,7 @@ import com.lbc_plot.DAO.CharacterDAO;
 import com.lbc_plot.DAO.PortraitDAO;
 import com.lbc_plot.DAO.CharacterMapper;
 import com.lbc_plot.util.ColorUtils;
+import com.lbc_plot.util.CharacterCardImageCache;
 import com.lbc_plot.config.ProjectConfig;
 import org.jdbi.v3.core.Jdbi;
 
@@ -46,12 +54,54 @@ public class CharacterController {
 
     @Autowired
     private Jdbi jdbi;
+    
+    /**
+     * 获取角色名片图片
+     */
+    @GetMapping("/character-card/{characterId}")
+    public ResponseEntity<Resource> getCharacterCard(@PathVariable String characterId) {
+        logger.info("请求获取角色名片图片，角色ID: " + characterId);
+        try {
+            // 从缓存中获取名片图片
+            MyCharacter character = jdbi.withExtension(CharacterDAO.class, dao -> 
+                dao.findById(characterId).orElse(null));
+            
+            logger.info("获取到的角色信息: " + (character != null ? 
+                "ID=" + character.getCharacterID() + 
+                ", 名称=" + character.getCharacterName() + 
+                ", 名片路径=" + character.getCharacterCardImagePath() : "null"));
+            
+            if (character == null) {
+                logger.warning("角色不存在，ID: " + characterId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
+            if (cardImage == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 将BufferedImage转换为字节数组
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(cardImage, "PNG", baos);
+            byte[] imageBytes = baos.toByteArray();
+            
+            logger.info("成功生成名片图片，大小: " + imageBytes.length + " 字节");
+            return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(new ByteArrayResource(imageBytes));
+        } catch (Exception e) {
+            logger.severe("获取角色名片图片失败: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 
     /**
      * 获取所有角色
      */
     @GetMapping("/characters")
     public List<MyCharacter> getCharacters() {
+        logger.info("获取所有角色");
         try {
             logger.info("获取所有角色");
 
@@ -66,6 +116,13 @@ public class CharacterController {
             });
 
             logger.info("成功获取 " + characters.size() + " 个角色");
+            
+            // 记录每个角色的名片图片路径
+            for (MyCharacter character : characters) {
+                logger.info("角色 " + character.getCharacterName() + " (ID: " + character.getCharacterID() + 
+                    ") 的名片图片路径: " + character.getCharacterCardImagePath());
+            }
+            
             return characters;
         } catch (Exception e) {
             logger.severe("获取角色失败: " + e.getMessage());
@@ -250,6 +307,33 @@ public class CharacterController {
             });
 
             logger.info("数据库更新操作完成");
+            
+            // 生成名片图片
+            logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() + 
+                ", 角色名称: " + character.getCharacterName());
+            try {
+                BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
+                if (cardImage != null) {
+                    // 设置名片图片路径
+                    String cardImagePath = "/api/character-card/" + character.getCharacterID();
+                    character.setCharacterCardImagePath(cardImagePath);
+                    
+                    // 更新数据库中的名片图片路径
+                    logger.info("更新名片图片路径到数据库，角色ID: " + character.getCharacterID() + 
+                        ", 路径: " + cardImagePath);
+                    jdbi.useExtension(CharacterDAO.class, dao -> {
+                        dao.updateCardImagePath(character.getCharacterID(), cardImagePath);
+                        logger.info("名片图片路径已保存到数据库");
+                    });
+                    
+                    logger.info("名片图片生成成功: " + cardImagePath);
+                } else {
+                    logger.warning("名片图片生成失败");
+                }
+            } catch (Exception e) {
+                logger.severe("生成名片图片时出错: " + e.getMessage());
+            }
+            
             logger.info("成功更新角色: " + character.getCharacterName());
             return character;
         } catch (Exception e) {
