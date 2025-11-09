@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MyCharacter, Portrait, Emotion } from '../../../types';
 import ApiService from '../../../services/ApiService';
 import { HexColorPicker } from 'react-colorful';
+import { AppConfig } from '../../../config/appConfig';
 
 import './CharacterModal.css';
 
@@ -310,7 +311,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                     (() => {
                       // 优先使用Electron API直接读取本地文件
                       if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
-                        const filePath = portrait.thumbnailPath.substring(1); // 移除开头的/
+                        // 使用配置文件中的路径设置
+                        const fileName = portrait.thumbnailPath.substring(portrait.thumbnailPath.lastIndexOf('/') + 1);
+                        const filePath = `${AppConfig.resources.thumbnailsBasePath}/${fileName}`;
 
                         console.log('[CharacterDetailModal] 尝试使用Electron API加载缩略图', {
                           portraitID: portrait.portraitID,
@@ -336,7 +339,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                                   console.error('[CharacterDetailModal] Electron API加载缩略图失败', err);
 
                                   // 回退到HTTP请求
-                                  const httpUrl = "http://localhost:8080" + portrait.thumbnailPath + "?t=" + Date.now();
+                                  const httpUrl = AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now();
                                   img.src = httpUrl;
                                   console.log('[CharacterDetailModal] 回退到HTTP URL', httpUrl);
                                 });
@@ -354,7 +357,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                       } else {
                         // 如果没有Electron API或路径不是以/开头，使用HTTP请求
                         const httpUrl = portrait.thumbnailPath.startsWith('/')
-                          ? "http://localhost:8080" + portrait.thumbnailPath + "?t=" + Date.now()
+                          ? AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now()
                           : portrait.thumbnailPath + "?t=" + Date.now();
 
                         console.log('[CharacterDetailModal] 使用HTTP加载缩略图', {
