@@ -64,7 +64,7 @@
 /* 角色相关样式 */
 .characters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
 }
@@ -75,6 +75,10 @@
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  min-height: 120px;
 }
 
 .character-card:hover {
@@ -88,11 +92,20 @@
 }
 
 .character-avatar {
+  width: 120px;
   height: 120px;
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: #f5f5f5;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.character-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar-placeholder {
@@ -102,6 +115,12 @@
 
 .character-info {
   padding: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 120px;
+  overflow: hidden;
 }
 
 .character-info h3 {

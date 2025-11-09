@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MyCharacter, Portrait, Emotion } from '../../../types';
 import ApiService from '../../../services/ApiService';
+import { AppConfig } from '../../../config/appConfig';
 import '../ResourceManager.css';
 import './CharacterModal.css';
 import './EmotionInput.css';
@@ -366,8 +367,62 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
             }}
           >
             <div className="character-avatar">
-              {/* 这里应该显示角色头像 */}
-              <div className="avatar-placeholder">头像</div>
+              {/* 显示角色默认立绘的缩略图 */}
+              {character.portraits && character.portraits.length > 0 && character.portraits[0].thumbnailPath ? (
+                (() => {
+                  // 优先使用Electron API直接读取本地文件
+                  if (character.portraits[0].thumbnailPath.startsWith('/') && window.electronAPI) {
+                    // 使用配置文件中的路径设置
+                    const fileName = character.portraits[0].thumbnailPath.substring(character.portraits[0].thumbnailPath.lastIndexOf('/') + 1);
+                    const filePath = `${AppConfig.api.baseUrl}${character.portraits[0].thumbnailPath}?t=${Date.now()}`;
+                    
+                    return React.createElement('img', {
+                      src: filePath,
+                      alt: character.portraits[0].portName,
+                      className: "character-thumbnail",
+                      style: {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '4px'
+                      },
+                      onError: (e) => {
+                        // 如果加载失败，尝试使用Electron API
+                        if (character.portraits[0].thumbnailPath.startsWith('/') && window.electronAPI) {
+                          window.electronAPI.readFile(character.portraits[0].thumbnailPath.substring(1))
+                            .then((buffer) => {
+                              const blob = new Blob([new Uint8Array(buffer)]);
+                              const url = URL.createObjectURL(blob);
+                              (e.currentTarget as HTMLImageElement).src = url;
+                            })
+                            .catch((err) => {
+                              console.error('[CharactersTab] 加载缩略图失败', err);
+                            });
+                        }
+                      }
+                    });
+                  } else {
+                    // 如果没有Electron API或路径不是以/开头，使用HTTP请求
+                    const httpUrl = character.portraits[0].thumbnailPath.startsWith('/')
+                      ? AppConfig.api.baseUrl + character.portraits[0].thumbnailPath + "?t=" + Date.now()
+                      : character.portraits[0].thumbnailPath + "?t=" + Date.now();
+                      
+                    return React.createElement('img', {
+                      src: httpUrl,
+                      alt: character.portraits[0].portName,
+                      className: "character-thumbnail",
+                      style: {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '4px'
+                      }
+                    });
+                  }
+                })()
+              ) : (
+                <div className="avatar-placeholder">头像</div>
+              )}
             </div>
             <div className="character-info">
               <h3>{character.characterName}</h3>
