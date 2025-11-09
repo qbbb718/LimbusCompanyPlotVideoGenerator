@@ -66,6 +66,31 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     }
   };
 
+  const handleSetDefaultPortrait = async (portraitId: string) => {
+    if (!editingCharacter) return;
+
+    try {
+      // 调用API设置默认立绘
+      await ApiService.setDefaultPortrait(editingCharacter.characterID, portraitId);
+
+      // 更新本地状态，将选中的立绘移到第一位
+      const portraitIndex = editingCharacter.portraits.findIndex(p => p.portraitID === portraitId);
+      if (portraitIndex !== -1) {
+        const newPortraits = [...editingCharacter.portraits];
+        const defaultPortrait = newPortraits.splice(portraitIndex, 1)[0];
+        newPortraits.unshift(defaultPortrait);
+        
+        setEditingCharacter({
+          ...editingCharacter,
+          portraits: newPortraits
+        });
+      }
+    } catch (error) {
+      console.error('设置默认立绘失败:', error);
+      alert('设置默认立绘失败，请重试');
+    }
+  };
+
   useEffect(() => {
     if (character) {
       setEditingCharacter({
@@ -352,6 +377,13 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                           onError: (e) => {
                             const target = e.currentTarget as HTMLImageElement;
                             console.error('[CharacterDetailModal] 缩略图加载失败', target.src);
+                            
+                            // 如果Electron API失败，尝试使用HTTP请求
+                            if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
+                              const httpUrl = AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now();
+                              target.src = httpUrl;
+                              console.log('[CharacterDetailModal] 回退到HTTP请求', httpUrl);
+                            }
                           }
                         });
                       } else {
@@ -372,7 +404,25 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                           alt: portrait.portName,
                           onLoad: () => console.log('[CharacterDetailModal] HTTP缩略图加载成功', httpUrl),
                           onError: (e) => {
-                            console.error('[CharacterDetailModal] HTTP缩略图加载失败', httpUrl);
+                            console.error('[CharacterDetailModal] HTTP缩略图加载失败', {
+                              url: httpUrl,
+                              error: e,
+                              portraitID: portrait.portraitID
+                            });
+
+                            // 如果HTTP加载失败，尝试使用Electron API
+                            if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
+                              window.electronAPI.readFile(portrait.thumbnailPath.substring(1))
+                                .then((buffer) => {
+                                  const blob = new Blob([new Uint8Array(buffer)]);
+                                  const url = URL.createObjectURL(blob);
+                                  (e.currentTarget as HTMLImageElement).src = url;
+                                  console.log('[CharacterDetailModal] 使用Electron API加载缩略图成功', portrait.thumbnailPath);
+                                })
+                                .catch((err) => {
+                                  console.error('[CharacterDetailModal] Electron API加载缩略图失败', err);
+                                });
+                            }
                           }
                         });
                       }
@@ -384,8 +434,14 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
                 <div className="portrait-info">
                   <h4>{portrait.portName}</h4>
                   <p>情绪: {portrait.emotion}</p>
+                  {editingCharacter.portraits[0].portraitID === portrait.portraitID && (
+                    <p className="default-portrait-indicator">默认立绘</p>
+                  )}
                   <div className="portrait-actions">
                     <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
+                    {editingCharacter.portraits[0].portraitID !== portrait.portraitID && (
+                      <button className="btn-secondary" onClick={() => handleSetDefaultPortrait(portrait.portraitID)}>设为默认</button>
+                    )}
                     <button className="btn-danger" onClick={() => handleDeletePortrait(portrait.portraitID)}>删除</button>
                   </div>
                 </div>

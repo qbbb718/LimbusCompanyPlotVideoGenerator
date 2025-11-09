@@ -270,6 +270,17 @@ class ApiService {
     }
   }
 
+  // 设置默认立绘
+  async setDefaultPortrait(characterId: string, portraitId: string) {
+    try {
+      const response = await apiClient.put(`/characters/${characterId}/portraits/${portraitId}/default`);
+      return response.data;
+    } catch (error) {
+      console.error('设置默认立绘失败:', error);
+      throw error;
+    }
+  }
+
   // 添加背景
   async addBackground(backgroundData: any) {
     try {

@@ -661,6 +661,55 @@ public class CharacterController {
     }
 
     /**
+     * 设置默认立绘
+     */
+    @PutMapping("/characters/{characterId}/portraits/{portraitId}/default")
+    public List<Portrait> setDefaultPortrait(@PathVariable String characterId, @PathVariable String portraitId) {
+        try {
+            logger.info("设置默认立绘: 角色ID=" + characterId + ", 立绘ID=" + portraitId);
+            
+            // 获取角色的所有立绘
+            List<Portrait> portraits = jdbi.withExtension(PortraitDAO.class, dao -> dao.findByCharacterId(characterId));
+            
+            // 找到要设为默认的立绘
+            Portrait defaultPortrait = null;
+            List<Portrait> otherPortraits = new ArrayList<>();
+            
+            for (Portrait portrait : portraits) {
+                if (portrait.getPortraitID().equals(portraitId)) {
+                    defaultPortrait = portrait;
+                } else {
+                    otherPortraits.add(portrait);
+                }
+            }
+            
+            if (defaultPortrait == null) {
+                throw new RuntimeException("找不到指定的立绘: " + portraitId);
+            }
+            
+            // 创建新的立绘顺序，默认立绘在前
+            List<Portrait> newOrder = new ArrayList<>();
+            newOrder.add(defaultPortrait);
+            newOrder.addAll(otherPortraits);
+            
+            // 更新数据库中立绘的顺序
+            jdbi.useExtension(PortraitDAO.class, dao -> {
+                // 先删除所有立绘关联
+                dao.deleteCharacterPortraits(characterId);
+                // 按新顺序重新保存立绘关联
+                dao.saveCharacterPortraits(characterId, newOrder);
+            });
+            
+            logger.info("成功设置默认立绘: " + portraitId);
+            return newOrder;
+        } catch (Exception e) {
+            logger.severe("设置默认立绘失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("设置默认立绘失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 递归删除目录
      */
     private void deleteDirectory(File directory) {
