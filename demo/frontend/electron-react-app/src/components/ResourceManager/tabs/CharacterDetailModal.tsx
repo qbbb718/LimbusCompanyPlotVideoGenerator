@@ -1,13 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MyCharacter, Portrait, Emotion } from '../../../types';
+import { MyCharacter, Portrait } from '../../../types';
 import ApiService from '../../../services/ApiService';
-import { HexColorPicker } from 'react-colorful';
 import { AppConfig } from '../../../config/appConfig';
 
 import './CharacterModal.css';
 
 // 添加立绘功能相关
 import PortraitModal from './PortraitModal';
+
+// 导入拆分出的组件
+import {
+  CharacterInfoSection,
+  TagsSection,
+  PortraitsSection
+} from './CharacterDetailModal/index';
 
 interface CharacterDetailModalProps {
   character: MyCharacter | null;
@@ -30,24 +36,26 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     character ? { ...character, portraits: character.portraits || [] } : null
   );
   const [showColorPicker, setShowColorPicker] = useState<{ text: boolean, bg: boolean }>({ text: false, bg: false });
-  const [newTagInput, setNewTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [showPortraitModal, setShowPortraitModal] = useState(false);
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // 图片缓存状态，避免重复加载
   const [loadedImages, setLoadedImages] = useState<{[key: string]: string}>({});
-  
+
+  // 追踪正在加载的图片，防止重复加载
+  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
+
   // 使用useRef来持久化缓存，避免组件重新渲染时丢失
   const imageCacheRef = useRef<{[key: string]: string}>({});
-  
+
   // 只在角色ID真正变化时清空缓存
   useEffect(() => {
     const currentCharacterID = editingCharacter?.characterID;
     const previousCharacterID = imageCacheRef.current._lastCharacterID;
-    
+
     if (currentCharacterID !== previousCharacterID) {
       console.log('[CharacterDetailModal] 角色ID变化，清空缓存', {
         previousCharacterID,
@@ -55,7 +63,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         characterName: editingCharacter?.characterName,
         previousCacheSize: Object.keys(imageCacheRef.current).length
       });
-      
+
       // 保留当前角色的缓存，只清空其他角色的缓存
       const newCache: {[key: string]: string} = {};
       Object.keys(imageCacheRef.current).forEach(key => {
@@ -63,7 +71,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           newCache[key] = imageCacheRef.current[key];
         }
       });
-      
+
       imageCacheRef.current = newCache;
       if (currentCharacterID) {
         imageCacheRef.current._lastCharacterID = currentCharacterID;
@@ -114,7 +122,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         const newPortraits = [...editingCharacter.portraits];
         const defaultPortrait = newPortraits.splice(portraitIndex, 1)[0];
         newPortraits.unshift(defaultPortrait);
-        
+
         setEditingCharacter({
           ...editingCharacter,
           portraits: newPortraits
@@ -137,7 +145,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
   const handleSave = async () => {
     if (!editingCharacter) return;
-    
+
     console.log('[CharacterDetailModal] 保存角色详情', {
       characterName: editingCharacter.characterName,
       characterID: editingCharacter.characterID,
@@ -164,47 +172,16 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     }
   };
 
-  const handleColorChange = (type: 'text' | 'bg', color: string) => {
-    if (!editingCharacter) return;
-
-    if (type === 'text') {
-      setEditingCharacter({ ...editingCharacter, colorText: color });
-    } else {
-      setEditingCharacter({ ...editingCharacter, colorBg: color });
-    }
-  };
-
-  const handleAddTag = () => {
-    if (!editingCharacter || !newTagInput.trim()) return;
-
-    const tag = newTagInput.trim();
-    if (editingCharacter.tags?.includes(tag)) {
-      alert('该标签已存在');
-      return;
-    }
-
-    setEditingCharacter({
-      ...editingCharacter,
-      tags: [...(editingCharacter.tags || []), tag]
-    });
-    setNewTagInput('');
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    if (!editingCharacter) return;
-
-    setEditingCharacter({
-      ...editingCharacter,
-      tags: editingCharacter.tags?.filter(tag => tag !== tagToRemove) || []
-    });
-  };
-
   const handleDeleteCharacter = () => {
     if (!editingCharacter || !onDelete) return;
 
     onDelete(editingCharacter.characterID, deleteFiles);
     setShowDeleteConfirm(false);
     onClose();
+  };
+
+  const handleToggleColorPicker = (type: 'text' | 'bg') => {
+    setShowColorPicker(prev => ({ ...prev, [type]: !prev[type] }));
   };
 
   if (!editingCharacter) return null;
@@ -224,369 +201,25 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="character-info-section">
-          <div className="info-grid">
-            <div className="info-item">
-              <label>角色名称</label>
-              <input
-                type="text"
-                value={editingCharacter.characterName}
-                onChange={(e) => setEditingCharacter({ ...editingCharacter, characterName: e.target.value })}
-              />
-            </div>
+        <CharacterInfoSection
+          character={editingCharacter}
+          onCharacterUpdate={setEditingCharacter}
+          showColorPicker={showColorPicker}
+          onToggleColorPicker={handleToggleColorPicker}
+        />
 
-            <div className="info-item">
-              <label>阵营</label>
-              <input
-                type="text"
-                value={editingCharacter.faction}
-                onChange={(e) => setEditingCharacter({ ...editingCharacter, faction: e.target.value })}
-              />
-            </div>
+        <TagsSection
+          character={editingCharacter}
+          onCharacterUpdate={setEditingCharacter}
+        />
 
-            <div className="info-item">
-              <label>身高</label>
-              <input
-                type="number"
-                value={editingCharacter.height}
-                onChange={(e) => setEditingCharacter({ ...editingCharacter, height: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-          <div className="info-grid">
-            <div className="info-item">
-              <label>名片文字颜色</label>
-              <div className="color-picker-wrapper">
-                <input
-                  type="text"
-                  value={editingCharacter.colorText}
-                  onChange={(e) => handleColorChange('text', e.target.value)}
-                />
-                <div
-                  className="color-preview-box"
-                  style={{ backgroundColor: editingCharacter.colorText }}
-                  onClick={() => setShowColorPicker({ ...showColorPicker, text: !showColorPicker.text })}
-                ></div>
-
-                {showColorPicker.text && (
-                  <div className="color-picker-dropdown">
-                    <HexColorPicker
-                      color={editingCharacter.colorText}
-                      onChange={(color: string) => handleColorChange('text', color)}
-                    />
-                    <div className="color-picker-actions">
-                      <button
-                        className="btn-small btn-primary"
-                        onClick={() => setShowColorPicker({ ...showColorPicker, text: false })}
-                      >
-                        确定
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="info-item">
-              <label>名片背景颜色</label>
-              <div className="color-picker-wrapper">
-                <input
-                  type="text"
-                  value={editingCharacter.colorBg}
-                  onChange={(e) => handleColorChange('bg', e.target.value)}
-                />
-                <div
-                  className="color-preview-box"
-                  style={{ backgroundColor: editingCharacter.colorBg }}
-                  onClick={() => setShowColorPicker({ ...showColorPicker, bg: !showColorPicker.bg })}
-                ></div>
-
-                {showColorPicker.bg && (
-                  <div className="color-picker-dropdown">
-                    <HexColorPicker
-                      color={editingCharacter.colorBg}
-                      onChange={(color: string) => handleColorChange('bg', color)}
-                    />
-                    <div className="color-picker-actions">
-                      <button
-                        className="btn-small btn-primary"
-                        onClick={() => setShowColorPicker({ ...showColorPicker, bg: false })}
-                      >
-                        确定
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="preview-section">
-            <label>名片预览</label>
-            <div className="name-preview-container">
-              {(() => {
-                console.log('[CharacterDetailModal] 检查名片图片路径', {
-                  characterId: editingCharacter?.characterID,
-                  characterName: editingCharacter?.characterName,
-                  hasCardImagePath: !!editingCharacter.characterCardImagePath,
-                  cardImagePath: editingCharacter.characterCardImagePath
-                });
-                
-                if (editingCharacter.characterCardImagePath) {
-                  return (
-                <div className="character-card-image-preview">
-                  <img 
-                    src={`${AppConfig.api.baseUrl}${editingCharacter.characterCardImagePath}?t=${Date.now()}`}
-                    onLoad={() => console.log('[CharacterDetailModal] 名片图片加载成功', editingCharacter.characterCardImagePath)} 
-                    alt="角色名片" 
-                    onError={(e) => {
-                      console.error('[CharacterDetailModal] 名片图片加载失败', editingCharacter.characterCardImagePath);
-                      // 如果加载失败，显示简单的文字预览
-                      const container = e.currentTarget.parentElement;
-                      if (container) {
-                        container.innerHTML = `
-                          <div 
-                            className="name-preview" 
-                            style="background-color: ${editingCharacter.colorBg}; color: ${editingCharacter.colorText};"
-                          >
-                            ${editingCharacter.characterName}
-                          </div>
-                          <div className="preview-note">名片图片加载失败</div>
-                        `;
-                      }
-                    }}
-                  />
-                </div>
-                  );
-                } else {
-                  return (
-                    <>
-                      <div
-                        className="name-preview"
-                        style={{
-                          backgroundColor: editingCharacter.colorBg,
-                          color: editingCharacter.colorText
-                        }}
-                      >
-                        {editingCharacter.characterName}
-                      </div>
-                      <div className="preview-note">
-                        保存角色后将生成名片图片
-                      </div>
-                    </>
-                  );
-                }
-                })()}
-            </div>
-          </div>
-        </div>
-
-        <div className="tags-section">
-          <label>角色标签</label>
-          <div className="tags-container">
-            {editingCharacter.tags?.map(tag => (
-              <div key={tag} className="tag">
-                {tag}
-                <span className="tag-remove" onClick={() => handleRemoveTag(tag)}>×</span>
-              </div>
-            ))}
-          </div>
-          <div className="tag-input-container">
-            <input
-              type="text"
-              className="tag-input"
-              placeholder="添加新标签"
-              value={newTagInput}
-              onChange={(e) => setNewTagInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-            />
-            <button onClick={handleAddTag}>添加</button>
-          </div>
-        </div>
-
-        <div className="portraits-section">
-          <div className="section-header">
-            <h3>立绘列表</h3>
-            <button className="btn-primary" onClick={handleAddPortrait}>添加立绘</button>
-          </div>
-
-          <div className="portraits-grid">
-            {editingCharacter.portraits?.map(portrait => (
-              <div key={portrait.portraitID} className="portrait-card">
-                <div className="portrait-thumbnail">
-                  {/* 这里应该显示立绘缩略图 */}
-                  {portrait.thumbnailPath ? (
-                    (() => {
-                      // 优先使用Electron API直接读取本地文件
-                      if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
-                        // 使用配置文件中的路径设置
-                        const fileName = portrait.thumbnailPath.substring(portrait.thumbnailPath.lastIndexOf('/') + 1);
-                        const filePath = `${AppConfig.resources.thumbnailsBasePath}/${fileName}`;
-
-                        console.log('[CharacterDetailModal] 尝试使用Electron API加载缩略图', {
-                          portraitID: portrait.portraitID,
-                          portName: portrait.portName,
-                          filePath: filePath
-                        });
-
-                        // 使用角色ID+缩略图ID作为缓存键，避免不同角色间的缩略图冲突
-                        const characterId = editingCharacter.characterID || 'unknown';
-                        const cacheKey = `${characterId}_${portrait.portraitID}`;
-                        
-                        // 优先使用持久化缓存，避免重复加载
-                        let cachedImage = imageCacheRef.current[cacheKey];
-                        if (!cachedImage) {
-                          cachedImage = loadedImages[portrait.portraitID];
-                        }
-                        
-                        console.log('[CharacterDetailModal] 检查缩略图缓存', {
-                          portraitID: portrait.portraitID,
-                          portName: portrait.portName,
-                          cacheKey,
-                          hasCachedImage: !!cachedImage,
-                          isLoading: loadedImages[portrait.portraitID] === "loading",
-                          cacheState: loadedImages[portrait.portraitID],
-                          persistentCacheState: imageCacheRef.current[cacheKey]
-                        });
-                        
-                        // 创建一个img元素用于显示
-                        return React.createElement('img', {
-                          src: cachedImage || null, // 使用缓存或null
-                          alt: portrait.portName,
-                          ref: (imgElement) => {
-                            // 检查持久化缓存和状态缓存
-                            const hasCachedImage = !!cachedImage;
-                            const isLoading = loadedImages[portrait.portraitID] === "loading";
-                            const hasPersistentCachedImage = imageCacheRef.current[cacheKey] && imageCacheRef.current[cacheKey] !== "loading";
-                            
-                            // 只有当没有缓存且不是正在加载时才加载
-                            if (imgElement && !hasCachedImage && !isLoading && !hasPersistentCachedImage) {
-                              const img = imgElement as HTMLImageElement;
-                              console.log('[CharacterDetailModal] 开始加载缩略图', {
-                                portraitID: portrait.portraitID,
-                                portName: portrait.portName,
-                                filePath: filePath
-                              });
-                              
-                              // 标记为正在加载，避免重复加载
-                              setLoadedImages(prev => ({
-                                ...prev,
-                                [portrait.portraitID]: "loading"
-                              }));
-                              imageCacheRef.current[cacheKey] = "loading";
-                              
-                              window.electronAPI.readFile(filePath)
-                                .then((buffer) => {
-                                  const blob = new Blob([new Uint8Array(buffer)]);
-                                  const url = URL.createObjectURL(blob);
-                                  img.src = url;
-                                  
-                                  // 更新缓存
-                                  setLoadedImages(prev => ({
-                                    ...prev,
-                                    [portrait.portraitID]: url
-                                  }));
-                                  imageCacheRef.current[cacheKey] = url;
-                                  
-                                  console.log('[CharacterDetailModal] Electron API加载缩略图成功', filePath);
-                                })
-                                .catch((err) => {
-                                  console.error('[CharacterDetailModal] Electron API加载缩略图失败', err);
-
-                                  // 回退到HTTP请求
-                                  const httpUrl = AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now();
-                                  img.src = httpUrl;
-                                  
-                                  // 更新缓存
-                                  setLoadedImages(prev => ({
-                                    ...prev,
-                                    [portrait.portraitID]: httpUrl
-                                  }));
-                                  imageCacheRef.current[cacheKey] = httpUrl;
-                                  
-                                  console.log('[CharacterDetailModal] 回退到HTTP URL', httpUrl);
-                                });
-                            }
-                          },
-                          onLoad: (e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            console.log('[CharacterDetailModal] 缩略图加载成功', target.src);
-                          },
-                          onError: (e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            console.error('[CharacterDetailModal] 缩略图加载失败', target.src);
-                            
-                            // 如果Electron API失败，尝试使用HTTP请求
-                            if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
-                              const httpUrl = AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now();
-                              target.src = httpUrl;
-                              console.log('[CharacterDetailModal] 回退到HTTP请求', httpUrl);
-                            }
-                          }
-                        });
-                      } else {
-                        // 如果没有Electron API或路径不是以/开头，使用HTTP请求
-                        const httpUrl = portrait.thumbnailPath.startsWith('/')
-                          ? AppConfig.api.baseUrl + portrait.thumbnailPath + "?t=" + Date.now()
-                          : portrait.thumbnailPath + "?t=" + Date.now();
-
-                        console.log('[CharacterDetailModal] 使用HTTP加载缩略图', {
-                          portraitID: portrait.portraitID,
-                          portName: portrait.portName,
-                          originalPath: portrait.thumbnailPath,
-                          httpUrl: httpUrl
-                        });
-
-                        return React.createElement('img', {
-                          src: httpUrl,
-                          alt: portrait.portName,
-                          onLoad: () => console.log('[CharacterDetailModal] HTTP缩略图加载成功', httpUrl),
-                          onError: (e) => {
-                            console.error('[CharacterDetailModal] HTTP缩略图加载失败', {
-                              url: httpUrl,
-                              error: e,
-                              portraitID: portrait.portraitID
-                            });
-
-                            // 如果HTTP加载失败，尝试使用Electron API
-                            if (portrait.thumbnailPath.startsWith('/') && window.electronAPI) {
-                              window.electronAPI.readFile(portrait.thumbnailPath.substring(1))
-                                .then((buffer) => {
-                                  const blob = new Blob([new Uint8Array(buffer)]);
-                                  const url = URL.createObjectURL(blob);
-                                  (e.currentTarget as HTMLImageElement).src = url;
-                                  console.log('[CharacterDetailModal] 使用Electron API加载缩略图成功', portrait.thumbnailPath);
-                                })
-                                .catch((err) => {
-                                  console.error('[CharacterDetailModal] Electron API加载缩略图失败', err);
-                                });
-                            }
-                          }
-                        });
-                      }
-                    })()
-                  ) : (
-                    <div className="thumbnail-placeholder">缩略图</div>
-                  )}
-                </div>
-                <div className="portrait-info">
-                  <h4>{portrait.portName}</h4>
-                  <p>情绪: {portrait.emotion}</p>
-                  {editingCharacter.portraits[0].portraitID === portrait.portraitID && (
-                    <p className="default-portrait-indicator">默认立绘</p>
-                  )}
-                  <div className="portrait-actions">
-                    <button className="btn-primary" onClick={() => handleEditPortrait(portrait)}>编辑</button>
-                    {editingCharacter.portraits[0].portraitID !== portrait.portraitID && (
-                      <button className="btn-secondary" onClick={() => handleSetDefaultPortrait(portrait.portraitID)}>设为默认</button>
-                    )}
-                    <button className="btn-danger" onClick={() => handleDeletePortrait(portrait.portraitID)}>删除</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PortraitsSection
+          character={editingCharacter}
+          onAddPortrait={handleAddPortrait}
+          onEditPortrait={handleEditPortrait}
+          onDeletePortrait={handleDeletePortrait}
+          onSetDefaultPortrait={handleSetDefaultPortrait}
+        />
       </div>
 
       {/* 删除确认对话框 */}
