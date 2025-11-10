@@ -94,7 +94,7 @@ public interface CharacterDAO {
     
     // 更新角色名片图片路径
     @SqlUpdate("UPDATE characters SET character_card_image_path = :cardImagePath WHERE character_id = :characterId")
-    void updateCardImagePath(@Bind("characterId") String characterId, @Bind("cardImagePath") String cardImagePath);
+    boolean updateCardImagePath(@Bind("characterId") String characterId, @Bind("cardImagePath") String cardImagePath);
     
     // ========== API控制器所需的方法 ==========
     /**

@@ -197,4 +197,15 @@ public interface PortraitDAO {
      */
     @SqlUpdate("DELETE FROM character_portraits WHERE character_id = :characterId")
     void deleteCharacterPortraits(@Bind("characterId") String characterId);
+
+    /**
+     * 设置默认立绘
+     * @param characterId 角色ID
+     * @param portraitId 立绘ID
+     */
+    @SqlUpdate("UPDATE character_portraits SET is_default = 1 WHERE character_id = :characterId AND portrait_id = :portraitId")
+    void setDefaultPortrait(
+        @Bind("characterId") String characterId,
+        @Bind("portraitId") String portraitId
+    );
 }

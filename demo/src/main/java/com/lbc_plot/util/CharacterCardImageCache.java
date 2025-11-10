@@ -26,8 +26,8 @@ import com.lbc_plot.config.ProjectConfig;
 public class CharacterCardImageCache {
     private static final Logger logger = Logger.getLogger(CharacterCardImageCache.class.getName());
 
-    // 缓存目录
-    private static final String CACHE_DIR = "data/character_cards";
+    // 缓存目录 - 使用绝对路径确保图片正确保存
+    private static final String CACHE_DIR = System.getProperty("user.dir") + "/src/main/resources/assets/thumbnails/character_cards";
 
     // 内存缓存
     private static final ConcurrentHashMap<String, BufferedImage> imageCache = new ConcurrentHashMap<>();
@@ -185,6 +185,7 @@ public class CharacterCardImageCache {
      * @return 相对路径
      */
     public static String getCharacterCardImagePath(String characterId) {
-        return "/" + CACHE_DIR + "/" + characterId + ".png";
+        // 返回API路径，而不是文件系统路径
+        return "/api/character-card/" + characterId;
     }
 }

@@ -68,9 +68,14 @@ const PortraitThumbnail = memo(({ portrait, characterId, onLoadComplete, onError
     return <div className="thumbnail-placeholder">缩略图</div>;
   }
 
+  // 只有当有有效的thumbnailUrl时才渲染img元素
+  if (!thumbnailUrl) {
+    return <div className="thumbnail-placeholder">缩略图</div>;
+  }
+
   return (
     <img
-      src={thumbnailUrl || ''}
+      src={thumbnailUrl}
       alt={portrait.portName}
       style={{ opacity: isLoading ? 0.5 : 1 }}
     />

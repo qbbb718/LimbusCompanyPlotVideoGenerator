@@ -17,5 +17,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("classpath:/assets/", "file:./src/main/resources/assets/")
                 .setCachePeriod(3600)
                 .resourceChain(true);
+
+        // 映射名片图片资源
+        registry.addResourceHandler("/api/character-card/**")
+                .addResourceLocations("file:./src/main/resources/assets/thumbnails/character_cards/")
+                .setCachePeriod(3600)
+                .resourceChain(true);
     }
 }
