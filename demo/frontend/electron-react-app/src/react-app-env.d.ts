@@ -11,6 +11,7 @@ interface Window {
     readFile: (filePath: string) => Promise<Buffer>;
     saveThumbnail: (fileName: string, data: Uint8Array) => Promise<string>;
     getAppVersion: () => Promise<string>;
+    getAppPath: () => Promise<string>;
     onMenuNewProject: (callback: () => void) => void;
     onMenuOpenProject: (callback: () => void) => void;
     onMenuSaveProject: (callback: () => void) => void;

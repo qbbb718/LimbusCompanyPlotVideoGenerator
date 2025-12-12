@@ -8,6 +8,9 @@ export enum DialogueAlign {
 export interface ElectronAPI {
   // 获取应用版本
   getAppVersion: () => Promise<string>;
+  
+  // 获取应用路径
+  getAppPath: () => Promise<string>;
 
   // 菜单事件监听
   onMenuNewProject: (callback: () => void) => void;

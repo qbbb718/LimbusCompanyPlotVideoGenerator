@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import './ResourceManager.css';
-import ApiService from '../services/ApiService';
-import { MyCharacter, Background, Audio, Portrait } from '../types';
+import React, { useState, useEffect } from "react";
+import "./ResourceManager.css";
+import ApiService from "../services/ApiService";
+import { MyCharacter, Background, Audio, Portrait } from "../types";
+import ResourceTabs from "./ResourceManager/ResourceTabs";
 
 const ResourceManager: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'characters' | 'backgrounds' | 'audios'>('characters');
+  const [activeTab, setActiveTab] = useState<
+    "characters" | "backgrounds" | "audios"
+  >("characters");
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
   const [audios, setAudios] = useState<Audio[]>([]);
-  const [selectedCharacter, setSelectedCharacter] = useState<MyCharacter | null>(null);
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<MyCharacter | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchResources();
@@ -22,34 +26,36 @@ const ResourceManager: React.FC = () => {
       const [charactersData, backgroundsData, audiosData] = await Promise.all([
         ApiService.getCharacters(),
         ApiService.getBackgrounds(),
-        ApiService.getAudios()
+        ApiService.getAudios(),
       ]);
 
       setCharacters(charactersData);
       setBackgrounds(backgroundsData);
       setAudios(audiosData);
     } catch (error) {
-      console.error('获取资源失败:', error);
+      console.error("获取资源失败:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const openResourceFolder = (resourceType: 'characters' | 'backgrounds' | 'audios') => {
+  const openResourceFolder = (
+    resourceType: "characters" | "backgrounds" | "audios"
+  ) => {
     // 这里需要调用Electron的API打开对应的资源文件夹
     // 例如: window.electron.openResourceFolder(resourceType);
     alert(`打开${resourceType}资源文件夹功能待实现`);
   };
 
-  const filteredCharacters = characters.filter(character => 
+  const filteredCharacters = characters.filter((character) =>
     character.characterName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredBackgrounds = backgrounds.filter(background => 
+  const filteredBackgrounds = backgrounds.filter((background) =>
     background.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredAudios = audios.filter(audio => 
+  const filteredAudios = audios.filter((audio) =>
     audio.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -57,20 +63,26 @@ const ResourceManager: React.FC = () => {
     return (
       <div className="resource-tab">
         <div className="resource-actions">
-          <input 
-            type="text" 
-            placeholder="搜索角色..." 
+          <input
+            type="text"
+            placeholder="搜索角色..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button onClick={() => openResourceFolder('characters')}>打开角色文件夹</button>
+          <button onClick={() => openResourceFolder("characters")}>
+            打开角色文件夹
+          </button>
         </div>
 
         <div className="characters-grid">
-          {filteredCharacters.map(character => (
-            <div 
+          {filteredCharacters.map((character) => (
+            <div
               key={character.characterID}
-              className={`character-card ${selectedCharacter?.characterID === character.characterID ? 'selected' : ''}`}
+              className={`character-card ${
+                selectedCharacter?.characterID === character.characterID
+                  ? "selected"
+                  : ""
+              }`}
               onClick={() => setSelectedCharacter(character)}
             >
               <div className="character-avatar">
@@ -93,17 +105,29 @@ const ResourceManager: React.FC = () => {
             <div className="character-form">
               <div className="form-group">
                 <label>角色ID</label>
-                <input type="text" value={selectedCharacter.characterID} readOnly />
+                <input
+                  type="text"
+                  value={selectedCharacter.characterID}
+                  readOnly
+                />
               </div>
 
               <div className="form-group">
                 <label>角色名称</label>
-                <input type="text" value={selectedCharacter.characterName} readOnly />
+                <input
+                  type="text"
+                  value={selectedCharacter.characterName}
+                  readOnly
+                />
               </div>
 
               <div className="form-group">
                 <label>身高</label>
-                <input type="number" value={selectedCharacter.height} readOnly />
+                <input
+                  type="number"
+                  value={selectedCharacter.height}
+                  readOnly
+                />
               </div>
 
               <div className="form-group">
@@ -113,7 +137,11 @@ const ResourceManager: React.FC = () => {
 
               <div className="form-group">
                 <label>文字颜色</label>
-                <input type="text" value={selectedCharacter.colorText} readOnly />
+                <input
+                  type="text"
+                  value={selectedCharacter.colorText}
+                  readOnly
+                />
               </div>
 
               <div className="form-group">
@@ -125,7 +153,7 @@ const ResourceManager: React.FC = () => {
             <div className="portraits-section">
               <h3>立绘列表</h3>
               <div className="portraits-grid">
-                {selectedCharacter.portraits.map(portrait => (
+                {selectedCharacter.portraits.map((portrait) => (
                   <div key={portrait.portraitID} className="portrait-card">
                     <div className="portrait-thumbnail">
                       {/* 这里应该显示立绘缩略图 */}
@@ -149,17 +177,19 @@ const ResourceManager: React.FC = () => {
     return (
       <div className="resource-tab">
         <div className="resource-actions">
-          <input 
-            type="text" 
-            placeholder="搜索背景..." 
+          <input
+            type="text"
+            placeholder="搜索背景..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button onClick={() => openResourceFolder('backgrounds')}>打开背景文件夹</button>
+          <button onClick={() => openResourceFolder("backgrounds")}>
+            打开背景文件夹
+          </button>
         </div>
 
         <div className="backgrounds-grid">
-          {filteredBackgrounds.map(background => (
+          {filteredBackgrounds.map((background) => (
             <div key={background.uuid} className="background-card">
               <div className="background-preview">
                 {/* 这里应该显示背景预览图 */}
@@ -180,17 +210,19 @@ const ResourceManager: React.FC = () => {
     return (
       <div className="resource-tab">
         <div className="resource-actions">
-          <input 
-            type="text" 
-            placeholder="搜索音频..." 
+          <input
+            type="text"
+            placeholder="搜索音频..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button onClick={() => openResourceFolder('audios')}>打开音频文件夹</button>
+          <button onClick={() => openResourceFolder("audios")}>
+            打开音频文件夹
+          </button>
         </div>
 
         <div className="audios-list">
-          {filteredAudios.map(audio => (
+          {filteredAudios.map((audio) => (
             <div key={audio.uuid} className="audio-item">
               <div className="audio-info">
                 <h3>{audio.name}</h3>
@@ -214,31 +246,13 @@ const ResourceManager: React.FC = () => {
 
   return (
     <div className="resource-manager">
-      <div className="resource-tabs">
-        <button 
-          className={activeTab === 'characters' ? 'active' : ''}
-          onClick={() => setActiveTab('characters')}
-        >
-          角色
-        </button>
-        <button 
-          className={activeTab === 'backgrounds' ? 'active' : ''}
-          onClick={() => setActiveTab('backgrounds')}
-        >
-          背景
-        </button>
-        <button 
-          className={activeTab === 'audios' ? 'active' : ''}
-          onClick={() => setActiveTab('audios')}
-        >
-          音效
-        </button>
-      </div>
+      {/* 使用 ResourceTabs 组件替换原来的标签按钮 */}
+      <ResourceTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="resource-content">
-        {activeTab === 'characters' && renderCharactersTab()}
-        {activeTab === 'backgrounds' && renderBackgroundsTab()}
-        {activeTab === 'audios' && renderAudiosTab()}
+        {activeTab === "characters" && renderCharactersTab()}
+        {activeTab === "backgrounds" && renderBackgroundsTab()}
+        {activeTab === "audios" && renderAudiosTab()}
       </div>
     </div>
   );

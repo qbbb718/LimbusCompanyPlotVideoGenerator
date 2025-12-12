@@ -1,19 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MyCharacter, Portrait } from '../../../types';
-import ApiService from '../../../services/ApiService';
-import { AppConfig } from '../../../config/appConfig';
-
-import './CharacterModal.css';
-
-// 添加立绘功能相关
-import PortraitModal from './PortraitModal';
-
-// 导入拆分出的组件
-import {
-  CharacterInfoSection,
-  TagsSection,
-  PortraitsSection
-} from './CharacterDetailModal/index';
+import React, { useState, useRef, useEffect } from "react";
+import { MyCharacter, Portrait } from "../../../types";
+import ApiService from "../../../services/ApiService";
+import { AppConfig } from "../../../config/appConfig";
+import "./CharacterModal.css";
+import CharacterInfoSection from "./CharacterDetailModal/CharacterInfoSection";
+import TagsSection from "./CharacterDetailModal/TagsSection";
+import PortraitsSection from "./CharacterDetailModal/PortraitsSection";
+import PortraitModal from "./PortraitModal";
 
 interface CharacterDetailModalProps {
   character: MyCharacter | null;
@@ -24,32 +17,48 @@ interface CharacterDetailModalProps {
   portraits: Portrait[];
 }
 
+/**
+ * 角色详情模态框组件
+ * 用于展示和编辑角色信息，包括基本信息、标签和立绘等
+ */
 const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   character,
   onClose,
   onSave,
   onDelete,
   isNewCharacter,
-  portraits
+  portraits,
 }) => {
+  // 编辑中的角色状态，初始化时传入角色数据或为null
   const [editingCharacter, setEditingCharacter] = useState<MyCharacter | null>(
     character ? { ...character, portraits: character.portraits || [] } : null
   );
-  const [showColorPicker, setShowColorPicker] = useState<{ text: boolean, bg: boolean }>({ text: false, bg: false });
+  // 颜色选择器显示状态，控制文本和背景颜色选择器的显示
+  const [showColorPicker, setShowColorPicker] = useState<{
+    text: boolean;
+    bg: boolean;
+  }>({ text: false, bg: false });
+  // 删除确认对话框显示状态
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // 是否删除相关文件的选项
   const [deleteFiles, setDeleteFiles] = useState(false);
+  // 立绘编辑模态框显示状态
   const [showPortraitModal, setShowPortraitModal] = useState(false);
+  // 当前正在编辑的立绘数据
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
+  // 文件输入引用，用于触发文件选择
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 图片缓存状态，避免重复加载
-  const [loadedImages, setLoadedImages] = useState<{[key: string]: string}>({});
+  const [loadedImages, setLoadedImages] = useState<{ [key: string]: string }>(
+    {}
+  );
 
   // 追踪正在加载的图片，防止重复加载
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
 
   // 使用useRef来持久化缓存，避免组件重新渲染时丢失
-  const imageCacheRef = useRef<{[key: string]: string}>({});
+  const imageCacheRef = useRef<{ [key: string]: string }>({});
 
   // 只在角色ID真正变化时清空缓存
   useEffect(() => {
@@ -57,17 +66,17 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     const previousCharacterID = imageCacheRef.current._lastCharacterID;
 
     if (currentCharacterID !== previousCharacterID) {
-      console.log('[CharacterDetailModal] 角色ID变化，清空缓存', {
+      console.log("[CharacterDetailModal] 角色ID变化，清空缓存", {
         previousCharacterID,
         currentCharacterID,
         characterName: editingCharacter?.characterName,
-        previousCacheSize: Object.keys(imageCacheRef.current).length
+        previousCacheSize: Object.keys(imageCacheRef.current).length,
       });
 
       // 保留当前角色的缓存，只清空其他角色的缓存
-      const newCache: {[key: string]: string} = {};
-      Object.keys(imageCacheRef.current).forEach(key => {
-        if (key.startsWith(currentCharacterID + '_')) {
+      const newCache: { [key: string]: string } = {};
+      Object.keys(imageCacheRef.current).forEach((key) => {
+        if (key.startsWith(currentCharacterID + "_")) {
           newCache[key] = imageCacheRef.current[key];
         }
       });
@@ -101,11 +110,13 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       // 从本地状态中移除立绘
       setEditingCharacter({
         ...editingCharacter,
-        portraits: editingCharacter.portraits.filter(p => p.portraitID !== portraitId)
+        portraits: editingCharacter.portraits.filter(
+          (p) => p.portraitID !== portraitId
+        ),
       });
     } catch (error) {
-      console.error('删除立绘失败:', error);
-      alert('删除立绘失败，请重试');
+      console.error("删除立绘失败:", error);
+      alert("删除立绘失败，请重试");
     }
   };
 
@@ -114,10 +125,15 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
     try {
       // 调用API设置默认立绘
-      await ApiService.setDefaultPortrait(editingCharacter.characterID, portraitId);
+      await ApiService.setDefaultPortrait(
+        editingCharacter.characterID,
+        portraitId
+      );
 
       // 更新本地状态，将选中的立绘移到第一位
-      const portraitIndex = editingCharacter.portraits.findIndex(p => p.portraitID === portraitId);
+      const portraitIndex = editingCharacter.portraits.findIndex(
+        (p) => p.portraitID === portraitId
+      );
       if (portraitIndex !== -1) {
         const newPortraits = [...editingCharacter.portraits];
         const defaultPortrait = newPortraits.splice(portraitIndex, 1)[0];
@@ -125,12 +141,12 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
         setEditingCharacter({
           ...editingCharacter,
-          portraits: newPortraits
+          portraits: newPortraits,
         });
       }
     } catch (error) {
-      console.error('设置默认立绘失败:', error);
-      alert('设置默认立绘失败，请重试');
+      console.error("设置默认立绘失败:", error);
+      alert("设置默认立绘失败，请重试");
     }
   };
 
@@ -138,7 +154,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (character) {
       setEditingCharacter({
         ...character,
-        portraits: character.portraits || portraits || []
+        portraits: character.portraits || portraits || [],
       });
     }
   }, [character, portraits]);
@@ -146,11 +162,11 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   const handleSave = async () => {
     if (!editingCharacter) return;
 
-    console.log('[CharacterDetailModal] 保存角色详情', {
+    console.log("[CharacterDetailModal] 保存角色详情", {
       characterName: editingCharacter.characterName,
       characterID: editingCharacter.characterID,
       hasCardImagePath: !!editingCharacter.characterCardImagePath,
-      cardImagePath: editingCharacter.characterCardImagePath
+      cardImagePath: editingCharacter.characterCardImagePath,
     });
 
     try {
@@ -160,15 +176,18 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         savedCharacter = await ApiService.addCharacter(editingCharacter);
       } else {
         // 如果是现有角色，更新角色信息
-        savedCharacter = await ApiService.updateCharacter(editingCharacter.characterID, editingCharacter);
+        savedCharacter = await ApiService.updateCharacter(
+          editingCharacter.characterID,
+          editingCharacter
+        );
       }
 
       // 确保调用onSave更新父组件状态
       onSave(savedCharacter);
       onClose();
     } catch (error) {
-      console.error('保存角色失败:', error);
-      alert('保存角色失败，请重试');
+      console.error("保存角色失败:", error);
+      alert("保存角色失败，请重试");
     }
   };
 
@@ -180,8 +199,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     onClose();
   };
 
-  const handleToggleColorPicker = (type: 'text' | 'bg') => {
-    setShowColorPicker(prev => ({ ...prev, [type]: !prev[type] }));
+  const handleToggleColorPicker = (type: "text" | "bg") => {
+    setShowColorPicker((prev) => ({ ...prev, [type]: !prev[type] }));
   };
 
   if (!editingCharacter) return null;
@@ -190,14 +209,29 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>{isNewCharacter ? '添加新角色' : `编辑角色: ${editingCharacter.characterName}`}</h2>
+          <h2>
+            {isNewCharacter
+              ? "添加新角色"
+              : `编辑角色: ${editingCharacter.characterName}`}
+          </h2>
           <div className="header-actions">
-            <button className="btn-primary" onClick={handleSave}>保存</button>
-            <button className="btn-secondary" onClick={onClose}>取消</button>
+            <button className="btn-primary" onClick={handleSave}>
+              保存
+            </button>
+            <button className="btn-secondary" onClick={onClose}>
+              取消
+            </button>
             {!isNewCharacter && (
-              <button className="btn-danger" onClick={() => setShowDeleteConfirm(true)}>删除角色</button>
+              <button
+                className="btn-danger"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                删除角色
+              </button>
             )}
-            <button className="close-button" onClick={onClose}>×</button>
+            <button className="close-button" onClick={onClose}>
+              ×
+            </button>
           </div>
         </div>
 
@@ -239,8 +273,15 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
               </label>
             </div>
             <div className="dialog-actions">
-              <button className="btn-danger" onClick={handleDeleteCharacter}>确认删除</button>
-              <button className="btn-secondary" onClick={() => setShowDeleteConfirm(false)}>取消</button>
+              <button className="btn-danger" onClick={handleDeleteCharacter}>
+                确认删除
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                取消
+              </button>
             </div>
           </div>
         </div>
@@ -258,26 +299,26 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           }}
           onSave={(portrait) => {
             if (editingPortrait) {
-                // 更新现有立绘
-                setEditingCharacter({
-                  ...editingCharacter,
-                  portraits: editingCharacter.portraits.map(p =>
-                    p.portraitID === portrait.portraitID ? portrait : p
-                  )
-                });
-              } else {
-                // 添加新立绘
-                setEditingCharacter({
-                  ...editingCharacter,
-                  portraits: [...editingCharacter.portraits, portrait]
-                });
-              }
-              setShowPortraitModal(false);
-              setEditingPortrait(null);
-            }}
-          />
-        )}
-      </div>
+              // 更新现有立绘
+              setEditingCharacter({
+                ...editingCharacter,
+                portraits: editingCharacter.portraits.map((p) =>
+                  p.portraitID === portrait.portraitID ? portrait : p
+                ),
+              });
+            } else {
+              // 添加新立绘
+              setEditingCharacter({
+                ...editingCharacter,
+                portraits: [...editingCharacter.portraits, portrait],
+              });
+            }
+            setShowPortraitModal(false);
+            setEditingPortrait(null);
+          }}
+        />
+      )}
+    </div>
   );
 };
 
