@@ -131,10 +131,13 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     };
     reader.readAsDataURL(file);
 
-    // 更新编辑中的背景路径
+    // 更新编辑中的背景路径和名称
     if (editingBackground) {
+      // 获取文件名（不带后缀）
+      const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
       setEditingBackground({
         ...editingBackground,
+        name: fileNameWithoutExt,
         path: file.path || ''
       });
     }
@@ -167,7 +170,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
           >
             <div className="background-preview">
               {background.path ? (
-                <img src={background.path} alt={background.name} />
+                <img src={background.path} alt={background.name} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} />
               ) : (
                 <div className="preview-placeholder">预览图</div>
               )}
@@ -175,7 +178,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
             <div className="background-info">
               <h3>{background.name}</h3>
               <p>路径: {background.path}</p>
-              <p>标签: {background.tags.join(", ")}</p>
+              <p>标签: {background.tags ? background.tags.join(", ") : "无标签"}</p>
             </div>
           </div>
         ))}
@@ -237,7 +240,7 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
                 <div className="form-group">
                   <label>预览</label>
                   <div className="image-preview">
-                    <img src={backgroundPreview} alt="预览" />
+                    <img src={backgroundPreview} alt="预览" style={{maxWidth: '100%', maxHeight: '300px', objectFit: 'contain'}} />
                   </div>
                 </div>
               )}
