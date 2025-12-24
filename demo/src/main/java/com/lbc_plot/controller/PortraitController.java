@@ -68,6 +68,7 @@ public class PortraitController {
             });
 
             logger.info("成功添加立绘: " + portrait.getPortName());
+
             return portrait;
         } catch (Exception e) {
             logger.severe("添加立绘失败: " + e.getMessage());
@@ -85,8 +86,8 @@ public class PortraitController {
             @PathVariable String portraitId,
             @RequestBody Portrait portrait) {
         try {
-            logger.info("更新立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId + 
-                ", 立绘名称: " + portrait.getPortName());
+            logger.info("更新立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId +
+                    ", 立绘名称: " + portrait.getPortName());
 
             // 确保ID一致
             portrait.setPortraitID(portraitId);
@@ -127,12 +128,11 @@ public class PortraitController {
             @PathVariable String portraitId,
             @RequestParam(required = false, defaultValue = "false") boolean deleteFiles) {
         try {
-            logger.info("删除立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId + 
-                ", 删除文件: " + deleteFiles);
+            logger.info("删除立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId +
+                    ", 删除文件: " + deleteFiles);
 
             // 获取立绘信息
-            Portrait portrait = jdbi.withExtension(PortraitDAO.class, dao -> 
-                dao.findById(portraitId).orElse(null));
+            Portrait portrait = jdbi.withExtension(PortraitDAO.class, dao -> dao.findById(portraitId).orElse(null));
 
             if (portrait == null) {
                 logger.warning("立绘不存在，ID: " + portraitId);

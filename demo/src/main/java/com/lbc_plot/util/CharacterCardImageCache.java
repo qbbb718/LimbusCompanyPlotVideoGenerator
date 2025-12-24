@@ -41,17 +41,20 @@ public class CharacterCardImageCache {
      */
     public static BufferedImage getCharacterCardImage(MyCharacter character) {
         if (character == null) {
+            logger.warning("角色对象为null，无法获取名片图片");
             return null;
         }
 
         String characterId = character.getCharacterID();
         if (characterId == null || characterId.isEmpty()) {
+            logger.warning("角色ID为空，无法获取名片图片");
             return null;
         }
 
         // 1. 先检查内存缓存
         BufferedImage cachedImage = imageCache.get(characterId);
         if (cachedImage != null) {
+            logger.info("从内存缓存中获取名片图片，角色ID: " + characterId);
             return cachedImage;
         }
 
@@ -59,24 +62,34 @@ public class CharacterCardImageCache {
         File cacheFile = getCacheFile(characterId);
         if (cacheFile.exists()) {
             try {
+                logger.info("从磁盘缓存中读取名片图片，角色ID: " + characterId + ", 文件路径: " + cacheFile.getAbsolutePath());
                 BufferedImage image = ImageIO.read(cacheFile);
                 if (image != null) {
                     // 加入内存缓存
                     imageCache.put(characterId, image);
+                    logger.info("成功从磁盘缓存加载名片图片并加入内存缓存，角色ID: " + characterId);
                     return image;
+                } else {
+                    logger.warning("从磁盘缓存读取的名片图片为null，角色ID: " + characterId);
                 }
             } catch (IOException e) {
                 logger.warning("读取名片缓存文件失败: " + e.getMessage());
             }
+        } else {
+            logger.info("名片缓存文件不存在，角色ID: " + characterId + ", 文件路径: " + cacheFile.getAbsolutePath());
         }
 
         // 3. 生成新的名片图片
+        logger.info("生成新的名片图片，角色ID: " + characterId);
         BufferedImage newImage = generateCharacterCardImage(character);
         if (newImage != null) {
             // 保存到磁盘
             saveToCache(characterId, newImage);
             // 加入内存缓存
             imageCache.put(characterId, newImage);
+            logger.info("成功生成并缓存名片图片，角色ID: " + characterId);
+        } else {
+            logger.warning("生成名片图片失败，角色ID: " + characterId);
         }
 
         return newImage;

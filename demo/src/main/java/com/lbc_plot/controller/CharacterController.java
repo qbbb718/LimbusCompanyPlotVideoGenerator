@@ -68,7 +68,7 @@ public class CharacterController {
             // 记录每个角色的名片图片路径
             for (MyCharacter character : characters) {
                 logger.info("角色 " + character.getCharacterName() + " (ID: " + character.getCharacterID() +
-                    ") 的名片图片路径: " + character.getCharacterCardImagePath());
+                        ") 的名片图片路径: " + character.getCharacterCardImagePath());
             }
 
             return characters;
@@ -133,7 +133,7 @@ public class CharacterController {
 
             // 生成名片图片
             logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() +
-                ", 角色名称: " + character.getCharacterName());
+                    ", 角色名称: " + character.getCharacterName());
             try {
                 BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
                 if (cardImage != null) {
@@ -143,7 +143,7 @@ public class CharacterController {
 
                     // 更新数据库中的名片图片路径
                     logger.info("更新名片图片路径到数据库，角色ID: " + character.getCharacterID() +
-                        ", 路径: " + cardImagePath);
+                            ", 路径: " + cardImagePath);
                     jdbi.useExtension(CharacterDAO.class, dao -> {
                         boolean updated = dao.updateCardImagePath(character.getCharacterID(), cardImagePath);
                         logger.info("名片图片路径已保存到数据库，更新结果: " + updated);
@@ -151,8 +151,8 @@ public class CharacterController {
                         // 验证更新是否成功
                         MyCharacter updatedCharacter = dao.findById(character.getCharacterID()).orElse(null);
                         if (updatedCharacter != null) {
-                            logger.info("验证更新结果 - 角色ID: " + updatedCharacter.getCharacterID() + 
-                                ", 名片路径: " + updatedCharacter.getCharacterCardImagePath());
+                            logger.info("验证更新结果 - 角色ID: " + updatedCharacter.getCharacterID() +
+                                    ", 名片路径: " + updatedCharacter.getCharacterCardImagePath());
                         } else {
                             logger.warning("无法找到更新后的角色信息");
                         }
@@ -186,6 +186,40 @@ public class CharacterController {
     public MyCharacter updateCharacter(@PathVariable String id, @RequestBody MyCharacter character) {
         try {
             logger.info("开始更新角色，ID: " + id);
+            
+            // 获取更新前的角色信息，用于比较
+            MyCharacter oldCharacter = jdbi.withHandle(handle -> {
+                CharacterDAO dao = handle.attach(CharacterDAO.class);
+                return dao.findById(id).orElse(null);
+            });
+            
+            // 检查是否需要清除名片缓存
+            boolean needClearCache = false;
+            if (oldCharacter != null) {
+                // 检查角色名称是否改变
+                if (!oldCharacter.getCharacterName().equals(character.getCharacterName())) {
+                    logger.info("角色名称已改变，需要清除名片缓存");
+                    needClearCache = true;
+                }
+                
+                // 检查阵营是否改变
+                if (!oldCharacter.getFaction().equals(character.getFaction())) {
+                    logger.info("阵营已改变，需要清除名片缓存");
+                    needClearCache = true;
+                }
+                
+                // 检查背景颜色是否改变
+                if (!oldCharacter.getColorBg().equals(character.getColorBg())) {
+                    logger.info("背景颜色已改变，需要清除名片缓存");
+                    needClearCache = true;
+                }
+                
+                // 检查文字颜色是否改变
+                if (!oldCharacter.getColorText().equals(character.getColorText())) {
+                    logger.info("文字颜色已改变，需要清除名片缓存");
+                    needClearCache = true;
+                }
+            }
             logger.info("角色名称: " + character.getCharacterName());
             logger.info("角色阵营: " + character.getFaction());
             logger.info("角色身高: " + character.getHeight());
@@ -247,7 +281,10 @@ public class CharacterController {
             character.setCharacterID(id);
 
             logger.info("准备执行数据库更新操作");
-
+            
+            // 将needClearCache声明为final，以便在lambda中使用
+            final boolean finalNeedClearCache = needClearCache;
+            
             // 使用事务更新角色和立绘
             jdbi.inTransaction(handle -> {
                 CharacterDAO characterDao = handle.attach(CharacterDAO.class);
@@ -259,6 +296,8 @@ public class CharacterController {
                     // 如果更新失败，可能是角色不存在，尝试添加
                     logger.warning("角色更新失败，可能是角色不存在，尝试添加新角色");
                     characterDao.addCharacter(character);
+                    // 新角色需要生成名片，在lambda外部设置标志
+                    // finalNeedClearCache已在事务外设置
                 }
 
                 // 更新立绘信息
@@ -283,6 +322,7 @@ public class CharacterController {
                         } else {
                             // 添加新立绘
                             portraitDao.save(portrait);
+                            // 添加立绘不需要清除名片缓存，只有修改名片相关属性时才需要
                         }
                     }
 
@@ -324,14 +364,16 @@ public class CharacterController {
 
                     logger.info("名片图片生成成功: " + cardImagePath);
 
-                    // 清除名片缓存，确保前端获取最新图片
-                    CharacterCardImageCache.clearCache(character.getCharacterID());
-                    logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
+                    // 只有在需要时才清除名片缓存
+                    if (finalNeedClearCache) {
+                        CharacterCardImageCache.clearCache(character.getCharacterID());
+                        logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
+                    }
                 } else {
                     logger.warning("名片图片生成失败");
                 }
             } catch (Exception e) {
-                logger.severe("生成名片图片时出错: " + e.getMessage());
+                logger.severe( "生成名片图片时出错: " + e.getMessage() );
             }
 
             logger.info("成功更新角色: " + character.getCharacterName());

@@ -97,7 +97,7 @@ export const usePortraitState = ({ characterId, portrait, isNewPortrait }: UsePo
   };
 
   // 创建新的立绘对象
-  const createNewPortrait = (imagePath: string, fileName: string): Portrait => {
+  const createNewPortrait = (imagePath: string, fileName: string, defaultCropState?: {faceX: number, faceY: number, length: number}): Portrait => {
     const portraitId = `portrait_${Date.now()}`;
 
     return {
@@ -106,9 +106,9 @@ export const usePortraitState = ({ characterId, portrait, isNewPortrait }: UsePo
       imagePath: imagePath,
       portName: fileName,
       emotion: Emotion.NORMAL,
-      faceX: 0,
-      faceY: 0,
-      length: 100,
+      faceX: defaultCropState?.faceX || 0,
+      faceY: defaultCropState?.faceY || 0,
+      length: defaultCropState?.length || 100,
       adjX: 0,
       adjY: 0,
       thumbnailPath: ''

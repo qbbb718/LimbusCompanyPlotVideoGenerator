@@ -21,6 +21,7 @@ interface PortraitModalProps {
   onClose: () => void;
   onSave: (portrait: Portrait) => void;
   isNewPortrait: boolean;
+  defaultPortrait?: Portrait | null; // 角色的默认立绘
 }
 
 const PortraitModal: React.FC<PortraitModalProps> = ({
@@ -29,6 +30,7 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   onClose,
   onSave,
   isNewPortrait,
+  defaultPortrait,
 }) => {
   // 使用自定义hooks管理状态
   const {
@@ -52,6 +54,34 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     resetCropParameters,
   } = useImageCropper(portrait);
 
+  // 获取角色的默认立绘裁剪状态
+  const getDefaultCropState = () => {
+    // 优先使用传入的默认立绘数据
+    if (defaultPortrait) {
+      return {
+        faceX: defaultPortrait.faceX || 0,
+        faceY: defaultPortrait.faceY || 0,
+        length: defaultPortrait.length || 100
+      };
+    }
+    
+    // 如果没有默认立绘数据，使用当前立绘的数据
+    if (portrait) {
+      return {
+        faceX: portrait.faceX || 0,
+        faceY: portrait.faceY || 0,
+        length: portrait.length || 100
+      };
+    }
+    
+    // 否则，使用默认值
+    return {
+      faceX: 0,
+      faceY: 0,
+      length: 100
+    };
+  };
+
   const {
     fileInputRef, // 文件输入框引用
     selectImageFile, // 选择图片文件
@@ -59,7 +89,9 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   } = useFileSelector({
     characterId,
     onFileSelected: (file: File, imagePath: string, baseName: string) => {
-      setEditingPortrait(createNewPortrait(imagePath, baseName));
+      // 获取角色的默认立绘裁剪状态
+      const defaultCropState = getDefaultCropState();
+      setEditingPortrait(createNewPortrait(imagePath, baseName, defaultCropState));
     },
     onPreviewSet: setPortraitPreview,
     onCropReset: resetCropParameters,
@@ -114,6 +146,7 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               currentPortrait={currentPortrait}
               onCropComplete={onCropComplete}
               handleImageLoad={handleImageLoad}
+              defaultCropState={getDefaultCropState()}
             />
           </div>
 

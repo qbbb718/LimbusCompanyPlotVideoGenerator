@@ -179,6 +179,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
         <PortraitModal
           characterId={selectedCharacter.characterID}
           portrait={editingPortrait}
+          defaultPortrait={selectedCharacter.portraits.length > 0 ? selectedCharacter.portraits[0] : null}
           onClose={() => setShowPortraitModal(false)}
           onSave={(portrait) => {
             // 如果是编辑现有立绘

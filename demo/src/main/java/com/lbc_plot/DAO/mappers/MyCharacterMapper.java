@@ -36,6 +36,9 @@ public class MyCharacterMapper implements RowMapper<MyCharacter> {
             character.setColorText(ColorUtils.stringToColor(colorTextStr));
         }
 
+        // 名片图片路径
+        character.setCharacterCardImagePath(rs.getString("character_card_image_path"));
+
         // 初始化空列表，避免空指针异常
         character.setPortraits(new ArrayList<>());
         character.setTags(new ArrayList<>());

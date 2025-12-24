@@ -62,8 +62,12 @@ public class CharacterCardController {
                 return ResponseEntity.notFound().build();
             }
 
+            long startTime = System.currentTimeMillis();
             BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
+            long endTime = System.currentTimeMillis();
+            
             if (cardImage == null) {
+                logger.warning("获取名片图片失败，返回404，角色ID: " + characterId);
                 return ResponseEntity.notFound().build();
             }
 
@@ -72,12 +76,15 @@ public class CharacterCardController {
             ImageIO.write(cardImage, "PNG", baos);
             byte[] imageBytes = baos.toByteArray();
 
-            logger.info("成功生成名片图片，大小: " + imageBytes.length + " 字节");
+            logger.info("成功返回名片图片，角色ID: " + characterId + 
+                ", 大小: " + imageBytes.length + " 字节" +
+                ", 处理时间: " + (endTime - startTime) + "ms");
             return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
                 .body(new ByteArrayResource(imageBytes));
         } catch (Exception e) {
             logger.severe("获取角色名片图片失败: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }

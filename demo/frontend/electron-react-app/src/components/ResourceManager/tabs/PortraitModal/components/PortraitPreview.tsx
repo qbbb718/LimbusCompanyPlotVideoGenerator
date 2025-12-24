@@ -15,6 +15,7 @@ interface PortraitPreviewProps {
   currentPortrait: Portrait;
   onCropComplete: (croppedArea: Area, croppedAreaPixels: Area) => void;
   handleImageLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
+  defaultCropState?: {faceX: number, faceY: number, length: number};
 }
 
 const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
@@ -25,10 +26,38 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
     currentPortrait,
     onCropComplete,
     handleImageLoad,
+    defaultCropState,
   }) => {
     const [localCrop, setLocalCrop] = useState(crop);
     const [localZoom, setLocalZoom] = useState(zoom);
     const cropperRef = useRef<CropperRef>(null);
+
+    // 应用默认裁剪状态
+    const applyDefaultCropState = useCallback(() => {
+      if (!cropperRef.current || !defaultCropState) return;
+      
+      log("应用默认裁剪状态", defaultCropState);
+      
+      // 直接设置裁剪区域的位置和尺寸
+      cropperRef.current.setCoordinates({
+        left: defaultCropState.faceX,
+        top: defaultCropState.faceY,
+        width: defaultCropState.length,
+        height: defaultCropState.length,
+      });
+      
+      // 触发裁剪完成事件
+      const area: Area = {
+        x: defaultCropState.faceX,
+        y: defaultCropState.faceY,
+        width: defaultCropState.length,
+        height: defaultCropState.length
+      };
+      
+      if (onCropComplete) {
+        onCropComplete(area, area);
+      }
+    }, [defaultCropState, onCropComplete]);
 
     // 当裁剪完成时更新状态
     const onCropChange = useCallback((cropper: any) => {
@@ -85,6 +114,30 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
               onLoad={handleImageLoad}
               alt="预加载图片"
             />
+            <div className="cropper-controls" style={{
+              marginBottom: "10px",
+              display: "flex",
+              justifyContent: "flex-end"
+            }}>
+              {defaultCropState && (
+                <button 
+                  className="btn-secondary" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    applyDefaultCropState();
+                  }}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    marginLeft: "10px"
+                  }}
+                >
+                  裁剪与默认立绘一致
+                </button>
+              )}
+            </div>
             <div className="cropper-container" style={{
               position: "relative",
               width: "100%",

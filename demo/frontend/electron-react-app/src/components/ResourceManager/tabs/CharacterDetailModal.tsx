@@ -46,6 +46,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   const [showPortraitModal, setShowPortraitModal] = useState(false);
   // 当前正在编辑的立绘数据
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
+  // 是否正在添加新立绘
+  const [isAddingNewPortrait, setIsAddingNewPortrait] = useState(false);
   // 文件输入引用，用于触发文件选择
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,13 +93,48 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
   const handleAddPortrait = () => {
     if (!editingCharacter) return;
-    setEditingPortrait(null);
+    
+    // 获取角色的默认立绘裁剪状态
+    const defaultCropState = editingCharacter.portraits.length > 0 ? {
+      faceX: editingCharacter.portraits[0].faceX || 0,
+      faceY: editingCharacter.portraits[0].faceY || 0,
+      length: editingCharacter.portraits[0].length || 100
+    } : {
+      faceX: 0,
+      faceY: 0,
+      length: 100
+    };
+    
+    // 创建一个带有默认裁剪状态的空立绘对象
+    const defaultPortrait: Portrait = {
+      portraitID: `portrait_${Date.now()}`,
+      characterID: editingCharacter.characterID,
+      imagePath: '',
+      portName: '',
+      emotion: 'NORMAL' as any,
+      faceX: defaultCropState.faceX,
+      faceY: defaultCropState.faceY,
+      length: defaultCropState.length,
+      adjX: 0,
+      adjY: 0,
+      thumbnailPath: ''
+    };
+    
+    setEditingPortrait(defaultPortrait);
+    setIsAddingNewPortrait(true);
     setShowPortraitModal(true);
+    console.log("[CharacterDetailModal] 开始添加新立绘", {
+      portraitId: defaultPortrait.portraitID,
+    });
   };
 
   const handleEditPortrait = (portrait: Portrait) => {
     setEditingPortrait(portrait);
+    setIsAddingNewPortrait(false);
     setShowPortraitModal(true);
+    console.log("[CharacterDetailModal] 开始编辑立绘", {
+      portraitId: portrait.portraitID,
+    });
   };
 
   const handleDeletePortrait = async (portraitId: string) => {
@@ -167,6 +204,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       characterID: editingCharacter.characterID,
       hasCardImagePath: !!editingCharacter.characterCardImagePath,
       cardImagePath: editingCharacter.characterCardImagePath,
+      portraitsCount: editingCharacter.portraits?.length || 0,
+      portraitIds: editingCharacter.portraits?.map(p => p.portraitID) || [],
     });
 
     try {
@@ -292,29 +331,46 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         <PortraitModal
           characterId={editingCharacter.characterID}
           portrait={editingPortrait}
+          defaultPortrait={editingCharacter.portraits.length > 0 ? editingCharacter.portraits[0] : null}
           isNewPortrait={!editingPortrait}
           onClose={() => {
             setShowPortraitModal(false);
             setEditingPortrait(null);
+            setIsAddingNewPortrait(false);
           }}
           onSave={(portrait) => {
-            if (editingPortrait) {
+            // 使用isAddingNewPortrait标志来判断是添加还是更新
+            if (!isAddingNewPortrait) {
               // 更新现有立绘
-              setEditingCharacter({
-                ...editingCharacter,
-                portraits: editingCharacter.portraits.map((p) =>
-                  p.portraitID === portrait.portraitID ? portrait : p
-                ),
+              setEditingCharacter(prev => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  portraits: prev.portraits?.map((p) =>
+                    p.portraitID === portrait.portraitID ? portrait : p
+                  ) || [],
+                };
+              });
+              console.log("[CharacterDetailModal] 更新立绘", {
+                portraitId: portrait.portraitID,
               });
             } else {
               // 添加新立绘
-              setEditingCharacter({
-                ...editingCharacter,
-                portraits: [...editingCharacter.portraits, portrait],
+              setEditingCharacter(prev => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  portraits: [...(prev.portraits || []), portrait],
+                };
+              });
+              console.log("[CharacterDetailModal] 添加新立绘", {
+                portraitId: portrait.portraitID,
+                totalPortraits: (editingCharacter?.portraits?.length || 0) + 1,
               });
             }
             setShowPortraitModal(false);
             setEditingPortrait(null);
+            setIsAddingNewPortrait(false);
           }}
         />
       )}
