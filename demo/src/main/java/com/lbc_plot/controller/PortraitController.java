@@ -61,8 +61,8 @@ public class PortraitController {
                 PortraitDAO dao = handle.attach(PortraitDAO.class);
                 dao.save(portrait);
 
-                // 保存角色与立绘的关联关系
-                dao.saveCharacterPortrait(characterId, portrait.getPortraitID(), true, 0);
+                // 保存角色与立绘的关联关系，不设为默认立绘
+                dao.saveCharacterPortrait(characterId, portrait.getPortraitID(), false, 0);
 
                 return null;
             });
