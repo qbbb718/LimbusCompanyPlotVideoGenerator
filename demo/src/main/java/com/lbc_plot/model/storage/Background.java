@@ -13,6 +13,7 @@ public class Background {
     private String uuid; // 唯一id（保证换源后能直接替换
     private String path; // 文件存储路径
     private String name; // 背景显示名（用于场景地点显示）
+    private String thumbnailPath; // 缩略图路径
     @JsonIgnore
     private BufferedImage image; // 读入的图像，初始为null
     
@@ -21,17 +22,22 @@ public class Background {
      * 路径从bg开始
      */
     public Background(String path) {
-        this(UUID.randomUUID().toString(), path, null);
+        this(UUID.randomUUID().toString(), path, null, null);
     }
 
     public Background(String path, String name) {
-        this(UUID.randomUUID().toString(), path, name);
+        this(UUID.randomUUID().toString(), path, name, null);
     }
 
     public Background(String uuid, String path, String name) {
+        this(uuid, path, name, null);
+    }
+    
+    public Background(String uuid, String path, String name, String thumbnailPath) {
         this.uuid = uuid;
         this.path = path;
         this.name = name;
+        this.thumbnailPath = thumbnailPath;
         this.image = null; // 初始时image为null，实现懒加载
     }
 
@@ -39,6 +45,7 @@ public class Background {
         this.uuid = null;
         this.path = null;
         this.name = null;
+        this.thumbnailPath = null;
         this.image = null; // 初始时image为null，实现懒加载
     }
     
@@ -150,6 +157,14 @@ public class Background {
         this.name = name;
     }
     
+    public String getThumbnailPath() {
+        return thumbnailPath;
+    }
+    
+    public void setThumbnailPath(String thumbnailPath) {
+        this.thumbnailPath = thumbnailPath;
+    }
+    
     /**
      * 获取图像宽度（懒加载版本）
      */
@@ -174,6 +189,7 @@ public class Background {
                 "uuid='" + uuid + '\'' +
                 ", path='" + path + '\'' +
                 ", name='" + name + '\'' +
+                ", thumbnailPath='" + thumbnailPath + '\'' +
                 ", loaded=" + isImageLoaded() +
                 '}';
     }

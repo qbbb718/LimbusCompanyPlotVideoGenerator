@@ -12,7 +12,13 @@ public class BackgroundMapper implements RowMapper<Background> {
         String id = rs.getString("background_id");
         String path = rs.getString("image_path");
         String name = rs.getString("display_name");
-        Background bg = new Background(id, path, name);
+        String thumbnailPath = null;
+        try {
+            thumbnailPath = rs.getString("thumbnail_path");
+        } catch (SQLException e) {
+            // 如果字段不存在，使用null值
+        }
+        Background bg = new Background(id, path, name, thumbnailPath);
         return bg;
     }
 }

@@ -4,7 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.springframework.context.annotation.Configuration;
+
+
+
+@Configuration
 public class DatabaseConfig {
+    // 不再继承AbstractJdbcConfiguration，避免自动方言检测
     private static final Properties props = new Properties();
     
     static {

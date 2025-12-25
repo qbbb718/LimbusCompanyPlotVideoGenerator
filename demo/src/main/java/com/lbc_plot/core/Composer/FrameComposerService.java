@@ -16,8 +16,8 @@ import com.lbc_plot.util.RenderQualityUtils;
  * 帧合成器服务 - 主协调类
  */
 public class FrameComposerService extends BaseLayerManager
-    implements ImageLayerInterface, TextLayerOperations, CompositionInterface {
-    
+        implements ImageLayerInterface, TextLayerOperations, CompositionInterface {
+
     private final ImageLayerManager imageManager;
     private final TextLayerManager textManager;
 
@@ -28,7 +28,7 @@ public class FrameComposerService extends BaseLayerManager
         this.imageManager.setOutputSize(width, height);
         this.textManager.setOutputSize(width, height);
     }
-    
+
     // 重写尺寸设置以确保同步
     @Override
     public void setOutputSize(int width, int height) {
@@ -36,20 +36,20 @@ public class FrameComposerService extends BaseLayerManager
         imageManager.setOutputSize(width, height);
         textManager.setOutputSize(width, height);
     }
-    
+
     @Override
     public void resetToDefaultSize() {
         super.resetToDefaultSize();
         imageManager.resetToDefaultSize();
         textManager.resetToDefaultSize();
     }
-    
+
     // 委托图像操作方法
     @Override
     public void addLayer(String resourcePath, int x, int y) throws IOException {
         imageManager.addLayer(resourcePath, x, y);
     }
-    
+
     @Override
     public void addLayerScaled(String resourcePath, int x, int y, float scale) throws IOException {
         imageManager.addLayerScaled(resourcePath, x, y, scale);
@@ -59,50 +59,50 @@ public class FrameComposerService extends BaseLayerManager
     public void addLayerScaled(String resourcePath, int x, int y, float scaleX, float scaleY) throws IOException {
         imageManager.addLayerScaled(resourcePath, x, y, scaleX, scaleY);
     }
-    
+
     // 委托文字操作方法
     @Override
     public void addLocationText(String text) {
         textManager.addLocationText(text);
     }
-    
-    @Override
-    public void addCharacterNameText(String text, Color color) {
-        textManager.addCharacterNameText(text, color);
-    }
-    
+
     // 合成方法
     @Override
     public BufferedImage compose() {
         BufferedImage result = createTransparentImage();
         Graphics2D g2d = result.createGraphics();
-        
+
         RenderQualityUtils.setupHighQualityRendering(g2d);
         g2d.setClip(0, 0, width, height);
-        
+
         imageManager.drawLayers(g2d);
         textManager.drawTextLayers(g2d);
-        
+
         g2d.dispose();
         logCompositionStats();
         return result;
     }
-    
+
     @Override
     public void clearLayers() {
         imageManager.clear();
         textManager.clear();
         logger.debug("已清空所有图层和文字");
     }
-    
+
     @Override
     public int getLayerCount() {
         return imageManager.getLayerCount() + textManager.getTextLayerCount();
     }
-    
+
     private void logCompositionStats() {
-        logger.info("合成完成: {}x{}, 图片图层{}, 文字图层{}", 
-            width, height, imageManager.getLayerCount(), textManager.getTextLayerCount());
+        logger.info("合成完成: {}x{}, 图片图层{}, 文字图层{}",
+                width, height, imageManager.getLayerCount(), textManager.getTextLayerCount());
+    }
+
+    @Override
+    public void addCharacterNameText(String text, Color color) {
+        textManager.addCharacterNameText(text, color);
     }
 
     @Override
@@ -137,7 +137,8 @@ public class FrameComposerService extends BaseLayerManager
     }
 
     @Override
-    public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight, boolean keepAspectRatio) {
+    public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight,
+            boolean keepAspectRatio) {
         imageManager.addImageLayerResized(image, x, y, targetWidth, targetHeight, keepAspectRatio);
     }
 
@@ -148,7 +149,7 @@ public class FrameComposerService extends BaseLayerManager
 
     @Override
     public void addSolidColorLayer(int rgb, int alpha, int x, int y, int width, int height) {
-         imageManager.addSolidColorLayer(rgb, alpha, x, y, width, height);
+        imageManager.addSolidColorLayer(rgb, alpha, x, y, width, height);
     }
 
     @Override
@@ -160,7 +161,5 @@ public class FrameComposerService extends BaseLayerManager
     public void addFullScreenMask(int rgb, int alpha) {
         imageManager.addFullScreenMask(rgb, alpha);
     }
-
-    
 
 }

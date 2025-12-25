@@ -49,6 +49,25 @@ public class PlainTextRecordsParser {
     public static List<Record> parse(Path file) throws IOException {
         return parse(file, null, null);
     }
+    
+    /**
+     * 解析文本字符串为 Record 列表
+     */
+    public static List<Record> parseText(String text) throws IOException {
+        // 将文本字符串转换为临时文件，然后使用现有的parse方法
+        Path tempFile = Files.createTempFile("records", ".txt");
+        try {
+            Files.writeString(tempFile, text);
+            return parse(tempFile, null, null);
+        } finally {
+            // 确保临时文件被删除
+            try {
+                Files.deleteIfExists(tempFile);
+            } catch (IOException e) {
+                // 忽略删除失败
+            }
+        }
+    }
 
     /**
      * Parse with optional CharacterService to map speaker names to MyCharacter/Portrait.

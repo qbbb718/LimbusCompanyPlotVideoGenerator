@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.core.Composer.RenderOfVideo;
 import com.lbc_plot.util.RenderQualityUtils;
+import com.lbc_plot.util.VideoQualityConfig;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -35,13 +36,20 @@ public class VideoExporter implements AutoCloseable {
     private FFmpegFrameRecorder recorder;
     
     public VideoExporter(String outputPath, int width, int height, int frameRate) {
+        this(outputPath, width, height, frameRate, VideoQualityConfig.HIGH_QUALITY);
+    }
+
+    public VideoExporter(String outputPath, int width, int height, int frameRate, VideoQualityConfig.VideoPreset preset) {
         this.outputPath = outputPath;
         this.width = width;
         this.height = height;
         this.frameRate = frameRate;
         this.converter = new Java2DFrameConverter();
+        this.preset = preset;
         initialize();
     }
+
+    private VideoQualityConfig.VideoPreset preset;
     
     /**
      * 初始化高质量FFmpeg录制器
@@ -74,10 +82,10 @@ public class VideoExporter implements AutoCloseable {
             recorder.setFormat("mp4");
             recorder.setFrameRate(frameRate);
             
-            // 高质量参数（与 exportFramesHighQuality 一致）
-            recorder.setVideoQuality(10);
-            recorder.setVideoBitrate(12000000);
-            recorder.setVideoOption("preset", "medium");
+            // 使用预设参数
+            recorder.setVideoQuality(preset.quality);
+            recorder.setVideoBitrate(preset.bitrate);
+            recorder.setVideoOption("preset", preset.preset);
             
             // 关键：设置像素格式为YUV420P（广泛兼容）
             recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -30,6 +31,7 @@ public class MyCharacter {
     private int height;
     private String faction; //阵营
     private List<Portrait> portraits; //可能没有立绘（旁白）
+    private List<String> tags; //角色标签
     @JsonSerialize(using = ColorSerializer.class)
     @JsonDeserialize(using = ColorDeserializer.class)
     private Color colorBg;
@@ -38,6 +40,7 @@ public class MyCharacter {
     private Color colorText;
     @JsonIgnore
     private BufferedImage colorNameImage; //人设界面预览用，然后可以直接用到剧情渲染里
+    private String characterCardImagePath; //名片图片路径
 
 
     // 默认值
@@ -129,6 +132,14 @@ public class MyCharacter {
         this.portraits = portraits;
     }
 
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
+
 
 
     public BufferedImage getColorNameImage() throws IOException  {
@@ -141,6 +152,14 @@ public class MyCharacter {
     public void updateColorNameImage() throws IOException { // 生成名字+阵营完整UI
         CharacterRef ref = CharacterRef.from(this);
         colorNameImage = RenderOfImage.renderCharaNameUI(ref);
+    }
+    
+    public String getCharacterCardImagePath() {
+        return characterCardImagePath;
+    }
+    
+    public void setCharacterCardImagePath(String characterCardImagePath) {
+        this.characterCardImagePath = characterCardImagePath;
     }
 
 
@@ -179,6 +198,15 @@ public class MyCharacter {
 
 
     /**
+     * 默认构造函数 - 用于JSON反序列化
+     */
+    @JsonCreator
+    public MyCharacter() {
+        // 应用智能默认值
+        applySmartDefaults();
+    }
+    
+    /**
      * 私有构造函数 - 只能通过Builder创建
      */
     private MyCharacter(Builder builder) {
@@ -190,6 +218,7 @@ public class MyCharacter {
         this.colorText = builder.colorText;
         this.colorNameImage = builder.colorNameImage;
         this.faction = builder.faction;
+        this.characterCardImagePath = builder.characterCardImagePath;
         
         // 应用智能默认值
         applySmartDefaults();
@@ -224,6 +253,11 @@ public class MyCharacter {
             this.portraits = new ArrayList<>();
         }
 
+        // tags列表确保不为null
+        if (this.tags == null) {
+            this.tags = new ArrayList<>();
+        }
+
         
     }
 
@@ -237,11 +271,13 @@ public class MyCharacter {
         private String characterName = DEFAULT_NAME;
         private int height = DEFAULT_HEIGHT;
         private List<Portrait> portraits = new ArrayList<>();
+        private List<String> tags = new ArrayList<>();
         private Color colorBg = DEFAULT_BG_COLOR;
         private Color colorText = DEFAULT_TEXT_COLOR;
         @JsonIgnore
         private BufferedImage colorNameImage;
         private String faction = DEFAULT_FACTION;
+        private String characterCardImagePath;
 
         /**
          * 必需参数构造函数
@@ -283,6 +319,19 @@ public class MyCharacter {
             this.portraits.add(portrait);
             return this;
         }
+
+        public Builder tags(List<String> tags) {
+            this.tags = tags;
+            return this;
+        }
+
+        public Builder addTag(String tag) {
+            if (this.tags == null) {
+                this.tags = new ArrayList<>();
+            }
+            this.tags.add(tag);
+            return this;
+        }
         
         public Builder colorBg(Color colorBg) {
             this.colorBg = colorBg;
@@ -301,6 +350,11 @@ public class MyCharacter {
         
         public Builder faction(String faction) {
             this.faction = faction;
+            return this;
+        }
+
+        public Builder characterCardImagePath(String characterCardImagePath) {
+            this.characterCardImagePath = characterCardImagePath;
             return this;
         }
         

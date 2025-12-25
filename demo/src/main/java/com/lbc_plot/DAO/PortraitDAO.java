@@ -21,6 +21,10 @@ public interface PortraitDAO {
     @SqlQuery("SELECT * FROM portraits WHERE portrait_id = :id")
     @UseRowMapper(PortraitMapper.class)
     Optional<Portrait> findById(@Bind("id") String portraitId);
+    
+    @SqlQuery("SELECT * FROM portraits WHERE portrait_id = :id")
+    @UseRowMapper(PortraitMapper.class)
+    Portrait getById(@Bind("id") String portraitId);
 
     @SqlQuery("SELECT * FROM portraits ORDER BY port_name")
     @UseRowMapper(PortraitMapper.class)
@@ -55,6 +59,28 @@ public interface PortraitDAO {
 
     @SqlUpdate("DELETE FROM portraits WHERE portrait_id = :id")
     boolean delete(@Bind("id") String portraitId);
+    
+    // ========== API控制器所需的方法 ==========
+    /**
+     * 添加立绘（API控制器使用）
+     */
+    default void addPortrait(Portrait portrait) {
+        save(portrait);
+    }
+    
+    /**
+     * 更新立绘（API控制器使用）
+     */
+    default void updatePortrait(Portrait portrait) {
+        update(portrait);
+    }
+    
+    /**
+     * 删除立绘（API控制器使用）
+     */
+    default void deletePortrait(String portraitId) {
+        delete(portraitId);
+    }
     
     // ========== 查询操作 ==========
     @SqlQuery("SELECT * FROM portraits WHERE character_id = :characterId ORDER BY port_name")
@@ -164,4 +190,22 @@ public interface PortraitDAO {
             );
         }
     }
+
+    /**
+     * 删除角色的所有立绘关联关系
+     * @param characterId 角色ID
+     */
+    @SqlUpdate("DELETE FROM character_portraits WHERE character_id = :characterId")
+    void deleteCharacterPortraits(@Bind("characterId") String characterId);
+
+    /**
+     * 设置默认立绘
+     * @param characterId 角色ID
+     * @param portraitId 立绘ID
+     */
+    @SqlUpdate("UPDATE character_portraits SET is_default = 1 WHERE character_id = :characterId AND portrait_id = :portraitId")
+    void setDefaultPortrait(
+        @Bind("characterId") String characterId,
+        @Bind("portraitId") String portraitId
+    );
 }

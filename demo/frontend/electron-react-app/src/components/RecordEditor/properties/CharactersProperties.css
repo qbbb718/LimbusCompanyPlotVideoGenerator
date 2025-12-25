@@ -1,0 +1,149 @@
+
+/* 角色和立绘选择垂直排列 */
+.form-group-row {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group-row .form-group {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+/* 整体布局优化 */
+.characters-properties {
+  padding: 0 15px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-start; /* 垂直方向向上顶格 */
+}
+
+.character-details {
+  padding: 10px 0;
+  justify-content: space-evenly;
+}
+
+/* 压暗选项对齐修复 */
+.form-section:last-child .form-group {
+  display: flex;
+  align-items: center;
+}
+
+.form-section:last-child .form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* 表单分组样式 */
+.form-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed #eee;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #1890ff;
+  font-size: 14px;
+}
+
+/* 角色控制按钮样式 */
+.character-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* X偏移滑块样式 */
+.adjX-slider {
+  width: calc(100% - 40px); /* 减去一个按钮的宽度以对齐 */
+  margin: 10px 0;
+}
+
+/* 7等分快速定位按钮模块 */
+.adjX-quick-positions {
+  display: flex;
+  justify-content: space-between; /* 水平均匀分布 */
+  margin-top: 5px;
+  width: 100%; /* 与滑块宽度一致 */
+}
+
+.adjX-quick-btn {
+  padding: 8px 12px; /* 增大按钮尺寸 */
+  font-size: 14px; /* 增大字体 */
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px; /* 稍微增大圆角 */
+  cursor: pointer;
+  flex: none; /* 取消flex-grow，让按钮保持固定大小 */
+  min-width: 40px; /* 设置最小宽度 */
+  min-height: 30px; /* 设置最小高度 */
+  text-align: center; /* 文字居中 */
+}
+
+.adjX-quick-btn:hover {
+  background-color: #e0e0e0;
+}
+
+/* Y偏移输入框容器 */
+.adjY-input-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.adjY-input {
+  flex: 1;
+}
+
+.adjY-reset-btn {
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.adjY-reset-btn:hover {
+  background-color: #e0e0e0;
+}
+
+/* 添加表单样式 */
+.add-form {
+  border: 1px dashed #ddd;
+  background-color: #f9f9f9;
+}
+
+.add-character-confirm-btn {
+  padding: 8px 15px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  height: auto; /* 保持默认高度 */
+  align-self: flex-start; /* 向上对齐 */
+}
+
+.add-character-confirm-btn:hover {
+  background-color: #40a9ff;
+}
+
+.add-character-confirm-btn:disabled {
+  background-color: #d9d9d9;
+  cursor: not-allowed;
+}

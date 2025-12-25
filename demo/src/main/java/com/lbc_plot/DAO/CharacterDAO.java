@@ -7,6 +7,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.jdbi.v3.core.mapper.RowMappers;
 
 import com.lbc_plot.model.storage.MyCharacter;
 import com.lbc_plot.model.storage.Portrait;
@@ -90,6 +91,68 @@ public interface CharacterDAO {
     // 删除角色
     @SqlUpdate("DELETE FROM characters WHERE character_id = :id")
     boolean delete(@Bind("id") String characterId);
+    
+    // 更新角色名片图片路径
+    @SqlUpdate("UPDATE characters SET character_card_image_path = :cardImagePath WHERE character_id = :characterId")
+    boolean updateCardImagePath(@Bind("characterId") String characterId, @Bind("cardImagePath") String cardImagePath);
+    
+    // ========== API控制器所需的方法 ==========
+    /**
+     * 获取所有角色（API控制器使用）
+     */
+    default List<MyCharacter> getAllCharacters() {
+        return findAll();
+    }
+    
+    /**
+     * 添加角色（API控制器使用）
+     */
+    default void addCharacter(MyCharacter character) {
+        save(character);
+    }
+    
+    /**
+     * 更新角色（API控制器使用）
+     */
+    default void updateCharacter(MyCharacter character) {
+        update(character);
+    }
+    
+    /**
+     * 删除角色（API控制器使用）
+     */
+    default void deleteCharacter(String id, boolean deleteFiles) {
+        delete(id);
+        // 如果deleteFiles为true，删除相关文件
+        if (deleteFiles) {
+            // 删除角色目录
+            java.io.File characterDir = new java.io.File("resources/characters/" + id);
+            if (characterDir.exists()) {
+                deleteDirectory(characterDir);
+            }
+        }
+    }
+
+    /**
+     * 递归删除目录及其内容
+     */
+    default void deleteDirectory(java.io.File directory) {
+        if (!directory.exists()) {
+            return;
+        }
+
+        java.io.File[] files = directory.listFiles();
+        if (files != null) {
+            for (java.io.File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        directory.delete();
+    }
 
 
 

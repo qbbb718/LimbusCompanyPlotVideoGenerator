@@ -126,9 +126,18 @@ public class RecordsCreater {
         // 获取DAO实例
         logger.debug("初始化数据库连接...");
         dbManager = new SQLiteTestDatabaseManager();
+
+        // 先创建Jdbi实例，不注册CharacterMapper
         Jdbi jdbi = Jdbi.create(dbManager.getConnection())
-            .installPlugin(new SqlObjectPlugin())
-            .registerRowMapper(new CharacterMapper());
+            .installPlugin(new SqlObjectPlugin());
+
+        // 确保jdbi已初始化后再注册CharacterMapper
+        try {
+            jdbi.registerRowMapper(CharacterMapper.class, new CharacterMapper(jdbi));
+        } catch (Exception e) {
+            logger.error("注册CharacterMapper失败: " + e.getMessage());
+            // 继续执行，即使CharacterMapper注册失败
+        }
         
         characterDao = jdbi.onDemand(CharacterDAO.class);
         

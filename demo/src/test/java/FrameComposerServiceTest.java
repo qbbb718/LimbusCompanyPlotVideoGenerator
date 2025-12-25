@@ -304,8 +304,10 @@ class FrameComposerServiceTest {
     seedCharactersToTestDb(dbManager);
 
     Jdbi jdbi = Jdbi.create(dbManager.getConnection())
-        .installPlugin(new SqlObjectPlugin())
-        .registerRowMapper(new CharacterMapper());
+        .installPlugin(new SqlObjectPlugin());
+
+    // 注册CharacterMapper，需要jdbi实例
+    jdbi.registerRowMapper(CharacterMapper.class, new CharacterMapper(jdbi));
     CharacterDAO characterDao = jdbi.onDemand(CharacterDAO.class);
     PortraitDAO portraitDao = jdbi.onDemand(PortraitDAO.class);
 

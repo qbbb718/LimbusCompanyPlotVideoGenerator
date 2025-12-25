@@ -1,0 +1,368 @@
+.record-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.editor-top {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.editor-bottom {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.record-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.record-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.record-list-header h3 {
+  margin: 0;
+}
+
+.record-list-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.import-button {
+  padding: 6px 12px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.import-button:hover {
+  background-color: #40a9ff;
+}
+
+.record-list {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #ddd;
+  height: 100%;
+}
+
+.record-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.record-list th, .record-list td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.record-list th {
+  background-color: #f5f5f5;
+  position: sticky;
+  top: 0;
+}
+
+.record-list tr.selected {
+  background-color: #e6f7ff;
+}
+
+.record-list tr:hover {
+  background-color: #f5f5f5;
+}
+
+.record-list button {
+  margin-right: 5px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.preview-container {
+  height: 100%;
+  width: 100%;
+  border: 1px solid #ddd;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.preview-header {
+  margin-bottom: 10px;
+}
+
+.preview-header h3 {
+  margin: 0;
+}
+
+.preview-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f9f9f9;
+  margin-bottom: 10px;
+  min-height: 200px;
+}
+
+.preview-placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+.preview-timeline {
+  height: 40px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.timeline-placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+.properties-container {
+  height: 100%;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.property-tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+}
+
+.property-tabs button {
+  padding: 10px 15px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.property-tabs button.active {
+  border-bottom-color: #1890ff;
+  color: #1890ff;
+}
+
+.property-content {
+  flex: 1;
+  padding: 15px;
+  overflow: auto;
+  height: 0;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input:not([type="range"]),
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.characters-list,
+.backgrounds-list,
+.effects-list,
+.audio-list {
+  margin-top: 10px;
+}
+
+.character-item,
+.background-item,
+.effect-item,
+.audio-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.character-item button,
+.background-item button,
+.effect-item button,
+.audio-item button {
+  margin-left: 10px;
+}
+
+.add-button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-button:hover {
+  background-color: #40a9ff;
+}
+
+.global-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 18px;
+}
+
+.character-header,
+.background-header,
+.audio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.character-details,
+.background-details,
+.audio-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.character-details .form-group,
+.background-details .form-group,
+.audio-details .form-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+.character-item,
+.background-item,
+.audio-item {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.add-character-btn,
+.add-background-btn,
+.add-audio-btn {
+  margin-top: 10px;
+  padding: 8px 15px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-character-btn:hover,
+.add-background-btn:hover,
+.add-audio-btn:hover {
+  background-color: #40a9ff;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  color: #999;
+  font-style: italic;
+}
+
+/* ResizablePanel 特定样式 */
+.preview-panel {
+  min-width: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.properties-panel {
+  min-width: 300px;
+  flex: 1;
+}
+
+.record-list-panel {
+  width: 100%;
+  min-height: 150px;
+}
+
+/* 新的面板样式 */
+.editor-top-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.editor-bottom-panel {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+}
+
+.properties-panel {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Checkbox 样式修复 */
+.form-group label input[type="checkbox"] {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.form-group label {
+  display: inline-flex;
+  align-items: center;
+  font-weight: normal;
+  flex-direction: row;
+}
