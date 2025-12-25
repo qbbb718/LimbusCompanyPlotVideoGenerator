@@ -179,6 +179,7 @@ export interface Background {
   uuid: string;
   name: string;
   path: string;
+  thumbnailPath?: string;
   tags: string[];
 }
 

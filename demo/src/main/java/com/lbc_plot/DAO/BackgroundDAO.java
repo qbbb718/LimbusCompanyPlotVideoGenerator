@@ -28,11 +28,23 @@ public interface BackgroundDAO {
     @UseRowMapper(BackgroundMapper.class)
     Optional<Background> findByPath(@Bind("path") String imagePath);
 
-    @SqlUpdate("INSERT INTO backgrounds (background_id, image_path, display_name, source) VALUES (:backgroundID, :imagePath, :displayName, :source)")
+    @SqlUpdate("INSERT INTO backgrounds (background_id, image_path, display_name, source, thumbnail_path) VALUES (:backgroundID, :imagePath, :displayName, :source, :thumbnailPath)")
     void save(@BindBean Background bg);
 
-    @SqlUpdate("UPDATE backgrounds SET image_path = :imagePath, display_name = :displayName, source = :source WHERE background_id = :backgroundID")
+    @SqlUpdate("UPDATE backgrounds SET image_path = :imagePath, display_name = :displayName, source = :source, thumbnail_path = :thumbnailPath WHERE background_id = :backgroundID")
     boolean update(@BindBean Background bg);
+
+    // 使用显式绑定的更新方法，作为备用方案
+    @SqlUpdate("UPDATE backgrounds SET image_path = :path, display_name = :name, source = :source, thumbnail_path = :thumbnailPath WHERE background_id = :uuid")
+    boolean updateWithExplicitBinding(@Bind("uuid") String uuid, 
+                                     @Bind("path") String path, 
+                                     @Bind("name") String name, 
+                                     @Bind("source") String source, 
+                                     @Bind("thumbnailPath") String thumbnailPath);
+
+    // 添加一个简单的测试方法，用于验证SQL语句是否正确
+    @SqlUpdate("UPDATE backgrounds SET image_path = :path WHERE background_id = :uuid")
+    boolean updateSimple(@Bind("uuid") String uuid, @Bind("path") String path);
 
     @SqlUpdate("DELETE FROM backgrounds WHERE background_id = :id")
     boolean delete(@Bind("id") String id);
@@ -55,8 +67,8 @@ public interface BackgroundDAO {
     /**
      * 更新背景（API控制器使用）
      */
-    default void updateBackground(Background background) {
-        update(background);
+    default boolean updateBackground(Background background) {
+        return update(background);
     }
     
     /**

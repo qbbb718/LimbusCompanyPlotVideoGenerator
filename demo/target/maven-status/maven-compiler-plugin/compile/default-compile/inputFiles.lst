@@ -45,6 +45,7 @@ e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\Au
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\VideoConcatenator.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\model\DialogueSpeed.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\contract\CompositionInterface.java
+e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\StorageConfig.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\audio\AudioTimelineBuilder.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\CharacterRef.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer\model\TextAlignment.java
@@ -96,6 +97,7 @@ e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\Composer
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\model\video\BackgroundVisual.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\util\ImageCropper.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\core\service\CharacterService.java
+e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\service\StorageService.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\PortraitMapper.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\config\VolumeConfig.java
 e:\LimbusCompanyPlotVideoGenerator\demo\src\main\java\com\lbc_plot\DAO\AudioDAO.java
