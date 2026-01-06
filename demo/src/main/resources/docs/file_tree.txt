@@ -1,0 +1,168 @@
+﻿卷 新加卷 的文件夹 PATH 列表
+卷序列号为 2A09-C124
+E:\LIMBUSCOMPANYPLOTVIDEOGENERATOR\DEMO\SRC\MAIN\JAVA\COM\LBC_PLOT
+|   MainApplication.java
+|   
++---common
+|   +---controller
+|   |       HealthController.java
+|   |       
+|   +---exception
+|   +---model
+|   \---util
+|       |   ColorSpaceConverter.java
+|       |   ColorUtils.java
+|       |   ImageCropper.java
+|       |   ImageDarkener.java
+|       |   PathUtils.java
+|       |   RecordDurationCalculator.java
+|       |   RenderQualityUtils.java
+|       |   ResourceChecker.java
+|       |   TextureColorizer.java
+|       |   VideoAudioMerger.java
+|       |   
+|       +---db
+|       |       SQLiteDatabaseManager.java
+|       |       
+|       +---io
+|       |       ImageExporter.java
+|       |       ImageReader.java
+|       |       SequenceFrameExporter.java
+|       |       
+|       +---json
+|       |       ColorDeserializer.java
+|       |       ColorSerializer.java
+|       |       RecordsIO.java
+|       |       
+|       \---text
++---config
+|   |   AppConfig.java
+|   |   Application.java
+|   |   CorsConfig.java
+|   |   DatabaseConfig.java
+|   |   DatabaseInitializer.java
+|   |   DatabaseInitializer.java.new
+|   |   JdbcConfig.java
+|   |   Main.java
+|   |   ProjectConfig.java
+|   |   SpringBootConfig.java
+|   |   SqliteDialectConfig.java
+|   |   StorageConfig.java
+|   |   VolumeConfig.java
+|   |   WebMvcConfig.java
+|   |   
+|   \---filter
+|           SimpleCorsFilter.java
+|           
++---core
++---model
++---plot
+|   +---controller
+|   |       RecordController.java
+|   |       
+|   +---model
+|   |       Dialogue.java
+|   |       Record.java
+|   |       
+|   +---parser
+|   |       PlainTextRecordsParser.java
+|   |       
+|   \---service
++---render
+|   +---audio
+|   |   |   AudioDurationHelper.java
+|   |   |   AudioLoudnessMeasurer.java
+|   |   |   AudioTimelineBuilder.java
+|   |   |   FFmpegAudioProcessor.java
+|   |   |   FrameInfo.java
+|   |   |   TimelineToFFmpegConverter.java
+|   |   |   
+|   |   \---model
+|   |           AudioCommand.java
+|   |           AudioCommandType.java
+|   |           AudioSegment.java
+|   |           AudioTimeline.java
+|   |           
+|   +---controller
+|   |       PlotVideoController.java
+|   |       TimelineController.java
+|   |       
+|   +---engine
+|   |   |   BatchVideoProcessor.java
+|   |   |   FrameComposerService.java
+|   |   |   RenderOfImage.java
+|   |   |   RenderOfVideo.java
+|   |   |   
+|   |   +---contract
+|   |   |       CompositionInterface.java
+|   |   |       ImageLayerInterface.java
+|   |   |       TextLayerOperations.java
+|   |   |       VedioLayerInterface.java
+|   |   |       
+|   |   +---manager
+|   |   |       BaseLayerManager.java
+|   |   |       FontLoader.java
+|   |   |       ImageLayerManager.java
+|   |   |       TextLayerManager.java
+|   |   |       
+|   |   \---model
+|   |           DialogueSpeed.java
+|   |           TextAlignment.java
+|   |           TextLayerInfo.java
+|   |           
+|   +---service
+|   |   |   ThumbnailService.java
+|   |   |   
+|   |   \---impl
+|   |           BackgroundServiceImpl.java
+|   |           CharacterServiceImpl.java
+|   |           ThumbnailServiceImpl.java
+|   |           
+|   \---video
+|           BackgroundVisual.java
+|           Camera.java
+|           CharacterRef.java
+|           CharacterVisual.java
+|           CharacterVisualOrderService.java
+|           EffectVisual.java
+|           VideoConcatenator.java
+|           VideoExporter.java
+|           VideoQualityConfig.java
+|           VisualElement.java
+|           
+\---resource
+    +---character
+    |       CharacterCardController.java
+    |       CharacterCardImageCache.java
+    |       
+    +---controller
+    |       AudioController.java
+    |       BackgroundController.java
+    |       CharacterController.java
+    |       PortraitController.java
+    |       
+    +---dao
+    |       AudioDAO.java
+    |       BackgroundDAO.java
+    |       BackgroundMapper.java
+    |       CharacterDAO.java
+    |       CharacterMapper.java
+    |       ColorMapper.java
+    |       EmotionMapper.java
+    |       MyCharacterMapper.java
+    |       PortraitDAO.java
+    |       PortraitMapper.java
+    |       
+    +---model
+    |       Audio.java
+    |       Background.java
+    |       Emotion.java
+    |       MyCharacter.java
+    |       Portrait.java
+    |       
+    +---service
+    |       BackgroundService.java
+    |       CharacterService.java
+    |       StorageService.java
+    |       
+    \---storage

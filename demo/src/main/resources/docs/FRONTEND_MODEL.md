@@ -168,8 +168,8 @@ Builder：`Portrait.Builder` 支持 imagePath 必需参数与其他可选字段�
 ---
 
 ## 其它值得关注的 model 包（简要）
-- `com.lbc_plot.core.audio.model.AudioCommand` / `AudioTimeline` / `AudioSegment`：音频时间线对象，前端可需暴露音频片段时间/类型/路径。
-- `com.lbc_plot.core.Composer.model.TextLayerInfo` 等：与渲染层相关的小数据结构，按需映射。
+- `com.lbc_plot.render.audio.model.AudioCommand` / `AudioTimeline` / `AudioSegment`：音频时间线对象，前端可需暴露音频片段时间/类型/路径。
+- `com.lbc_plot.render.engine.model.TextLayerInfo` 等：与渲染层相关的小数据结构，按需映射。
 
 ---
 

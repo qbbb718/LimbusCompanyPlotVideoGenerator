@@ -6,6 +6,13 @@ start cmd /k "chcp 65001 >nul && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dc
 echo 等待后端启动...
 timeout /t 10 /nobreak > nul
 
+echo 检查并安装前端依赖...
+cd /d e:/LimbusCompanyPlotVideoGenerator/demo/frontend/electron-react-app
+if not exist "node_modules" (
+    echo 正在安装前端依赖...
+    npm install
+)
+
 echo 启动前端应用...
 start cmd /k "cd /d e:/LimbusCompanyPlotVideoGenerator/demo/frontend/electron-react-app && npm run electron-dev"
 

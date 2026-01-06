@@ -1,0 +1,214 @@
+package com.lbc_plot.resource.model;
+
+import java.awt.image.BufferedImage;
+// import java.nio.file.Path;
+import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lbc_plot.common.util.io.ImageReader;
+
+import java.awt.image.BufferedImage;
+
+public class Background {
+    private String uuid; // 唯一id（保证换源后能直接替换
+    private String path; // 文件存储路径
+    private String name; // 背景显示名（用于场景地点显示）
+    private String thumbnailPath; // 缩略图路径
+    @JsonIgnore
+    private BufferedImage image; // 读入的图像，初始为null
+
+    /**
+     * 构造函数
+     * 路径从bg开始
+     */
+    public Background(String path) {
+        this(UUID.randomUUID().toString(), path, null, null);
+    }
+
+    public Background(String path, String name) {
+        this(UUID.randomUUID().toString(), path, name, null);
+    }
+
+    public Background(String uuid, String path, String name) {
+        this(uuid, path, name, null);
+    }
+
+    public Background(String uuid, String path, String name, String thumbnailPath) {
+        this.uuid = uuid;
+        this.path = path;
+        this.name = name;
+        this.thumbnailPath = thumbnailPath;
+        this.image = null; // 初始时image为null，实现懒加载
+    }
+
+    public Background() {
+        this.uuid = null;
+        this.path = null;
+        this.name = null;
+        this.thumbnailPath = null;
+        this.image = null; // 初始时image为null，实现懒加载
+    }
+
+    /**
+     * 懒加载获取图像
+     * 如果image未读入，则从文件读取；如果已读入，直接返回
+     * 
+     * @return 读取的BufferedImage对象
+     */
+    public BufferedImage getImage() {
+        if (image == null) {
+            loadImage();
+        }
+        return image;
+    }
+
+    /**
+     * 加载图像（私有方法，只在需要时调用）
+     */
+    private void loadImage() {
+        try {
+            System.out.println("正在懒加载背景图像: " + path);
+            // If path already looks like a resource path (contains assets/backgrounds/),
+            // read it directly; otherwise treat it as filename and use readBackGround.
+            if (path != null && (path.startsWith("assets/backgrounds/") || path.startsWith("/assets/backgrounds/"))) {
+                image = ImageReader.readResourceImage(path.startsWith("/") ? path.substring(1) : path);
+            } else {
+                image = ImageReader.readBackGround(path);
+            }
+            if (image == null) {
+                System.err.println("无法加载背景图像: " + path);
+                // 可以设置一个默认图像或抛出异常
+            }
+        } catch (Exception e) {
+            System.err.println("加载背景图像时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 手动重新加载图像（如果需要刷新）
+     */
+    public void reloadImage() {
+        image = null; // 设置为null，下次getImage()时会重新加载
+        getImage(); // 立即重新加载
+    }
+
+    /**
+     * 释放图像资源（节省内存）
+     */
+    public void releaseImage() {
+        image = null;
+        System.gc(); // 建议垃圾回收，但不是强制性的
+    }
+
+    /**
+     * 检查图像是否已加载
+     * 
+     * @return 如果图像已加载返回true，否则返回false
+     */
+
+    @JsonIgnore
+    public boolean isImageLoaded() {
+        return image != null;
+    }
+
+    // Getter和Setter方法
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+        // 路径改变时，需要重新加载图像
+        image = null;
+    }
+
+    // Compatibility getters for JDBI BindBean (some DAOs expect these property
+    // names)
+    public String getBackgroundID() {
+        return uuid;
+    }
+
+    public String getImagePath() {
+        return path;
+    }
+
+    public String getDisplayName() {
+        return name;
+    }
+
+    /**
+     * Source is optional; DAOs may bind :source. Return null by default.
+     */
+    public String getSource() {
+        return null;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getThumbnailPath() {
+        return thumbnailPath;
+    }
+
+    public void setThumbnailPath(String thumbnailPath) {
+        this.thumbnailPath = thumbnailPath;
+    }
+
+    /**
+     * 获取图像宽度（懒加载版本）
+     */
+    @JsonIgnore
+    public int getWidth() {
+        BufferedImage img = getImage();
+        return img != null ? img.getWidth() : 0;
+    }
+
+    /**
+     * 获取图像高度（懒加载版本）
+     */
+    @JsonIgnore
+    public int getHeight() {
+        BufferedImage img = getImage();
+        return img != null ? img.getHeight() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Background{" +
+                "uuid='" + uuid + '\'' +
+                ", path='" + path + '\'' +
+                ", name='" + name + '\'' +
+                ", thumbnailPath='" + thumbnailPath + '\'' +
+                ", loaded=" + isImageLoaded() +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Background that = (Background) o;
+        return uuid.equals(that.uuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return uuid.hashCode();
+    }
+}

@@ -1,9 +1,11 @@
 package com.lbc_plot.util.text;
 
-import com.lbc_plot.core.service.CharacterService;
-import com.lbc_plot.model.Record;
-import com.lbc_plot.model.storage.MyCharacter;
-import com.lbc_plot.model.storage.Portrait;
+import com.lbc_plot.plot.model.Record;
+import com.lbc_plot.plot.parser.PlainTextRecordsParser;
+import com.lbc_plot.resource.model.MyCharacter;
+import com.lbc_plot.resource.model.Portrait;
+import com.lbc_plot.resource.service.CharacterService;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -42,28 +44,33 @@ public class PlainTextRecordsParserTest {
         List<Record> records = PlainTextRecordsParser.parse(tmp, svc);
 
         assertNotNull(records);
-        // expecting at least: bgm start, bg change, alice line, bob line, bgm2 change, alice line
+        // expecting at least: bgm start, bg change, alice line, bob line, bgm2 change,
+        // alice line
         assertTrue(records.size() >= 6);
 
         // find first Alice record and check it has dialogue and speaker name
-        boolean foundAlice = records.stream().anyMatch(r -> r.getDialogue() != null && "Alice".equals(r.getDialogue().getSpeakerName()));
+        boolean foundAlice = records.stream()
+                .anyMatch(r -> r.getDialogue() != null && "Alice".equals(r.getDialogue().getSpeakerName()));
         assertTrue(foundAlice, "Alice dialogue should be present and mapped");
 
-        // check BGM persistence: after first [bgm.mp3], subsequent records before bgm2 should include bgm start
+        // check BGM persistence: after first [bgm.mp3], subsequent records before bgm2
+        // should include bgm start
         // find index of first BGM start
         int idxBgm1 = -1;
         for (int i = 0; i < records.size(); i++) {
-            if (records.get(i).getAudioCommands() != null && records.get(i).getAudioCommands().stream().anyMatch(ac -> ac.getType() != null && ac.getType().name().startsWith("BGM"))) {
+            if (records.get(i).getAudioCommands() != null && records.get(i).getAudioCommands().stream()
+                    .anyMatch(ac -> ac.getType() != null && ac.getType().name().startsWith("BGM"))) {
                 idxBgm1 = i;
                 break;
             }
         }
         assertTrue(idxBgm1 >= 0, "Should have a BGM start record");
 
-        // ensure records after idxBgm1 and before bgm2 still contain a BGM_START with same id
+        // ensure records after idxBgm1 and before bgm2 still contain a BGM_START with
+        // same id
         String bgmId = records.get(idxBgm1).getAudioCommands().get(0).getAudioId();
         boolean persisted = false;
-        for (int i = idxBgm1+1; i < records.size(); i++) {
+        for (int i = idxBgm1 + 1; i < records.size(); i++) {
             var cmds = records.get(i).getAudioCommands();
             if (cmds != null) {
                 for (var c : cmds) {
@@ -73,7 +80,8 @@ public class PlainTextRecordsParserTest {
                     }
                 }
             }
-            if (persisted) break;
+            if (persisted)
+                break;
         }
 
         assertTrue(persisted, "BGM should persist into subsequent records until changed");
