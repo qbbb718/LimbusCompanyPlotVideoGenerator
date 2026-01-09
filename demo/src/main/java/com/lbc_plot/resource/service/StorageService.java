@@ -32,7 +32,7 @@ import java.util.UUID;
  * 处理文件上传、存储和访问
  */
 @Service
-public class StorageService {
+public class StorageService implements ResourceService<org.springframework.core.io.Resource> {
 
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
 
@@ -241,5 +241,67 @@ public class StorageService {
      */
     public Resource getResource(String resourcePath) {
         return resourceLoader.getResource(resourcePath);
+    }
+
+    // --- ResourceService impl ---
+    @Override
+    public org.springframework.core.io.Resource getById(String id) {
+        return getResource(id);
+    }
+
+    @Override
+    public java.util.List<org.springframework.core.io.Resource> listAll() {
+        try {
+            Path dir = Paths.get(storageConfig.getBackgroundsDir());
+            if (!Files.exists(dir) || !Files.isDirectory(dir))
+                return java.util.Collections.emptyList();
+            java.util.List<org.springframework.core.io.Resource> res = new java.util.ArrayList<>();
+            try (java.util.stream.Stream<Path> s = Files.list(dir)) {
+                s.filter(p -> Files.isRegularFile(p)).forEach(p -> res.add(resourceLoader.getResource("file:" + p.toAbsolutePath().toString())));
+            }
+            return res;
+        } catch (Exception e) {
+            logger.warn("列出资源失败: {}", e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    @Override
+    public org.springframework.core.io.Resource save(org.springframework.core.io.Resource entity) {
+        // 简单实现：若传入 Resource 可读取则将其内容复制到背景目录并返回新 Resource
+        try (InputStream in = entity.getInputStream()) {
+            Path backgroundsDir = Paths.get(storageConfig.getBackgroundsDir());
+            if (!Files.exists(backgroundsDir))
+                Files.createDirectories(backgroundsDir);
+            String filename = UUID.randomUUID().toString();
+            // 尝试从 URL/path 推断扩展名
+            String src = entity.getFilename();
+            String ext = "";
+            if (src != null && src.contains("."))
+                ext = src.substring(src.lastIndexOf('.'));
+            Path dest = backgroundsDir.resolve(filename + ext);
+            Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+            return resourceLoader.getResource("file:" + dest.toAbsolutePath().toString());
+        } catch (Exception e) {
+            logger.warn("保存资源失败: {}", e.getMessage());
+            return entity;
+        }
+    }
+
+    @Override
+    public void delete(String id) {
+        try {
+            org.springframework.core.io.Resource r = getResource(id);
+            if (r.exists()) {
+                try {
+                    Path p = r.getFile().toPath();
+                    Files.deleteIfExists(p);
+                } catch (IOException e) {
+                    logger.warn("删除资源文件失败: {}", e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("删除资源失败: {}", e.getMessage());
+        }
     }
 }

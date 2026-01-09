@@ -122,6 +122,22 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- Actuator + Micrometer Prometheus -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- Redis support (prototype queue) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- 图像处理优化 -->
         <dependency>
             <groupId>net.coobird</groupId>
