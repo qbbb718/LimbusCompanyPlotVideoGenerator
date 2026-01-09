@@ -34,3 +34,6 @@ note/
 # Virtual machine crash logs
 hs_err_pid*
 *.class
+*.jar
+/demo/target
+*.class
