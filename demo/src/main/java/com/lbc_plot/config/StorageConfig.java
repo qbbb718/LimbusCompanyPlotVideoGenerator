@@ -1,5 +1,8 @@
 package com.lbc_plot.config;
 
+import org.springframework.beans.factory.InitializingBean;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -10,7 +13,10 @@ import org.springframework.context.annotation.PropertySource;
  */
 @Configuration
 @PropertySource("classpath:storage.properties")
-public class StorageConfig {
+public class StorageConfig implements InitializingBean {
+
+    @Autowired
+    private AppProperties appProperties;
 
     // 背景图片存储目录（相对于应用程序根目录）
     @Value("${storage.backgrounds.dir:assets/backgrounds}")
@@ -43,6 +49,23 @@ public class StorageConfig {
     // 缩略图高度
     @Value("${storage.thumbnail.height:200}")
     private int thumbnailHeight;
+
+    @Override
+    public void afterPropertiesSet() {
+        String base = appProperties != null ? appProperties.getStorageLocation() : null;
+        if (base != null && !base.isEmpty()) {
+            if (!base.endsWith("/")) {
+                base = base + "/";
+            }
+            // 如果 AppProperties 指定了根存储路径，则在原有相对路径前拼接
+            if (backgroundsDir != null && !backgroundsDir.startsWith(base)) {
+                backgroundsDir = base + backgroundsDir;
+            }
+            if (thumbnailsDir != null && !thumbnailsDir.startsWith(base)) {
+                thumbnailsDir = base + thumbnailsDir;
+            }
+        }
+    }
 
     // Getters
     public String getBackgroundsDir() {

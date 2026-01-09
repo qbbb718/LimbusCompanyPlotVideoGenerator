@@ -1,0 +1,11 @@
+app:
+  storageLocation: /var/lib/limbus/storage
+  renderThreads: 8
+  cacheEnabled: true
+
+spring:
+  profiles: prod
+
+logging:
+  level:
+    com.lbc_plot: INFO

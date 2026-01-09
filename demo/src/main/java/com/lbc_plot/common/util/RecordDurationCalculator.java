@@ -70,8 +70,7 @@ public class RecordDurationCalculator {
             commandIndex++;
 
             // 🔥 关键修改：只处理音效和语音，跳过BGM
-            if (audioCmd.getType() == AudioCommandType.BGM_START ||
-                    audioCmd.getType() == AudioCommandType.BGM_STOP) {
+                if (audioCmd.getType() == AudioCommandType.BGM_ACTIVE) {
                 logger.info("跳过第 {}/{} 个音频指令（BGM类型: {}）",
                         commandIndex, record.getAudioCommands().size(), audioCmd.getType());
                 continue; // 跳过BGM指令
@@ -111,8 +110,7 @@ public class RecordDurationCalculator {
         logger.debug("计算单个音频时长 - 类型: {}, 音频ID: {}", audioCmd.getType(), audioCmd.getAudioId());
 
         // 安全检查：确保只处理音效和语音
-        if (audioCmd.getType() == AudioCommandType.BGM_START ||
-                audioCmd.getType() == AudioCommandType.BGM_STOP) {
+        if (audioCmd.getType() == AudioCommandType.BGM_ACTIVE) {
             logger.warn("意外尝试计算BGM时长，返回0帧");
             return 0;
         }

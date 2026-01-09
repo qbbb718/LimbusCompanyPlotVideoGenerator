@@ -1,0 +1,11 @@
+app:
+  storageLocation: ./data/storage
+  renderThreads: 2
+  cacheEnabled: true
+
+spring:
+  profiles: dev
+
+logging:
+  level:
+    com.lbc_plot: DEBUG

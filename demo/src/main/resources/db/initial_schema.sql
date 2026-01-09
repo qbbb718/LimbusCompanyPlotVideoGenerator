@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS backgrounds (
     image_path TEXT NOT NULL,
     display_name TEXT,
     source TEXT,
+    thumbnail_path TEXT,
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -38,8 +38,7 @@ public class PlainTextRecordsParser {
     private static final Logger logger = LoggerFactory.getLogger(PlainTextRecordsParser.class);
 
     private static final Pattern BGM_PATTERN = Pattern.compile("^\\s*\\[(.+?)\\]\\s*");
-    // Stop BGM directive: a line exactly like [-STOP] (case-insensitive)
-    private static final Pattern STOP_BGM_PATTERN = Pattern.compile("^\\s*\\[-STOP\\]\\s*", Pattern.CASE_INSENSITIVE);
+    // （已移除独立的停止指令语义，遇到新的 BGM 将隐式结束旧的 BGM）
     private static final Pattern BG_PATTERN = Pattern.compile("^\\s*\\{(.+?)\\}\\s*");
     private static final Pattern SPEAKER_PATTERN = Pattern.compile("^\\s*([^:]+)\\s*:\\s*(.+)$");
     private static final Pattern EMOTION_PATTERN = Pattern.compile("(.+?)\\((.+?)\\)\\s*$");
@@ -92,45 +91,30 @@ public class PlainTextRecordsParser {
         // 当前状态
         AudioCommand currentBgm = null;
         Background currentBg = null;
-        // 当解析到 [BGM] 行时，标记下一条 record 需要添加 BGM_START（避免为每个 record 重复添加）
-        boolean bgmPendingStart = false;
 
         for (String rawLine : lines) {
             String line = rawLine.trim();
             if (line.isEmpty())
                 continue;
 
-            // BGM 停止指令：[-STOP]
-            Matcher mStop = STOP_BGM_PATTERN.matcher(line);
-            if (mStop.matches()) {
-                // 如果有当前正在播放的 BGM，则在最后一条已有 record 上添加停止命令
-                if (currentBgm != null) {
-                    AudioCommand stop = new AudioCommand(AudioCommandType.BGM_STOP, currentBgm.getAudioId());
-                    if (!records.isEmpty()) {
-                        records.get(records.size() - 1).addAudioCommand(stop);
-                    }
-                }
-                // 清除当前 BGM 状态与 pending 标记
-                currentBgm = null;
-                bgmPendingStart = false;
-                continue;
-            }
+            // 过去支持 [-STOP] 停止指令；现在停止由遇到新的 BGM 或时间线阶段处理，不再在此生成停止指令
 
             // BGM 行：不单独创建 record，只改变当前 BGM 状态
             Matcher mBgm = BGM_PATTERN.matcher(line);
             if (mBgm.matches()) {
                 String bgmFile = mBgm.group(1).trim();
-                // 新BGM开始，先停止之前的BGM（在最后一个已存在的对话 record 上添加停止命令）
-                if (currentBgm != null) {
-                    AudioCommand stop = new AudioCommand(AudioCommandType.BGM_STOP, currentBgm.getAudioId());
-                    if (!records.isEmpty()) {
-                        records.get(records.size() - 1).addAudioCommand(stop);
-                    }
+                // 新BGM开始：切换当前 BGM，并为该变化生成一条 record（旁白），
+                // 使脚本中的 BGM 变化也成为时间线事件的一部分。
+                currentBgm = new AudioCommand(AudioCommandType.BGM_ACTIVE, bgmFile);
+                Dialogue d = Dialogue.builder().text("").speakerName(Dialogue.DEFAULT_NARRATOR).build();
+                Record rec = new Record.Builder().dialogue(d).build();
+                // 标记该 record 带有新的 BGM_ACTIVE
+                rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
+                // 如果当前背景已存在，则也附加背景视觉，保持画面状态一致
+                if (currentBg != null) {
+                    rec.addBackgroundVisual(new BackgroundVisual(currentBg));
                 }
-                // 设置新的当前 BGM（但不创建单独的 record）
-                currentBgm = new AudioCommand(AudioCommandType.BGM_START, bgmFile);
-                // 标记下一条 record 应当包含 BGM_START
-                bgmPendingStart = true;
+                records.add(rec);
                 continue;
             }
 
@@ -183,6 +167,15 @@ public class PlainTextRecordsParser {
                 } else {
                     currentBg = new Background(bgPath, name);
                 }
+                // 将背景变化作为一条独立的 record 输出，以便脚本中的背景切换成为可见的时间线事件
+                Dialogue dBg = Dialogue.builder().text("").speakerName(Dialogue.DEFAULT_NARRATOR).build();
+                Record bgRec = new Record.Builder().dialogue(dBg).build();
+                bgRec.addBackgroundVisual(new BackgroundVisual(currentBg));
+                // 如果已有正在播放的 BGM，则继承该 BGM 到此 record
+                if (currentBgm != null) {
+                    bgRec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
+                }
+                records.add(bgRec);
                 continue;
             }
 
@@ -278,10 +271,9 @@ public class PlainTextRecordsParser {
                         logger.debug("Failed to apply background name to dialogue location: {}", ex.getMessage());
                     }
                 }
-                if (bgmPendingStart && currentBgm != null) {
-                    // 只有当存在 pending 标记时才为本 record 添加 BGM_START，然后清除标记
-                    rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_START, currentBgm.getAudioId()));
-                    bgmPendingStart = false;
+                // 如果当前有正在播放的 BGM，则将 BGM_ACTIVE 附加到每条 record，表示 BGM 在记录间持续
+                if (currentBgm != null) {
+                    rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
                 }
 
                 // Try to resolve speaker -> MyCharacter and Portrait via CharacterService
@@ -415,7 +407,7 @@ public class PlainTextRecordsParser {
             Dialogue d = Dialogue.builder().text(line).speakerName(Dialogue.DEFAULT_NARRATOR).build();
             Record rec = new Record.Builder().dialogue(d).build();
             if (currentBgm != null)
-                rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_START, currentBgm.getAudioId()));
+                rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
             // 如果本条是旁白，复制上一条的角色立绘（如果存在）
             if (d.isNarrator() && !records.isEmpty()) {
                 try {

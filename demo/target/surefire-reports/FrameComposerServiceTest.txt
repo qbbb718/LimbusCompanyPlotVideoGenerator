@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: FrameComposerServiceTest
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.59 s -- in FrameComposerServiceTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 28.09 s -- in FrameComposerServiceTest

@@ -26,6 +26,16 @@ public class ImageReader {
      * @throws IOException 当读取失败时抛出
      */
     public static BufferedImage readResourceImage(String resourcePath) throws IOException {
+        // 如果传入的是绝对路径（例如 Windows 下的 C:\... 或以 / 开头的绝对路径），
+        // 则直接从文件系统读取，而不是从 classpath 资源中查找。
+        File maybeFile = new File(resourcePath);
+        if (maybeFile.isAbsolute()) {
+            if (!maybeFile.exists() || !maybeFile.isFile()) {
+                throw new IOException("文件不存在: " + resourcePath);
+            }
+            return ImageIO.read(maybeFile);
+        }
+
         ClassLoader classLoader = ImageReader.class.getClassLoader();
         InputStream inputStream = classLoader.getResourceAsStream(resourcePath);
 
@@ -45,6 +55,13 @@ public class ImageReader {
     }
 
     public static BufferedImage readCharacters(String fileName) throws IOException {
+        File f = new File(fileName);
+        if (f.isAbsolute()) {
+            if (!f.exists() || !f.isFile()) {
+                throw new IOException("文件不存在: " + fileName);
+            }
+            return ImageIO.read(f);
+        }
         return readResourceImage("assets/characters/" + fileName);
     }
 

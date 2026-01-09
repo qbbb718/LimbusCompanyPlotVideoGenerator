@@ -153,7 +153,7 @@ public class FFmpegAudioProcessor {
      * 判断是否为BGM片段
      */
     private boolean isBgmSegment(AudioSegment segment) {
-        return segment.getType() == AudioCommandType.BGM_START;
+        return segment.getType() == AudioCommandType.BGM_ACTIVE;
     }
 
     /**

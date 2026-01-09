@@ -86,12 +86,8 @@ public class AudioTimelineBuilder {
                 command.getType(), command.getAudioId(), normalizedVolume);
 
         switch (command.getType()) {
-            case BGM_START:
-                handleBgmStart(command, frameInfo, activeBgms, normalizedVolume);
-                break;
-
-            case BGM_STOP:
-                handleBgmStop(command, frameInfo, activeBgms, timeline);
+            case BGM_ACTIVE:
+                handleBgmStart(command, frameInfo, activeBgms, normalizedVolume, timeline);
                 break;
 
             case SFX_PLAY:
@@ -100,7 +96,7 @@ public class AudioTimelineBuilder {
                 break;
 
             default:
-                logger.warn("未知的音频指令类型: {}", command.getType());
+                logger.warn("未知或已弃用的音频指令类型: {}", command.getType());
         }
     }
 
@@ -108,8 +104,23 @@ public class AudioTimelineBuilder {
      * 处理BGM开始指令 - 使用标准化音量
      */
     private void handleBgmStart(AudioCommand command, FrameInfo frameInfo,
-            Map<String, AudioSegment> activeBgms, float normalizedVolume) {
+            Map<String, AudioSegment> activeBgms, float normalizedVolume, AudioTimeline timeline) {
         String audioId = command.getAudioId();
+
+        int currentRecordStart = frameInfo.getStartFrame();
+
+        // 如果有其它不同 ID 的 BGM 正在播放，立即在本条 record 的起始帧结束它们（切换即时生效）
+        var it = activeBgms.entrySet().iterator();
+        while (it.hasNext()) {
+            var e = it.next();
+            if (!e.getKey().equals(audioId)) {
+                AudioSegment prev = e.getValue();
+                prev.setEndFrame(currentRecordStart);
+                timeline.addSegment(prev);
+                logger.debug("切换BGM，结束旧BGM {}，结束帧: {}", e.getKey(), currentRecordStart);
+                it.remove();
+            }
+        }
 
         // 如果同ID的BGM已经在播放，则忽略重复的 START（不重启），保持最初的开始点
         if (activeBgms.containsKey(audioId)) {
@@ -119,11 +130,11 @@ public class AudioTimelineBuilder {
 
         // 创建新的BGM片段（使用标准化音量）
         AudioSegment bgmSegment = new AudioSegment(
-                audioId,
-                frameInfo.getStartFrame(),
-                -1, // 结束帧未知，持续播放直到BGM_STOP或视频结束
-                command.getType(),
-                normalizedVolume // 使用标准化后的音量
+            audioId,
+            frameInfo.getStartFrame(),
+            -1, // 结束帧未知，持续播放直到下次切换或视频结束
+            command.getType(),
+            normalizedVolume // 使用标准化后的音量
         );
 
         activeBgms.put(audioId, bgmSegment);
@@ -132,28 +143,8 @@ public class AudioTimelineBuilder {
     }
 
     /**
-     * 处理BGM停止指令
+     * 备注：不再使用单独的停止指令，BGM 的结束由遇到新的 `BGM_ACTIVE` 或时间线结束逻辑处理。
      */
-    private void handleBgmStop(AudioCommand command, FrameInfo frameInfo,
-            Map<String, AudioSegment> activeBgms, AudioTimeline timeline) {
-        String audioId = command.getAudioId();
-
-        if (activeBgms.containsKey(audioId)) {
-            AudioSegment bgmSegment = activeBgms.get(audioId);
-
-            // 设置BGM结束帧（在当前Record结束时停止）
-            int endFrame = frameInfo.getStartFrame() + frameInfo.getFrameCount();
-            bgmSegment.setEndFrame(endFrame);
-
-            // 添加到时间线
-            timeline.addSegment(bgmSegment);
-            activeBgms.remove(audioId);
-
-            logger.debug("BGM {} 停止播放，结束帧: {}", audioId, endFrame);
-        } else {
-            logger.warn("尝试停止未播放的BGM: {}", audioId);
-        }
-    }
 
     /**
      * 处理短音频（音效、语音）- 使用标准化音量

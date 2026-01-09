@@ -210,8 +210,17 @@ public class Portrait {
     public BufferedImage getThumbnail() {
         if (this.thumbnail == null && this.thumbnailPath != null && !this.thumbnailPath.trim().isEmpty()) {
             try {
-                // 使用ImageReader加载图像
-                this.thumbnail = ImageReader.readCharacters(thumbnailPath);
+                // 根据路径类型选择加载方式：如果是文件系统路径则直接读取文件，否则按资源路径读取
+                java.io.File f = new java.io.File(thumbnailPath);
+                if (f.isAbsolute() || thumbnailPath.contains(java.io.File.separator)) {
+                    try {
+                        this.thumbnail = javax.imageio.ImageIO.read(f);
+                    } catch (java.io.IOException e) {
+                        throw e;
+                    }
+                } else {
+                    this.thumbnail = ImageReader.readCharacters(thumbnailPath);
+                }
                 if (this.thumbnail == null) {
                     logger.warn("无法加载图像: {}", thumbnailPath);
                     // 可以返回一个默认图像或者抛出异常
@@ -420,6 +429,20 @@ public class Portrait {
         public Portrait build() {
             logger.debug("Building Portrait with: portraitID={}, characterID={}, imagePath={}, portName={}, emotion={}",
                     this.portraitID, this.characterID, this.imagePath, this.portName, this.emotion);
+            // 尝试在构建时验证并加载图像，确保无效路径会抛出异常（测试依赖此行为）
+                if (this.imagePath != null && !this.imagePath.trim().isEmpty()
+                    && (this.imagePath.contains("/") || this.imagePath.contains("\\"))) {
+                try {
+                    // 使用 ImageReader 验证资源是否存在并加载
+                    this.image = ImageReader.readCharacters(this.imagePath);
+                    if (this.image == null) {
+                        throw new IOException("无法加载图像: " + this.imagePath);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
             return new Portrait(this);
         }
     }

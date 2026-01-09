@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.CompletableFuture;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -142,7 +143,7 @@ public class BatchVideoProcessor {
             // 分析BGM片段：检查是否有重叠或重复播放的问题
             Map<String, List<AudioSegment>> bgmSegmentsByFile = new HashMap<>();
             for (AudioSegment segment : audioTimeline.getSegments()) {
-                if (segment.getType() == AudioCommandType.BGM_START) {
+                if (segment.getType() == AudioCommandType.BGM_ACTIVE) {
                     bgmSegmentsByFile.computeIfAbsent(segment.getAudioId(), k -> new ArrayList<>()).add(segment);
                 }
             }
@@ -220,7 +221,7 @@ public class BatchVideoProcessor {
      * 用于音频分析和调试
      */
     private static boolean isBgmSegment(AudioSegment segment) {
-        return segment.getType() == AudioCommandType.BGM_START;
+        return segment.getType() == AudioCommandType.BGM_ACTIVE;
     }
 
     /**
@@ -372,5 +373,75 @@ public class BatchVideoProcessor {
         public String toString() {
             return String.format("RenderResult{frameCount=%d, durationMs=%d}", frameCount, durationMs);
         }
+    }
+
+    /**
+     * 异步版本的批量处理入口：将每个Record的渲染提交到 {@code AsyncRenderService}
+     * 并等待所有渲染完成后继续后续的合并流程。
+     */
+    public static void processRecordListAsync(
+            List<Record> records,
+            String outputPath,
+            String tempDir,
+            boolean plot,
+            int width,
+            int height,
+            int frameRate,
+            com.lbc_plot.render.service.AsyncRenderService asyncService) throws Exception {
+
+        if (asyncService == null) {
+            // 回退到同步方式
+            processRecordList(records, outputPath, tempDir, plot, width, height, frameRate);
+            return;
+        }
+
+        logger.info("开始异步处理 {} 个Record", records.size());
+
+        File tempDirectory = new File(tempDir);
+        if (!tempDirectory.exists() && !tempDirectory.mkdirs()) {
+            throw new IOException("无法创建临时目录: " + tempDir);
+        }
+
+        List<java.util.concurrent.CompletableFuture<RenderResult>> futures = new ArrayList<>();
+        List<String> videoPaths = new ArrayList<>();
+        List<FrameInfo> frameInfos = new ArrayList<>();
+
+        int currentFrame = 0;
+
+        // 提交所有渲染任务
+        for (int i = 0; i < records.size(); i++) {
+            Record record = records.get(i);
+            String videoFileName = generateVideoFileName(record, i);
+            String videoPath = tempDir + File.separator + videoFileName;
+            videoPaths.add(videoPath);
+
+            CompletableFuture<RenderResult> future = asyncService.submitRenderTask(record, plot, width, height,
+                    videoPath, frameRate);
+            futures.add(future);
+        }
+
+        // 等待并收集渲染结果（按提交顺序）
+        for (int i = 0; i < futures.size(); i++) {
+            RenderResult result = futures.get(i).get();
+            Record record = records.get(i);
+            FrameInfo frameInfo = new FrameInfo(record.getUuid(), currentFrame, result.getFrameCount());
+            frameInfos.add(frameInfo);
+            currentFrame += result.getFrameCount();
+            logger.info("异步渲染完成: {} 帧数={}", generateVideoFileName(record, i), result.getFrameCount());
+        }
+
+        // 之后流程与同步方法相同：连接视频、处理音频、合并
+        logger.info("所有渲染任务完成，开始连接视频");
+        String silentVideoPath = tempDir + File.separator + "silent_video.mp4";
+        VideoConcatenator.concatenateVideos(videoPaths, silentVideoPath);
+
+        String audioPath = tempDir + File.separator + "mixed_audio.wav";
+        AudioTimelineBuilder timelineBuilder = new AudioTimelineBuilder();
+        AudioTimeline audioTimeline = timelineBuilder.buildTimeline(records, frameInfos, frameRate);
+        FFmpegAudioProcessor audioProcessor = new FFmpegAudioProcessor();
+        audioProcessor.processAudioTimeline(audioTimeline, audioPath);
+
+        VideoAudioMerger.mergeVideoAudioDirect(silentVideoPath, audioPath, outputPath);
+        logger.info("异步批量视频处理完成: {}", outputPath);
     }
 }

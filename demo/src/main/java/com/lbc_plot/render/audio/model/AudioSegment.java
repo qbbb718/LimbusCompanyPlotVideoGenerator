@@ -77,7 +77,7 @@ public class AudioSegment {
     }
 
     public boolean isBgmSegment() {
-        return type == AudioCommandType.BGM_START;
+        return type == AudioCommandType.BGM_ACTIVE;
     }
 
     public boolean overlapsWith(AudioSegment other) {

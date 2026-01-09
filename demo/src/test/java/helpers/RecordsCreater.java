@@ -207,11 +207,12 @@ public class RecordsCreater {
 
                 AudioCommand audioCommand1, audioCommand2, audioCommand3;
                 audioCommand1 = new AudioCommand(
-                                AudioCommandType.BGM_START,
+                                AudioCommandType.BGM_ACTIVE,
                                 "BusInside (online-audio-converter.com)");
+                // 使用另一个 BGM_ACTIVE 表示切换至新 BGM（停止由时间线阶段处理）
                 audioCommand2 = new AudioCommand(
-                                AudioCommandType.BGM_STOP,
-                                "BusInside (online-audio-converter.com)");
+                                AudioCommandType.BGM_ACTIVE,
+                                "BusInside2 (online-audio-converter.com)");
                 audioCommand3 = new AudioCommand(
                                 AudioCommandType.VOICE_PLAY,
                                 "台词切片");

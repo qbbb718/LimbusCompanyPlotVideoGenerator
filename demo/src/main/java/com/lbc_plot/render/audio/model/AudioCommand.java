@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AudioCommand {
-    private AudioCommandType type; // BGM_START, BGM_STOP, SFX_PLAY, VOICE_PLAY
+    private AudioCommandType type; // BGM_ACTIVE, SFX_PLAY, VOICE_PLAY
     private String audioId; // 音频文件标识
     private Float volume; // 音量
     private Integer fadeDuration; // 淡入淡出帧数
@@ -73,7 +73,7 @@ public class AudioCommand {
     // 便捷方法
     @JsonIgnore
     public boolean isBgmCommand() {
-        return type == AudioCommandType.BGM_START || type == AudioCommandType.BGM_STOP;
+        return type == AudioCommandType.BGM_ACTIVE;
     }
 
     @JsonIgnore

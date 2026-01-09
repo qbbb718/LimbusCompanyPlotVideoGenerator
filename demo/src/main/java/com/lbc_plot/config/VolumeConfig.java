@@ -133,7 +133,7 @@ public class VolumeConfig {
     // 辅助方法
     private static float getUserVolume(AudioCommandType type) {
         switch (type) {
-            case BGM_START:
+            case BGM_ACTIVE:
                 return userBgmVolume;
             case VOICE_PLAY:
                 return userVoiceVolume;
@@ -146,7 +146,7 @@ public class VolumeConfig {
 
     private static float getTypeGain(AudioCommandType type) {
         switch (type) {
-            case BGM_START:
+                case BGM_ACTIVE:
                 return bgmGain;
             case VOICE_PLAY:
                 return voiceGain;

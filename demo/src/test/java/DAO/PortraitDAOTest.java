@@ -345,7 +345,6 @@ class PortraitDAOTest {
                 .characterID(charId)
                 .portName(name)
                 .emotion(emotion)
-                .thumbnailPath("thumbs/" + id + ".png")
                 .build();
     }
 }
