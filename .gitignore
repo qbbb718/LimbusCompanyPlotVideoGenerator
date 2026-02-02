@@ -38,3 +38,6 @@ hs_err_pid*
 /demo/target
 *.class
 *.class
+*.class
+*.jar
+demo/target/classes/com/lbc_plot/config/ProjectConfig.class

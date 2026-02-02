@@ -1,9 +1,7 @@
 package com.lbc_plot.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
-@Component
 @ConfigurationProperties(prefix = "project")
 public class ProjectProperties {
     private int videoWidth = 1920;

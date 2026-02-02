@@ -12,24 +12,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lbc_plot.render.service.impl.PersistentFileAsyncRenderService;
+import com.lbc_plot.render.service.AsyncRenderServiceAdmin;
+import com.lbc_plot.render.service.impl.RenderJob;
 
 @RestController
 @RequestMapping("/admin/async-jobs")
 public class AsyncQueueController {
 
-    private final PersistentFileAsyncRenderService svc;
+    private final AsyncRenderServiceAdmin svc;
 
     @Autowired
-    public AsyncQueueController(PersistentFileAsyncRenderService svc) {
+    public AsyncQueueController(AsyncRenderServiceAdmin svc) {
         this.svc = svc;
     }
 
     @GetMapping("/status")
-    public ResponseEntity<?> status() throws IOException {
+    public ResponseEntity<?> status() {
         Map<String, Object> out = new HashMap<>();
         out.put("queued", svc.getQueuedCount());
-        out.put("failedFiles", Files.exists(svc.getFailedDir()) ? Files.list(svc.getFailedDir()).count() : 0);
         out.put("inProgress", svc.getInProgressCount());
         out.put("processedTotal", svc.getProcessedCount());
         out.put("failedTotal", svc.getFailedCount());
@@ -38,8 +38,15 @@ public class AsyncQueueController {
         return ResponseEntity.ok(out);
     }
 
-    @GetMapping(value = "/metrics", produces = "text/plain; charset=utf-8")
-    public ResponseEntity<String> metrics() {
-        return ResponseEntity.ok(svc.getMetricsPrometheus());
+    @GetMapping("/task/{id}")
+    public ResponseEntity<?> getTask(@org.springframework.web.bind.annotation.PathVariable String id) {
+        RenderJob job = svc.getJob(id);
+        if (job == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(job);
+    }
+
+    @GetMapping("/failed")
+    public ResponseEntity<?> failed(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(svc.listFailedJobs(limit));
     }
 }

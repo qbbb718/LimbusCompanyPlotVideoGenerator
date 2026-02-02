@@ -33,7 +33,7 @@ import com.lbc_plot.render.engine.RenderOfVideo;
 import com.lbc_plot.render.service.AsyncRenderService;
 
 @Service
-public class PersistentFileAsyncRenderService implements AsyncRenderService {
+public class PersistentFileAsyncRenderService implements AsyncRenderService, com.lbc_plot.render.service.AsyncRenderServiceAdmin {
     private static final Logger logger = LoggerFactory.getLogger(PersistentFileAsyncRenderService.class);
 
     private final Path queueDir;
@@ -140,7 +140,7 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService {
         return failedDir;
     }
 
-    public int getInProgressCount() {
+    public long getInProgressCount() {
         return futures.size();
     }
 
@@ -258,6 +258,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService {
                 if (attemptsNow >= maxAttempts || elapsedSinceFirst > maxTotalRetryMs) {
                     logger.info("任务 {} 达到最大尝试/超出最大重试时长，移动到失败目录 (attempt={}, elapsedMs={})", id, attemptsNow, elapsedSinceFirst);
                     try {
+                        // 写入失败原因到 .error 文件以便查询
+                        writeFailureFile(jobFile, id, e);
                         Files.move(jobFile, failedDir.resolve(jobFile.getFileName()));
                     } catch (IOException ex) {
                         logger.warn("移动失败文件失败: {}", jobFile, ex);
@@ -278,7 +280,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService {
             }
 
             try {
-                // 兜底：移动到 failed 目录以便人工检查
+                // 兜底：写入失败原因并移动到 failed 目录以便人工检查
+                writeFailureFile(jobFile, id, e);
                 Files.move(jobFile, failedDir.resolve(jobFile.getFileName()));
             } catch (IOException ex) {
                 logger.warn("移动失败文件失败: {}", jobFile, ex);
@@ -287,4 +290,69 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService {
             if (f != null) f.completeExceptionally(e);
         }
     }
+
+
+
+    @Override
+    public RenderJob getJob(String id) {
+        try {
+            Path q = queueDir.resolve(id + ".json");
+            if (Files.exists(q)) return mapper.readValue(Files.readString(q), RenderJob.class);
+            Path f = failedDir.resolve(id + ".json");
+            if (Files.exists(f)) return mapper.readValue(Files.readString(f), RenderJob.class);
+        } catch (Exception ex) {
+            // ignore and fallthrough
+        }
+        return null;
+    }
+
+    @Override
+    public java.util.Collection<RenderJob> listFailedJobs(int limit) {
+        java.util.List<RenderJob> out = new java.util.ArrayList<>();
+        try {
+            if (Files.exists(failedDir)) {
+                Files.list(failedDir).filter(p -> p.toString().endsWith(".json")).limit(limit).forEach(p -> {
+                    try {
+                        out.add(mapper.readValue(Files.readString(p), RenderJob.class));
+                    } catch (Exception ex) {
+                        // ignore
+                    }
+                });
+            }
+        } catch (IOException e) {
+            // ignore
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Collection<RenderJob> listQueuedJobs(int limit) {
+        java.util.List<RenderJob> out = new java.util.ArrayList<>();
+        try {
+            if (Files.exists(queueDir)) {
+                Files.list(queueDir).filter(p -> p.toString().endsWith(".json")).limit(limit).forEach(p -> {
+                    try {
+                        out.add(mapper.readValue(Files.readString(p), RenderJob.class));
+                    } catch (Exception ex) {
+                        // ignore
+                    }
+                });
+            }
+        } catch (IOException e) {
+            // ignore
+        }
+        return out;
+    }
+
+    private void writeFailureFile(Path jobFile, String id, Exception e) {
+        try {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            e.printStackTrace(new java.io.PrintWriter(sw));
+            String err = sw.toString();
+            Files.writeString(jobFile.resolveSibling(id + ".error"), err, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (Exception ex) {
+            logger.warn("无法写入失败原因文件: {}", jobFile, ex);
+        }
+    }
 }
+

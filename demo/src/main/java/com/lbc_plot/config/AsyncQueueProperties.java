@@ -21,6 +21,9 @@ public class AsyncQueueProperties {
     // 最大尝试次数（包含首次尝试）
     private int maxAttempts = 10;
 
+    // 可见性超时：处理节点取走后未确认的最长时长（ms），超过后会重入队列进行重试
+    private long visibilityTimeoutMs = 60_000L; // 1 minute
+
     public String getBaseDir() {
         return baseDir;
     }
@@ -107,5 +110,13 @@ public class AsyncQueueProperties {
 
     public void setMaxAttempts(int maxAttempts) {
         this.maxAttempts = maxAttempts;
+    }
+
+    public long getVisibilityTimeoutMs() {
+        return visibilityTimeoutMs;
+    }
+
+    public void setVisibilityTimeoutMs(long visibilityTimeoutMs) {
+        this.visibilityTimeoutMs = visibilityTimeoutMs;
     }
 }
