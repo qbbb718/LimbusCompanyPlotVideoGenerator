@@ -45,3 +45,7 @@ demo/target/classes/com/lbc_plot/config/ProjectConfig.class
 *.exe
 *.class
 
+*.mp3
+*.ogg
+*.wav
+*.png
