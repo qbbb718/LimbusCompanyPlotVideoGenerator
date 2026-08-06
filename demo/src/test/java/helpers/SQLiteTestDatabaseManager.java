@@ -19,25 +19,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqlite.SQLiteDataSource;
 
-import com.lbc_plot.util.db.SQLiteDatabaseManager;
-
+import com.lbc_plot.common.util.db.SQLiteDatabaseManager;
 
 /**
  * SQLite测试数据库连接管理（使用内存数据库）
  */
 public class SQLiteTestDatabaseManager {
     private static final Logger logger = LoggerFactory.getLogger(SQLiteTestDatabaseManager.class);
-    
+
     // 使用内存数据库
     private static final String DB_URL = "jdbc:sqlite::memory:";
     private Connection connection;
     // 添加连接状态追踪
     private boolean connectionActive = true;
-    
+
     private static SQLiteDataSource dataSource;
     private static Connection singleConnection; // 保留原单连接模式
 
-    
     public SQLiteTestDatabaseManager() {
         logger.info("创建SQLite测试数据库管理器");
         initializeDatabase();
@@ -59,29 +57,29 @@ public class SQLiteTestDatabaseManager {
         }
         return dataSource;
     }
-    
+
     private void initializeDatabase() {
         logger.debug("开始初始化测试数据库");
         try {
             // 先检查驱动
             checkDriver();
-            
+
             // 创建内存数据库连接
             logger.debug("创建内存数据库连接: {}", DB_URL);
             connection = DriverManager.getConnection(DB_URL);
             logger.info("内存数据库连接创建成功");
-            
+
             // 创建表结构
             createTables();
-            
+
             logger.info("测试数据库初始化完成");
-            
+
         } catch (Exception e) {
             logger.error("测试数据库初始化失败", e);
             throw new RuntimeException("测试数据库初始化失败", e);
         }
     }
-    
+
     private void checkDriver() {
         try {
             logger.debug("检查SQLite JDBC驱动");
@@ -92,11 +90,10 @@ public class SQLiteTestDatabaseManager {
             throw new RuntimeException("找不到SQLite JDBC驱动，请添加依赖", e);
         }
     }
-    
-    
+
     private void createTables() {
         logger.info("开始创建数据库表结构");
-        
+
         InputStream inputStream = getClass().getClassLoader()
                 .getResourceAsStream("db/initial_schema.sql");
 
@@ -107,7 +104,7 @@ public class SQLiteTestDatabaseManager {
 
         logger.debug("读取数据库初始化文件成功");
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            
+
             StringBuilder sqlBuilder = new StringBuilder();
             String line;
             int lineCount = 0;
@@ -115,25 +112,25 @@ public class SQLiteTestDatabaseManager {
                 sqlBuilder.append(line).append("\n");
                 lineCount++;
             }
-            
+
             String fullSql = sqlBuilder.toString();
             logger.debug("读取SQL文件完成: {}行, {}字符", lineCount, fullSql.length());
-            
+
             // 分割SQL语句
             List<String> sqlStatements = splitSqlScript(fullSql);
             logger.debug("解析出 {} 条SQL语句", sqlStatements.size());
-            
+
             // 分离CREATE TABLE和CREATE INDEX语句
             List<String> createTableStatements = new ArrayList<>();
             List<String> createIndexStatements = new ArrayList<>();
             List<String> otherStatements = new ArrayList<>();
-            
+
             for (String sql : sqlStatements) {
                 sql = sql.trim();
                 if (sql.isEmpty() || sql.startsWith("--")) {
                     continue;
                 }
-                
+
                 String upperSql = sql.toUpperCase();
                 if (upperSql.startsWith("CREATE TABLE")) {
                     createTableStatements.add(sql);
@@ -141,42 +138,42 @@ public class SQLiteTestDatabaseManager {
                     createIndexStatements.add(sql);
                 } else {
                     otherStatements.add(sql);
-                    logger.warn("发现不支持的SQL语句类型: {}", 
-                        upperSql.substring(0, Math.min(40, upperSql.length())) + "...");
+                    logger.warn("发现不支持的SQL语句类型: {}",
+                            upperSql.substring(0, Math.min(40, upperSql.length())) + "...");
                 }
             }
-            
+
             logger.info("分类完成: {}个CREATE TABLE, {}个CREATE INDEX, {}个其他语句",
-                createTableStatements.size(), createIndexStatements.size(), otherStatements.size());
-            
+                    createTableStatements.size(), createIndexStatements.size(), otherStatements.size());
+
             // 分阶段执行SQL
             try (Statement stmt = connection.createStatement()) {
-                
+
                 // 第一阶段：执行所有CREATE TABLE语句
                 logger.info("开始执行CREATE TABLE语句");
                 for (int i = 0; i < createTableStatements.size(); i++) {
                     String sql = createTableStatements.get(i);
                     String tableName = extractTableName(sql);
-                    
-                    logger.debug("执行CREATE TABLE[{}]: {}", i + 1, 
-                        tableName != null ? tableName : "未知表");
-                    
+
+                    logger.debug("执行CREATE TABLE[{}]: {}", i + 1,
+                            tableName != null ? tableName : "未知表");
+
                     stmt.execute(sql);
                     logger.info("创建表成功: {}", tableName != null ? tableName : "表" + (i + 1));
                 }
-                
+
                 // 第二阶段：执行所有CREATE INDEX语句
                 logger.info("开始执行CREATE INDEX语句");
                 for (int i = 0; i < createIndexStatements.size(); i++) {
                     String sql = createIndexStatements.get(i);
-                    
+
                     logger.debug("执行CREATE INDEX[{}]: {}", i + 1,
-                        sql.substring(0, Math.min(50, sql.length())) + "...");
-                    
+                            sql.substring(0, Math.min(50, sql.length())) + "...");
+
                     stmt.execute(sql);
                     logger.info("创建索引成功: 索引{}", i + 1);
                 }
-                
+
                 // 第三阶段：尝试执行其他语句（如果有）
                 if (!otherStatements.isEmpty()) {
                     logger.warn("尝试执行 {} 个其他类型语句", otherStatements.size());
@@ -189,15 +186,15 @@ public class SQLiteTestDatabaseManager {
                         }
                     }
                 }
-                
+
             }
-            
+
             logger.info("SQL执行完成: 共执行 {} 个表, {} 个索引",
-                createTableStatements.size(), createIndexStatements.size());
-            
+                    createTableStatements.size(), createIndexStatements.size());
+
             // 验证表是否创建成功
             verifyTablesCreated();
-            
+
         } catch (IOException e) {
             logger.error("读取数据库初始化文件失败", e);
             throw new RuntimeException("创建测试表失败: 文件读取错误", e);
@@ -207,25 +204,24 @@ public class SQLiteTestDatabaseManager {
         }
     }
 
-
     /**
      * 验证必要的表是否创建成功
      */
     private void verifyTablesCreated() {
         logger.info("验证表创建情况");
-        
+
         // 检查必须存在的表
-        String[] requiredTables = {"characters", "portraits"};
-        
+        String[] requiredTables = { "characters", "portraits" };
+
         for (String table : requiredTables) {
             boolean exists = tableExists(table);
             logger.info("表 {} 存在: {}", table, exists);
-            
+
             if (!exists) {
                 logger.warn("重要表 {} 未创建成功", table);
             }
         }
-        
+
         // 列出所有表
         listAllTables();
     }
@@ -236,49 +232,48 @@ public class SQLiteTestDatabaseManager {
     private String extractTableName(String sql) {
         try {
             String upperSql = sql.toUpperCase().trim();
-            
+
             // 移除CREATE TABLE IF NOT EXISTS
             String workingSql = upperSql
-                .replace("CREATE TABLE", "")
-                .replace("IF NOT EXISTS", "")
-                .trim();
-            
+                    .replace("CREATE TABLE", "")
+                    .replace("IF NOT EXISTS", "")
+                    .trim();
+
             // 找到第一个空格或左括号
             int endIndex = workingSql.length();
             int spaceIndex = workingSql.indexOf(' ');
             int parenIndex = workingSql.indexOf('(');
-            
+
             if (spaceIndex > 0 && spaceIndex < endIndex) {
                 endIndex = spaceIndex;
             }
             if (parenIndex > 0 && parenIndex < endIndex) {
                 endIndex = parenIndex;
             }
-            
+
             if (endIndex < workingSql.length()) {
                 String tableName = workingSql.substring(0, endIndex).trim();
                 // 移除可能的引号
                 tableName = tableName.replace("`", "").replace("\"", "").replace("'", "");
                 return tableName;
             }
-            
+
         } catch (Exception e) {
             logger.warn("提取表名失败: {}", e.getMessage());
         }
         return null;
     }
 
-
     /**
      * 诊断方法：详细检查数据库状态
      */
     public void diagnose() {
         logger.info("=== 数据库诊断 ===");
-        
+
         try {
             // 检查连接状态
             logger.info("连接状态: {}", connection.isClosed() ? "已关闭" : "已连接");
-            
+
             // 列出所有数据库对象
             try (var rs = connection.getMetaData().getTables(null, null, "%", null)) {
                 logger.info("数据库中的表:");
@@ -293,11 +288,11 @@ public class SQLiteTestDatabaseManager {
                     logger.warn("数据库中没有任何表");
                 }
             }
-            
+
             // 检查SQLite系统表
             try (Statement stmt = connection.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type='table'")) {
-                
+                    ResultSet rs = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type='table'")) {
+
                 logger.info("sqlite_master中的表:");
                 int count = 0;
                 while (rs.next()) {
@@ -309,16 +304,15 @@ public class SQLiteTestDatabaseManager {
                     logger.error("sqlite_master中没有任何表，说明数据库完全为空");
                 }
             }
-            
+
         } catch (SQLException e) {
             logger.error("诊断失败", e);
         }
     }
 
-    
     public Connection getConnection() {
         logger.debug("请求获取数据库连接");
-        
+
         try {
             if (!connectionActive) {
                 throw new IllegalStateException("管理器已关闭，无法获取连接");
@@ -337,7 +331,7 @@ public class SQLiteTestDatabaseManager {
             throw new RuntimeException("获取测试数据库连接失败", e);
         }
     }
-    
+
     public void closeConnection() {
         logger.debug("关闭数据库连接");
         try {
@@ -354,7 +348,7 @@ public class SQLiteTestDatabaseManager {
             connection = null;
         }
     }
-    
+
     /**
      * 清空所有表数据（但保留表结构）
      */
@@ -364,11 +358,11 @@ public class SQLiteTestDatabaseManager {
             // 禁用外键约束以便清空数据
             stmt.execute("PRAGMA foreign_keys = OFF");
             logger.debug("外键约束已禁用");
-            
+
             // 获取所有用户表
             var rs = stmt.executeQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-            
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+
             int clearedTables = 0;
             while (rs.next()) {
                 String tableName = rs.getString("name");
@@ -380,19 +374,19 @@ public class SQLiteTestDatabaseManager {
                     logger.warn("清空表 {} 失败: {}", tableName, e.getMessage());
                 }
             }
-            
+
             // 启用外键约束
             stmt.execute("PRAGMA foreign_keys = ON");
             logger.debug("外键约束已启用");
-            
+
             logger.info("数据清空完成: 共清空 {} 个表", clearedTables);
-            
+
         } catch (SQLException e) {
             logger.error("清空测试数据失败", e);
             throw new RuntimeException("清空测试数据失败", e);
         }
     }
-    
+
     /**
      * 完全重置数据库
      */
@@ -401,35 +395,35 @@ public class SQLiteTestDatabaseManager {
         closeConnection();
         initializeDatabase();
     }
-    
+
     /**
      * 检查表是否存在
      */
     public boolean tableExists(String tableName) {
         logger.debug("检查表是否存在: {}", tableName);
         try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name = '" + tableName + "'")) {
-            
+                ResultSet rs = stmt.executeQuery(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = '" + tableName + "'")) {
+
             boolean exists = rs.next();
             logger.debug("表 {} 存在: {}", tableName, exists);
             return exists;
-            
+
         } catch (SQLException e) {
             logger.warn("检查表存在失败: {}", e.getMessage());
             return false;
         }
     }
-    
+
     /**
      * 列出所有表
      */
     public void listAllTables() {
         logger.info("列出所有表");
         try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                 "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view')")) {
-            
+                ResultSet rs = stmt.executeQuery(
+                        "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view')")) {
+
             int tableCount = 0;
             while (rs.next()) {
                 String name = rs.getString("name");
@@ -437,14 +431,14 @@ public class SQLiteTestDatabaseManager {
                 logger.info(" - {} ({})", name, type);
                 tableCount++;
             }
-            
+
             logger.info("共发现 {} 个表/视图", tableCount);
-            
+
         } catch (SQLException e) {
             logger.warn("列出表失败: {}", e.getMessage());
         }
     }
-    
+
     /**
      * 获取数据库信息
      */
@@ -455,7 +449,7 @@ public class SQLiteTestDatabaseManager {
             logger.info("Database: {}", connection.getCatalog());
             logger.info("Readonly: {}", connection.isReadOnly());
             logger.info("Closed: {}", connection.isClosed());
-            
+
         } catch (SQLException e) {
             logger.warn("获取数据库信息失败: {}", e.getMessage());
         }
@@ -463,6 +457,7 @@ public class SQLiteTestDatabaseManager {
 
     /**
      * 改进的SQL脚本分割方法，能够处理字符串和注释中的分号
+     * 
      * @param script 整个SQL脚本内容
      * @return 分割后的SQL语句列表
      */
@@ -480,7 +475,7 @@ public class SQLiteTestDatabaseManager {
 
             // 处理块注释开始 (/*)
             if (!inSingleQuote && !inDoubleQuote && !inLineComment && !inBlockComment &&
-                c == '/' && i + 1 < script.length() && script.charAt(i + 1) == '*') {
+                    c == '/' && i + 1 < script.length() && script.charAt(i + 1) == '*') {
                 inBlockComment = true;
                 i++; // 跳过 '*'，并且不将 "/*" 添加到 currentStatement
                 continue;
@@ -493,7 +488,7 @@ public class SQLiteTestDatabaseManager {
             }
             // 处理单行注释开始 (--)
             if (!inSingleQuote && !inDoubleQuote && !inLineComment && !inBlockComment &&
-                c == '-' && i + 1 < script.length() && script.charAt(i + 1) == '-') {
+                    c == '-' && i + 1 < script.length() && script.charAt(i + 1) == '-') {
                 inLineComment = true;
                 i++; // 跳过第二个 '-'，并且不将 "--" 添加到 currentStatement
                 continue;
@@ -550,16 +545,17 @@ public class SQLiteTestDatabaseManager {
         return statements;
     }
 
-        /**
+    /**
      * 检查表中是否存在符合条件的记录
-     * @param tableName 表名
+     * 
+     * @param tableName  表名
      * @param columnName 字段名
-     * @param value 预期值（支持String/Number/Boolean）
+     * @param value      预期值（支持String/Number/Boolean）
      * @return 是否存在记录
      */
     public boolean recordExists(String tableName, String columnName, Object value) {
         logger.debug("检查记录存在性: {}.{} = {}", tableName, columnName, value);
-        
+
         String sql;
         if (value instanceof String) {
             sql = String.format("SELECT 1 FROM %s WHERE %s = '%s'", tableName, columnName, value);
@@ -570,7 +566,7 @@ public class SQLiteTestDatabaseManager {
         }
 
         try (Statement stmt = connection.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)) {
+                ResultSet rs = stmt.executeQuery(sql)) {
             boolean exists = rs.next();
             logger.debug("记录存在性检查结果: {}", exists);
             return exists;
@@ -579,5 +575,5 @@ public class SQLiteTestDatabaseManager {
             throw new RuntimeException("数据库查询失败", e);
         }
     }
-    
+
 }

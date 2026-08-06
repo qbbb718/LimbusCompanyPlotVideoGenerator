@@ -12,6 +12,7 @@ interface Window {
     saveThumbnail: (fileName: string, data: Uint8Array) => Promise<string>;
     getAppVersion: () => Promise<string>;
     getAppPath: () => Promise<string>;
+    openResourceFolder: (resourceType: "characters" | "backgrounds" | "audios") => Promise<{ success: boolean; path?: string; error?: string }>;
     onMenuNewProject: (callback: () => void) => void;
     onMenuOpenProject: (callback: () => void) => void;
     onMenuSaveProject: (callback: () => void) => void;

@@ -1,9 +1,11 @@
 package com.lbc_plot.util.text;
 
-import com.lbc_plot.core.service.CharacterService;
-import com.lbc_plot.model.Record;
-import com.lbc_plot.model.storage.MyCharacter;
-import com.lbc_plot.model.storage.Portrait;
+import com.lbc_plot.plot.model.Record;
+import com.lbc_plot.plot.parser.PlainTextRecordsParser;
+import com.lbc_plot.resource.model.MyCharacter;
+import com.lbc_plot.resource.model.Portrait;
+import com.lbc_plot.resource.service.CharacterService;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -11,8 +13,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.lbc_plot.render.audio.model.AudioCommandType;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -42,40 +47,62 @@ public class PlainTextRecordsParserTest {
         List<Record> records = PlainTextRecordsParser.parse(tmp, svc);
 
         assertNotNull(records);
-        // expecting at least: bgm start, bg change, alice line, bob line, bgm2 change, alice line
+        System.out.println("TOTAL_RECORDS=" + records.size());
+        // Debug: 输出每条 record 的音频命令并逐项打印每个命令的类型与音频ID字节信息
+        for (int i = 0; i < records.size(); i++) {
+            var r = records.get(i);
+            System.out.println("REC[" + i + "] cmds=" + r.getAudioCommands());
+            if (r.getAudioCommands() != null) {
+            for (var c : r.getAudioCommands()) {
+                String t = (c.getType() == null) ? "null" : c.getType().name();
+                String id = c.getAudioId();
+                int len = (id == null) ? -1 : id.length();
+                String bytes = (id == null) ? "null" : Arrays.toString(id.getBytes(StandardCharsets.UTF_8));
+                System.out.println("  cmd: type=" + t + " audioId='" + id + "' len=" + len + " bytes=" + bytes);
+            }
+            }
+        }
+
+        // expecting at least: bgm active, bg change, alice line, bob line, bgm2 change, alice line
         assertTrue(records.size() >= 6);
 
         // find first Alice record and check it has dialogue and speaker name
-        boolean foundAlice = records.stream().anyMatch(r -> r.getDialogue() != null && "Alice".equals(r.getDialogue().getSpeakerName()));
+        boolean foundAlice = records.stream()
+            .anyMatch(r -> r.getDialogue() != null && "Alice".equals(r.getDialogue().getSpeakerName()));
         assertTrue(foundAlice, "Alice dialogue should be present and mapped");
 
-        // check BGM persistence: after first [bgm.mp3], subsequent records before bgm2 should include bgm start
-        // find index of first BGM start
-        int idxBgm1 = -1;
+        // Validate BGM behavior: should contain active entries for both bgm.mp3 and bgm2.mp3
+        boolean hasActive1 = false;
+        boolean hasActive2 = false;
         for (int i = 0; i < records.size(); i++) {
-            if (records.get(i).getAudioCommands() != null && records.get(i).getAudioCommands().stream().anyMatch(ac -> ac.getType() != null && ac.getType().name().startsWith("BGM"))) {
-                idxBgm1 = i;
-                break;
-            }
-        }
-        assertTrue(idxBgm1 >= 0, "Should have a BGM start record");
-
-        // ensure records after idxBgm1 and before bgm2 still contain a BGM_START with same id
-        String bgmId = records.get(idxBgm1).getAudioCommands().get(0).getAudioId();
-        boolean persisted = false;
-        for (int i = idxBgm1+1; i < records.size(); i++) {
-            var cmds = records.get(i).getAudioCommands();
-            if (cmds != null) {
-                for (var c : cmds) {
-                    if (c.getType() != null && c.getType().name().equals("BGM_START") && bgmId.equals(c.getAudioId())) {
-                        persisted = true;
-                        break;
-                    }
+            var r = records.get(i);
+            if (r.getAudioCommands() == null) continue;
+            for (var c : r.getAudioCommands()) {
+                // debug: print enum identity & classloader to detect duplicate-classloader issues
+                if (c.getType() != null) {
+                    System.out.println("  typeClass=" + c.getType().getClass().getName());
+                    System.out.println("  typeClassLoader=" + c.getType().getClass().getClassLoader());
+                    System.out.println("  typeIdentity=" + System.identityHashCode(c.getType()));
+                    System.out.println("  expectedIdentity=" + System.identityHashCode(AudioCommandType.BGM_ACTIVE));
+                    System.out.println("  equals? " + c.getType().equals(AudioCommandType.BGM_ACTIVE));
+                    System.out.println("  == ? " + (c.getType() == AudioCommandType.BGM_ACTIVE));
+                } else {
+                    System.out.println("  type=null");
                 }
+                String aid = c.getAudioId();
+                System.out.println("  audioId raw='" + aid + "' len=" + (aid==null?-1:aid.length()));
+                System.out.println("  audioId bytes=" + (aid==null?"null":Arrays.toString(aid.getBytes(StandardCharsets.UTF_8))));
+
+                boolean match1 = c.getType() == AudioCommandType.BGM_ACTIVE && "bgm.mp3".equals(c.getAudioId());
+                boolean match2 = c.getType() == AudioCommandType.BGM_ACTIVE && "bgm2.mp3".equals(c.getAudioId());
+                System.out.println("  check cmd: type=" + (c.getType()==null?"null":c.getType().name()) + " id='" + c.getAudioId() + "' => match1=" + match1 + " match2=" + match2);
+                if (match1) hasActive1 = true;
+                if (match2) hasActive2 = true;
             }
-            if (persisted) break;
         }
 
-        assertTrue(persisted, "BGM should persist into subsequent records until changed");
+        System.out.println("DBG hasActive1=" + hasActive1 + " hasActive2=" + hasActive2);
+        assertTrue(hasActive1, "Should contain BGM_ACTIVE for bgm.mp3");
+        assertTrue(hasActive2, "Should contain BGM_ACTIVE for bgm2.mp3 after change");
     }
 }

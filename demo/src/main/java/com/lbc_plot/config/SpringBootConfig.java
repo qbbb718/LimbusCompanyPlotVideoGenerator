@@ -10,9 +10,18 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import com.lbc_plot.core.Composer.FrameComposerService;
-import com.lbc_plot.model.storage.MyCharacter;
-import com.lbc_plot.DAO.mappers.MyCharacterMapper;
+
+import com.lbc_plot.resource.dao.BackgroundDAO;
+import com.lbc_plot.resource.dao.CharacterDAO;
+import com.lbc_plot.resource.dao.MyCharacterMapper;
+import com.lbc_plot.resource.dao.PortraitDAO;
+import com.lbc_plot.resource.model.MyCharacter;
+import com.lbc_plot.resource.service.BackgroundService;
+import com.lbc_plot.resource.service.CharacterService;
+import com.lbc_plot.render.engine.FrameComposerService;
+import com.lbc_plot.render.service.impl.BackgroundServiceImpl;
+import com.lbc_plot.render.service.impl.CharacterServiceImpl;
+
 import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 
 /**
@@ -32,7 +41,7 @@ public class SpringBootConfig {
         dataSource.setUrl("jdbc:sqlite:./data/project.db");
         return dataSource;
     }
-    
+
     /**
      * 配置Jdbi实例
      */
@@ -40,27 +49,43 @@ public class SpringBootConfig {
     public Jdbi jdbi(DataSource dataSource) {
         // 使用TransactionAwareDataSourceProxy确保与Spring事务管理兼容
         TransactionAwareDataSourceProxy proxyDataSource = new TransactionAwareDataSourceProxy(dataSource);
-        
+
         Jdbi jdbi = Jdbi.create(proxyDataSource);
-        
+
         // 安装SQL Object插件
         jdbi.installPlugin(new SqlObjectPlugin());
-        
+
         // 注册自定义映射器
         jdbi.registerRowMapper(MyCharacter.class, new MyCharacterMapper());
-        
+
         // 配置SQL语句选项
         jdbi.getConfig(SqlStatements.class)
-            .setUnusedBindingAllowed(false);
-        
+                .setUnusedBindingAllowed(false);
+
         return jdbi;
     }
-    
+
     /**
      * 配置FrameComposerService实例
      */
     @Bean
     public FrameComposerService frameComposerService() {
         return new FrameComposerService();
+    }
+
+    /**
+     * 配置角色服务实例
+     */
+    @Bean
+    public CharacterService characterService(Jdbi jdbi) {
+        return new CharacterServiceImpl(jdbi.onDemand(CharacterDAO.class), jdbi.onDemand(PortraitDAO.class));
+    }
+
+    /**
+     * 配置背景服务实例
+     */
+    @Bean
+    public BackgroundService backgroundService(Jdbi jdbi) {
+        return new BackgroundServiceImpl(jdbi.onDemand(BackgroundDAO.class));
     }
 }

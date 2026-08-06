@@ -1,0 +1,63 @@
+
+.resizable-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+}
+
+.resizable-panel.horizontal {
+  min-width: 100px;
+}
+
+.resizable-panel.vertical {
+  min-height: 100px;
+}
+
+.resize-handle {
+  position: absolute;
+  background-color: transparent;
+  z-index: 10;
+}
+
+.resize-handle.horizontal {
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: rgba(24, 144, 255, 0.1);
+  border-left: 2px solid #1890ff;
+  z-index: 10;
+  position: absolute;
+  transition: background-color 0.2s;
+}
+
+.resize-handle.horizontal:hover {
+  background-color: rgba(24, 144, 255, 0.3);
+  border-left: 2px solid #096dd9;
+  width: 12px;
+  right: -6px;
+}
+
+.resize-handle.vertical {
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 10px;
+  width: 100%;
+  cursor: row-resize;
+  background-color: rgba(24, 144, 255, 0.1);
+  border-top: 2px solid #1890ff;
+  z-index: 10;
+  position: absolute;
+  transition: background-color 0.2s;
+}
+
+.resize-handle.vertical:hover {
+  background-color: rgba(24, 144, 255, 0.3);
+  border-top: 2px solid #096dd9;
+  height: 12px;
+  bottom: -6px;
+}

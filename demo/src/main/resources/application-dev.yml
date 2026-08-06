@@ -1,0 +1,73 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+spring:
+  redis:
+    host: localhost
+    port: 6379
+
+# async queue properties (示例)
+async:
+  queue:
+    base-dir: target
+    queue-sub-dir: async_render_jobs
+    failed-sub-dir: async_render_jobs_failed
+    thread-count: 1
+    backoff-initial-ms: 500
+    backoff-multiplier: 2.0
+    backoff-max-ms: 30000
+    max-total-retry-ms: 300000
+    max-attempts: 10
+project:
+  videoWidth: 1280
+  videoHeight: 720
+  videoResolution: "720p"
+  frameRate: 30
+  imageBasePath: "assets/images/"
+  defaultTextColor: "#FBDBB3"
+  defaultBgColor: "#4C361F"
+  factionColor: "#9F6A3B"
+
+app:
+  storageLocation: "dev_storage/"
+
+storage:
+  backgrounds:
+    dir: "assets/backgrounds"
+  thumbnails:
+    dir: "assets/thumbnails"
+  enable:
+    versioning: true
+  max:
+    file:
+      size: 10
+  supported:
+    formats: "jpg,jpeg,png,gif,bmp"
+  generate:
+    thumbnails: true
+  thumbnail:
+    width: 200
+    height: 200
+
+async:
+  queue:
+    baseDir: "target"
+    queueSubDir: "async_render_jobs"
+    failedSubDir: "async_render_jobs_failed"
+    maxRetries: 2
+    retryDelayMs: 500
+    threadCount: 1
+app:
+  storageLocation: ./data/storage
+  renderThreads: 2
+  cacheEnabled: true
+
+spring:
+  profiles: dev
+
+logging:
+  level:
+    com.lbc_plot: DEBUG

@@ -1,9 +1,10 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import App from "@features/app";
 
-test('renders learn react link', () => {
+test("renders app main", () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  // smoke test: ensure app renders some container
+  const el = document.querySelector(".app-container");
+  expect(el).not.toBeNull();
 });

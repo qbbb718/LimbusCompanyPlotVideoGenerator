@@ -12,16 +12,37 @@ import java.io.File;
  */
 @SpringBootApplication
 public class MainApplication {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) {
-        // 确保数据库目录存在
+        // 清理旧版数据库文件（project.db放在根目录）
+        cleanupLegacyDatabase();
+        // 确保数据目录存在并使用新的配置
         ensureDatabaseDirectoryExists();
-        
+
         SpringApplication.run(MainApplication.class, args);
     }
-    
+
+    /**
+     * 删除根目录下的旧数据库文件（无需保留旧数据）
+     */
+    private static void cleanupLegacyDatabase() {
+        try {
+            File oldDb = new File("project.db");
+            if (oldDb.exists()) {
+                boolean deleted = oldDb.delete();
+                if (deleted) {
+                    logger.info("已删除旧数据库文件: {}", oldDb.getAbsolutePath());
+                } else {
+                    logger.warn("无法删除旧数据库文件: {}", oldDb.getAbsolutePath());
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("清理旧数据库时发生错误", e);
+        }
+    }
+
     /**
      * 确保数据库目录存在
      */

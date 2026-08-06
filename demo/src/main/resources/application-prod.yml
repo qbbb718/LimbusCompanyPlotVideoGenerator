@@ -1,0 +1,73 @@
+spring:
+  redis:
+    host: redis.production.local
+    port: 6379
+
+async:
+  queue:
+    base-dir: /var/lib/lbc_plot
+    queue-sub-dir: async_render_jobs
+    failed-sub-dir: async_render_jobs_failed
+    thread-count: 4
+    backoff-initial-ms: 1000
+    backoff-multiplier: 2.0
+    backoff-max-ms: 60000
+    max-total-retry-ms: 3600000
+    max-attempts: 20
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+project:
+  defaultTextColor: "#FBDBB3"
+  defaultBgColor: "#4C361F"
+  factionColor: "#9F6A3B"
+project:
+  videoWidth: 1920
+  videoHeight: 1080
+  videoResolution: "1080p"
+  frameRate: 30
+  imageBasePath: "assets/images/"
+
+app:
+  storageLocation: "storage/"
+
+storage:
+  backgrounds:
+    dir: "assets/backgrounds"
+  thumbnails:
+    dir: "assets/thumbnails"
+  enable:
+    versioning: true
+  max:
+    file:
+      size: 50
+  supported:
+    formats: "jpg,jpeg,png,gif,bmp"
+  generate:
+    thumbnails: true
+  thumbnail:
+    width: 300
+    height: 300
+
+async:
+  queue:
+    baseDir: "storage"
+    queueSubDir: "async_render_jobs"
+    failedSubDir: "async_render_jobs_failed"
+    maxRetries: 3
+    retryDelayMs: 1000
+    threadCount: 1
+app:
+  storageLocation: /var/lib/limbus/storage
+  renderThreads: 8
+  cacheEnabled: true
+
+spring:
+  profiles: prod
+
+logging:
+  level:
+    com.lbc_plot: INFO

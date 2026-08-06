@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS characters (
     color_bg TEXT DEFAULT '076,054,031',        -- 直接设置颜色字符串默认值
     color_text TEXT DEFAULT '251,219,179',    -- 直接设置颜色字符串默认值
     faction TEXT DEFAULT '无阵营',
-    character_card_image_path TEXT    -- 角色名片图片路径
+    character_card_image_path TEXT,    -- 角色名片图片路径
+    folder_name TEXT                    -- 角色对应的拼音子目录名
 );
 
 -- 立绘表
@@ -66,12 +67,13 @@ CREATE TABLE IF NOT EXISTS background_tag_map (
 );
 
 -- 音频表：存储音频资源元数据
+-- 与前端/DAO保持一致，使用 uuid/name/path/type/tags 字段
 CREATE TABLE IF NOT EXISTS audios (
-    audio_id TEXT PRIMARY KEY NOT NULL,
-    file_path TEXT NOT NULL,
-    display_name TEXT,
-    duration_ms INTEGER,
-    source TEXT,
+    uuid TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    type TEXT,
+    tags TEXT,
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

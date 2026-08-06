@@ -1,0 +1,143 @@
+/* 角色和立绘选择垂直排列 */
+.form-group-row {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group-row .form-group {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+/* 整体布局优化 */
+.characters-properties {
+  padding: 0 15px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.character-details {
+  padding: 10px 0;
+  justify-content: space-evenly;
+}
+
+/* 压暗选项对齐修复 */
+.form-section:last-child .form-group {
+  display: flex;
+  align-items: center;
+}
+
+.form-section:last-child .form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* 表单分组样式 */
+.form-section {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed #eee;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #1890ff;
+  font-size: 14px;
+}
+
+.character-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adjX-slider {
+  width: calc(100% - 40px);
+  margin: 10px 0;
+}
+
+.adjX-quick-positions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  width: 100%;
+}
+
+.adjX-quick-btn {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  flex: none;
+  min-width: 40px;
+  min-height: 30px;
+  text-align: center;
+}
+
+.adjX-quick-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.adjY-input-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.adjY-input {
+  flex: 1;
+}
+
+.adjY-reset-btn {
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.adjY-reset-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.add-form {
+  border: 1px dashed #ddd;
+  background-color: #f9f9f9;
+}
+
+.add-character-confirm-btn {
+  padding: 8px 15px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  height: auto;
+  align-self: flex-start;
+}
+
+.add-character-confirm-btn:hover {
+  background-color: #40a9ff;
+}
+
+.add-character-confirm-btn:disabled {
+  background-color: #d9d9d9;
+  cursor: not-allowed;
+}
