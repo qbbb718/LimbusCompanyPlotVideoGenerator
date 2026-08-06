@@ -1,52 +1,55 @@
-# Compiled class file
+# ====== Java & Maven ======
+# Compiled class files
 *.class
 
-# Maven build directory
+# Maven build output
 target/
 demo/target/
 
+# Package files
+*.jar
+*.war
+*.ear
+
+# ====== IDE & Editor ======
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse
+.settings/
+.project
+.classpath
+
+# ====== Logs & Test ======
 # Test logs
 test-logs/
 logs/
 demo/logs/
 
-# Note directory
-note/
-
-# IDE specific files
-.idea/
-*.iml
-.settings/
-.project
-.classpath
-
-# Package Files
-*.jar
-*.war
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# Log files
+# General log files
 *.log
 
 # Virtual machine crash logs
 hs_err_pid*
-*.class
-*.jar
-/demo/target
-*.class
-*.class
-*.class
-*.jar
-demo/target/classes/com/lbc_plot/config/ProjectConfig.class
-*.jar
-*.exe
-*.class
 
+# ====== Archives ======
+*.zip
+*.tar.gz
+*.rar
+
+# ====== Executable ======
+*.exe
+
+# ====== Media Assets (不纳入版本控制的大文件) ======
 *.mp3
 *.ogg
 *.wav
 *.png
+
+# ====== Specific Files ======
+# 特定编译产物
+demo/target/classes/com/lbc_plot/config/ProjectConfig.class
+
+# 前端打包产物
 demo/frontend/electron-react-app/dist/win-unpacked/resources/app.asar
