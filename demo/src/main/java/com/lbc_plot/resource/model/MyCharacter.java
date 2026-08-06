@@ -41,6 +41,7 @@ public class MyCharacter {
     @JsonIgnore
     private BufferedImage colorNameImage; // 人设界面预览用，然后可以直接用到剧情渲染里
     private String characterCardImagePath; // 名片图片路径
+    private String folderName; // 角色对应的拼音子目录名
 
     // 默认值
     private static final String DEFAULT_NAME = "路人";
@@ -157,6 +158,14 @@ public class MyCharacter {
         this.characterCardImagePath = characterCardImagePath;
     }
 
+    public String getFolderName() {
+        return folderName;
+    }
+
+    public void setFolderName(String folderName) {
+        this.folderName = folderName;
+    }
+
     public String getFaction() {
         return faction;
     }
@@ -212,6 +221,7 @@ public class MyCharacter {
         this.colorNameImage = builder.colorNameImage;
         this.faction = builder.faction;
         this.characterCardImagePath = builder.characterCardImagePath;
+        this.folderName = builder.folderName;
 
         // 应用智能默认值
         applySmartDefaults();
@@ -269,6 +279,7 @@ public class MyCharacter {
         private BufferedImage colorNameImage;
         private String faction = DEFAULT_FACTION;
         private String characterCardImagePath;
+        private String folderName;
 
         /**
          * 必需参数构造函数
@@ -346,6 +357,11 @@ public class MyCharacter {
 
         public Builder characterCardImagePath(String characterCardImagePath) {
             this.characterCardImagePath = characterCardImagePath;
+            return this;
+        }
+
+        public Builder folderName(String folderName) {
+            this.folderName = folderName;
             return this;
         }
 

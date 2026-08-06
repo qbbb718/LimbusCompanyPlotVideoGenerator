@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lbc_plot.common.util.io.ImageReader;
+import com.lbc_plot.config.ProjectConfig;
 
 import java.awt.image.BufferedImage;
 
@@ -68,10 +69,16 @@ public class Background {
     private void loadImage() {
         try {
             System.out.println("正在懒加载背景图像: " + path);
-            // If path already looks like a resource path (contains assets/backgrounds/),
+            // If path already looks like a resource path (contains configured backgrounds
+            // path),
             // read it directly; otherwise treat it as filename and use readBackGround.
-            if (path != null && (path.startsWith("assets/backgrounds/") || path.startsWith("/assets/backgrounds/"))) {
-                image = ImageReader.readResourceImage(path.startsWith("/") ? path.substring(1) : path);
+            String p = (path == null) ? null : (path.startsWith("/") ? path.substring(1) : path);
+            String configuredBgPath = ProjectConfig.BACKGROUNDS_PATH;
+            if (configuredBgPath != null && configuredBgPath.startsWith("./")) {
+                configuredBgPath = configuredBgPath.substring(2);
+            }
+            if (p != null && configuredBgPath != null && p.startsWith(configuredBgPath)) {
+                image = ImageReader.readResourceImage(p);
             } else {
                 image = ImageReader.readBackGround(path);
             }

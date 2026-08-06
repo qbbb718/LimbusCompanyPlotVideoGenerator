@@ -70,6 +70,24 @@ public class PlainTextRecordsParser {
     }
 
     /**
+     * 解析文本字符串为 Record 列表，并传入 CharacterService/BackgroundService
+     */
+    public static List<Record> parseText(String text, CharacterService characterService,
+            BackgroundService backgroundService) throws IOException {
+        Path tempFile = Files.createTempFile("records", ".txt");
+        try {
+            Files.writeString(tempFile, text);
+            return parse(tempFile, characterService, backgroundService);
+        } finally {
+            try {
+                Files.deleteIfExists(tempFile);
+            } catch (IOException e) {
+                // 忽略删除失败
+            }
+        }
+    }
+
+    /**
      * Parse with optional CharacterService to map speaker names to
      * MyCharacter/Portrait.
      */

@@ -206,28 +206,31 @@ public class Portrait {
     /**
      * 带懒加载的getter方法
      * 如果image为null，会根据imagePath自动加载图像
+     *
+     * thumbnailPath 现在存的是 URL 路径，形如 "/assets/characters/{拼音}/thumbnails/xxx.png"
+     * （前端通过 /assets/** 静态映射访问）。后端加载 BufferedImage 时需要去掉前导 /，
+     * 相对于 JVM 工作目录（demo/）解析为磁盘文件。
      */
     public BufferedImage getThumbnail() {
         if (this.thumbnail == null && this.thumbnailPath != null && !this.thumbnailPath.trim().isEmpty()) {
             try {
-                // 根据路径类型选择加载方式：如果是文件系统路径则直接读取文件，否则按资源路径读取
-                java.io.File f = new java.io.File(thumbnailPath);
-                if (f.isAbsolute() || thumbnailPath.contains(java.io.File.separator)) {
-                    try {
-                        this.thumbnail = javax.imageio.ImageIO.read(f);
-                    } catch (java.io.IOException e) {
-                        throw e;
-                    }
+                // 去掉前导 /，把 URL 路径转为相对工作目录的文件系统路径
+                String fsPath = this.thumbnailPath.startsWith("/")
+                        ? this.thumbnailPath.substring(1)
+                        : this.thumbnailPath;
+                java.io.File f = new java.io.File(fsPath);
+                if (f.exists() && f.isFile()) {
+                    this.thumbnail = javax.imageio.ImageIO.read(f);
                 } else {
-                    this.thumbnail = ImageReader.readCharacters(thumbnailPath);
+                    // 回退：用 ImageReader 按资源路径查找（兼容旧值或相对路径）
+                    this.thumbnail = ImageReader.readCharacters(this.thumbnailPath);
                 }
                 if (this.thumbnail == null) {
-                    logger.warn("无法加载图像: {}", thumbnailPath);
-                    // 可以返回一个默认图像或者抛出异常
+                    logger.warn("无法加载缩略图: {}", thumbnailPath);
                     this.thumbnail = createDefaultImage();
                 }
             } catch (Exception e) {
-                logger.error("加载图像失败: {}", thumbnailPath, e);
+                logger.error("加载缩略图失败: {}", thumbnailPath, e);
                 this.thumbnail = createDefaultImage();
             }
         }
@@ -429,17 +432,19 @@ public class Portrait {
         public Portrait build() {
             logger.debug("Building Portrait with: portraitID={}, characterID={}, imagePath={}, portName={}, emotion={}",
                     this.portraitID, this.characterID, this.imagePath, this.portName, this.emotion);
-            // 尝试在构建时验证并加载图像，确保无效路径会抛出异常（测试依赖此行为）
-                if (this.imagePath != null && !this.imagePath.trim().isEmpty()
+            // 尝试在构建时加载图像。图片文件不存在时不阻塞构建（如删除角色后查询、
+            // 文件丢失等场景），只记录警告，image 保持 null，
+            // 后续 getImage() 调用时会尝试重新加载（有 try-catch 容错）。
+            if (this.imagePath != null && !this.imagePath.trim().isEmpty()
                     && (this.imagePath.contains("/") || this.imagePath.contains("\\"))) {
                 try {
-                    // 使用 ImageReader 验证资源是否存在并加载
                     this.image = ImageReader.readCharacters(this.imagePath);
                     if (this.image == null) {
-                        throw new IOException("无法加载图像: " + this.imagePath);
+                        logger.warn("构建 Portrait 时 readCharacters 返回 null: {}", this.imagePath);
                     }
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    logger.warn("构建 Portrait 时加载图像失败，image 保持 null: {}", this.imagePath, e);
+                    this.image = null;
                 }
             }
 

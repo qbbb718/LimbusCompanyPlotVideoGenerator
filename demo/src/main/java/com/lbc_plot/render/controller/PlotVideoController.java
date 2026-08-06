@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lbc_plot.config.AppConfig;
+import com.lbc_plot.config.AudioAppConfig;
 import com.lbc_plot.render.engine.FrameComposerService;
 
 /**
@@ -32,7 +33,7 @@ public class PlotVideoController {
     @GetMapping("/plot-video/init-audio")
     public String initAudio() {
         try {
-            AppConfig.initializeAudioSystem();
+            AudioAppConfig.initializeAudioSystem();
             return "音频系统初始化成功";
         } catch (Exception e) {
             return "音频系统初始化失败: " + e.getMessage();

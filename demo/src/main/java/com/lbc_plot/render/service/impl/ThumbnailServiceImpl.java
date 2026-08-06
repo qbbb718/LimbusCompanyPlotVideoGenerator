@@ -54,7 +54,10 @@ public class ThumbnailServiceImpl implements ThumbnailService {
         try {
             // 如果缓存存在，先尝试删除旧缓存
             if (thumbnailCache != null) {
-                try { thumbnailCache.delete(portrait); } catch (Exception ignored) {}
+                try {
+                    thumbnailCache.delete(portrait);
+                } catch (Exception ignored) {
+                }
             }
 
             // 加载原始图像：优先判断是文件系统路径还是资源路径
@@ -133,7 +136,8 @@ public class ThumbnailServiceImpl implements ThumbnailService {
                     thumbnailCache.deleteByPath(portrait.getThumbnailPath());
                     return;
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             File oldThumbnail = new File(portrait.getThumbnailPath());
             if (oldThumbnail.exists() && !oldThumbnail.delete()) {
                 logger.warn("无法删除旧缩略图: {}", portrait.getThumbnailPath());
@@ -210,17 +214,20 @@ public class ThumbnailServiceImpl implements ThumbnailService {
 
     @Override
     public boolean thumbnailExists(Portrait portrait) {
-        if (thumbnailCache != null && thumbnailCache.exists(portrait)) return true;
+        if (thumbnailCache != null && thumbnailCache.exists(portrait))
+            return true;
         if (portrait.getThumbnailPath() != null && !portrait.getThumbnailPath().isEmpty()) {
             File thumbnail = new File(portrait.getThumbnailPath());
-            if (thumbnail.exists()) return true;
+            if (thumbnail.exists())
+                return true;
         }
         return false;
     }
 
     @Override
     public boolean thumbnailExistsByPath(String thumbnailPath) {
-        if (thumbnailCache != null && thumbnailCache.existsByPath(thumbnailPath)) return true;
+        if (thumbnailCache != null && thumbnailCache.existsByPath(thumbnailPath))
+            return true;
         File thumbnail = new File(thumbnailPath);
         return thumbnail.exists();
     }
@@ -237,7 +244,8 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     public int cleanupOrphanedThumbnails() {
         // 尝试通过缓存清理，如果缓存支持则委托
         try {
-            if (thumbnailCache != null) return thumbnailCache.clear();
+            if (thumbnailCache != null)
+                return thumbnailCache.clear();
         } catch (Exception e) {
             logger.warn("清理缩略图缓存失败: {}", e.getMessage());
         }
@@ -246,14 +254,17 @@ public class ThumbnailServiceImpl implements ThumbnailService {
 
     @Override
     public File getThumbnailFile(Portrait portrait) {
-        if (thumbnailCache != null) return thumbnailCache.getFile(portrait);
-        if (portrait.getThumbnailPath() != null) return new File(portrait.getThumbnailPath());
+        if (thumbnailCache != null)
+            return thumbnailCache.getFile(portrait);
+        if (portrait.getThumbnailPath() != null)
+            return new File(portrait.getThumbnailPath());
         return null;
     }
 
     @Override
     public File getThumbnailFileByPath(String thumbnailPath) {
-        if (thumbnailCache != null) return thumbnailCache.getFileByPath(thumbnailPath);
+        if (thumbnailCache != null)
+            return thumbnailCache.getFileByPath(thumbnailPath);
         return new File(thumbnailPath);
     }
 

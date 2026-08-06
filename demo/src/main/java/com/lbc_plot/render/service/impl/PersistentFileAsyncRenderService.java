@@ -33,7 +33,8 @@ import com.lbc_plot.render.engine.RenderOfVideo;
 import com.lbc_plot.render.service.AsyncRenderService;
 
 @Service
-public class PersistentFileAsyncRenderService implements AsyncRenderService, com.lbc_plot.render.service.AsyncRenderServiceAdmin {
+public class PersistentFileAsyncRenderService
+        implements AsyncRenderService, com.lbc_plot.render.service.AsyncRenderServiceAdmin {
     private static final Logger logger = LoggerFactory.getLogger(PersistentFileAsyncRenderService.class);
 
     private final Path queueDir;
@@ -63,13 +64,15 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
     private Counter attemptsCounter;
 
     @Autowired
-    public PersistentFileAsyncRenderService(AppProperties props, AsyncQueueProperties qprops, @Autowired(required = false) MeterRegistry meterRegistry) {
+    public PersistentFileAsyncRenderService(AppProperties props, AsyncQueueProperties qprops,
+            @Autowired(required = false) MeterRegistry meterRegistry) {
         String base = qprops != null && qprops.getBaseDir() != null ? qprops.getBaseDir()
                 : (props != null && props.getStorageLocation() != null ? props.getStorageLocation() : "target");
         this.queueDir = Path.of(base).resolve(qprops.getQueueSubDir());
         this.failedDir = Path.of(base).resolve(qprops.getFailedSubDir());
         this.maxRetries = qprops.getMaxRetries();
-        this.executor = Executors.newScheduledThreadPool(Math.max(1, qprops.getThreadCount()), r -> new Thread(r, "persistent-render-processor"));
+        this.executor = Executors.newScheduledThreadPool(Math.max(1, qprops.getThreadCount()),
+                r -> new Thread(r, "persistent-render-processor"));
         this.retryDelayMs = qprops.getRetryDelayMs();
         this.backoffInitialMs = qprops.getBackoffInitialMs();
         this.backoffMultiplier = qprops.getBackoffMultiplier();
@@ -102,7 +105,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
         // 在启动时扫描未处理的 job 文件并调度处理
         executor.submit(() -> {
             try {
-                Files.list(queueDir).filter(p -> p.toString().endsWith(".json")).forEach(p -> scheduleProcessJobFile(p, 0L));
+                Files.list(queueDir).filter(p -> p.toString().endsWith(".json"))
+                        .forEach(p -> scheduleProcessJobFile(p, 0L));
             } catch (IOException e) {
                 logger.warn("扫描队列目录失败", e);
             }
@@ -162,7 +166,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
 
     public long getQueuedCount() {
         try {
-            return Files.exists(queueDir) ? Files.list(queueDir).filter(p -> p.toString().endsWith(".json")).count() : 0L;
+            return Files.exists(queueDir) ? Files.list(queueDir).filter(p -> p.toString().endsWith(".json")).count()
+                    : 0L;
         } catch (IOException e) {
             return 0L;
         }
@@ -213,7 +218,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
             logger.info("开始处理持久化渲染任务: {}", id);
             long start = System.currentTimeMillis();
             // 直接调用底层导出工具（与 InMemory 实现一致）
-            RenderResult res = RenderOfVideo.exportRecordVideoStreaming(job.getRecord(), job.isPlot(), job.getWidth(), job.getHeight(), job.getVideoPath(), job.getFrameRate());
+            RenderResult res = RenderOfVideo.exportRecordVideoStreaming(job.getRecord(), job.isPlot(), job.getWidth(),
+                    job.getHeight(), job.getVideoPath(), job.getFrameRate());
             long dur = System.currentTimeMillis() - start;
             RenderResult finalRes = new RenderResult(res.getFrameCount(), res.getStartTimeMs(), dur);
             CompletableFuture<RenderResult> f = futures.remove(id);
@@ -223,7 +229,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
             Files.deleteIfExists(jobFile);
             failCounts.remove(id);
             processedCount.incrementAndGet();
-            if (processedCounter != null) processedCounter.increment();
+            if (processedCounter != null)
+                processedCounter.increment();
             logger.info("持久化渲染任务完成: {} (frames={}, dur={}ms)", id, finalRes.getFrameCount(), dur);
         } catch (Exception e) {
             logger.error("处理渲染任务失败: {}", id, e);
@@ -236,7 +243,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
                 int attemptsNow = job.getAttempts() + 1;
                 job.setAttempts(attemptsNow);
                 totalAttempts.incrementAndGet();
-                if (attemptsCounter != null) attemptsCounter.increment();
+                if (attemptsCounter != null)
+                    attemptsCounter.increment();
                 long now = System.currentTimeMillis();
                 if (job.getFirstAttemptTimeMs() == 0L) {
                     job.setFirstAttemptTimeMs(now);
@@ -256,7 +264,8 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
 
                 // 检查是否超过重试限制
                 if (attemptsNow >= maxAttempts || elapsedSinceFirst > maxTotalRetryMs) {
-                    logger.info("任务 {} 达到最大尝试/超出最大重试时长，移动到失败目录 (attempt={}, elapsedMs={})", id, attemptsNow, elapsedSinceFirst);
+                    logger.info("任务 {} 达到最大尝试/超出最大重试时长，移动到失败目录 (attempt={}, elapsedMs={})", id, attemptsNow,
+                            elapsedSinceFirst);
                     try {
                         // 写入失败原因到 .error 文件以便查询
                         writeFailureFile(jobFile, id, e);
@@ -265,9 +274,11 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
                         logger.warn("移动失败文件失败: {}", jobFile, ex);
                     }
                     failedCount.incrementAndGet();
-                    if (failedCounter != null) failedCounter.increment();
+                    if (failedCounter != null)
+                        failedCounter.increment();
                     CompletableFuture<RenderResult> f = futures.remove(id);
-                    if (f != null) f.completeExceptionally(e);
+                    if (f != null)
+                        f.completeExceptionally(e);
                     return;
                 }
 
@@ -287,19 +298,20 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
                 logger.warn("移动失败文件失败: {}", jobFile, ex);
             }
             CompletableFuture<RenderResult> f = futures.remove(id);
-            if (f != null) f.completeExceptionally(e);
+            if (f != null)
+                f.completeExceptionally(e);
         }
     }
-
-
 
     @Override
     public RenderJob getJob(String id) {
         try {
             Path q = queueDir.resolve(id + ".json");
-            if (Files.exists(q)) return mapper.readValue(Files.readString(q), RenderJob.class);
+            if (Files.exists(q))
+                return mapper.readValue(Files.readString(q), RenderJob.class);
             Path f = failedDir.resolve(id + ".json");
-            if (Files.exists(f)) return mapper.readValue(Files.readString(f), RenderJob.class);
+            if (Files.exists(f))
+                return mapper.readValue(Files.readString(f), RenderJob.class);
         } catch (Exception ex) {
             // ignore and fallthrough
         }
@@ -349,10 +361,10 @@ public class PersistentFileAsyncRenderService implements AsyncRenderService, com
             java.io.StringWriter sw = new java.io.StringWriter();
             e.printStackTrace(new java.io.PrintWriter(sw));
             String err = sw.toString();
-            Files.writeString(jobFile.resolveSibling(id + ".error"), err, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.writeString(jobFile.resolveSibling(id + ".error"), err, StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
         } catch (Exception ex) {
             logger.warn("无法写入失败原因文件: {}", jobFile, ex);
         }
     }
 }
-

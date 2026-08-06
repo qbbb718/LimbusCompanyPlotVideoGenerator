@@ -1,6 +1,7 @@
 package com.lbc_plot.config;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,10 @@ import java.awt.Color;
 @Component
 @ConfigurationProperties(prefix = "project")
 public class ProjectConfig {
+
+    @Autowired
+    private AppConfig appConfig;
+
     // 静态字段（向后兼容）
     public static int VIDEO_WIDTH = 1920;
     public static int VIDEO_HEIGHT = 1080;
@@ -24,6 +29,56 @@ public class ProjectConfig {
     public static String IMAGE_BASE_PATH = "assets/images/";
     public static String PORTRAIT_BASE_PATH = IMAGE_BASE_PATH + "portraits/";
     public static String THUMBNAIL_BASE_PATH = IMAGE_BASE_PATH + "thumbnails/";
+
+    // 资源路径静态字段
+    public static String ASSETS_BASE_PATH = "./assets/";
+    public static String BACKGROUNDS_PATH = ASSETS_BASE_PATH + "backgrounds/";
+    public static String CHARACTERS_PATH = ASSETS_BASE_PATH + "characters/";
+    public static String EFFECTS_PATH = ASSETS_BASE_PATH + "effects/";
+    public static String UI_PATH = ASSETS_BASE_PATH + "ui/";
+    public static String AUDIOS_PATH = ASSETS_BASE_PATH + "audios/";
+
+    @PostConstruct
+    public void init() {
+        // 使用配置的路径更新静态字段。优先使用 `project.*` 下的各个路径配置，
+        // 若未设置则回退到 app.assets 或默认路径。
+        ASSETS_BASE_PATH = normalizePath(appConfig.getAssets().getPath(), "./assets/");
+
+        // 允许单独配置 image/portrait/thumbnail 路径；如果未配置则基于 ASSETS_BASE_PATH 推断。
+        IMAGE_BASE_PATH = normalizePath(
+                (this.imageBasePath != null && !this.imageBasePath.isBlank()) ? this.imageBasePath
+                        : (ASSETS_BASE_PATH + "images/"),
+                ASSETS_BASE_PATH + "images/");
+
+        PORTRAIT_BASE_PATH = normalizePath(
+                (this.portraitBasePath != null && !this.portraitBasePath.isBlank()) ? this.portraitBasePath
+                        : (IMAGE_BASE_PATH + "portraits/"),
+                IMAGE_BASE_PATH + "portraits/");
+
+        THUMBNAIL_BASE_PATH = normalizePath(
+                (this.thumbnailBasePath != null && !this.thumbnailBasePath.isBlank()) ? this.thumbnailBasePath
+                        : (IMAGE_BASE_PATH + "thumbnails/"),
+                IMAGE_BASE_PATH + "thumbnails/");
+
+        // 背景、人物、音频等路径：优先使用 appConfig.assets 对应字段（若存在），否则回退到 ASSETS_BASE_PATH 下的默认子目录。
+        BACKGROUNDS_PATH = normalizePath(appConfig.getAssets().getBackgrounds(), ASSETS_BASE_PATH + "backgrounds/");
+        CHARACTERS_PATH = normalizePath(appConfig.getAssets().getCharacters(), ASSETS_BASE_PATH + "characters/");
+        EFFECTS_PATH = normalizePath(EFFECTS_PATH, ASSETS_BASE_PATH + "effects/");
+        UI_PATH = normalizePath(UI_PATH, ASSETS_BASE_PATH + "ui/");
+        AUDIOS_PATH = normalizePath(appConfig.getAssets().getAudios(), ASSETS_BASE_PATH + "audios/");
+    }
+
+    /**
+     * 规范化路径：确保使用正斜杠并以 '/' 结尾；若 candidate 为空则返回 fallback（同样规范化）。
+     */
+    private String normalizePath(String candidate, String fallback) {
+        String p = (candidate == null || candidate.isBlank()) ? fallback : candidate;
+        // 统一分隔符
+        p = p.replace('\\', '/');
+        if (!p.endsWith("/"))
+            p = p + "/";
+        return p;
+    }
 
     public static int DEFAULT_ANIMATION_DURATION = 300; // ms
     public static float DEFAULT_ALPHA = 0.8f;
@@ -130,67 +185,6 @@ public class ProjectConfig {
     private int dialogueMaxWidth = DIALOGUE_MAX_WIDTH;
 
     private String narrationId = NARRATION_ID;
-
-    @PostConstruct
-    public void init() {
-        // 在 Spring 启动后用配置的值覆盖静态字段，保证向后兼容旧代码中的静态引用
-        VIDEO_WIDTH = this.videoWidth;
-        VIDEO_HEIGHT = this.videoHeight;
-        VIDEO_RESOLUTION = this.videoResolution;
-        VIDEO_ASPECT_RATIO = this.videoAspectRatio;
-        FRAME_RATE = this.frameRate;
-
-        IMAGE_BASE_PATH = this.imageBasePath;
-        PORTRAIT_BASE_PATH = this.portraitBasePath;
-        THUMBNAIL_BASE_PATH = this.thumbnailBasePath;
-
-        DEFAULT_ANIMATION_DURATION = this.defaultAnimationDuration;
-        DEFAULT_ALPHA = this.defaultAlpha;
-        DEFAULT_STAY_FRAMES = this.defaultStayFrames;
-
-        DEFAULT_CHARACTER_HEIGHT = this.defaultCharacterHeight;
-        DEFAULT_CHARACTER_HEIGHT_Pixels = this.defaultCharacterHeightPixels;
-        Pixels_per_centimeter = this.pixelsPerCentimeter;
-        MAX_PORTRAITS_PER_CHARACTER = this.maxPortraitsPerCharacter;
-        DEFAULT_CHARACTER_HEAD_LENGTH = this.defaultCharacterHeadLength;
-
-        TEXT_FONT_NAME = this.textFontName;
-        DEFAULT_TEXT_COLOR = parseColor(this.defaultTextColor, DEFAULT_TEXT_COLOR);
-        DEFAULT_BG_COLOR = parseColor(this.defaultBgColor, DEFAULT_BG_COLOR);
-        FACTION_COLOR = parseColor(this.factionColor, FACTION_COLOR);
-        DEFAULT_DIALOGUE_SPEED = this.defaultDialogueSpeed;
-        SHADOW_OFFSET_DEFAULT_X = this.shadowOffsetDefaultX;
-        SHADOW_OFFSET_DEFAULT_Y = this.shadowOffsetDefaultY;
-        SHADOW_OFFSET_NAME_X = this.shadowOffsetNameX;
-        SHADOW_OFFSET_NAME_Y = this.shadowOffsetNameY;
-
-        LOCATION_X = this.locationX;
-        LOCATION_Y = this.locationY;
-        LOCATION_FONT_SIZE = this.locationFontSize;
-        LOCATION_ROTATION = this.locationRotation;
-        LOCATION_MAX_WIDTH = this.locationMaxWidth;
-
-        CHARACTER_NAME_X = this.characterNameX;
-        CHARACTER_NAME_Y = this.characterNameY;
-        CHARACTER_NAME_FONT_SIZE = this.characterNameFontSize;
-        CHARACTER_NAME_ROTATION = this.characterNameRotation;
-        CHARACTER_MAX_WIDTH = this.characterMaxWidth;
-
-        FACTION_X = this.factionX;
-        FACTION_Y = this.factionY;
-        FACTION_FONT_SIZE = this.factionFontSize;
-        FACTION_ROTATION = this.factionRotation;
-        FACTION_MAX_WIDTH = this.factionMaxWidth;
-
-        DIALOGUE_LEFT_X = this.dialogueLeftX;
-        DIALOGUE_LEFT_Y = this.dialogueLeftY;
-        DIALOGUE_CENTER_X = this.dialogueCenterX;
-        DIALOGUE_CENTER_Y = this.dialogueCenterY;
-        DIALOGUE_FONT_SIZE = this.dialogueFontSize;
-        DIALOGUE_MAX_WIDTH = this.dialogueMaxWidth;
-
-        NARRATION_ID = this.narrationId;
-    }
 
     // Getters and setters
     public int getVideoWidth() {
@@ -585,9 +579,11 @@ public class ProjectConfig {
 
     // ----- Color helpers -----
     private static Color parseColor(String hex, Color fallback) {
-        if (hex == null) return fallback;
+        if (hex == null)
+            return fallback;
         String s = hex.trim();
-        if (s.startsWith("#")) s = s.substring(1);
+        if (s.startsWith("#"))
+            s = s.substring(1);
         try {
             if (s.length() == 3) {
                 // short form e.g. FDB -> F F D D B B
@@ -618,7 +614,8 @@ public class ProjectConfig {
     }
 
     private static String colorToHex(Color c) {
-        if (c == null) return "#000000";
+        if (c == null)
+            return "#000000";
         String hex = String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
         return hex;
     }

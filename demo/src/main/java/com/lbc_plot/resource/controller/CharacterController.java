@@ -8,7 +8,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,7 +24,9 @@ import com.lbc_plot.resource.dao.CharacterMapper;
 import com.lbc_plot.resource.dao.PortraitDAO;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
+import com.lbc_plot.resource.service.CharacterFolderService;
 import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.config.AppConfig;
 import org.jdbi.v3.core.Jdbi;
 
 /**
@@ -33,16 +34,21 @@ import org.jdbi.v3.core.Jdbi;
  */
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = { "http://localhost:3000", "http://127.0.0.1:3000" })
 public class CharacterController {
 
     private static final Logger logger = Logger.getLogger(CharacterController.class.getName());
 
-    // 资源文件夹路径 - 使用绝对路径确保正确访问
-    private static final String CHARACTERS_DIR = System.getProperty("user.dir") + "/resources/characters";
+    @Autowired
+    private AppConfig appConfig;
 
     @Autowired
     private Jdbi jdbi;
+
+    @Autowired
+    private CharacterFolderService characterFolderService;
+
+    @Autowired
+    private com.lbc_plot.resource.character.CharacterCardImageCache characterCardImageCache;
 
     /**
      * 获取所有角色
@@ -93,13 +99,6 @@ public class CharacterController {
                 logger.info("生成新角色ID: " + character.getCharacterID());
             }
 
-            // 确保角色目录存在
-            File characterDir = new File(CHARACTERS_DIR, character.getCharacterID());
-            if (!characterDir.exists()) {
-                characterDir.mkdirs();
-                logger.info("创建角色目录: " + characterDir.getAbsolutePath());
-            }
-
             // 确保颜色值不为空
             if (character.getColorBg() == null) {
                 character.setColorBg(ProjectConfig.DEFAULT_BG_COLOR);
@@ -131,11 +130,21 @@ public class CharacterController {
                 return null;
             });
 
+            // 创建角色目录（目录名=characterId，唯一且不可变）
+            try {
+                String folderName = characterFolderService.resolveOrCreateFolder(
+                        character.getCharacterID());
+                character.setFolderName(folderName);
+                logger.info("角色目录: " + folderName);
+            } catch (Exception e) {
+                logger.warning("创建角色目录失败（不影响角色创建）: " + e.getMessage());
+            }
+
             // 生成名片图片
             logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() +
                     ", 角色名称: " + character.getCharacterName());
             try {
-                BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
+                BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
                 if (cardImage != null) {
                     // 设置名片图片路径
                     String cardImagePath = "/api/character-card/" + character.getCharacterID();
@@ -161,7 +170,7 @@ public class CharacterController {
                     logger.info("名片图片生成成功: " + cardImagePath);
 
                     // 清除名片缓存，确保前端获取最新图片
-                    CharacterCardImageCache.clearCache(character.getCharacterID());
+                    characterCardImageCache.clearCache(character.getCharacterID());
                     logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
                 } else {
                     logger.warning("名片图片生成失败");
@@ -335,11 +344,13 @@ public class CharacterController {
 
             logger.info("数据库更新操作完成");
 
+            // 角色ID不变，目录名（=characterId）不变，无需重命名目录
+
             // 生成名片图片
             logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() +
                     ", 角色名称: " + character.getCharacterName());
             try {
-                BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
+                BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
                 if (cardImage != null) {
                     // 设置名片图片路径
                     String cardImagePath = "/api/character-card/" + character.getCharacterID();
@@ -366,7 +377,7 @@ public class CharacterController {
 
                     // 只有在需要时才清除名片缓存
                     if (finalNeedClearCache) {
-                        CharacterCardImageCache.clearCache(character.getCharacterID());
+                        characterCardImageCache.clearCache(character.getCharacterID());
                         logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
                     }
                 } else {
@@ -401,35 +412,42 @@ public class CharacterController {
         try {
             logger.info("删除角色: " + id + ", 删除文件: " + deleteFiles);
 
-            // 如果需要删除文件
+            // 如果需要删除文件，先查询立绘（此时图片文件还在），再删除目录和缩略图。
+            // PortraitMapper 构建时会调用 ImageReader 验证图片存在，
+            // 若先删目录会导致图片加载失败抛异常，DB 记录也无法删除。
             if (deleteFiles) {
-                File characterDir = new File(CHARACTERS_DIR, id);
-                if (characterDir.exists()) {
-                    deleteDirectory(characterDir);
-                    logger.info("已删除角色目录: " + characterDir.getAbsolutePath());
+                List<Portrait> portraits = jdbi.withExtension(PortraitDAO.class,
+                        dao -> dao.findByCharacterId(id));
+
+                // 清理名片图片内存缓存（磁盘文件随角色目录递归删除）。
+                // 必须在 deleteFolder 之前调用，因为 clearCache 需要查 DB 拿角色名定位磁盘文件。
+                try {
+                    characterCardImageCache.clearCache(id);
+                } catch (Exception e) {
+                    logger.warning("清理名片缓存失败: " + e.getMessage());
                 }
 
-                // 删除立绘文件
-                jdbi.withExtension(PortraitDAO.class, dao -> {
-                    List<Portrait> portraits = dao.findByCharacterId(id);
-                    for (Portrait portrait : portraits) {
-                        File portraitFile = new File(portrait.getImagePath());
-                        if (portraitFile.exists()) {
-                            portraitFile.delete();
-                            logger.info("已删除立绘文件: " + portraitFile.getAbsolutePath());
-                        }
+                // 删除角色目录（包含立绘原图、缩略图、名片图片——都在 thumbnails 子目录下）
+                try {
+                    characterFolderService.deleteFolder(id);
+                } catch (Exception e) {
+                    logger.warning("删除角色目录失败: " + e.getMessage());
+                }
 
-                        // 删除缩略图
-                        if (portrait.getThumbnailPath() != null && !portrait.getThumbnailPath().isEmpty()) {
-                            File thumbnailFile = new File(portrait.getThumbnailPath());
-                            if (thumbnailFile.exists()) {
-                                thumbnailFile.delete();
-                                logger.info("已删除缩略图文件: " + thumbnailFile.getAbsolutePath());
-                            }
+                // 兜底：单独删除缩略图文件（兼容旧路径残留，新路径已随目录删除）
+                for (Portrait portrait : portraits) {
+                    if (portrait.getThumbnailPath() != null && !portrait.getThumbnailPath().isEmpty()) {
+                        // thumbnailPath 形如 "/assets/characters/{拼音}/thumbnails/xxx.png"（URL 路径）
+                        // 或旧值 "/assets/thumbnails/xxx.png"，去掉前导 / 按工作目录解析
+                        String tp = portrait.getThumbnailPath();
+                        String fsPath = tp.startsWith("/") ? tp.substring(1) : tp;
+                        File thumbnailFile = new File(fsPath);
+                        if (thumbnailFile.exists()) {
+                            thumbnailFile.delete();
+                            logger.info("已删除缩略图文件: " + thumbnailFile.getAbsolutePath());
                         }
                     }
-                    return portraits;
-                });
+                }
             }
 
             jdbi.useExtension(CharacterDAO.class, dao -> dao.deleteCharacter(id, deleteFiles));

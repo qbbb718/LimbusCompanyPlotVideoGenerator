@@ -1,4 +1,6 @@
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 
 import com.lbc_plot.common.util.io.ImageExporter;
 import com.lbc_plot.render.video.BackgroundVisual;
@@ -13,13 +15,17 @@ import java.io.IOException;
  * BackgroundVisual 测试类
  * 专门诊断Background正常但BackgroundVisual异常的问题
  */
+@SpringBootTest(classes = com.lbc_plot.config.Application.class)
+@TestPropertySource(properties = {
+        "app.assets.path=./assets"
+})
 public class BackgroundVisualTest {
 
     private Background testBackground;
 
     @BeforeEach
     void setUp() throws IOException {
-        // 在每个测试前创建Background实例
+        // 在每个测试前创建Background实例，使用存在的文件
         testBackground = new Background("test_bg.png", "办公室");
     }
 

@@ -3,6 +3,7 @@ package com.lbc_plot.plot.controller;
 import java.util.List;
 import java.util.ArrayList;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -33,6 +34,8 @@ import com.lbc_plot.render.audio.model.AudioCommand;
 import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.EffectVisual;
+import com.lbc_plot.resource.service.BackgroundService;
+import com.lbc_plot.resource.service.CharacterService;
 
 /**
  * 记录API控制器
@@ -40,6 +43,12 @@ import com.lbc_plot.render.video.EffectVisual;
 @RestController
 @RequestMapping("/api")
 public class RecordController {
+
+    @Autowired
+    private CharacterService characterService;
+
+    @Autowired
+    private BackgroundService backgroundService;
 
     /**
      * 获取所有记录
@@ -131,8 +140,8 @@ public class RecordController {
     @PostMapping("/text-to-records")
     public List<Record> textToRecords(@RequestBody TextToRecordsRequest request) {
         try {
-            // 使用文本解析器将文本转换为记录
-            return PlainTextRecordsParser.parseText(request.getText());
+            // 使用文本解析器将文本转换为记录，传入数据库查找服务
+            return PlainTextRecordsParser.parseText(request.getText(), characterService, backgroundService);
         } catch (Exception e) {
             System.err.println("文本转记录失败: " + e.getMessage());
             throw new RuntimeException("文本转记录失败: " + e.getMessage());

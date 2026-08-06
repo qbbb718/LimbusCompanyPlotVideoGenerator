@@ -11,7 +11,17 @@ import org.springframework.web.cors.CorsConfiguration;
 import java.util.Arrays;
 
 /**
- * CORS配置
+ * CORS（跨域资源共享）配置类
+ *
+ * 配置前后端分离应用中的跨域请求处理。
+ * 支持前端应用（localhost:3000）访问后端API。
+ *
+ * 包含两种CORS配置方式：
+ * 1. WebMvcConfigurer - 针对Spring MVC的配置
+ * 2. CorsFilter - 全局CORS过滤器
+ *
+ * @author 项目维护者
+ * @since 1.0
  */
 @Configuration
 public class CorsConfig {

@@ -34,6 +34,7 @@ public class CharacterMapper implements RowMapper<MyCharacter> {
                 .colorText(ColorUtils.stringToColor(rs.getString("color_text")))
                 .faction(rs.getString("faction"))
                 .characterCardImagePath(rs.getString("character_card_image_path"))
+                .folderName(rs.getString("folder_name"))
                 .portraits(portraits)
                 .build();
     }

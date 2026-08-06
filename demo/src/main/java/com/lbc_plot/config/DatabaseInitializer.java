@@ -24,11 +24,24 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    // helper to log which database file is being used
+    private void logDatabaseUrl() {
+        try {
+            String url = jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
+            logger.info("使用的数据库 URL: {}", url);
+        } catch (Exception e) {
+            logger.warn("无法获取数据库 URL", e);
+        }
+    }
+
     @Override
     public void run(String... args) throws Exception {
         logger.info("开始初始化数据库...");
 
         try {
+            // log which database we're connected to
+            logDatabaseUrl();
+
             // 检查数据库中是否已有表
             Integer tableCount = jdbcTemplate.queryForObject(
                     "SELECT count(*) FROM sqlite_master WHERE type='table'", Integer.class);
@@ -132,6 +145,23 @@ public class DatabaseInitializer implements CommandLineRunner {
                         logger.error("检查或添加character_card_image_path列时出错: " + e.getMessage(), e);
                     }
 
+                    // 检查characters表是否有folder_name列（用于角色拼音子目录）
+                    try {
+                        Integer columnCount = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('characters') WHERE name='folder_name'",
+                                Integer.class);
+
+                        if (columnCount != null && columnCount == 0) {
+                            logger.info("characters表缺少folder_name列，正在添加...");
+                            jdbcTemplate.execute("ALTER TABLE characters ADD COLUMN folder_name TEXT");
+                            logger.info("成功添加folder_name列");
+                        } else {
+                            logger.info("characters表已包含folder_name列");
+                        }
+                    } catch (Exception e) {
+                        logger.error("检查或添加folder_name列时出错: " + e.getMessage(), e);
+                    }
+
                     // 检查backgrounds表是否有thumbnail_path列
                     try {
                         Integer columnCount = jdbcTemplate.queryForObject(
@@ -150,6 +180,49 @@ public class DatabaseInitializer implements CommandLineRunner {
                     }
 
                     logger.info("表结构检查完成");
+
+                    // 额外检查 audios 表结构是否符合新 schema
+                    try {
+                        // migrate to new column names if necessary
+                        Integer cnt;
+
+                        cnt = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('audios') WHERE name='uuid'", Integer.class);
+                        if (cnt != null && cnt == 0) {
+                            logger.info("audios 表缺少 uuid 列，尝试迁移旧结构");
+                            jdbcTemplate.execute("ALTER TABLE audios ADD COLUMN uuid TEXT");
+                            jdbcTemplate.execute("UPDATE audios SET uuid = audio_id");
+                            logger.info("已添加 uuid 列并复制旧 audio_id 值");
+                        }
+                        cnt = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('audios') WHERE name='name'", Integer.class);
+                        if (cnt != null && cnt == 0) {
+                            logger.info("audios 表缺少 name 列，复制 display_name");
+                            jdbcTemplate.execute("ALTER TABLE audios ADD COLUMN name TEXT");
+                            jdbcTemplate.execute("UPDATE audios SET name = display_name");
+                        }
+                        cnt = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('audios') WHERE name='path'", Integer.class);
+                        if (cnt != null && cnt == 0) {
+                            logger.info("audios 表缺少 path 列，复制 file_path");
+                            jdbcTemplate.execute("ALTER TABLE audios ADD COLUMN path TEXT");
+                            jdbcTemplate.execute("UPDATE audios SET path = file_path");
+                        }
+                        cnt = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('audios') WHERE name='type'", Integer.class);
+                        if (cnt != null && cnt == 0) {
+                            logger.info("audios 表缺少 type 列，添加空列");
+                            jdbcTemplate.execute("ALTER TABLE audios ADD COLUMN type TEXT");
+                        }
+                        cnt = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('audios') WHERE name='tags'", Integer.class);
+                        if (cnt != null && cnt == 0) {
+                            logger.info("audios 表缺少 tags 列，添加空列");
+                            jdbcTemplate.execute("ALTER TABLE audios ADD COLUMN tags TEXT");
+                        }
+                    } catch (Exception e) {
+                        logger.warn("检查 audios 表结构时出错", e);
+                    }
                 }
             }
         } catch (Exception e) {

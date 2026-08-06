@@ -1,0 +1,13 @@
+{
+  "log": {
+    "directory": "../logs",
+    "fileName": "log-{timestamp}-2.log",
+    "timestampFormat": "YYYY-MM-DD_HH-MM-SS",
+    "fileLevel": "info",
+    "consoleLevel": "debug",
+    "maxSize": "10MB",
+    "maxHistory": 30,
+    "totalSizeCap": "1GB",
+    "description": "前端日志文件将自动匹配后端日志的时间戳，并添加-2后缀"
+  }
+}

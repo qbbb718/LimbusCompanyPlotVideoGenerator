@@ -11,9 +11,16 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
+import com.lbc_plot.resource.dao.BackgroundDAO;
+import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.dao.MyCharacterMapper;
+import com.lbc_plot.resource.dao.PortraitDAO;
 import com.lbc_plot.resource.model.MyCharacter;
+import com.lbc_plot.resource.service.BackgroundService;
+import com.lbc_plot.resource.service.CharacterService;
 import com.lbc_plot.render.engine.FrameComposerService;
+import com.lbc_plot.render.service.impl.BackgroundServiceImpl;
+import com.lbc_plot.render.service.impl.CharacterServiceImpl;
 
 import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 
@@ -64,5 +71,21 @@ public class SpringBootConfig {
     @Bean
     public FrameComposerService frameComposerService() {
         return new FrameComposerService();
+    }
+
+    /**
+     * 配置角色服务实例
+     */
+    @Bean
+    public CharacterService characterService(Jdbi jdbi) {
+        return new CharacterServiceImpl(jdbi.onDemand(CharacterDAO.class), jdbi.onDemand(PortraitDAO.class));
+    }
+
+    /**
+     * 配置背景服务实例
+     */
+    @Bean
+    public BackgroundService backgroundService(Jdbi jdbi) {
+        return new BackgroundServiceImpl(jdbi.onDemand(BackgroundDAO.class));
     }
 }

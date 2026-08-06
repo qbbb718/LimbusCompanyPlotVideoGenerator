@@ -41,12 +41,14 @@ public class AsyncQueueController {
     @GetMapping("/task/{id}")
     public ResponseEntity<?> getTask(@org.springframework.web.bind.annotation.PathVariable String id) {
         RenderJob job = svc.getJob(id);
-        if (job == null) return ResponseEntity.notFound().build();
+        if (job == null)
+            return ResponseEntity.notFound().build();
         return ResponseEntity.ok(job);
     }
 
     @GetMapping("/failed")
-    public ResponseEntity<?> failed(@org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int limit) {
+    public ResponseEntity<?> failed(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int limit) {
         return ResponseEntity.ok(svc.listFailedJobs(limit));
     }
 }

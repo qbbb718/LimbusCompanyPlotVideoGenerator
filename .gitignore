@@ -49,3 +49,4 @@ demo/target/classes/com/lbc_plot/config/ProjectConfig.class
 *.ogg
 *.wav
 *.png
+demo/frontend/electron-react-app/dist/win-unpacked/resources/app.asar

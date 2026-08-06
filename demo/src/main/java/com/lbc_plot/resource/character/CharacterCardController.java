@@ -9,7 +9,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,13 +25,15 @@ import org.jdbi.v3.core.Jdbi;
  */
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = { "http://localhost:3000", "http://127.0.0.1:3000" })
 public class CharacterCardController {
 
     private static final Logger logger = Logger.getLogger(CharacterCardController.class.getName());
 
     @Autowired
     private Jdbi jdbi;
+
+    @Autowired
+    private CharacterCardImageCache characterCardImageCache;
 
     /**
      * 获取角色名片图片
@@ -62,7 +63,7 @@ public class CharacterCardController {
             }
 
             long startTime = System.currentTimeMillis();
-            BufferedImage cardImage = CharacterCardImageCache.getCharacterCardImage(character);
+            BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
             long endTime = System.currentTimeMillis();
 
             if (cardImage == null) {

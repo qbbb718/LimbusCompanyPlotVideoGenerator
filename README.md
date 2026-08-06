@@ -18,7 +18,7 @@ See project-specific documentation in demo/src/main/resources/docs/. For current
 - **JavaCV**: 视频处理和合成
 - **SQLite + JDBI**: 数据持久化
 - **Jackson**: JSON数据处理
-- **SLF4J + Logback**: 日志管理
+- **SLF4J + Logback**: 日志管理。后端日志文件会输出到 `demo/logs/log-<timestamp>.log`。
 
 ### 前端
 - **React 18**: 用户界面框架
@@ -45,9 +45,11 @@ e:/LimbusCompanyPlotVideoGenerator/start_all.bat
 
 此脚本会自动：
 1. 检查Java、Maven和Node.js环境
-2. 启动后端Spring Boot服务
+2. 启动后端Spring Boot服务（启动时会清理旧数据库文件并确保使用 `demo/data/project.db`）
 3. 安装前端依赖（如果需要）
 4. 启动前端Electron应用
+
+   启动后，前端会在 `demo/frontend/electron-react-app/logs/` 目录生成一个带时间戳的 `frontend-*.log` 文件，包含主进程和渲染进程的 console 输出，用于排查问题。
 
 ### 分别启动
 
@@ -84,6 +86,10 @@ npm run electron-dev
 ```
 
 ## 项目结构
+
+**为了简化维护，所有可变数据集中在 `demo/data`，后台日志存放于 [demo/logs](demo/logs)，前端日志在 [demo/frontend/electron-react-app/logs](demo/frontend/electron-react-app/logs)。**
+
+
 
 ```
 LimbusCompanyPlotVideoGenerator/
@@ -127,6 +133,13 @@ LimbusCompanyPlotVideoGenerator/
   说话人: 对话内容(情绪)
   旁白: 对话内容
   ```
+
+## 文档
+
+- [配置文档](docs/CONFIG_DOCUMENTATION.md) - 详细说明后端配置文件的用途和配置方法
+- [前端模型文档](note/FRONTEND_MODEL.md) - 前端数据模型和组件结构说明
+- [项目上下文](note/PROJECT_CONTEXT.md) - 项目背景和设计理念
+- [TODO 列表](docs/TODO.md) - 当前开发任务和优先级
 
 ## 开发指南
 

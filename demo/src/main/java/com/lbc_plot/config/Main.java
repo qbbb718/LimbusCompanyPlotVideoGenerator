@@ -23,7 +23,7 @@ public class Main {
         public static void main(String[] args) {
             try {
                 // 初始化音频系统
-                AppConfig.initializeAudioSystem();
+                AudioAppConfig.initializeAudioSystem();
 
                 // 启动GUI或处理逻辑
                 startApplication();

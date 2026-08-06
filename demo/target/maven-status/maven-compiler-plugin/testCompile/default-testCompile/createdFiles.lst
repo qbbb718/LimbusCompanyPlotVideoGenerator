@@ -1,0 +1,13 @@
+BackgroundVisualTest.class
+helpers\SQLiteTestDatabaseManager.class
+com\lbc_plot\render\service\RedisPersistentAsyncRenderServiceTest.class
+com\lbc_plot\config\ProjectConfigColorParsingTest.class
+PortraitTest.class
+DAO\PortraitDAOTest.class
+helpers\RecordsCreater.class
+com\lbc_plot\render\service\PersistentAsyncRenderServiceTest.class
+com\lbc_plot\common\util\PinyinUtilTest.class
+com\lbc_plot\render\service\impl\ThumbnailServiceImplTest.class
+com\lbc_plot\render\controller\AsyncQueueControllerTest.class
+com\lbc_plot\util\text\PlainTextRecordsParserTest.class
+FrameComposerServiceTest.class

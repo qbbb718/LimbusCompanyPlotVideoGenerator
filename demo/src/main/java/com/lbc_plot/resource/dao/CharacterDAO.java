@@ -10,6 +10,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jdbi.v3.core.mapper.RowMappers;
 
 import com.lbc_plot.common.util.ColorUtils;
+import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
 
@@ -31,8 +32,8 @@ public interface CharacterDAO {
     // 保存单个角色
     @SqlUpdate("""
             INSERT INTO characters
-            (character_id, character_name, height, color_bg, color_text, faction)
-            VALUES (:characterID, :characterName, :height, :colorBgStr, :colorTextStr, :faction)
+            (character_id, character_name, height, color_bg, color_text, faction, folder_name)
+            VALUES (:characterID, :characterName, :height, :colorBgStr, :colorTextStr, :faction, :folderName)
             """)
     void save(@BindBean MyCharacter character,
             @Bind("colorBgStr") String colorBgStr,
@@ -49,8 +50,8 @@ public interface CharacterDAO {
      */
     @SqlBatch("""
             INSERT INTO characters
-            (character_id, character_name, height, color_bg, color_text, faction)
-            VALUES (:characterID, :characterName, :height, :colorBgStr, :colorTextStr, :faction)
+            (character_id, character_name, height, color_bg, color_text, faction, folder_name)
+            VALUES (:characterID, :characterName, :height, :colorBgStr, :colorTextStr, :faction, :folderName)
             """)
     void saveAll(@BindBean List<MyCharacter> characters,
             @Bind("colorBgStr") List<String> colorBgStrs,
@@ -69,6 +70,10 @@ public interface CharacterDAO {
     }
 
     // 更新角色
+    // 注意：folder_name 字段不由这里更新。folder_name 是角色拼音目录名，
+    // 由 CharacterFolderService 专门管理（resolveOrCreateFolder 创建、renameFolder 重命名）。
+    // 前端 MyCharacter 类型不含 folderName 字段，更新时若写入 folder_name = :folderName，
+    // 会把数据库里已有的 folder_name 覆盖成 NULL，导致删除角色时找不到目录、文件残留。
     @SqlUpdate("""
             UPDATE characters SET
             character_name = :characterName,
@@ -96,6 +101,18 @@ public interface CharacterDAO {
     @SqlUpdate("UPDATE characters SET character_card_image_path = :cardImagePath WHERE character_id = :characterId")
     boolean updateCardImagePath(@Bind("characterId") String characterId, @Bind("cardImagePath") String cardImagePath);
 
+    // 更新角色拼音目录名
+    @SqlUpdate("UPDATE characters SET folder_name = :folderName WHERE character_id = :characterId")
+    boolean updateFolderName(@Bind("characterId") String characterId, @Bind("folderName") String folderName);
+
+    // 查询角色拼音目录名
+    @SqlQuery("SELECT folder_name FROM characters WHERE character_id = :characterId")
+    String getFolderName(@Bind("characterId") String characterId);
+
+    // 查询所有已使用的拼音目录名
+    @SqlQuery("SELECT folder_name FROM characters WHERE folder_name IS NOT NULL")
+    List<String> findAllFolderNames();
+
     // ========== API控制器所需的方法 ==========
     /**
      * 获取所有角色（API控制器使用）
@@ -120,17 +137,10 @@ public interface CharacterDAO {
 
     /**
      * 删除角色（API控制器使用）
+     * 注意：文件目录的删除由 CharacterFolderService 处理，DAO 只负责删除数据库记录
      */
     default void deleteCharacter(String id, boolean deleteFiles) {
         delete(id);
-        // 如果deleteFiles为true，删除相关文件
-        if (deleteFiles) {
-            // 删除角色目录
-            java.io.File characterDir = new java.io.File("resources/characters/" + id);
-            if (characterDir.exists()) {
-                deleteDirectory(characterDir);
-            }
-        }
     }
 
     /**

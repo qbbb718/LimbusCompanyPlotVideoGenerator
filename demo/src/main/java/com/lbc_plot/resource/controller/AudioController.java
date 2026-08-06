@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import java.nio.file.Files;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -30,7 +29,6 @@ import org.jdbi.v3.core.Jdbi;
  */
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = { "http://localhost:3000", "http://127.0.0.1:3000" })
 public class AudioController {
 
     private static final Logger logger = Logger.getLogger(AudioController.class.getName());
@@ -142,6 +140,60 @@ public class AudioController {
             logger.severe("删除音频失败: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("删除音频失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取音频文件
+     */
+    @GetMapping("/audios/{id}/file")
+    public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> getAudioFile(
+            @PathVariable String id) {
+        try {
+            logger.info("获取音频文件: " + id);
+
+            // 获取音频信息
+            Audio audio = AudioDAO.getById(id);
+            if (audio == null || audio.getPath() == null) {
+                logger.warning("音频不存在或路径为空: " + id);
+                return org.springframework.http.ResponseEntity.notFound().build();
+            }
+
+            // 构建文件路径
+            java.nio.file.Path filePath = Paths.get(audio.getPath());
+            if (!Files.exists(filePath)) {
+                logger.warning("音频文件不存在: " + filePath.toAbsolutePath());
+                return org.springframework.http.ResponseEntity.notFound().build();
+            }
+
+            // 创建资源
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(
+                    filePath);
+
+            // 确定内容类型
+            String contentType = "audio/mpeg"; // 默认MP3
+            try {
+                String filename = audio.getPath().toLowerCase();
+                if (filename.endsWith(".wav")) {
+                    contentType = "audio/wav";
+                } else if (filename.endsWith(".ogg")) {
+                    contentType = "audio/ogg";
+                } else if (filename.endsWith(".m4a")) {
+                    contentType = "audio/mp4";
+                }
+            } catch (Exception e) {
+                logger.warning("无法确定音频内容类型: " + e.getMessage());
+            }
+
+            return org.springframework.http.ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + audio.getName() + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            logger.severe("获取音频文件失败: " + e.getMessage());
+            e.printStackTrace();
+            return org.springframework.http.ResponseEntity.internalServerError().build();
         }
     }
 

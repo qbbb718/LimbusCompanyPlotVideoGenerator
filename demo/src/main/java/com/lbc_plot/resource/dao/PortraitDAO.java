@@ -141,6 +141,29 @@ public interface PortraitDAO {
             @Bind("id") String portraitId,
             @Bind("path") String thumbnailPath);
 
+    @SqlUpdate("UPDATE portraits SET image_path = :path WHERE portrait_id = :id")
+    boolean updateImagePath(
+            @Bind("id") String portraitId,
+            @Bind("path") String imagePath);
+
+    /**
+     * 批量替换角色立绘的 image_path 前缀（用于角色重命名时同步更新路径）
+     *
+     * @param characterId 角色ID
+     * @param oldPrefix   旧前缀（如 "geligaoer/"）
+     * @param newPrefix   新前缀（如 "luojia/"）
+     * @return 受影响的行数
+     */
+    @SqlUpdate("""
+            UPDATE portraits SET image_path = REPLACE(image_path, :oldPrefix, :newPrefix)
+            WHERE character_id = :characterId AND image_path LIKE :oldPrefixLike
+            """)
+    int batchReplaceImagePathPrefix(
+            @Bind("characterId") String characterId,
+            @Bind("oldPrefix") String oldPrefix,
+            @Bind("newPrefix") String newPrefix,
+            @Bind("oldPrefixLike") String oldPrefixLike);
+
     @SqlQuery("""
             SELECT * FROM portraits
             WHERE character_id = :characterId

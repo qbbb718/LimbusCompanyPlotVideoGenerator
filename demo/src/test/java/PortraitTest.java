@@ -7,12 +7,18 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 
 import com.lbc_plot.common.util.io.ImageExporter;
 import com.lbc_plot.common.util.io.ImageReader;
 import com.lbc_plot.plot.model.Dialogue.Emotion;
 import com.lbc_plot.resource.model.Portrait;
 
+@SpringBootTest(classes = com.lbc_plot.config.Application.class)
+@TestPropertySource(properties = {
+        "app.assets.path=./assets"
+})
 public class PortraitTest {
     private static final String TEST_IMAGE_PATH = "Gregor-default.png";
 

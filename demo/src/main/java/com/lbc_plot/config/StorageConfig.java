@@ -8,52 +8,87 @@ import org.springframework.stereotype.Component;
 /**
  * 存储配置类（已迁移为 @ConfigurationProperties 绑定）
  * 管理文件存储相关的配置参数
+ *
+ * 此配置类负责管理应用中所有文件存储相关的设置，包括：
+ * - 背景图片和缩略图的存储目录
+ * - 文件版本控制策略
+ * - 支持的文件格式和大小限制
+ * - 缩略图生成参数
+ *
+ * 配置属性通过 application.yml 中的 storage.* 前缀进行绑定。
+ *
+ * @author 项目维护者
+ * @since 1.0
  */
 @Component
 @ConfigurationProperties(prefix = "storage")
 public class StorageConfig implements InitializingBean {
 
     @Autowired
-    private AppProperties appProperties;
+    private AppConfig appConfig;
 
-    // 背景图片存储目录（相对于应用程序根目录）
+    /**
+     * 背景图片存储目录（相对于应用程序根目录）
+     * 默认值为 "assets/backgrounds"
+     * 如果 AppProperties 中指定了 storageLocation，则会拼接为完整路径
+     */
     private String backgroundsDir = "assets/backgrounds";
 
-    // 缩略图存储目录（相对于应用程序根目录）
+    /**
+     * 缩略图存储目录（相对于应用程序根目录）
+     * 默认值为 "assets/thumbnails"
+     * 如果 AppProperties 中指定了 storageLocation，则会拼接为完整路径
+     */
     private String thumbnailsDir = "assets/thumbnails";
 
-    // 是否启用文件版本控制（文件名中包含哈希值）
+    /**
+     * 是否启用文件版本控制（文件名中包含哈希值）
+     * 启用后，文件名会包含文件内容的MD5哈希值，用于避免缓存问题
+     * 默认值为 true
+     */
     private boolean enableVersioning = true;
 
-    // 最大文件大小（MB）
+    /**
+     * 最大文件大小（MB）
+     * 限制上传文件的最大大小
+     * 默认值为 10MB
+     */
     private int maxFileSize = 10;
 
-    // 支持的图片格式
+    /**
+     * 支持的图片格式
+     * 用逗号分隔的格式列表
+     * 默认值为 "jpg,jpeg,png,gif,bmp"
+     */
     private String supportedFormats = "jpg,jpeg,png,gif,bmp";
 
-    // 是否生成缩略图
+    /**
+     * 是否生成缩略图
+     * 控制是否在上传图片时自动生成缩略图
+     * 默认值为 true
+     */
     private boolean generateThumbnails = true;
 
-    // 缩略图宽度
+    /**
+     * 缩略图宽度（像素）
+     * 生成缩略图的宽度，高度会按比例缩放
+     * 默认值为 200
+     */
     private int thumbnailWidth = 200;
 
-    // 缩略图高度
+    /**
+     * 缩略图高度（像素）
+     * 生成缩略图的高度，宽度会按比例缩放
+     * 默认值为 200
+     */
     private int thumbnailHeight = 200;
 
     @Override
     public void afterPropertiesSet() {
-        String base = appProperties != null ? appProperties.getStorageLocation() : null;
-        if (base != null && !base.isEmpty()) {
-            if (!base.endsWith("/")) {
-                base = base + "/";
-            }
-            // 如果 AppProperties 指定了根存储路径，则在原有相对路径前拼接
-            if (backgroundsDir != null && !backgroundsDir.startsWith(base)) {
-                backgroundsDir = base + backgroundsDir;
-            }
-            if (thumbnailsDir != null && !thumbnailsDir.startsWith(base)) {
-                thumbnailsDir = base + thumbnailsDir;
-            }
+        // 使用配置的资源路径
+        if (appConfig != null) {
+            backgroundsDir = appConfig.getAssets().getBackgrounds();
+            thumbnailsDir = appConfig.getAssets().getThumbnails();
         }
     }
 

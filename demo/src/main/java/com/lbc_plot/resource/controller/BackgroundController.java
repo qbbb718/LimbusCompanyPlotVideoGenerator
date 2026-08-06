@@ -17,6 +17,8 @@ import com.lbc_plot.resource.service.StorageService;
 
 import org.jdbi.v3.core.Jdbi;
 
+import com.lbc_plot.config.AppConfig;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -29,7 +31,6 @@ import java.util.ArrayList;
  */
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = { "http://localhost:3000", "http://127.0.0.1:3000" })
 public class BackgroundController {
 
     private static final Logger logger = LoggerFactory.getLogger(BackgroundController.class);
@@ -43,6 +44,9 @@ public class BackgroundController {
     @Autowired
     private StorageService storageService;
 
+    @Autowired
+    private AppConfig appConfig;
+
     /**
      * 获取所有背景
      */
@@ -53,111 +57,68 @@ public class BackgroundController {
     }
 
     /**
-     * 获取背景资源
+     * 获取单个背景
      */
-    @GetMapping("/backgrounds/{filename:.+}")
-    public ResponseEntity<Resource> getBackgroundResource(@PathVariable String filename) {
-        logger.info("获取背景资源: " + filename);
-
-        // 构建资源路径
-        String resourcePath = "assets/backgrounds/" + filename;
-        Resource resource = storageService.getResource(resourcePath);
-
-        // 检查资源是否存在
-        if (!resource.exists() || !resource.isReadable()) {
-            logger.warn("背景资源不存在或不可读: " + resourcePath);
-            return ResponseEntity.notFound().build();
+    @GetMapping("/backgrounds/{id}")
+    public Background getBackground(@PathVariable String id) {
+        logger.info("获取背景: " + id);
+        Background background = jdbi.withExtension(BackgroundDAO.class, dao -> dao.getById(id));
+        if (background == null) {
+            logger.warn("背景不存在: " + id);
+            throw new RuntimeException("背景不存在: " + id);
         }
-
-        // 确定内容类型
-        String contentType = "application/octet-stream";
-        try {
-            contentType = resource.getURL().openConnection().getContentType();
-        } catch (IOException e) {
-            logger.warn("无法确定内容类型: " + e.getMessage());
-        }
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                .body(resource);
+        return background;
     }
 
+    // 背景原图和缩略图均通过 Spring 静态资源映射 /assets/** 直接访问
+    // (WebMvcConfig 已配置 file:assets/ + classpath:assets/)，无需单独的 controller 端点。
+    // 原 GET /backgrounds/{filename:.+} 与 GET /backgrounds/{id} 存在 Spring MVC 路由歧义
+    // (Ambiguous handler methods)，已移除，统一走 /assets/backgrounds/xxx。
+
     /**
-     * 获取背景缩略图
+     * 上传背景缩略图（保存到 backgrounds/thumbnails/ 目录）
      */
-    @GetMapping("/backgrounds/thumbnails/{filename:.+}")
-    public ResponseEntity<Resource> getBackgroundThumbnail(@PathVariable String filename) {
-        logger.info("获取背景缩略图: " + filename);
-
-        // 构建资源路径
-        String resourcePath = "assets/thumbnails/" + filename;
-        Resource resource = storageService.getResource(resourcePath);
-
-        // 检查资源是否存在
-        if (!resource.exists() || !resource.isReadable()) {
-            logger.warn("背景缩略图不存在或不可读: " + resourcePath);
-            return ResponseEntity.notFound().build();
-        }
-
-        // 确定内容类型
-        String contentType = "application/octet-stream";
+    @PostMapping("/backgrounds/{id}/thumbnail")
+    public Background uploadThumbnail(@PathVariable String id, @RequestParam("file") MultipartFile file) {
         try {
-            contentType = resource.getURL().openConnection().getContentType();
-        } catch (IOException e) {
-            logger.warn("无法确定内容类型: " + e.getMessage());
-        }
+            logger.info("上传背景缩略图: " + id + ", 文件: " + file.getOriginalFilename());
 
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                .body(resource);
+            Background background = jdbi.withExtension(BackgroundDAO.class, dao -> dao.getById(id));
+            if (background == null) {
+                throw new RuntimeException("背景不存在: " + id);
+            }
+
+            // 上传缩略图文件，返回 /assets/backgrounds/thumbnails/xxx 路径
+            String thumbnailUrlPath = storageService.uploadBackgroundThumbnail(file, id);
+            background.setThumbnailPath(thumbnailUrlPath);
+            return saveBackgroundToDatabase(background);
+        } catch (Exception e) {
+            logger.error("上传缩略图失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("上传缩略图失败: " + e.getMessage());
+        }
     }
 
     /**
      * 上传背景文件
+     * 返回保存后的文件名，供前端再调用 POST /backgrounds 或 PUT /backgrounds/{id} 存入 DB。
+     * 如果未提供 name 参数，则使用原文件名 stem。
      */
     @PostMapping("/backgrounds/upload")
-    public Background uploadBackground(
+    public BackgroundUploadResponse uploadBackground(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "name", required = false) String name,
-            @RequestParam(value = "tags", required = false) String tags) {
+            @RequestParam(value = "name", required = false) String name) {
         try {
-            logger.info("上传背景文件: " + file.getOriginalFilename());
+            logger.info("上传背景文件: {}, name参数: {}", file.getOriginalFilename(), name);
+            String filename = storageService.uploadBackgroundFile(file, name);
 
-            // 上传文件并获取相对路径
-            String filePath = storageService.uploadBackgroundFile(file, name);
+            // 原图访问 URL：/assets/backgrounds/{filename}
+            String imageUrlPath = "/assets/backgrounds/" + filename;
+            // 自动生成缩略图访问 URL：/assets/backgrounds/thumbnails/thumb_{filename}
+            String thumbUrlPath = "/assets/backgrounds/thumbnails/thumb_" + filename;
 
-            // 如果没有提供名称，使用原文件名（不带扩展名）
-            if (name == null || name.trim().isEmpty()) {
-                String originalFilename = file.getOriginalFilename();
-                name = originalFilename.substring(0, originalFilename.lastIndexOf("."));
-            }
-
-            // 创建背景对象
-            Background background = new Background(
-                    UUID.randomUUID().toString(),
-                    filePath,
-                    name,
-                    null // 缩略图路径由存储服务处理
-            );
-
-            // 处理标签
-            if (tags != null && !tags.trim().isEmpty()) {
-                String[] tagArray = tags.split(",");
-                List<String> tagList = new ArrayList<>();
-                for (String tag : tagArray) {
-                    String trimmedTag = tag.trim();
-                    if (!trimmedTag.isEmpty()) {
-                        tagList.add(trimmedTag);
-                    }
-                }
-                // 这里需要设置标签，但Background类目前没有setTags方法
-                // 可能需要修改Background类或使用其他方式存储标签
-            }
-
-            // 保存到数据库
-            return saveBackgroundToDatabase(background);
+            logger.info("背景上传完成，原图路径: {}, 缩略图路径: {}", imageUrlPath, thumbUrlPath);
+            return new BackgroundUploadResponse(filename, imageUrlPath, thumbUrlPath);
         } catch (IOException e) {
             logger.error("上传背景文件失败: " + e.getMessage());
             e.printStackTrace();
@@ -167,6 +128,53 @@ public class BackgroundController {
             e.printStackTrace();
             throw new RuntimeException("处理上传背景时发生错误: " + e.getMessage());
         }
+    }
+
+    /** 上传背景文件响应：返回保存的文件名 + 可直接访问的 URL 路径 */
+    public static class BackgroundUploadResponse {
+        private final String filename;
+        private final String imagePath;
+        private final String autoThumbnailPath;
+
+        public BackgroundUploadResponse(String filename, String imagePath, String autoThumbnailPath) {
+            this.filename = filename;
+            this.imagePath = imagePath;
+            this.autoThumbnailPath = autoThumbnailPath;
+        }
+
+        public String getFilename() {
+            return filename;
+        }
+
+        public String getImagePath() {
+            return imagePath;
+        }
+
+        public String getAutoThumbnailPath() {
+            return autoThumbnailPath;
+        }
+    }
+
+    /**
+     * 判断数据库中保存的 path / thumbnailPath 是否对应磁盘上存在的文件。
+     * 支持多种前缀：无前缀、assets/、/assets/、./assets/
+     */
+    private boolean pathExistsOnDisk(String dbPath) {
+        if (dbPath == null || dbPath.isEmpty())
+            return false;
+        String normalized = dbPath;
+        if (normalized.startsWith("/assets/")) {
+            normalized = normalized.substring("/assets/".length());
+        } else if (normalized.startsWith("assets/")) {
+            normalized = normalized.substring("assets/".length());
+        } else if (normalized.startsWith("./assets/")) {
+            normalized = normalized.substring("./assets/".length());
+        }
+        File f = new File(appConfig.getAssets().getPath(), normalized);
+        boolean exists = f.exists() && f.isFile();
+        logger.debug("路径判断: raw={} -> normalized={} -> disk={}, exists={}",
+                dbPath, normalized, f.getAbsolutePath(), exists);
+        return exists;
     }
 
     /**
@@ -181,17 +189,16 @@ public class BackgroundController {
                     ", 路径=" + background.getPath() +
                     ", 缩略图路径=" + background.getThumbnailPath());
 
-            // 验证背景文件是否存在
+            // 验证背景文件是否存在（只记录日志，不阻塞保存）
             if (background.getPath() != null && !background.getPath().isEmpty()) {
-                boolean exists = storageService.resourceExists(background.getPath());
+                boolean exists = pathExistsOnDisk(background.getPath());
                 if (!exists) {
-                    logger.warn("背景资源不存在: " + background.getPath());
+                    logger.warn("背景资源不存在（磁盘找不到）: " + background.getPath());
                 } else {
                     logger.info("背景资源存在: " + background.getPath());
                 }
             }
 
-            // 保存到数据库
             return saveBackgroundToDatabase(background);
         } catch (Exception e) {
             logger.error("添加背景失败: " + e.getMessage());
@@ -212,17 +219,18 @@ public class BackgroundController {
                     ", 路径=" + background.getPath() +
                     ", 缩略图路径=" + background.getThumbnailPath());
 
-            // 处理blob缩略图URL
-            if (background.getThumbnailPath() != null && background.getThumbnailPath().startsWith("blob:")) {
-                logger.warn("检测到blob缩略图URL，当前版本不支持处理，将清空缩略图路径");
+            // 过滤掉前端临时的 blob: URL，防止 DB 存无效地址（用户若显式上传了缩略图则缩略图路径是 /assets/... 开头的真实 URL）
+            if (background.getThumbnailPath() != null
+                    && background.getThumbnailPath().startsWith("blob:")) {
+                logger.warn("检测到临时 blob: 缩略图 URL，清空该字段以避免存入库中");
                 background.setThumbnailPath(null);
             }
 
-            // 验证背景文件是否存在
+            // 验证背景文件存在性
             if (background.getPath() != null && !background.getPath().isEmpty()) {
-                boolean exists = storageService.resourceExists(background.getPath());
+                boolean exists = pathExistsOnDisk(background.getPath());
                 if (!exists) {
-                    logger.warn("背景资源不存在: " + background.getPath());
+                    logger.warn("背景资源不存在（磁盘找不到）: " + background.getPath());
                 } else {
                     logger.info("背景资源存在: " + background.getPath());
                 }
@@ -233,7 +241,6 @@ public class BackgroundController {
                     ", 路径=" + background.getPath() +
                     ", 缩略图路径=" + background.getThumbnailPath());
 
-            // 保存到数据库
             return saveBackgroundToDatabase(background);
         } catch (Exception e) {
             logger.error("更新背景失败: " + e.getMessage());
@@ -249,7 +256,7 @@ public class BackgroundController {
     public void deleteBackground(@PathVariable String id,
             @RequestParam(required = false, defaultValue = "false") boolean deleteFile) {
         try {
-            logger.info("删除背景: " + id);
+            logger.info("删除背景: " + id + ", 删除文件: " + deleteFile);
 
             // 获取背景信息
             Background background = jdbi.withExtension(BackgroundDAO.class, dao -> dao.getById(id));
@@ -262,27 +269,46 @@ public class BackgroundController {
             jdbi.useExtension(BackgroundDAO.class, dao -> dao.delete(id));
             logger.info("背景已从数据库删除: " + id);
 
-            // 如果需要，删除文件
-            if (deleteFile && background.getPath() != null && !background.getPath().isEmpty()) {
-                try {
-                    // 尝试从资源中删除
-                    Resource resource = storageService.getResource(background.getPath());
-                    if (resource.exists()) {
-                        File file = resource.getFile();
-                        if (file.delete()) {
-                            logger.info("背景文件已删除: " + background.getPath());
-                        } else {
-                            logger.warn("无法删除背景文件: " + background.getPath());
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.warn("删除背景文件时出错: " + e.getMessage());
-                }
+            // 如果需要，删除文件（原图 + 缩略图）
+            if (deleteFile) {
+                deleteDiskFileByPath(background.getPath(), "背景原图");
+                deleteDiskFileByPath(background.getThumbnailPath(), "背景缩略图");
             }
         } catch (Exception e) {
             logger.error("删除背景失败: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("删除背景失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 从磁盘删除一个资源文件（路径可带 /assets/ 前缀）
+     */
+    private void deleteDiskFileByPath(String dbPath, String fileKind) {
+        if (dbPath == null || dbPath.isEmpty())
+            return;
+        try {
+            // 规范化：去掉 /assets/ 或 assets/ 前缀后按 appConfig.assets.path 拼接
+            String normalized = dbPath;
+            if (normalized.startsWith("/assets/")) {
+                normalized = normalized.substring("/assets/".length());
+            } else if (normalized.startsWith("assets/")) {
+                normalized = normalized.substring("assets/".length());
+            } else if (normalized.startsWith("./assets/")) {
+                normalized = normalized.substring("./assets/".length());
+            }
+            File file = new File(appConfig.getAssets().getPath(), normalized);
+            if (file.exists()) {
+                if (file.delete()) {
+                    logger.info(fileKind + "已删除: " + file.getAbsolutePath());
+                } else {
+                    logger.warn("无法删除" + fileKind + ": " + file.getAbsolutePath());
+                }
+            } else {
+                logger.info(fileKind + "磁盘不存在，跳过: " + file.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            logger.warn("删除" + fileKind + "时出错: " + e.getMessage());
         }
     }
 

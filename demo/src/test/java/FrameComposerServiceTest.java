@@ -108,7 +108,7 @@ class FrameComposerServiceTest {
                 .onDemand(com.lbc_plot.resource.dao.BackgroundDAO.class);
         com.lbc_plot.resource.service.BackgroundService bgService = new com.lbc_plot.render.service.impl.BackgroundServiceImpl(
                 backgroundDao);
-        bgService.findOrCreateByPath("assets/backgrounds/Story_private_room.png", "办公室", "test");
+        bgService.findOrCreateByPath(ProjectConfig.BACKGROUNDS_PATH + "Story_private_room.png", "办公室", "test");
 
         // 使用 DAO 保存
         characterDao.saveWithPortraits(ch, portraitDao);

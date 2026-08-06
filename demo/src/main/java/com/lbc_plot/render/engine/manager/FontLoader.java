@@ -2,6 +2,7 @@ package com.lbc_plot.render.engine.manager;
 
 import java.awt.Font;
 import java.awt.FontFormatException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -26,15 +27,29 @@ public class FontLoader {
             return chineseFont;
         }
 
-        try (InputStream fontStream = FontLoader.class.getClassLoader()
-                .getResourceAsStream("fonts/ChineseFont.ttf")) {
-
-            if (fontStream == null) {
-                throw new IOException("字体文件未找到: fonts/ChineseFont.ttf");
+        try {
+            // 先尝试从 classpath 加载
+            try (InputStream fontStream = FontLoader.class.getClassLoader()
+                    .getResourceAsStream("fonts/ChineseFont.ttf")) {
+                if (fontStream != null) {
+                    chineseFont = Font.createFont(Font.TRUETYPE_FONT, fontStream);
+                    logger.info("中文字体加载成功 (classpath)");
+                    return chineseFont;
+                }
             }
 
-            chineseFont = Font.createFont(Font.TRUETYPE_FONT, fontStream);
-            logger.info("中文字体加载成功");
+            // classpath 找不到时，回退到文件系统相对路径。
+            // 字体文件位于 demo/assets/fonts/ChineseFont.ttf，相对于 JVM 工作目录
+            // (mvn spring-boot:run 启动时的 demo 目录) 解析。
+            File fontFile = new File("assets/fonts/ChineseFont.ttf");
+            if (fontFile.exists() && fontFile.isFile()) {
+                chineseFont = Font.createFont(Font.TRUETYPE_FONT, fontFile);
+                logger.info("中文字体加载成功 (文件系统): {}", fontFile.getAbsolutePath());
+                return chineseFont;
+            }
+
+            throw new IOException("字体文件未找到: fonts/ChineseFont.ttf"
+                    + "（已尝试 classpath 与文件系统 assets/fonts/ChineseFont.ttf）");
 
         } catch (FontFormatException | IOException e) {
             logger.error("字体加载失败，使用默认字体", e);

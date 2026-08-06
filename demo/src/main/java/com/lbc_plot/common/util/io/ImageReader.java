@@ -1,5 +1,7 @@
 package com.lbc_plot.common.util.io;
 
+import com.lbc_plot.config.ProjectConfig;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -36,22 +38,50 @@ public class ImageReader {
             return ImageIO.read(maybeFile);
         }
 
+        // 先尝试从 classpath 查找资源
         ClassLoader classLoader = ImageReader.class.getClassLoader();
         InputStream inputStream = classLoader.getResourceAsStream(resourcePath);
 
-        if (inputStream == null) {
-            throw new IOException("资源文件不存在: " + resourcePath);
+        if (inputStream != null) {
+            try {
+                return ImageIO.read(inputStream);
+            } finally {
+                inputStream.close();
+            }
         }
 
-        try {
-            return ImageIO.read(inputStream);
-        } finally {
-            inputStream.close();
+        // classpath 找不到时，回退到文件系统相对路径（相对于 JVM 工作目录，
+        // 即 mvn spring-boot:run 启动时的 demo 目录）。
+        // 修复场景：border_1080p.png 等资源存在于 demo/assets/ui/ 下，但未打进
+        // classpath（src/main/resources/assets/ui/ 不存在），导致 RenderOfImage
+        // 静态块加载失败、后续名片图片生成 NPE。
+        if (maybeFile.exists() && maybeFile.isFile()) {
+            return ImageIO.read(maybeFile);
         }
+
+        throw new IOException("资源文件不存在: " + resourcePath
+                + "（已尝试 classpath 与文件系统相对路径 " + maybeFile.getAbsolutePath() + "）");
     }
 
     public static BufferedImage readBackGround(String fileName) throws IOException {
-        return readResourceImage("assets/backgrounds/" + fileName);
+        String resourcePath = ProjectConfig.BACKGROUNDS_PATH + fileName;
+        try {
+            return readResourceImage(resourcePath);
+        } catch (IOException e) {
+            // 回退到文件系统候选路径查找
+            String[] candidates = new String[] {
+                    ProjectConfig.BACKGROUNDS_PATH + fileName,
+                    ProjectConfig.ASSETS_BASE_PATH + "backgrounds/" + fileName,
+                    fileName
+            };
+            for (String c : candidates) {
+                File f = new File(c);
+                if (f.exists() && f.isFile()) {
+                    return ImageIO.read(f);
+                }
+            }
+            throw new IOException("背景图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")", e);
+        }
     }
 
     public static BufferedImage readCharacters(String fileName) throws IOException {
@@ -62,15 +92,32 @@ public class ImageReader {
             }
             return ImageIO.read(f);
         }
-        return readResourceImage("assets/characters/" + fileName);
+
+        String resourcePath = ProjectConfig.CHARACTERS_PATH + fileName;
+        try {
+            return readResourceImage(resourcePath);
+        } catch (IOException e) {
+            String[] candidates = new String[] {
+                    ProjectConfig.CHARACTERS_PATH + fileName,
+                    ProjectConfig.ASSETS_BASE_PATH + "characters/" + fileName,
+                    fileName
+            };
+            for (String c : candidates) {
+                File cf = new File(c);
+                if (cf.exists() && cf.isFile()) {
+                    return ImageIO.read(cf);
+                }
+            }
+            throw new IOException("人物图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")", e);
+        }
     }
 
     public static BufferedImage readEffects(String fileName) throws IOException {
-        return readResourceImage("assets/effects/" + fileName);
+        return readResourceImage(ProjectConfig.EFFECTS_PATH + fileName);
     }
 
     public static BufferedImage readUI(String fileName) throws IOException {
-        return readResourceImage("assets/ui/" + fileName);
+        return readResourceImage(ProjectConfig.UI_PATH + fileName);
     }
 
     /**
