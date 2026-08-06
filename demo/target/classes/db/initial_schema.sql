@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS characters (
     height INTEGER DEFAULT 170,
     color_bg TEXT DEFAULT '076,054,031',        -- 直接设置颜色字符串默认值
     color_text TEXT DEFAULT '251,219,179',    -- 直接设置颜色字符串默认值
-    faction TEXT DEFAULT '无阵营'
+    faction TEXT DEFAULT '无阵营',
+    character_card_image_path TEXT,
+    folder_name TEXT                           -- 角色对应的拼音子目录名
 );
 
 
@@ -53,6 +55,7 @@ CREATE TABLE IF NOT EXISTS backgrounds (
     image_path TEXT NOT NULL,
     display_name TEXT,
     source TEXT,
+    thumbnail_path TEXT,
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
