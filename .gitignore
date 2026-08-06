@@ -41,3 +41,7 @@ hs_err_pid*
 *.class
 *.jar
 demo/target/classes/com/lbc_plot/config/ProjectConfig.class
+*.jar
+*.exe
+*.class
+
