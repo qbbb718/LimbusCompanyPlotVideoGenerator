@@ -3,6 +3,8 @@ package com.lbc_plot.plot.controller;
 import java.util.List;
 import java.util.ArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +26,10 @@ import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.io.IOException;
 import java.io.File;
+import java.io.ByteArrayOutputStream;
 import java.util.UUID;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 
 import com.lbc_plot.common.util.json.RecordsIO;
 import com.lbc_plot.plot.model.Dialogue;
@@ -34,6 +39,7 @@ import com.lbc_plot.render.audio.model.AudioCommand;
 import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.EffectVisual;
+import com.lbc_plot.render.engine.RenderOfImage;
 import com.lbc_plot.resource.service.BackgroundService;
 import com.lbc_plot.resource.service.CharacterService;
 
@@ -43,6 +49,8 @@ import com.lbc_plot.resource.service.CharacterService;
 @RestController
 @RequestMapping("/api")
 public class RecordController {
+
+    private static final Logger logger = LoggerFactory.getLogger(RecordController.class);
 
     @Autowired
     private CharacterService characterService;
@@ -158,8 +166,50 @@ public class RecordController {
             // 这里应该调用视频生成服务
             return "视频生成功能尚未实现";
         } catch (Exception e) {
-            System.err.println("生成视频失败: " + e.getMessage());
+            logger.error("生成视频失败: {}", e.getMessage());
             throw new RuntimeException("生成视频失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 渲染单条记录的预览图
+     * 接收 Record JSON，调用 RenderOfImage.renderPre() 渲染为 PNG 图片返回。
+     *
+     * @param record 要渲染的 Record 对象（JSON body）
+     * @param width  预览图宽度，默认 1280
+     * @param height 预览图高度，默认 720
+     * @return PNG 图片字节流
+     */
+    @PostMapping("/records/preview")
+    public ResponseEntity<byte[]> renderPreview(
+            @RequestBody Record record,
+            @RequestParam(defaultValue = "1920") int width,
+            @RequestParam(defaultValue = "1080") int height) {
+        long startTime = System.currentTimeMillis();
+        logger.info("开始渲染记录预览图: uuid={}, width={}, height={}", record.getUuid(), width, height);
+
+        try {
+            BufferedImage previewImage = RenderOfImage.renderPre(record, true, width, height);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(previewImage, "PNG", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            long elapsed = System.currentTimeMillis() - startTime;
+            logger.info("预览图渲染完成: uuid={}, 大小={} bytes, 耗时={} ms",
+                    record.getUuid(), imageBytes.length, elapsed);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+            headers.setContentLength(imageBytes.length);
+            headers.setCacheControl("no-cache");
+
+            return ResponseEntity.ok().headers(headers).body(imageBytes);
+        } catch (Exception e) {
+            long elapsed = System.currentTimeMillis() - startTime;
+            logger.error("预览图渲染失败: uuid={}, 耗时={} ms, 错误={}",
+                    record.getUuid(), elapsed, e.getMessage(), e);
+            throw new RuntimeException("渲染预览图失败: " + e.getMessage());
         }
     }
 

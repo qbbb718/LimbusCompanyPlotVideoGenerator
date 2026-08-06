@@ -26,7 +26,20 @@ public class Dialogue {
     }
 
     public enum Emotion {
-        NORMAL, HAPPY, ANGRY, SAD, SURPRISED, CONFUSED, NERVOUS
+        NORMAL, HAPPY, ANGRY, SAD, SURPRISED, CONFUSED, NERVOUS;
+
+        /**
+         * 大小写不敏感反序列化，兼容前端传入的小写值 (如 "normal", "happy")
+         */
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public static Emotion fromString(String value) {
+            if (value == null) return NORMAL;
+            try {
+                return Emotion.valueOf(value.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return NORMAL; // 无法识别时回退到 NORMAL
+            }
+        }
     }
 
     // 成员变量

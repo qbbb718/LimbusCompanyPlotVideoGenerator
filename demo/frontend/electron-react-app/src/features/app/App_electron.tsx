@@ -27,6 +27,8 @@ function AppElectron() {
     outputPath: "",
     theme: "default",
     storyType: "STORY",
+    videoWidth: 1920,
+    videoHeight: 1080,
   });
 
   useEffect(() => {

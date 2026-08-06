@@ -109,7 +109,11 @@ public class BackgroundController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "name", required = false) String name) {
         try {
-            logger.info("上传背景文件: {}, name参数: {}", file.getOriginalFilename(), name);
+            // 记录上传文件的详细信息，便于排查问题
+            long fileSizeBytes = file.getSize();
+            String fileSizeFormatted = formatFileSize(fileSizeBytes);
+            logger.info("收到背景文件上传请求: 文件名={}, 大小={} ({} bytes), name参数={}, ContentType={}",
+                    file.getOriginalFilename(), fileSizeFormatted, fileSizeBytes, name, file.getContentType());
             String filename = storageService.uploadBackgroundFile(file, name);
 
             // 原图访问 URL：/assets/backgrounds/{filename}
@@ -348,5 +352,16 @@ public class BackgroundController {
             e.printStackTrace();
             throw new RuntimeException("保存背景到数据库失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 格式化文件大小为人类可读的字符串
+     */
+    private static String formatFileSize(long bytes) {
+        if (bytes < 0) return "未知";
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
     }
 }

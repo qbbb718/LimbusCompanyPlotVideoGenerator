@@ -59,6 +59,12 @@ public class StorageService implements ResourceService<org.springframework.core.
      *         拼接 backgrounds/ 或 /assets/backgrounds/ 即可访问）
      */
     public String uploadBackgroundFile(MultipartFile file, String fileName) throws IOException {
+        // 记录文件信息便于排查
+        long fileSizeBytes = file.getSize();
+        logger.info("StorageService 开始处理背景文件上传: 原始文件名={}, 大小={} bytes ({}.{} MB), 指定名称={}",
+                file.getOriginalFilename(), fileSizeBytes,
+                fileSizeBytes / (1024 * 1024), fileSizeBytes % (1024 * 1024) / 1024, fileName);
+
         // 验证文件
         validateFile(file);
 

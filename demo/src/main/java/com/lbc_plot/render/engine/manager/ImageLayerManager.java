@@ -9,7 +9,6 @@ import java.util.List;
 
 import com.lbc_plot.common.util.RenderQualityUtils;
 import com.lbc_plot.common.util.io.ImageReader;
-import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.contract.ImageLayerInterface;
 
 /**
@@ -183,7 +182,7 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
      * @param alpha 透明度 (0-255)
      */
     public void addFullScreenMask(int alpha) {
-        addSolidColorLayer(0x000000, alpha, 0, 0, ProjectConfig.VIDEO_WIDTH, ProjectConfig.VIDEO_HEIGHT);
+        addSolidColorLayer(0x000000, alpha, 0, 0, this.width, this.height);
     }
 
     /**
@@ -193,7 +192,7 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
      * @param alpha 透明度
      */
     public void addFullScreenMask(int rgb, int alpha) {
-        addSolidColorLayer(rgb, alpha, 0, 0, ProjectConfig.VIDEO_WIDTH, ProjectConfig.VIDEO_HEIGHT);
+        addSolidColorLayer(rgb, alpha, 0, 0, this.width, this.height);
     }
 
     /**

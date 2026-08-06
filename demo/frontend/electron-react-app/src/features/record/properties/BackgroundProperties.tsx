@@ -132,7 +132,22 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                     className={`background-item ${selectedBackground?.uuid === bg.uuid ? "selected" : ""}`}
                     onClick={() => setSelectedBackground(bg)}
                   >
-                    <div className="background-thumbnail">背景图片</div>
+                    <div className="background-thumbnail">
+                      <img
+                        src={ApiService.getBackgroundThumbnailUrl(
+                          bg.thumbnailPath || bg.path
+                        )}
+                        alt={bg.name}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          // 缩略图加载失败时，尝试用原图
+                          const fallbackSrc = ApiService.getBackgroundUrl(bg.path);
+                          if (target.src !== fallbackSrc) {
+                            target.src = fallbackSrc;
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="background-name">{bg.name}</div>
                     <div className="background-path">{bg.path}</div>
                   </div>

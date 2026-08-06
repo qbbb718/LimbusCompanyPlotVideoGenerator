@@ -63,7 +63,12 @@ public class RenderOfImage {
      * 渲染record预览图-完整
      */
     public static BufferedImage renderPre(Record record, boolean plot, int width, int height) throws IOException {
-        logger.info("开始渲染预处理: plot={}, width={}, height={}", plot, width, height);
+        logger.info("========== 开始渲染预览图 ==========");
+        logger.info("参数: plot={}, 请求尺寸={}x{}", plot, width, height);
+        logger.info("记录: uuid={}, speaker={}, text={}",
+                record.getUuid(),
+                record.getDialogue() != null ? record.getDialogue().getSpeakerName() : "null",
+                record.getDialogue() != null ? abbreviateText(record.getDialogue().getText()) : "null");
 
         FrameComposerService composer = new FrameComposerService();
 
@@ -73,8 +78,11 @@ public class RenderOfImage {
             if (plot) {
                 renderCharacters(composer, record);
                 composer.addImageLayer(border, 0, 0);
-                // 缩放0.8
+                // 缩放0.8：先把背景+角色+border合成一张，再缩小到 0.8 居中
                 BufferedImage coImage = composer.compose();
+                logger.info("中间合成: coImage 尺寸={}x{}, 目标缩放={}, 目标位置=({},{})",
+                        coImage.getWidth(), coImage.getHeight(),
+                        0.8f, width / 10, height / 10);
                 composer.addFullScreenMask(255);
                 composer.addImageLayerScaled(coImage, width / 10, height / 10, 0.8f);
             }
@@ -85,10 +93,10 @@ public class RenderOfImage {
             return composeFinalImage(composer, width, height);
 
         } catch (Exception e) {
-            logger.error("渲染预处理严重失败", e);
-            throw new IOException("渲染预处理失败", e);
+            logger.error("渲染预览图严重失败", e);
+            throw new IOException("渲染预览图失败", e);
         } finally {
-            logger.debug("渲染预处理完成");
+            logger.info("========== 预览图渲染流程结束 ==========");
         }
     }
 
@@ -160,17 +168,29 @@ public class RenderOfImage {
      */
     private static void renderBackground(FrameComposerService composer, Record record, boolean plot, int width,
             int height) {
-        logger.info("开始渲染背景层");
+        logger.info("=== 开始渲染背景层: plot={}, 视频尺寸={}x{} ===", plot, width, height);
 
         List<BackgroundVisual> bgList = record.getBackgroundVisuals();
         if (bgList == null || bgList.isEmpty()) {
-            logger.warn("记录中没有背景信息，使用默认背景");
-            composer.addFullScreenMask(255); // 添加黑色背景作为默认
+            logger.warn("记录中没有背景信息，使用默认黑色背景");
+            composer.addFullScreenMask(255);
             return;
         }
 
-        renderFullScreenBackground(composer, bgList, width, height);
+        // 打印每个背景的原图尺寸
+        for (int i = 0; i < bgList.size(); i++) {
+            BackgroundVisual bg = bgList.get(i);
+            if (bg != null && bg.getBgImage() != null) {
+                logger.info("  背景[{}]: name={}, 原图尺寸={}x{}",
+                        i, bg.getBackground().getName(),
+                        bg.getBgImage().getWidth(), bg.getBgImage().getHeight());
+            }
+        }
 
+        // 始终全屏拉伸背景，0.8 缩放 + 居中由 renderPre / renderPreExceptDialogue
+        // 中的 addImageLayerScaled(coImage, w/10, h/10, 0.8) 统一完成
+        logger.info("  → 背景全屏拉伸至 {}x{}（0.8 缩放由上层 compose+scale 统一处理）", width, height);
+        renderFullScreenBackground(composer, bgList, width, height);
     }
 
     /**
@@ -183,18 +203,26 @@ public class RenderOfImage {
         int borderWidth = (int) (0.1 * width);
         int borderHeight = (int) (0.1 * height);
 
-        logger.debug("带边框渲染模式: targetSize={}x{}, borderMargin={}x{}",
-                targetWidth, targetHeight, borderWidth, borderHeight);
+        logger.info("Plot 背景渲染: 视频={}x{}, 目标区域={}x{}, 偏移量=({},{}), 即缩小至 80% 并居中",
+                width, height, targetWidth, targetHeight, borderWidth, borderHeight);
 
         for (BackgroundVisual bg : bgList) {
             if (!validateBackgroundVisual(bg))
                 continue;
 
             try {
+                BufferedImage bgImage = bg.getBgImage();
+                int rawW = bgImage.getWidth();
+                int rawH = bgImage.getHeight();
+                logger.info("  处理背景: name={}, 原图尺寸={}x{}", bg.getBackground().getName(), rawW, rawH);
+
                 composer.addFullScreenMask(255);
-                composer.addImageLayerResized(bg.getBgImage(), borderWidth, borderHeight, targetWidth, targetHeight,
+                composer.addImageLayerResized(bgImage, borderWidth, borderHeight, targetWidth, targetHeight,
                         true);
-                logger.debug("添加背景图层: 位置({},{}), 尺寸{}x{}",
+
+                // addImageLayerResized 可能因 keepAspectRatio=true 而调整实际尺寸，
+                // 目标位置 borderWidth,borderHeight 不变，但实际图像尺寸可能小于 targetWidth x targetHeight
+                logger.info("  背景已添加: 目标位置({},{}), 目标区域{}x{} (keepAspectRatio=true，实际尺寸由 scaleImageHighQuality 决定)",
                         borderWidth, borderHeight, targetWidth, targetHeight);
 
                 renderBorder(composer, borderWidth, borderHeight, targetWidth, targetHeight);
@@ -538,13 +566,13 @@ public class RenderOfImage {
     private static void renderUIBackground(FrameComposerService composer, boolean plot, Dialogue dialogue, int width,
             int height) throws IOException {
         try {
-            BufferedImage uiImage = renderUI(plot, dialogue);
+            BufferedImage uiImage = renderUI(plot, dialogue, width, height);
             if (uiImage == null) {
                 logger.error("UI渲染失败，生成空UI图像");
                 uiImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
             }
             composer.addImageLayer(uiImage, 0, 0);
-            logger.debug("添加UI图层");
+            logger.debug("添加UI图层: 尺寸={}x{}", uiImage.getWidth(), uiImage.getHeight());
         } catch (Exception e) {
             logger.error("渲染UI失败", e);
             throw new IOException("UI渲染失败", e);
@@ -573,14 +601,23 @@ public class RenderOfImage {
      * 合成最终图像
      */
     private static BufferedImage composeFinalImage(FrameComposerService composer, int width, int height) {
-        logger.info("开始合成最终图像");
+        logger.info("=== 合成最终图像: 期望尺寸={}x{} ===", width, height);
         BufferedImage result = composer.compose();
 
         if (result == null) {
-            logger.error("图像合成失败，返回空图像");
+            logger.error("图像合成失败，返回空图像 {}x{}", width, height);
             result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         } else {
-            logger.info("图像合成成功: 尺寸{}x{}", result.getWidth(), result.getHeight());
+            int actualW = result.getWidth();
+            int actualH = result.getHeight();
+            if (actualW != width || actualH != height) {
+                logger.warn("最终图像尺寸与期望不符! 期望={}x{}, 实际={}x{}，自动缩放至期望尺寸",
+                        width, height, actualW, actualH);
+                result = RenderQualityUtils.scaleImageHighQuality(result, width, height);
+                logger.info("缩放后图像尺寸: {}x{}", result.getWidth(), result.getHeight());
+            } else {
+                logger.info("最终图像尺寸匹配: {}x{}", actualW, actualH);
+            }
         }
 
         composer.clearLayers();
@@ -606,10 +643,11 @@ public class RenderOfImage {
      * @return 渲染后的UI图像
      * @throws IOException 当渲染失败时抛出
      */
-    public static BufferedImage renderUI(boolean plot, Dialogue dialogue) throws IOException {
+    public static BufferedImage renderUI(boolean plot, Dialogue dialogue, int targetWidth, int targetHeight)
+            throws IOException {
         Logger logger = LoggerFactory.getLogger(RenderOfImage.class);
-        logger.info("开始渲染UI: plot={}, dialogueSpeaker={}", plot,
-                dialogue != null ? dialogue.getSpeakerName() : "null");
+        logger.info("开始渲染UI: plot={}, dialogueSpeaker={}, 目标尺寸={}x{}", plot,
+                dialogue != null ? dialogue.getSpeakerName() : "null", targetWidth, targetHeight);
 
         int width = ProjectConfig.VIDEO_WIDTH;
         int height = ProjectConfig.VIDEO_HEIGHT;
@@ -671,9 +709,15 @@ public class RenderOfImage {
 
             if (ui == null) {
                 logger.error("UI图像合成失败，返回空图像");
-                ui = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                ui = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
             } else {
                 logger.info("UI图像合成成功: 尺寸{}x{}", ui.getWidth(), ui.getHeight());
+
+                // 若 UI 合成尺寸与目标尺寸不匹配，缩放至目标尺寸
+                if (ui.getWidth() != targetWidth || ui.getHeight() != targetHeight) {
+                    logger.info("UI尺寸不匹配，缩放至目标尺寸 {}x{}", targetWidth, targetHeight);
+                    ui = RenderQualityUtils.scaleImageHighQuality(ui, targetWidth, targetHeight);
+                }
 
                 // 调试信息：记录UI图像的基本信息
                 if (logger.isDebugEnabled()) {

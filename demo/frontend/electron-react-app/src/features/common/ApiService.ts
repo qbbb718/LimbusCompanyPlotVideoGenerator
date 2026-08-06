@@ -250,6 +250,28 @@ class ApiService {
     }
   }
 
+  /**
+   * 渲染单条记录的预览图
+   * 将 Record JSON 发送到后端，由 RenderOfImage.renderPre() 渲染为 PNG 图片。
+   * @param record 要渲染的 Record 对象
+   * @param width  预览图宽度，默认 1280
+   * @param height 预览图高度，默认 720
+   * @returns blob URL，可直接用于 <img src>。调用方需在组件卸载时调用 URL.revokeObjectURL()
+   */
+  async getRecordPreview(record: any, width = 1920, height = 1080): Promise<string> {
+    try {
+      const response = await apiClient.post(
+        `/records/preview?width=${width}&height=${height}`,
+        record,
+        { responseType: 'blob' },
+      );
+      return URL.createObjectURL(response.data);
+    } catch (error) {
+      console.error('获取记录预览图失败:', error);
+      throw error;
+    }
+  }
+
   // 添加新角色
   async addCharacter(characterData: any) {
     try {

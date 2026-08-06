@@ -192,6 +192,8 @@ export interface ProjectSettings {
   storyType: string;
   outputPath: string;
   theme: string;
+  videoWidth: number;
+  videoHeight: number;
   bgmVolume: number;
   voiceVolume: number;
   sfxVolume: number;

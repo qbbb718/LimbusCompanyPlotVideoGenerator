@@ -315,7 +315,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             minSize={300}
             className="preview-panel"
           >
-            <RecordPreview selectedRecord={selectedRecord} />
+            <RecordPreview
+              selectedRecord={selectedRecord}
+              videoWidth={projectSettings.videoWidth}
+              videoHeight={projectSettings.videoHeight}
+            />
           </ResizablePanel>
 
           <ResizablePanel

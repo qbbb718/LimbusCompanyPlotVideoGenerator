@@ -9,4 +9,6 @@ export interface ProjectSettings {
   outputPath: string;
   theme: string;
   storyType: string;
+  videoWidth: number;
+  videoHeight: number;
 }

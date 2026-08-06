@@ -24,6 +24,8 @@ function App() {
     outputPath: "./output",
     theme: "light",
     storyType: "STORY",
+    videoWidth: 1920,
+    videoHeight: 1080,
   });
 
   useEffect(() => {
