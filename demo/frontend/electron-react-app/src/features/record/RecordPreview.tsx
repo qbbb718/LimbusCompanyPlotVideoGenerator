@@ -14,11 +14,28 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidt
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
-  // 跟踪已在本会话中成功缓存过预览的 UUID。首次查看 dirty record 时强制刷新以
-  // 重新生成缓存，之后（同一会话，未再次编辑）则直接使用磁盘缓存。
-  const previewedRef = useRef<Set<string>>(new Set());
-  // 记录上次渲染时 record 对应的 isDirty 状态，用于检测 record 是否在渲染后又被编辑
-  const lastDirtyRef = useRef<Map<string, boolean>>(new Map());
+  // 记录上次成功渲染时的视觉内容摘要。当 record 内容变化（编辑角色/背景/说话人等）
+  // 时摘要不匹配，即使 isDirty 保持 true 未翻转，也能正确触发 forceRefresh。
+  const lastVisualHashRef = useRef<Map<string, string>>(new Map());
+
+  /** 提取影响预览图渲染的视觉属性摘要 */
+  const visualHash = (r: Record): string =>
+    JSON.stringify({
+      chars: r.chars,
+      bg: r.bg,
+      tempImages: r.tempImages,
+      audioCommands: r.audioCommands,
+      effects: r.effects,
+      dialogue: {
+        text: r.dialogue?.text,
+        speakerC: r.dialogue?.speakerC,
+        speakerName: r.dialogue?.speakerName,
+        faction: r.dialogue?.faction,
+        align: r.dialogue?.align,
+        emotion: r.dialogue?.emotion,
+        location: r.dialogue?.location,
+      },
+    });
 
   useEffect(() => {
     let cancelled = false;
@@ -38,15 +55,14 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidt
 
         const uuid = selectedRecord.uuid;
         const currentlyDirty = selectedRecord.isDirty === true;
-        const wasDirty = lastDirtyRef.current.get(uuid);
-        const alreadyPreviewed = previewedRef.current.has(uuid);
+        const lastHash = lastVisualHashRef.current.get(uuid);
+        const currentHash = visualHash(selectedRecord);
 
         // 决定是否强制刷新：
-        // 1. 首次渲染该 record，且 record 标记为 dirty → 强制刷新以更新缓存
-        // 2. record 在上次预览后又变回 dirty → 强制刷新（被编辑了）
-        // 3. 其他情况 → 使用缓存
-        const forceRefresh =
-          currentlyDirty && (!alreadyPreviewed || wasDirty === false);
+        // 1. record 是 dirty 且首次渲染（lastHash 不存在）→ 强制刷新
+        // 2. record 是 dirty 且视觉内容自上次渲染后已变化 → 强制刷新
+        // 3. record 是 clean 或内容未变 → 使用磁盘缓存
+        const forceRefresh = currentlyDirty && lastHash !== currentHash;
 
         const url = await ApiService.getRecordPreview(
           selectedRecord, videoWidth, videoHeight,
@@ -58,9 +74,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidt
           return;
         }
 
-        // 渲染成功后标记该 UUID 已缓存
-        previewedRef.current.add(uuid);
-        lastDirtyRef.current.set(uuid, currentlyDirty);
+        // 渲染成功后记录本次视觉摘要
+        lastVisualHashRef.current.set(uuid, currentHash);
 
         blobUrlRef.current = url;
         setPreviewUrl(url);
