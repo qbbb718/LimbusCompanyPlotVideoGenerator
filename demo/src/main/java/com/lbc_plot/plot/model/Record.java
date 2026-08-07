@@ -11,6 +11,7 @@ import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.EffectVisual;
+import com.lbc_plot.render.video.TempImageVisual;
 import com.lbc_plot.resource.model.MyCharacter;
 
 import java.awt.image.BufferedImage;
@@ -24,6 +25,7 @@ public class Record {
     private Camera camera; // 摄像机信息
     private List<BackgroundVisual> bg; // 背景视觉元素
     private List<CharacterVisual> chars; // 角色立绘列表
+    private List<TempImageVisual> tempImages; // 临时图片（NPC、道具等）
     @JsonIgnore
     private List<EffectVisual> effects; // 特效列表
     private List<AudioCommand> audioCommands; // 音频操作列表
@@ -36,6 +38,7 @@ public class Record {
      */
     public Record(String uuid, Dialogue dialogue, Camera camera,
             List<BackgroundVisual> bg, List<CharacterVisual> chars,
+            List<TempImageVisual> tempImages,
             List<EffectVisual> effects, List<AudioCommand> audioCommands,
             boolean isDirty, BufferedImage preImage) {
         this.uuid = (uuid != null) ? uuid : UUID.randomUUID().toString();
@@ -43,6 +46,7 @@ public class Record {
         this.camera = (camera != null) ? camera : new Camera();
         this.bg = (bg != null) ? new ArrayList<>(bg) : new ArrayList<>();
         this.chars = (chars != null) ? new ArrayList<>(chars) : new ArrayList<>();
+        this.tempImages = (tempImages != null) ? new ArrayList<>(tempImages) : new ArrayList<>();
         this.effects = (effects != null) ? new ArrayList<>(effects) : new ArrayList<>();
         this.audioCommands = (audioCommands != null) ? new ArrayList<>(audioCommands) : new ArrayList<>();
         this.isDirty = isDirty;
@@ -120,6 +124,15 @@ public class Record {
         this.isDirty = true;
     }
 
+    public List<TempImageVisual> getTempImages() {
+        return tempImages;
+    }
+
+    public void setTempImages(List<TempImageVisual> tempImages) {
+        this.tempImages = tempImages;
+        this.isDirty = true;
+    }
+
     public List<EffectVisual> getEffects() {
         return effects;
     }
@@ -190,6 +203,20 @@ public class Record {
         }
     }
 
+    public void addTempImageVisual(TempImageVisual tempImage) {
+        if (this.tempImages != null) {
+            this.tempImages.add(tempImage);
+            this.isDirty = true;
+        }
+    }
+
+    public void removeTempImageVisual(TempImageVisual tempImage) {
+        if (this.tempImages != null) {
+            this.tempImages.remove(tempImage);
+            this.isDirty = true;
+        }
+    }
+
     public void addEffectVisual(EffectVisual effect) {
         if (this.effects != null) {
             this.effects.add(effect);
@@ -245,6 +272,8 @@ public class Record {
         private List<BackgroundVisual> bg = new ArrayList<>();
         @JsonProperty
         private List<CharacterVisual> chars = new ArrayList<>();
+        @JsonProperty
+        private List<TempImageVisual> tempImages = new ArrayList<>();
         @JsonIgnore
         private List<EffectVisual> effects = new ArrayList<>();
         @JsonIgnore
@@ -297,6 +326,11 @@ public class Record {
             return this;
         }
 
+        public Builder addTempImage(TempImageVisual tempImage) {
+            this.tempImages.add(tempImage);
+            return this;
+        }
+
         public Builder addEffect(EffectVisual effect) {
             this.effects.add(effect);
             return this;
@@ -319,7 +353,7 @@ public class Record {
 
         public Record build() {
             return new Record(uuid, dialogue, camera,
-                    bg, chars, effects, audioCommands,
+                    bg, chars, tempImages, effects, audioCommands,
                     isDirty, preImage);
         }
     }

@@ -28,6 +28,7 @@ import com.lbc_plot.render.service.impl.CharacterServiceImpl;
 import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.render.video.CharacterVisual;
+import com.lbc_plot.render.video.TempImageVisual;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
 import com.lbc_plot.resource.dao.CharacterDAO;
@@ -42,6 +43,12 @@ public class RenderOfImage {
     private static final Logger logger = LoggerFactory.getLogger(RenderOfImage.class);
 
     static BufferedImage border, dialogBox, speaker_camp, speaker_name, location;
+
+    /** 临时名片缓存：key = "name|faction" */
+    private static final java.util.concurrent.ConcurrentHashMap<String, BufferedImage> tempCardCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 工程临时素材根目录 */
+    private static final String TEMP_CARD_DIR = "./projects/temp/cards/";
     // 静态代码块 - 类加载时自动执行
     // 读入图片文件
     static {
@@ -77,6 +84,7 @@ public class RenderOfImage {
             renderBackground(composer, record, plot, width, height);
             if (plot) {
                 renderCharacters(composer, record);
+                renderTempImages(composer, record);
                 composer.addImageLayer(border, 0, 0);
                 // 缩放0.8：先把背景+角色+border合成一张，再缩小到 0.8 居中
                 BufferedImage coImage = composer.compose();
@@ -114,6 +122,7 @@ public class RenderOfImage {
             renderBackground(composer, record, plot, width, height);
             if (plot) {
                 renderCharacters(composer, record);
+                renderTempImages(composer, record);
                 composer.addImageLayer(border, 0, 0);
                 // 缩放0.8
                 BufferedImage coImage = composer.compose();
@@ -362,6 +371,38 @@ public class RenderOfImage {
             composer.addImageLayerScaled(charImage, chara.getPosX(), chara.getPosY(), scaled);
             logger.debug("添加角色图层: {} at ({},{})",
                     chara.getChara().getCharacterName(), chara.getPosX(), chara.getPosY());
+        }
+    }
+
+    /**
+     * 渲染临时图片层（NPC、道具等）
+     */
+    private static void renderTempImages(FrameComposerService composer, Record record) {
+        List<TempImageVisual> tempImages = record.getTempImages();
+        if (tempImages == null || tempImages.isEmpty()) {
+            return;
+        }
+        logger.info("开始渲染临时图片层，共 {} 张", tempImages.size());
+        for (TempImageVisual temp : tempImages) {
+            try {
+                BufferedImage img = temp.getImage();
+                if (img == null) {
+                    logger.warn("临时图片为空，跳过: uuid={}, path={}", temp.getUuid(), temp.getImagePath());
+                    continue;
+                }
+                if (temp.isDim()) {
+                    img = ImageDarkener.darkenImage(img, 0.5f);
+                    if (img == null) {
+                        logger.warn("临时图片压暗失败，使用原图: uuid={}", temp.getUuid());
+                        img = temp.getImage();
+                    }
+                }
+                composer.addImageLayerScaled(img, temp.getPosX(), temp.getPosY(), temp.getScale());
+                logger.debug("添加临时图片图层: uuid={} at ({},{}), scale={}, dim={}",
+                        temp.getUuid(), temp.getPosX(), temp.getPosY(), temp.getScale(), temp.isDim());
+            } catch (Exception e) {
+                logger.error("渲染临时图片失败: uuid={}", temp.getUuid(), e);
+            }
         }
     }
 
@@ -636,6 +677,48 @@ public class RenderOfImage {
     }
 
     /**
+     * 从磁盘加载临时名片缓存
+     *
+     * @param cacheKey 缓存键 "name|faction"
+     * @return 缓存的 BufferedImage，不存在则返回 null
+     */
+    private static BufferedImage loadTempCardFromDisk(String cacheKey) {
+        try {
+            java.io.File dir = new java.io.File(TEMP_CARD_DIR);
+            if (!dir.exists()) return null;
+            java.io.File file = new java.io.File(dir, cacheKey.replace("|", "_") + ".png");
+            if (file.exists()) {
+                logger.info("从磁盘加载临时名片: {}", file.getAbsolutePath());
+                return javax.imageio.ImageIO.read(file);
+            }
+        } catch (Exception e) {
+            logger.warn("加载临时名片磁盘缓存失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 保存临时名片到磁盘
+     *
+     * @param cacheKey 缓存键 "name|faction"
+     * @param image    要保存的 BufferedImage
+     */
+    private static void saveTempCardToDisk(String cacheKey, BufferedImage image) {
+        try {
+            java.io.File dir = new java.io.File(TEMP_CARD_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+                logger.info("创建临时名片目录: {}", dir.getAbsolutePath());
+            }
+            java.io.File file = new java.io.File(dir, cacheKey.replace("|", "_") + ".png");
+            javax.imageio.ImageIO.write(image, "PNG", file);
+            logger.info("临时名片已保存到磁盘: {}", file.getAbsolutePath());
+        } catch (Exception e) {
+            logger.warn("保存临时名片到磁盘失败: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 渲染整个UI
      * 
      * @param plot     是否为剧情模式
@@ -671,14 +754,58 @@ public class RenderOfImage {
 
             CharacterRef speaker = dialogue.getSpeakerCharacter();
             if (speaker == null) {
-                logger.warn("说话人角色为空，使用默认处理");
-                speaker = CharacterRef.getDefaultNarrator();
+                // speakerC 为空，尝试从 Dialogue 的 speakerName/faction 构造临时 CharacterRef
+                String name = dialogue.getSpeakerName();
+                if (name != null && !name.trim().isEmpty() && !"旁白".equals(name.trim())) {
+                    String faction = dialogue.getFaction();
+                    if (faction == null || faction.trim().isEmpty()) {
+                        faction = "未设定";
+                    }
+                    String cacheKey = name.trim() + "|" + faction.trim();
+                    logger.info("speakerC 为空，使用 Dialogue 构造临时说话人: name={}, faction={}", name, faction);
+
+                    // 先查内存缓存，避免重复渲染
+                    BufferedImage cachedCard = tempCardCache.get(cacheKey);
+                    if (cachedCard != null) {
+                        logger.info("命中临时名片内存缓存: {}", cacheKey);
+                        composer.addImageLayerScaled(cachedCard, -26, 789, 0.28f);
+                        // 跳过后续 speaker 分支
+                        speaker = null;
+                    } else {
+                        // 尝试从磁盘缓存加载
+                        BufferedImage diskCard = loadTempCardFromDisk(cacheKey);
+                        if (diskCard != null) {
+                            logger.info("命中临时名片磁盘缓存: {}", cacheKey);
+                            tempCardCache.put(cacheKey, diskCard);
+                            composer.addImageLayerScaled(diskCard, -26, 789, 0.28f);
+                            speaker = null;
+                        } else {
+                            // 构造临时 CharacterRef 用于渲染
+                            speaker = new CharacterRef("temp_" + name.trim(), name.trim(), 0,
+                                    faction.trim(),
+                                    ProjectConfig.DEFAULT_BG_COLOR,
+                                    ProjectConfig.DEFAULT_TEXT_COLOR);
+                            logger.info("新建临时 CharacterRef: id=temp_{}, faction={}", name.trim(), faction);
+                        }
+                    }
+                } else {
+                    logger.info("speakerName 为空或为旁白，使用默认旁白处理");
+                    speaker = CharacterRef.getDefaultNarrator();
+                }
             }
 
-            if (!speaker.isNarrator()) { // 如果不是旁白
+            if (speaker != null && !speaker.isNarrator()) {
                 logger.debug("渲染说话人UI元素: {}", speaker.getCharacterName());
-                composer.addImageLayerScaled(speaker.getColorNameImage(), -26, 789, 0.28f);
-            } else {
+                BufferedImage cardImage = speaker.getColorNameImage();
+                composer.addImageLayerScaled(cardImage, -26, 789, 0.28f);
+
+                // 若是临时名片（id 以 "temp_" 开头），缓存并保存到磁盘
+                if (speaker.getCharacterID() != null && speaker.getCharacterID().startsWith("temp_")) {
+                    String cacheKey = speaker.getCharacterName() + "|" + speaker.getFaction();
+                    tempCardCache.put(cacheKey, cardImage);
+                    saveTempCardToDisk(cacheKey, cardImage);
+                }
+            } else if (speaker != null) {
                 logger.debug("旁白模式，跳过说话人UI元素");
             }
 

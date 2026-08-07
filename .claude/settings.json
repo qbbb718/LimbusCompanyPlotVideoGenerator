@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081/api/characters)",
+      "Bash(mvn spring-boot:run -q)",
+      "Bash(disown)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

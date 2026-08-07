@@ -46,5 +46,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("classpath:/assets/", "file:" + appConfig.getAssets().getPath() + "/")
                 .setCachePeriod(3600)
                 .resourceChain(true);
+
+        // 映射项目临时素材目录（NPC图片、道具等）
+        registry.addResourceHandler("/projects/**")
+                .addResourceLocations("file:./projects/")
+                .setCachePeriod(3600)
+                .resourceChain(true);
     }
 }

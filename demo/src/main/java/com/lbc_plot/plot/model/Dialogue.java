@@ -33,7 +33,8 @@ public class Dialogue {
          */
         @com.fasterxml.jackson.annotation.JsonCreator
         public static Emotion fromString(String value) {
-            if (value == null) return NORMAL;
+            if (value == null)
+                return NORMAL;
             try {
                 return Emotion.valueOf(value.toUpperCase());
             } catch (IllegalArgumentException e) {
@@ -47,7 +48,7 @@ public class Dialogue {
     private String location; // 场景地点
     private List<CharacterRef> speakerC; // 说话人列表
     private String speakerName; // 说话人名字
-    private String faction; // 所属阵营s
+    private String faction; // 所属阵营
     private Align align; // 对齐方式
     private int speed; // 文字显示速度的修改值
     private Emotion emotion; // 情绪

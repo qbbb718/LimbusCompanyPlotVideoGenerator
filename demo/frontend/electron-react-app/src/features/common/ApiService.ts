@@ -482,6 +482,41 @@ class ApiService {
     }
   }
 
+  // ===== 临时图片（NPC、道具等） =====
+
+  /**
+   * 上传临时图片到项目文件夹
+   * @returns { uuid, imagePath, url }
+   */
+  async uploadTempImage(file: File): Promise<{ uuid: string; imagePath: string; url: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post('/temp-images/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      console.log('[ApiService] 临时图片上传成功:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 上传临时图片失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 删除临时图片文件
+   */
+  async deleteTempImage(uuid: string): Promise<{ success: boolean }> {
+    try {
+      const response = await apiClient.delete(`/temp-images/${uuid}`);
+      console.log('[ApiService] 临时图片已删除:', uuid);
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 删除临时图片失败:', error);
+      throw error;
+    }
+  }
+
   // 删除背景（默认连同磁盘文件一起删除）
   async deleteBackground(id: string, deleteFiles: boolean = true) {
     try {

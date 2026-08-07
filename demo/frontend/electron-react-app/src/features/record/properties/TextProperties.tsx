@@ -1,5 +1,6 @@
-import React from "react";
-import { Record } from "@types";
+import React, { useState, useEffect } from "react";
+import { Record, MyCharacter, CharacterRef } from "@types";
+import ApiService from "@services/ApiService";
 import "../RecordEditor.css";
 import "./TextProperties.css";
 
@@ -14,26 +15,93 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   selectedRecordIndex,
   updateRecord,
 }) => {
+  const [characters, setCharacters] = useState<MyCharacter[]>([]);
+
+  useEffect(() => {
+    ApiService.getCharacters()
+      .then(setCharacters)
+      .catch(() => setCharacters([]));
+  }, []);
+
   const updateDialogue = (
     field: keyof typeof selectedRecord.dialogue,
     value: any,
   ) => {
+    const updatedDialogue = { ...selectedRecord.dialogue, [field]: value };
+    // 手动编辑 speakerName 或 faction 时清除 speakerC，
+    // 让后端根据 Dialogue 的 speakerName/faction 生成临时名片
+    if (field === "speakerName" || field === "faction") {
+      updatedDialogue.speakerC = [];
+      console.log(
+        `[TextProperties] 手动更改 ${field}="${value}"，已清除 speakerC → 后端将使用临时名片`,
+      );
+    }
     const updatedRecord = {
       ...selectedRecord,
-      dialogue: { ...selectedRecord.dialogue, [field]: value },
+      dialogue: updatedDialogue,
+    };
+    console.log(
+      `[TextProperties] updateDialogue: ${field}=${value}`,
+      `speakerC.length=${updatedDialogue.speakerC.length}`,
+    );
+    updateRecord(selectedRecordIndex, updatedRecord);
+  };
+
+  const handleCharacterSelect = (characterID: string) => {
+    if (!characterID) return;
+    const chara = characters.find((c) => c.characterID === characterID);
+    if (!chara) return;
+
+    const ref: CharacterRef = {
+      characterID: chara.characterID,
+      characterName: chara.characterName,
+      height: chara.height,
+      faction: chara.faction,
+      colorBg: chara.colorBg,
+      colorText: chara.colorText,
+    };
+
+    console.log(
+      `[TextProperties] 下拉选择角色: ${chara.characterName} (${chara.characterID})`,
+      `faction=${chara.faction}, speakerC=[${ref.characterName}]`,
+    );
+
+    const updatedRecord = {
+      ...selectedRecord,
+      dialogue: {
+        ...selectedRecord.dialogue,
+        speakerName: chara.characterName,
+        faction: chara.faction,
+        speakerC: [ref],
+      },
     };
     updateRecord(selectedRecordIndex, updatedRecord);
   };
+
+  const currentSpeaker = selectedRecord.dialogue.speakerC?.[0];
 
   return (
     <div className="text-properties">
       <div className="form-row">
         <div className="form-group half-width">
           <label>说话人</label>
+          <select
+            value={currentSpeaker?.characterID || ""}
+            onChange={(e) => handleCharacterSelect(e.target.value)}
+          >
+            <option value="">-- 选择或手动输入 --</option>
+            {characters.map((c) => (
+              <option key={c.characterID} value={c.characterID}>
+                {c.characterName}
+              </option>
+            ))}
+          </select>
           <input
             type="text"
             value={selectedRecord.dialogue.speakerName}
             onChange={(e) => updateDialogue("speakerName", e.target.value)}
+            placeholder="或手动输入说话人名称"
+            style={{ marginTop: 4 }}
           />
         </div>
         <div className="form-group half-width">

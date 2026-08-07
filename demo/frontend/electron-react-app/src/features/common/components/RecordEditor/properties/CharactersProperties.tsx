@@ -5,9 +5,10 @@ import {
   Portrait,
   MyCharacter,
   CharacterVisual,
+  TempImageVisual,
   Emotion,
 } from "../../../types";
-import ApiService from "@services/ApiService";
+import ApiService, { BASE_URL } from "@services/ApiService";
 import "../RecordEditor.css";
 import "./CharactersProperties.css";
 
@@ -27,6 +28,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   const [newChara, setNewChara] = useState<CharacterRef | null>(null);
   const [newPortrait, setNewPortrait] = useState<Portrait | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [portraitModalIndex, setPortraitModalIndex] = useState<number | null>(null); // 立绘选择弹窗：null=关闭，数字=正在为第几个条目选择
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
   const [startValue, setStartValue] = useState(0);
@@ -150,6 +152,83 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   };
 
   const currentChars = selectedRecord.chars || [];
+  const currentTempImages = selectedRecord.tempImages || [];
+
+  /** 拼接缩略图完整 URL */
+  const getThumbnailUrl = (thumbnailPath: string | undefined): string => {
+    if (!thumbnailPath) return "";
+    if (thumbnailPath.startsWith("http")) return thumbnailPath;
+    if (thumbnailPath.startsWith("/")) return BASE_URL + thumbnailPath;
+    return `${BASE_URL}/assets/characters/${encodeURIComponent(thumbnailPath)}`;
+  };
+
+  /** 拼接临时图片完整 URL */
+  const getTempImageUrl = (imagePath: string): string => {
+    if (!imagePath) return "";
+    if (imagePath.startsWith("http")) return imagePath;
+    // imagePath 形如 "./projects/temp/images/uuid.png" 或 "/projects/temp/images/uuid.png"
+    const clean = imagePath.replace(/^\.?\//, "");
+    return `${BASE_URL}/${clean}`;
+  };
+
+  // ===== 临时图片操作 =====
+
+  const updateTempImage = (index: number, field: string, value: any) => {
+    const updated = [...currentTempImages];
+    updated[index] = { ...updated[index], [field]: value };
+    updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
+    console.log(`[CharactersProperties] updateTempImage[${index}]: ${field}=${value}`);
+  };
+
+  const deleteTempImage = async (index: number) => {
+    const temp = currentTempImages[index];
+    if (temp.uuid) {
+      try {
+        await ApiService.deleteTempImage(temp.uuid);
+      } catch (e) {
+        console.error("[CharactersProperties] 删除临时图片文件失败:", e);
+      }
+    }
+    const updated = currentTempImages.filter((_, i) => i !== index);
+    updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
+    console.log(`[CharactersProperties] deleteTempImage[${index}]: uuid=${temp.uuid}`);
+  };
+
+  const addTempImage = async () => {
+    try {
+      // 使用 Electron 原生文件对话框
+      const result = await (window as any).electronAPI?.openImageFile?.();
+      if (!result || result.canceled || !result.filePaths?.length) return;
+
+      const filePath = result.filePaths[0];
+      console.log("[CharactersProperties] 选择临时图片:", filePath);
+
+      // 通过 Electron IPC 读取本地文件为 Blob（避免 file:// fetch 被沙箱拦截）
+      const fileBuffer = await (window as any).electronAPI.readFile(filePath);
+      const uint8Array = new Uint8Array(fileBuffer);
+      const blob = new Blob([uint8Array]);
+      const file = new File([blob], filePath.split(/[\\/]/).pop() || "temp.png", {
+        type: "image/png",
+      });
+
+      const uploadResult = await ApiService.uploadTempImage(file);
+      console.log("[CharactersProperties] 临时图片上传结果:", uploadResult);
+
+      const newTemp: TempImageVisual = {
+        uuid: uploadResult.uuid,
+        imagePath: uploadResult.imagePath,
+        posX: 0,
+        posY: 0,
+        scale: 1.0,
+        dim: false,
+      };
+
+      const updated = [...currentTempImages, newTemp];
+      updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
+    } catch (error) {
+      console.error("[CharactersProperties] 添加临时图片失败:", error);
+    }
+  };
 
   const updateCharacter = (index: number, field: string, value: any) => {
     const updatedChars = [...currentChars];
@@ -166,10 +245,19 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   };
 
   const deleteCharacter = (index: number) => {
+    const deletedChar = currentChars[index];
     const updatedChars = currentChars.filter((_, i) => i !== index);
+
+    // 同时从 speakerC 中移除对应角色
+    const currentSpeakerC = selectedRecord.dialogue.speakerC || [];
+    const updatedSpeakerC = currentSpeakerC.filter(
+      (ref: { characterID: string }) => ref.characterID !== deletedChar?.chara?.characterID,
+    );
+
     const updatedRecord = {
       ...selectedRecord,
       chars: updatedChars,
+      dialogue: { ...selectedRecord.dialogue, speakerC: updatedSpeakerC },
     };
     updateRecord(selectedRecordIndex, updatedRecord);
   };
@@ -180,20 +268,53 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
       return;
     }
 
+    // 获取完整角色信息
+    const fullChara = characters.find((c) => c.characterID === newChara.characterID);
+    const charaRef = fullChara || newChara;
+
     const newCharacter: CharacterVisual = {
-      chara: newChara,
+      chara: {
+        characterID: charaRef.characterID,
+        characterName: charaRef.characterName,
+        height: charaRef.height,
+        faction: charaRef.faction,
+        colorBg: charaRef.colorBg,
+        colorText: charaRef.colorText,
+      },
       portrait: newPortrait,
-      posX: videoWidth / 2, // 默认在中间
+      posX: videoWidth / 2,
       posY: 0,
       adjX: 0,
       adjY: 0,
       dim: false,
     };
 
+    // 同时添加到 speakerC（如果尚未存在）
+    const currentSpeakerC = selectedRecord.dialogue.speakerC || [];
+    const alreadyInSpeakerC = currentSpeakerC.some(
+      (ref: { characterID: string }) => ref.characterID === charaRef.characterID,
+    );
+    const updatedSpeakerC = alreadyInSpeakerC
+      ? currentSpeakerC
+      : [...currentSpeakerC, {
+          characterID: charaRef.characterID,
+          characterName: charaRef.characterName,
+          height: charaRef.height,
+          faction: charaRef.faction,
+          colorBg: charaRef.colorBg,
+          colorText: charaRef.colorText,
+        }];
+
     const updatedChars = [...currentChars, newCharacter];
     const updatedRecord = {
       ...selectedRecord,
       chars: updatedChars,
+      dialogue: {
+        ...selectedRecord.dialogue,
+        speakerC: updatedSpeakerC,
+        speakerName: selectedRecord.dialogue.speakerName || charaRef.characterName,
+        faction: selectedRecord.dialogue.faction || charaRef.faction,
+      },
     };
     updateRecord(selectedRecordIndex, updatedRecord);
 
@@ -337,37 +458,23 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
 
                   <div className="form-group">
                     <label>立绘</label>
-                    <select
-                      value={char.portrait.portraitID}
-                      onChange={(e) => {
-                        const selectedChara = characters.find(
-                          (c) => c.characterID === char.chara.characterID,
-                        );
-                        if (selectedChara) {
-                          const selectedPortrait = selectedChara.portraits.find(
-                            (p) => p.portraitID === e.target.value,
-                          );
-                          if (selectedPortrait) {
-                            updateCharacter(
-                              index,
-                              "portrait",
-                              selectedPortrait,
-                            );
-                          }
-                        }
-                      }}
+                    <div
+                      className="portrait-selector-display"
+                      onClick={() => setPortraitModalIndex(index)}
+                      title="点击更换立绘"
                     >
-                      {characters
-                        .find((c) => c.characterID === char.chara.characterID)
-                        ?.portraits.map((portrait) => (
-                          <option
-                            key={portrait.portraitID}
-                            value={portrait.portraitID}
-                          >
-                            {portrait.portName}
-                          </option>
-                        ))}
-                    </select>
+                      {char.portrait?.thumbnailPath ? (
+                        <img
+                          src={getThumbnailUrl(char.portrait.thumbnailPath)}
+                          alt={char.portrait.portName}
+                        />
+                      ) : (
+                        <div className="portrait-placeholder">?</div>
+                      )}
+                      <span className="portrait-name">
+                        {char.portrait?.portName || "未选择"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -552,6 +659,117 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
             添加立绘
           </button>
         )}
+      </div>
+
+      {/* ===== 立绘选择弹窗 ===== */}
+      {portraitModalIndex !== null && (() => {
+        const idx = portraitModalIndex;
+        const char = currentChars[idx];
+        const charPortraits = characters.find(
+          (c) => c.characterID === char?.chara?.characterID,
+        )?.portraits || [];
+        return (
+          <div className="portrait-modal-overlay" onClick={() => setPortraitModalIndex(null)}>
+            <div className="portrait-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="portrait-modal-header">
+                <h4>选择立绘 — {char?.chara?.characterName || ""}</h4>
+                <button onClick={() => setPortraitModalIndex(null)}>✕</button>
+              </div>
+              <div className="portrait-grid">
+                {charPortraits.map((p) => (
+                  <div
+                    key={p.portraitID}
+                    className={`portrait-grid-item${char?.portrait?.portraitID === p.portraitID ? " selected" : ""}`}
+                    onClick={() => {
+                      updateCharacter(idx, "portrait", p);
+                      setPortraitModalIndex(null);
+                    }}
+                  >
+                    <img
+                      src={getThumbnailUrl(p.thumbnailPath)}
+                      alt={p.portName}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect fill='%23eee' width='80' height='80'/><text x='40' y='45' text-anchor='middle' fill='%23999' font-size='12'>无缩略图</text></svg>";
+                      }}
+                    />
+                    <div className="name">{p.portName}</div>
+                    <div className="emotion-tag">{p.emotion}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ===== 临时图片区域 ===== */}
+      <div className="temp-images-section">
+        <h4>临时图片（路人/道具）</h4>
+        {currentTempImages.map((temp, index) => (
+          <div key={temp.uuid || index} className="temp-image-item">
+            <div className="temp-image-header">
+              <span>临时图片 {index + 1}</span>
+              <button onClick={() => deleteTempImage(index)}>删除</button>
+            </div>
+            <img
+              className="temp-image-preview"
+              src={getTempImageUrl(temp.imagePath)}
+              alt={`临时图片 ${index + 1}`}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+            <div className="temp-image-controls">
+              <label>
+                缩放: {temp.scale.toFixed(1)}
+                <input
+                  type="range"
+                  min="0.1"
+                  max="3.0"
+                  step="0.1"
+                  value={temp.scale}
+                  onChange={(e) =>
+                    updateTempImage(index, "scale", parseFloat(e.target.value))
+                  }
+                />
+              </label>
+              <label>
+                X坐标
+                <input
+                  type="number"
+                  value={temp.posX}
+                  onChange={(e) =>
+                    updateTempImage(index, "posX", parseInt(e.target.value) || 0)
+                  }
+                />
+              </label>
+              <label>
+                Y坐标
+                <input
+                  type="number"
+                  value={temp.posY}
+                  onChange={(e) =>
+                    updateTempImage(index, "posY", parseInt(e.target.value) || 0)
+                  }
+                />
+              </label>
+              <label className="dim-label">
+                <input
+                  type="checkbox"
+                  checked={temp.dim}
+                  onChange={(e) =>
+                    updateTempImage(index, "dim", e.target.checked)
+                  }
+                />
+                压暗
+              </label>
+            </div>
+          </div>
+        ))}
+        <button className="add-character-btn" onClick={addTempImage}>
+          添加临时图片
+        </button>
       </div>
     </div>
   );

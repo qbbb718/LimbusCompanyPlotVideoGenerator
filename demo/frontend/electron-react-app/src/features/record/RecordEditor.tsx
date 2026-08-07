@@ -47,6 +47,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       },
       bg: [],
       chars: [],
+      tempImages: [],
       effects: [],
       audioCommands: [],
       isDirty: true,

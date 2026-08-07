@@ -32,7 +32,7 @@ export const useFileSelector = ({ characterId, onFileSelected, onPreviewSet, onC
           log('选择的文件路径', selectedPath);
 
           // 从路径中提取文件名
-          const fileName = selectedPath.split(/[\/]/).pop() || '';
+          const fileName = selectedPath.split(/[\\/]/).pop() || '';
           const fileExtension = fileName.split('.').pop() || '';
           const baseName = fileName.replace(`.${fileExtension}`, '');
 

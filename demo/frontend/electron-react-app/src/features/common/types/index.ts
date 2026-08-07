@@ -122,6 +122,16 @@ export interface CharacterVisual {
   dim: boolean;
 }
 
+// 临时图片视觉元素（NPC、道具等）
+export interface TempImageVisual {
+  uuid: string;
+  imagePath: string;
+  posX: number;
+  posY: number;
+  scale: number;
+  dim: boolean;
+}
+
 // 特效视觉元素
 export interface EffectVisual {
   // 特效属性，根据需要扩展
@@ -150,6 +160,7 @@ export interface Record {
   dialogue: Dialogue;
   bg: BackgroundVisual[];
   chars: CharacterVisual[];
+  tempImages: TempImageVisual[];
   effects: EffectVisual[];
   audioCommands: AudioCommand[];
   isDirty?: boolean;
