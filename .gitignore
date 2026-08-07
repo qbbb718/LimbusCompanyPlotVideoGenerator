@@ -53,3 +53,4 @@ demo/target/classes/com/lbc_plot/config/ProjectConfig.class
 
 # 前端打包产物
 demo/frontend/electron-react-app/dist/win-unpacked/resources/app.asar
+*.mp4

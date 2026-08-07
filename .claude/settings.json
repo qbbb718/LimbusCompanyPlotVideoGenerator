@@ -4,7 +4,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081/api/characters)",
       "Bash(mvn spring-boot:run -q)",
       "Bash(disown)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(sqlite3 data/project.db \"SELECT portrait_id, character_id, image_path, port_name FROM portraits LIMIT 10;\")",
+      "Bash(mvn -q exec:java -Dexec.mainClass=\"com.lbc_plot.AppLauncher\" -Dexec.args=\"--check-db 2>&1\")"
     ]
   }
 }

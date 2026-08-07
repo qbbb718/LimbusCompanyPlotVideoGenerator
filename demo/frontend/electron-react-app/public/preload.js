@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveFile: (defaultPath, data) =>
     ipcRenderer.invoke("dialog:saveFile", defaultPath, data),
   readFile: (filePath) => ipcRenderer.invoke("file:read", filePath),
+  selectDirectory: () => ipcRenderer.invoke("dialog:selectDirectory"),
 
   // 通知
   showNotification: (title, body) =>

@@ -168,10 +168,27 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   };
 
   const generateVideo = async () => {
+    if (records.length === 0) {
+      alert("没有可生成的记录");
+      return;
+    }
+
+    // 使用项目设置中的输出路径，如果为空则使用默认值
+    const outputPath =
+      projectSettings.outputPath ||
+      `./output/video_${new Date().toISOString().replace(/[:.]/g, "-")}.mp4`;
+
     try {
       setIsLoading(true);
-      const result = await ApiService.generateVideo(records);
-      alert(`视频生成成功！保存路径: ${result.outputPath}`);
+      const result = await ApiService.generateVideo(
+        records,
+        outputPath,
+        projectSettings.videoWidth || 1920,
+        projectSettings.videoHeight || 1080,
+      );
+      alert(
+        `视频生成成功！\n保存路径: ${result.outputPath}\n耗时: ${(result.elapsedMs / 1000).toFixed(1)} 秒`,
+      );
     } catch (error) {
       console.error("生成视频失败:", error);
       alert("生成视频失败，请检查控制台日志");

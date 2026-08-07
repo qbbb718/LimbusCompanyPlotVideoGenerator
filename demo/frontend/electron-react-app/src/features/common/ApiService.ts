@@ -240,9 +240,21 @@ class ApiService {
   }
 
   // 生成视频
-  async generateVideo(records: any[]) {
+  async generateVideo(
+    records: any[],
+    outputPath: string,
+    width: number,
+    height: number,
+    frameRate: number = 30,
+  ) {
     try {
-      const response = await apiClient.post('/generate-video', { records });
+      const response = await apiClient.post('/generate-video', {
+        records,
+        outputPath,
+        width,
+        height,
+        frameRate,
+      });
       return response.data;
     } catch (error) {
       console.error('生成视频失败:', error);

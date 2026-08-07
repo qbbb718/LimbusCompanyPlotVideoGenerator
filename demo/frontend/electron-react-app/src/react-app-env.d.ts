@@ -9,6 +9,7 @@ interface Window {
     openImageFile: () => Promise<any>;
     saveFile: (filename: string, data: string) => Promise<any>;
     readFile: (filePath: string) => Promise<Buffer>;
+    selectDirectory: () => Promise<{ canceled: boolean; path?: string }>;
     saveThumbnail: (fileName: string, data: Uint8Array) => Promise<string>;
     getAppVersion: () => Promise<string>;
     getAppPath: () => Promise<string>;

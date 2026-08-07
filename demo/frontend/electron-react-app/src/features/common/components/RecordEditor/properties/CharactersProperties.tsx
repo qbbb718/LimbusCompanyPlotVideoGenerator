@@ -29,9 +29,6 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   const [newPortrait, setNewPortrait] = useState<Portrait | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [portraitModalIndex, setPortraitModalIndex] = useState<number | null>(null); // 立绘选择弹窗：null=关闭，数字=正在为第几个条目选择
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
-  const [startValue, setStartValue] = useState(0);
 
   useEffect(() => {
     fetchCharacters();
@@ -324,52 +321,6 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
     setShowAddForm(false);
   };
 
-  const handleAdjXQuickPosition = (index: number, position: number) => {
-    // position: 0-6，对应7等分的位置
-    const value = Math.floor((videoWidth / 6) * position);
-    updateCharacter(index, "adjX", value);
-  };
-
-  const handleAdjYMouseDown = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
-    setIsDragging(true);
-    setStartY(e.clientY);
-    setStartValue(currentChars[index]?.adjY || 0);
-  };
-
-  const handleAdjYMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-
-    const deltaY = startY - e.clientY;
-    const newValue = startValue + deltaY;
-
-    // 找到当前正在调整的角色
-    const activeInput = document.activeElement as HTMLInputElement;
-    if (activeInput && activeInput.dataset.index) {
-      const index = parseInt(activeInput.dataset.index);
-      updateCharacter(index, "adjY", newValue);
-    }
-  };
-
-  const handleAdjYMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener("mousemove", handleAdjYMouseMove);
-      document.addEventListener("mouseup", handleAdjYMouseUp);
-      return () => {
-        document.removeEventListener("mousemove", handleAdjYMouseMove);
-        document.removeEventListener("mouseup", handleAdjYMouseUp);
-      };
-    }
-  }, [isDragging, startY, startValue]);
-
-  const resetAdjY = (index: number) => {
-    updateCharacter(index, "adjY", 0);
-  };
-
   // 角色排序功能
   const moveCharacter = (index: number, direction: "up" | "down") => {
     const chars = [...currentChars];
@@ -421,141 +372,129 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
             </div>
 
             <div className="character-details">
-              {/* 角色和立绘选择在同一行 */}
-              <div className="form-section">
-                <div className="form-section-title">角色 & 立绘</div>
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <label>角色</label>
-                    <select
-                      value={char.chara.characterID}
-                      onChange={(e) => {
-                        const selectedChara = characters.find(
-                          (c) => c.characterID === e.target.value,
-                        );
-                        if (selectedChara) {
-                          updateCharacter(index, "chara", {
-                            characterID: selectedChara.characterID,
-                            characterName: selectedChara.characterName,
-                            height: selectedChara.height,
-                            faction: selectedChara.faction,
-                            colorBg: selectedChara.colorBg,
-                            colorText: selectedChara.colorText,
-                          });
-                        }
-                      }}
-                    >
-                      {characters.map((chara) => (
-                        <option
-                          key={chara.characterID}
-                          value={chara.characterID}
-                        >
-                          {chara.characterName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>立绘</label>
-                    <div
-                      className="portrait-selector-display"
-                      onClick={() => setPortraitModalIndex(index)}
-                      title="点击更换立绘"
-                    >
-                      {char.portrait?.thumbnailPath ? (
-                        <img
-                          src={getThumbnailUrl(char.portrait.thumbnailPath)}
-                          alt={char.portrait.portName}
-                        />
-                      ) : (
-                        <div className="portrait-placeholder">?</div>
-                      )}
-                      <span className="portrait-name">
-                        {char.portrait?.portName || "未选择"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        flexDirection: "row",
-                      }}
-                    >
-                      <span style={{ marginRight: "8px" }}>压暗</span>
-                      <input
-                        type="checkbox"
-                        checked={char.dim}
-                        onChange={(e) =>
-                          updateCharacter(index, "dim", e.target.checked)
-                        }
+              {/* 第一行：角色(1/4) | 立绘(1/2) | 压暗(1/4) */}
+              <div className="char-row char-row-top">
+                <div className="char-col char-col-1-4">
+                  <label>角色</label>
+                  <select
+                    value={char.chara.characterID}
+                    onChange={(e) => {
+                      const selectedChara = characters.find(
+                        (c) => c.characterID === e.target.value,
+                      );
+                      if (selectedChara) {
+                        updateCharacter(index, "chara", {
+                          characterID: selectedChara.characterID,
+                          characterName: selectedChara.characterName,
+                          height: selectedChara.height,
+                          faction: selectedChara.faction,
+                          colorBg: selectedChara.colorBg,
+                          colorText: selectedChara.colorText,
+                        });
+                      }
+                    }}
+                  >
+                    {characters.map((chara) => (
+                      <option key={chara.characterID} value={chara.characterID}>
+                        {chara.characterName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="char-col char-col-1-2">
+                  <label>立绘</label>
+                  <div
+                    className="portrait-selector-display"
+                    onClick={() => setPortraitModalIndex(index)}
+                    title="点击更换立绘"
+                  >
+                    {char.portrait?.thumbnailPath ? (
+                      <img
+                        src={getThumbnailUrl(char.portrait.thumbnailPath)}
+                        alt={char.portrait.portName}
                       />
-                    </label>
+                    ) : (
+                      <div className="portrait-placeholder">?</div>
+                    )}
+                    <span className="portrait-name">
+                      {char.portrait?.portName || "未选择"}
+                    </span>
                   </div>
+                </div>
+                <div className="char-col char-col-1-4 char-col-dim">
+                  <label>立绘压暗</label>
+                  <input
+                    type="checkbox"
+                    checked={char.dim}
+                    onChange={(e) =>
+                      updateCharacter(index, "dim", e.target.checked)
+                    }
+                  />
                 </div>
               </div>
 
-              {/* X坐标和Y坐标 */}
-              <div className="form-section">
-                <div className="form-section-title">X坐标 & Y坐标</div>
-
-                {/* X偏移滑块 */}
-                <div className="form-group">
-                  <label>X偏移: {char.adjX}</label>
+              {/* 第二行：X坐标偏移 — 标签 | 数值框 | 滑块(含快速定位按钮) */}
+              <div className="char-row">
+                <span className="char-label-fixed">X坐标调整</span>
+                <input
+                  type="number"
+                  className="char-input-fixed"
+                  value={char.adjX}
+                  onChange={(e) =>
+                    updateCharacter(index, "adjX", parseInt(e.target.value) || 0)
+                  }
+                />
+                <div className="char-slider-auto">
+                  <div className="adjX-quick-positions">
+                    {[-3, -2, -1, 0, 1, 2, 3].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() =>
+                          updateCharacter(
+                            index,
+                            "adjX",
+                            Math.floor((videoWidth * n) / 6),
+                          )
+                        }
+                        className="adjX-quick-btn"
+                        title={`${Math.floor((videoWidth * n) / 6)}`}
+                      />
+                    ))}
+                  </div>
                   <input
                     type="range"
-                    min="0"
-                    max={videoWidth}
+                    min={-Math.floor(videoWidth / 2)}
+                    max={Math.floor(videoWidth / 2)}
                     value={char.adjX}
                     onChange={(e) =>
                       updateCharacter(index, "adjX", parseInt(e.target.value))
                     }
                     className="adjX-slider"
                   />
-
-                  {/* 7等分快速定位按钮 */}
-                  <div className="adjX-quick-positions">
-                    {[0, 1, 2, 3, 4, 5, 6].map((pos) => (
-                      <button
-                        key={pos}
-                        onClick={() => handleAdjXQuickPosition(index, pos)}
-                        className="adjX-quick-btn"
-                      >
-                        {/* {pos === 0 ? '左' : pos === 6 ? '右' : `${pos}/7`} */}
-                      </button>
-                    ))}
-                  </div>
                 </div>
+              </div>
 
-                {/* Y偏移输入框 */}
-                <div className="form-group">
-                  <label>Y偏移</label>
-                  <div className="adjY-input-container">
-                    <input
-                      type="number"
-                      value={char.adjY}
-                      onChange={(e) =>
-                        updateCharacter(
-                          index,
-                          "adjY",
-                          parseInt(e.target.value) || 0,
-                        )
-                      }
-                      onMouseDown={(e) => handleAdjYMouseDown(e, index)}
-                      data-index={index}
-                      className="adjY-input"
-                    />
-                    <button
-                      onClick={() => resetAdjY(index)}
-                      className="adjY-reset-btn"
-                    >
-                      重置
-                    </button>
-                  </div>
-                </div>
+              {/* 第三行：Y坐标偏移 — 标签 | 数值框 | 滑块 */}
+              <div className="char-row">
+                <span className="char-label-fixed">Y坐标调整</span>
+                <input
+                  type="number"
+                  className="char-input-fixed"
+                  value={char.adjY}
+                  onChange={(e) =>
+                    updateCharacter(index, "adjY", parseInt(e.target.value) || 0)
+                  }
+                />
+                <input
+                  type="range"
+                  min={-videoWidth}
+                  max={videoWidth}
+                  value={char.adjY}
+                  onChange={(e) =>
+                    updateCharacter(index, "adjY", parseInt(e.target.value))
+                  }
+                  className="char-slider-auto"
+                />
               </div>
             </div>
           </div>
@@ -570,9 +509,9 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
             </div>
 
             <div className="character-details">
-              {/* 角色和立绘选择在同一行 */}
-              <div className="form-group-row">
-                <div className="form-group">
+              {/* 角色和立绘选择 — 角色名较短，立绘首次即显示缩略图 */}
+              <div className="char-row char-row-top">
+                <div className="char-col char-col-1-4">
                   <label>角色</label>
                   <select
                     value={newChara?.characterID || ""}
@@ -592,6 +531,8 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                         // 如果该角色有立绘，默认选择第一个
                         if (selectedChara.portraits.length > 0) {
                           setNewPortrait(selectedChara.portraits[0]);
+                        } else {
+                          setNewPortrait(null);
                         }
                       }
                     }}
@@ -605,40 +546,74 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                   </select>
                 </div>
 
-                <div className="form-group">
+                <div className="char-col char-col-1-2">
                   <label>立绘</label>
-                  <select
-                    value={newPortrait?.portraitID || ""}
-                    onChange={(e) => {
-                      if (newChara) {
-                        const selectedChara = characters.find(
-                          (c) => c.characterID === newChara.characterID,
-                        );
-                        if (selectedChara) {
-                          const selectedPortrait = selectedChara.portraits.find(
-                            (p) => p.portraitID === e.target.value,
-                          );
-                          if (selectedPortrait) {
-                            setNewPortrait(selectedPortrait);
-                          }
-                        }
+                  {newChara ? (
+                    (() => {
+                      const charPortraits = characters.find(
+                        (c) => c.characterID === newChara.characterID,
+                      )?.portraits || [];
+                      if (charPortraits.length === 0) {
+                        return <div className="portrait-selector-display" style={{cursor: "default"}}>
+                          <div className="portrait-placeholder">—</div>
+                          <span className="portrait-name">该角色无立绘</span>
+                        </div>;
                       }
-                    }}
-                    disabled={!newChara}
-                  >
-                    <option value="">请选择立绘</option>
-                    {newChara &&
-                      characters
-                        .find((c) => c.characterID === newChara.characterID)
-                        ?.portraits.map((portrait) => (
-                          <option
-                            key={portrait.portraitID}
-                            value={portrait.portraitID}
-                          >
-                            {portrait.portName}
-                          </option>
-                        ))}
-                  </select>
+                      return (
+                        <div className="portrait-selector-display"
+                          onClick={() => {
+                            // 点击弹出缩略图网格供选择
+                            const modal = document.createElement("div");
+                            modal.className = "portrait-modal-overlay";
+                            modal.onclick = () => modal.remove();
+                            const content = document.createElement("div");
+                            content.className = "portrait-modal";
+                            content.onclick = (ev) => ev.stopPropagation();
+                            content.innerHTML = `
+                              <div class="portrait-modal-header">
+                                <h4>选择立绘</h4>
+                                <button>✕</button>
+                              </div>
+                              <div class="portrait-grid" id="add-portrait-grid"></div>`;
+                            modal.appendChild(content);
+                            document.body.appendChild(modal);
+                            content.querySelector("button")!.onclick = () => modal.remove();
+
+                            const grid = content.querySelector("#add-portrait-grid")!;
+                            charPortraits.forEach((p) => {
+                              const item = document.createElement("div");
+                              item.className = `portrait-grid-item${newPortrait?.portraitID === p.portraitID ? " selected" : ""}`;
+                              item.innerHTML = `
+                                <img src="${getThumbnailUrl(p.thumbnailPath)}" alt="${p.portName}"
+                                  onerror="this.src='data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2780%27 height=%2780%27><rect fill=%27%23eee%27 width=%2780%27 height=%2780%27/><text x=%2740%27 y=%2745%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2712%27>无缩略图</text></svg>'"/>
+                                <div class="name">${p.portName}</div>
+                                <div class="emotion-tag">${p.emotion}</div>`;
+                              item.onclick = () => {
+                                setNewPortrait(p);
+                                modal.remove();
+                              };
+                              grid.appendChild(item);
+                            });
+                          }}
+                          title="点击选择立绘"
+                        >
+                          {newPortrait?.thumbnailPath ? (
+                            <img src={getThumbnailUrl(newPortrait.thumbnailPath)} alt={newPortrait.portName} />
+                          ) : (
+                            <div className="portrait-placeholder">?</div>
+                          )}
+                          <span className="portrait-name">
+                            {newPortrait?.portName || "点击选择立绘"}
+                          </span>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="portrait-selector-display" style={{cursor: "default", opacity: 0.5}}>
+                      <div className="portrait-placeholder">—</div>
+                      <span className="portrait-name">请先选择角色</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

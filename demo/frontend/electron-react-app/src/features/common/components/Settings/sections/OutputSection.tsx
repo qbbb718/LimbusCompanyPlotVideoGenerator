@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProjectSettings } from '../../../types';
 import '../Settings.css';
@@ -16,8 +15,24 @@ interface OutputSectionProps {
 }
 
 const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleChange }) => {
-  const handleOutputPathChange = () => {
-    alert('选择输出路径功能待实现');
+  const handleOutputPathChange = async () => {
+    try {
+      if (window.electronAPI && window.electronAPI.selectDirectory) {
+        const result = await window.electronAPI.selectDirectory();
+        if (!result.canceled && result.path) {
+          handleChange('outputPath', result.path);
+        }
+      } else {
+        // 浏览器环境下回退到手动输入
+        const path = prompt('请输入视频输出路径:', projectSettings.outputPath);
+        if (path) {
+          handleChange('outputPath', path);
+        }
+      }
+    } catch (error) {
+      console.error('选择输出路径失败:', error);
+      alert('无法打开目录选择对话框，请手动输入路径');
+    }
   };
 
   const currentSizeKey = `${projectSettings.videoWidth}x${projectSettings.videoHeight}`;
@@ -39,7 +54,7 @@ const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleCh
             type="text"
             value={projectSettings.outputPath}
             onChange={(e) => handleChange('outputPath', e.target.value)}
-            readOnly
+            placeholder="选择或输入视频导出目录..."
           />
           <button onClick={handleOutputPathChange}>浏览</button>
         </div>

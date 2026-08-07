@@ -27,6 +27,7 @@ export interface ElectronAPI {
   openImageFile: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
   saveFile: (defaultPath: string, data: string) => Promise<{ canceled: boolean; filePath?: string }>;
   readFile: (filePath: string) => Promise<Buffer>;
+  selectDirectory: () => Promise<{ canceled: boolean; path?: string }>;
 
   // 打开资源目录
   openResourceFolder: (resourceType: "characters" | "backgrounds" | "audios") => Promise<{ success: boolean; path?: string; error?: string }>;
@@ -231,3 +232,22 @@ export interface ProjectSettings {
     language: string;
   };
 }
+
+/** 默认项目设置 */
+export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
+  name: "新项目",
+  storyType: "STORY",
+  outputPath: "",
+  theme: "default",
+  videoWidth: 1920,
+  videoHeight: 1080,
+  bgmVolume: 0.7,
+  voiceVolume: 0.8,
+  sfxVolume: 0.7,
+  bgmGain: 1.0,
+  voiceGain: 1.0,
+  sfxGain: 1.0,
+};
+
+/** localStorage 键名 */
+export const SETTINGS_STORAGE_KEY = "lcpgv_project_settings";

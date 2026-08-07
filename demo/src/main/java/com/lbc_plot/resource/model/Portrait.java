@@ -435,8 +435,7 @@ public class Portrait {
             // 尝试在构建时加载图像。图片文件不存在时不阻塞构建（如删除角色后查询、
             // 文件丢失等场景），只记录警告，image 保持 null，
             // 后续 getImage() 调用时会尝试重新加载（有 try-catch 容错）。
-            if (this.imagePath != null && !this.imagePath.trim().isEmpty()
-                    && (this.imagePath.contains("/") || this.imagePath.contains("\\"))) {
+            if (this.imagePath != null && !this.imagePath.trim().isEmpty()) {
                 try {
                     this.image = ImageReader.readCharacters(this.imagePath);
                     if (this.image == null) {

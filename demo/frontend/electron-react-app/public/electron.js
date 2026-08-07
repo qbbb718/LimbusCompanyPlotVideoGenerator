@@ -397,6 +397,19 @@ ipcMain.handle("file:read", async (event, filePath) => {
 // 现在缩略图通过后端 API（POST /api/characters/{id}/portraits/{pid}/thumbnail）上传，
 // 由后端按 config 保存到 {characters}/{characterId}/thumbnails/ 下，路径集中管理。
 
+// 目录选择对话框
+ipcMain.handle("dialog:selectDirectory", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ["openDirectory"],
+    title: "选择视频导出目录",
+  });
+
+  if (!canceled && filePaths.length > 0) {
+    return { canceled, path: filePaths[0] };
+  }
+  return { canceled };
+});
+
 // 打开资源目录
 ipcMain.handle("folder:open", async (event, resourceType) => {
   try {

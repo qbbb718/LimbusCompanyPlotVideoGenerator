@@ -63,6 +63,7 @@ public class CharacterVisual extends VisualElement {
         if (chara == null) {
             posX = 0;
             posY = 0;
+            return;
         }
 
         // 从角色获取身高, 从立绘获取头顶
@@ -308,8 +309,16 @@ public class CharacterVisual extends VisualElement {
 
         /**
          * 构建CharacterVisual对象
+         * 尝试从 Portrait 加载图像（JSON 反序列化时 image 不会传入，需要主动加载）
          */
         public CharacterVisual build() {
+            if (this.image == null && this.portrait != null) {
+                try {
+                    this.image = this.portrait.getImage();
+                } catch (Exception e) {
+                    logger.warn("构建 CharacterVisual 时无法加载立绘图像: {}", e.getMessage());
+                }
+            }
             return new CharacterVisual(this);
         }
     }

@@ -101,6 +101,7 @@ public class Record {
         this.isDirty = true;
     }
 
+    @JsonProperty("bg")
     public List<BackgroundVisual> getBackgroundVisuals() {
         return bg;
     }
@@ -115,6 +116,7 @@ public class Record {
         return bg.get(0);
     }
 
+    @JsonProperty("chars")
     public List<CharacterVisual> getCharacters() {
         return chars;
     }
@@ -274,9 +276,9 @@ public class Record {
         private List<CharacterVisual> chars = new ArrayList<>();
         @JsonProperty
         private List<TempImageVisual> tempImages = new ArrayList<>();
-        @JsonIgnore
+        @JsonProperty
         private List<EffectVisual> effects = new ArrayList<>();
-        @JsonIgnore
+        @JsonProperty
         private List<AudioCommand> audioCommands = new ArrayList<>();
         @JsonProperty
         private boolean isDirty = true;

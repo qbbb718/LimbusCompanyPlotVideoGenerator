@@ -6,6 +6,7 @@ import { ResourceManager } from "@features/resource";
 import { TextToRecords } from "@features/text-to-records";
 import { ProjectSettings as IProjectSettings, Record } from "@types";
 import ApiService from "@services/ApiService";
+import { loadSettings } from "@features/common/components/Settings/Settings";
 import log from "electron-log";
 
 function AppElectron() {
@@ -16,20 +17,9 @@ function AppElectron() {
   const [parsedRecords, setParsedRecords] = useState<Record[] | undefined>(
     undefined,
   );
-  const [projectSettings, setProjectSettings] = useState<IProjectSettings>({
-    name: "新项目",
-    bgmVolume: 0.7,
-    voiceVolume: 0.8,
-    sfxVolume: 0.7,
-    bgmGain: 1.0,
-    voiceGain: 1.0,
-    sfxGain: 1.0,
-    outputPath: "",
-    theme: "default",
-    storyType: "STORY",
-    videoWidth: 1920,
-    videoHeight: 1080,
-  });
+  const [projectSettings, setProjectSettings] = useState<IProjectSettings>(() =>
+    loadSettings(),
+  );
 
   useEffect(() => {
     const initializeApp = async () => {

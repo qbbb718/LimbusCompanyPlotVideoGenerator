@@ -40,6 +40,8 @@ import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.EffectVisual;
 import com.lbc_plot.render.engine.RenderOfImage;
+import com.lbc_plot.render.engine.BatchVideoProcessor;
+import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.resource.service.BackgroundService;
 import com.lbc_plot.resource.service.CharacterService;
 
@@ -158,16 +160,62 @@ public class RecordController {
 
     /**
      * 生成视频
+     * 接收 Record 列表及输出参数，调用 BatchVideoProcessor 合成最终视频文件。
+     *
+     * @param request 包含 records、outputPath、width、height、frameRate 的请求体
+     * @return 包含输出路径和状态信息的响应
      */
     @PostMapping("/generate-video")
-    public String generateVideo(@RequestBody GenerateVideoRequest request) {
+    public GenerateVideoResponse generateVideo(@RequestBody GenerateVideoRequest request) {
+        long startTime = System.currentTimeMillis();
+        logger.info("开始生成视频: record数={}, outputPath={}, {}x{} @ {}fps",
+                request.getRecords() != null ? request.getRecords().size() : 0,
+                request.getOutputPath(), request.getWidth(), request.getHeight(), request.getFrameRate());
+
         try {
-            // TODO: 实现视频生成逻辑
-            // 这里应该调用视频生成服务
-            return "视频生成功能尚未实现";
+            if (request.getRecords() == null || request.getRecords().isEmpty()) {
+                throw new IllegalArgumentException("Record 列表为空，无法生成视频");
+            }
+
+            // 使用请求中的参数，未提供则使用默认值
+            String outputPath = request.getOutputPath();
+            if (outputPath == null || outputPath.trim().isEmpty()) {
+                outputPath = "./output/video_" + System.currentTimeMillis() + ".mp4";
+            }
+            // 确保输出目录存在
+            File outFile = new File(outputPath);
+            File outDir = outFile.getParentFile();
+            if (outDir != null && !outDir.exists()) {
+                outDir.mkdirs();
+            }
+
+            int width = request.getWidth() > 0 ? request.getWidth() : ProjectConfig.VIDEO_WIDTH;
+            int height = request.getHeight() > 0 ? request.getHeight() : ProjectConfig.VIDEO_HEIGHT;
+            int frameRate = request.getFrameRate() > 0 ? request.getFrameRate() : ProjectConfig.FRAME_RATE;
+
+            // 临时目录
+            String tempDir = outDir != null ? outDir.getAbsolutePath() : "./output";
+            File tempDirFile = new File(tempDir, "temp_" + System.currentTimeMillis());
+            tempDirFile.mkdirs();
+
+            // 调用批量视频处理器
+            BatchVideoProcessor.processRecordList(
+                    request.getRecords(),
+                    outputPath,
+                    tempDirFile.getAbsolutePath(),
+                    true,  // plot = true
+                    width,
+                    height,
+                    frameRate);
+
+            long elapsed = System.currentTimeMillis() - startTime;
+            logger.info("视频生成成功: outputPath={}, 耗时={} ms", outputPath, elapsed);
+
+            return new GenerateVideoResponse(outputPath, "视频生成成功", elapsed);
         } catch (Exception e) {
-            logger.error("生成视频失败: {}", e.getMessage());
-            throw new RuntimeException("生成视频失败: " + e.getMessage());
+            long elapsed = System.currentTimeMillis() - startTime;
+            logger.error("生成视频失败: 耗时={} ms, 错误={}", elapsed, e.getMessage(), e);
+            throw new RuntimeException("生成视频失败: " + e.getMessage(), e);
         }
     }
 
@@ -309,6 +357,10 @@ public class RecordController {
      */
     public static class GenerateVideoRequest {
         private List<Record> records;
+        private String outputPath;
+        private int width;
+        private int height;
+        private int frameRate;
 
         public List<Record> getRecords() {
             return records;
@@ -316,6 +368,80 @@ public class RecordController {
 
         public void setRecords(List<Record> records) {
             this.records = records;
+        }
+
+        public String getOutputPath() {
+            return outputPath;
+        }
+
+        public void setOutputPath(String outputPath) {
+            this.outputPath = outputPath;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public void setWidth(int width) {
+            this.width = width;
+        }
+
+        public int getHeight() {
+            return height;
+        }
+
+        public void setHeight(int height) {
+            this.height = height;
+        }
+
+        public int getFrameRate() {
+            return frameRate;
+        }
+
+        public void setFrameRate(int frameRate) {
+            this.frameRate = frameRate;
+        }
+    }
+
+    /**
+     * 生成视频响应对象
+     */
+    public static class GenerateVideoResponse {
+        private String outputPath;
+        private String message;
+        private long elapsedMs;
+
+        public GenerateVideoResponse() {
+        }
+
+        public GenerateVideoResponse(String outputPath, String message, long elapsedMs) {
+            this.outputPath = outputPath;
+            this.message = message;
+            this.elapsedMs = elapsedMs;
+        }
+
+        public String getOutputPath() {
+            return outputPath;
+        }
+
+        public void setOutputPath(String outputPath) {
+            this.outputPath = outputPath;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public long getElapsedMs() {
+            return elapsedMs;
+        }
+
+        public void setElapsedMs(long elapsedMs) {
+            this.elapsedMs = elapsedMs;
         }
     }
 }

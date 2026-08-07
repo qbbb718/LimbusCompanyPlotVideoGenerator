@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useCallback } from "react";
 import "./Settings.css";
-import { ProjectSettings } from "@types";
+import { ProjectSettings, DEFAULT_PROJECT_SETTINGS, SETTINGS_STORAGE_KEY } from "@types";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
@@ -10,6 +10,30 @@ interface SettingsProps {
   projectSettings: ProjectSettings;
   setProjectSettings: React.Dispatch<React.SetStateAction<ProjectSettings>>;
 }
+
+/** 从 localStorage 加载设置，失败时返回默认值 */
+export const loadSettings = (): ProjectSettings => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // 深度合并，确保新增字段有默认值
+      return { ...DEFAULT_PROJECT_SETTINGS, ...parsed };
+    }
+  } catch (e) {
+    console.warn("加载项目设置失败，使用默认设置:", e);
+  }
+  return { ...DEFAULT_PROJECT_SETTINGS };
+};
+
+/** 持久化设置到 localStorage */
+export const saveSettings = (settings: ProjectSettings): void => {
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error("保存项目设置失败:", e);
+  }
+};
 
 const Settings: React.FC<SettingsProps> = ({
   projectSettings,
@@ -22,15 +46,15 @@ const Settings: React.FC<SettingsProps> = ({
     }));
   };
 
-  const handleSaveSettings = () => {
-    // 这里应该实现保存设置到文件或后端
-    alert("保存设置功能待实现");
-  };
+  const handleSaveSettings = useCallback(() => {
+    saveSettings(projectSettings);
+    alert("设置已保存！");
+  }, [projectSettings]);
 
-  const handleResetSettings = () => {
-    // 这里应该实现重置为默认设置
-    alert("重置设置功能待实现");
-  };
+  const handleResetSettings = useCallback(() => {
+    if (!window.confirm("确定要重置所有设置为默认值吗？此操作不可撤销。")) return;
+    setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS });
+  }, [setProjectSettings]);
 
   return (
     <div className="settings-container">
