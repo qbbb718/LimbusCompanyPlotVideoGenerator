@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
@@ -23,6 +24,7 @@ import java.awt.AlphaComposite;
 /**
  * 角色立绘可视化类
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonDeserialize(builder = CharacterVisual.Builder.class)
 public class CharacterVisual extends VisualElement {
     private static final Logger logger = LoggerFactory.getLogger(CharacterVisual.class);

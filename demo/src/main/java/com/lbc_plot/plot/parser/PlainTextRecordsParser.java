@@ -7,6 +7,8 @@ import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
+import com.lbc_plot.resource.dao.AudioDAO;
+import com.lbc_plot.resource.model.Audio;
 import com.lbc_plot.resource.model.Background;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
@@ -38,7 +40,7 @@ public class PlainTextRecordsParser {
     private static final Logger logger = LoggerFactory.getLogger(PlainTextRecordsParser.class);
 
     private static final Pattern BGM_PATTERN = Pattern.compile("^\\s*\\[(.+?)\\]\\s*");
-    // （已移除独立的停止指令语义，遇到新的 BGM 将隐式结束旧的 BGM）
+    private static final Pattern STOP_PATTERN = Pattern.compile("^\\s*\\[-.*?\\]\\s*");
     private static final Pattern BG_PATTERN = Pattern.compile("^\\s*\\{(.+?)\\}\\s*");
     private static final Pattern SPEAKER_PATTERN = Pattern.compile("^\\s*([^:]+)\\s*:\\s*(.+)$");
     private static final Pattern EMOTION_PATTERN = Pattern.compile("(.+?)\\((.+?)\\)\\s*$");
@@ -106,37 +108,40 @@ public class PlainTextRecordsParser {
         List<Record> records = new ArrayList<>();
 
         List<String> lines = Files.readAllLines(file);
-        // 当前状态
+        // 当前状态（持续跟踪）
         AudioCommand currentBgm = null;
         Background currentBg = null;
+
+        // 待处理的指令（自上次对话以来累积，将附加到下一条对话 record）
+        AudioCommand pendingBgm = null;
+        Background pendingBg = null;
+        boolean pendingStop = false;
 
         for (String rawLine : lines) {
             String line = rawLine.trim();
             if (line.isEmpty())
                 continue;
 
-            // 过去支持 [-STOP] 停止指令；现在停止由遇到新的 BGM 或时间线阶段处理，不再在此生成停止指令
-
-            // BGM 行：不单独创建 record，只改变当前 BGM 状态
-            Matcher mBgm = BGM_PATTERN.matcher(line);
-            if (mBgm.matches()) {
-                String bgmFile = mBgm.group(1).trim();
-                // 新BGM开始：切换当前 BGM，并为该变化生成一条 record（旁白），
-                // 使脚本中的 BGM 变化也成为时间线事件的一部分。
-                currentBgm = new AudioCommand(AudioCommandType.BGM_ACTIVE, bgmFile);
-                Dialogue d = Dialogue.builder().text("").speakerName(Dialogue.DEFAULT_NARRATOR).build();
-                Record rec = new Record.Builder().dialogue(d).build();
-                // 标记该 record 带有新的 BGM_ACTIVE
-                rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
-                // 如果当前背景已存在，则也附加背景视觉，保持画面状态一致
-                if (currentBg != null) {
-                    rec.addBackgroundVisual(new BackgroundVisual(currentBg));
-                }
-                records.add(rec);
+            // STOP 指令：停止当前 BGM（在 BGM_PATTERN 之前检测，避免误匹配为 BGM）
+            if (STOP_PATTERN.matcher(line).matches()) {
+                pendingStop = true;
+                currentBgm = null;
+                logger.debug("BGM 停止指令，将附加到下一条对话");
                 continue;
             }
 
-            // 背景行：不单独创建 record，只改变当前背景状态
+            // BGM 行：不单独创建 record，累积到 pending 状态，附加到下一条对话
+            Matcher mBgm = BGM_PATTERN.matcher(line);
+            if (mBgm.matches()) {
+                String bgmFile = mBgm.group(1).trim();
+                String resolvedBgm = resolveBgmName(bgmFile);
+                pendingBgm = new AudioCommand(AudioCommandType.BGM_ACTIVE, resolvedBgm);
+                currentBgm = pendingBgm;
+                logger.debug("BGM 指令: {} (解析为: {}), 将附加到下一条对话", bgmFile, resolvedBgm);
+                continue;
+            }
+
+            // 背景行：不单独创建 record，累积到 pending 状态，附加到下一条对话
             Matcher mBg = BG_PATTERN.matcher(line);
             if (mBg.matches()) {
                 String bgPath = mBg.group(1).trim();
@@ -148,18 +153,13 @@ public class PlainTextRecordsParser {
                 int dot = name.lastIndexOf('.');
                 if (dot > 0)
                     name = name.substring(0, dot);
-                // If DB-backed BackgroundService is available, try to find the background
-                // entry.
-                // Try exact path first, then try suffix/filename match against existing
-                // entries,
-                // finally fall back to creating a new entry.
+                // If DB-backed BackgroundService is available, try to find the background entry
                 if (backgroundService != null) {
                     try {
                         java.util.Optional<Background> byPath = backgroundService.findByPath(bgPath);
                         if (byPath.isPresent()) {
                             currentBg = byPath.get();
                         } else {
-                            // try suffix/filename matching against existing backgrounds
                             String filename = bgPath;
                             int lastSlash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
                             if (lastSlash >= 0)
@@ -185,15 +185,8 @@ public class PlainTextRecordsParser {
                 } else {
                     currentBg = new Background(bgPath, name);
                 }
-                // 将背景变化作为一条独立的 record 输出，以便脚本中的背景切换成为可见的时间线事件
-                Dialogue dBg = Dialogue.builder().text("").speakerName(Dialogue.DEFAULT_NARRATOR).build();
-                Record bgRec = new Record.Builder().dialogue(dBg).build();
-                bgRec.addBackgroundVisual(new BackgroundVisual(currentBg));
-                // 如果已有正在播放的 BGM，则继承该 BGM 到此 record
-                if (currentBgm != null) {
-                    bgRec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
-                }
-                records.add(bgRec);
+                pendingBg = currentBg;
+                logger.debug("背景指令: {} (解析为: {}), 将附加到下一条对话", bgPath, name);
                 continue;
             }
 
@@ -244,11 +237,11 @@ public class PlainTextRecordsParser {
                                     emotion = Dialogue.Emotion.CONFUSED;
                                     break;
                                 case BLUSH:
-                                    emotion = Dialogue.Emotion.HAPPY;
-                                    break; // map blush -> happy
+                                    emotion = Dialogue.Emotion.BLUSH;
+                                    break;
                                 case HURT:
-                                    emotion = Dialogue.Emotion.SAD;
-                                    break; // map hurt -> sad
+                                    emotion = Dialogue.Emotion.HURT;
+                                    break;
                                 default:
                                     emotion = Dialogue.Emotion.NORMAL;
                                     break;
@@ -275,10 +268,33 @@ public class PlainTextRecordsParser {
                     }
                 }
                 Record rec = new Record.Builder().dialogue(d).build();
-                // 如果当前背景存在或当前BGM存在，作为该 record 的一部分继承
-                if (currentBg != null) {
+
+                // 应用待处理的指令到本条对话
+                boolean hasNewBg = false;
+                boolean hasNewBgm = false;
+
+                if (pendingStop) {
+                    currentBgm = null;
+                    pendingStop = false;
+                }
+                if (pendingBgm != null) {
+                    rec.addAudioCommand(pendingBgm);
+                    hasNewBgm = true;
+                    pendingBgm = null;
+                }
+                if (pendingBg != null) {
+                    rec.addBackgroundVisual(new BackgroundVisual(pendingBg));
+                    currentBg = pendingBg;
+                    hasNewBg = true;
+                    pendingBg = null;
+                }
+
+                // 如果本条没有新背景且当前背景存在，则继承当前背景
+                if (!hasNewBg && currentBg != null) {
                     rec.addBackgroundVisual(new BackgroundVisual(currentBg));
-                    // 如果 dialogue 中没有 location（使用默认），则使用 background 的 name 作为 location
+                }
+                // 如果当前有背景，尝试设置 location
+                if (currentBg != null) {
                     try {
                         if (d.getLocation() == null || Dialogue.DEFAULT_LOCATION.equals(d.getLocation())) {
                             if (currentBg.getName() != null && !currentBg.getName().isBlank()) {
@@ -289,8 +305,8 @@ public class PlainTextRecordsParser {
                         logger.debug("Failed to apply background name to dialogue location: {}", ex.getMessage());
                     }
                 }
-                // 如果当前有正在播放的 BGM，则将 BGM_ACTIVE 附加到每条 record，表示 BGM 在记录间持续
-                if (currentBgm != null) {
+                // 如果本条没有新 BGM 且当前有正在播放的 BGM，则继承
+                if (!hasNewBgm && currentBgm != null) {
                     rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
                 }
 
@@ -424,7 +440,30 @@ public class PlainTextRecordsParser {
             // 未识别行，作为旁白文本
             Dialogue d = Dialogue.builder().text(line).speakerName(Dialogue.DEFAULT_NARRATOR).build();
             Record rec = new Record.Builder().dialogue(d).build();
-            if (currentBgm != null)
+
+            // 应用待处理的指令（同对话处理逻辑）
+            boolean hasNewBg2 = false;
+            boolean hasNewBgm2 = false;
+
+            if (pendingStop) {
+                currentBgm = null;
+                pendingStop = false;
+            }
+            if (pendingBgm != null) {
+                rec.addAudioCommand(pendingBgm);
+                hasNewBgm2 = true;
+                pendingBgm = null;
+            }
+            if (pendingBg != null) {
+                rec.addBackgroundVisual(new BackgroundVisual(pendingBg));
+                currentBg = pendingBg;
+                hasNewBg2 = true;
+                pendingBg = null;
+            }
+
+            if (!hasNewBg2 && currentBg != null)
+                rec.addBackgroundVisual(new BackgroundVisual(currentBg));
+            if (!hasNewBgm2 && currentBgm != null)
                 rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
             // 如果本条是旁白，复制上一条的角色立绘（如果存在）
             if (d.isNarrator() && !records.isEmpty()) {
@@ -446,6 +485,51 @@ public class PlainTextRecordsParser {
         }
 
         return records;
+    }
+
+    /**
+     * 在 Audio 库中按名称或文件名搜索匹配的 BGM 文件。
+     * 优先精确匹配，再尝试包含匹配；都失败则返回原始名称作为后备。
+     */
+    private static String resolveBgmName(String bgmName) {
+        if (bgmName == null || bgmName.isBlank()) return bgmName;
+
+        try {
+            List<Audio> allAudios = AudioDAO.getAllAudios();
+            if (allAudios == null || allAudios.isEmpty()) return bgmName;
+
+            String baseName = bgmName;
+            int dot = baseName.lastIndexOf('.');
+            if (dot > 0) baseName = baseName.substring(0, dot);
+
+            // 1) 精确匹配：name 或 path 文件名完全相等（忽略扩展名）
+            for (Audio audio : allAudios) {
+                if (audio.getName() != null && audio.getName().equalsIgnoreCase(bgmName))
+                    return audio.getName();
+                if (audio.getPath() != null) {
+                    String fileName = audio.getPath();
+                    int slash = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'));
+                    if (slash >= 0) fileName = fileName.substring(slash + 1);
+                    int ext = fileName.lastIndexOf('.');
+                    if (ext > 0) fileName = fileName.substring(0, ext);
+                    if (fileName.equalsIgnoreCase(bgmName) || fileName.equalsIgnoreCase(baseName))
+                        return audio.getName();
+                }
+            }
+
+            // 2) 包含匹配：name 或 path 包含 bgmName（忽略大小写）
+            for (Audio audio : allAudios) {
+                String name = audio.getName() != null ? audio.getName().toLowerCase() : "";
+                String path = audio.getPath() != null ? audio.getPath().toLowerCase() : "";
+                String lower = bgmName.toLowerCase();
+                if (name.contains(lower) || path.contains(lower)) {
+                    return audio.getName();
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("AudioDAO lookup failed for BGM '{}': {}", bgmName, e.getMessage());
+        }
+        return bgmName;
     }
 
     /**

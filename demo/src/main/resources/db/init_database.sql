@@ -106,3 +106,10 @@ CREATE INDEX IF NOT EXISTS idx_background_tag_map_bg ON background_tag_map(backg
 CREATE INDEX IF NOT EXISTS idx_background_tag_map_tag ON background_tag_map(tag_id);
 CREATE INDEX IF NOT EXISTS idx_record_characters_record ON record_characters(record_id);
 CREATE INDEX IF NOT EXISTS idx_record_characters_character ON record_characters(character_id);
+
+-- 应用设置表（key-value 存储，如输出路径等持久化配置）
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT,
+    updated_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);

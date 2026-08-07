@@ -13,6 +13,7 @@ interface RecordListProps {
   deleteRecord: (index: number) => void;
   exportRecords: () => void;
   importRecords: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  isGenerating?: boolean;
 }
 
 const RecordList: React.FC<RecordListProps> = ({
@@ -26,6 +27,7 @@ const RecordList: React.FC<RecordListProps> = ({
   deleteRecord,
   exportRecords,
   importRecords,
+  isGenerating,
 }) => {
   return (
     <div className="record-list-container">
@@ -33,7 +35,6 @@ const RecordList: React.FC<RecordListProps> = ({
         <h3>剧情记录</h3>
         <div className="record-list-actions">
           <button onClick={createNewRecord}>添加记录</button>
-          <button onClick={generateVideo}>生成视频</button>
           <button onClick={exportRecords}>导出项目</button>
           <label className="import-button">
             导入项目
@@ -44,6 +45,9 @@ const RecordList: React.FC<RecordListProps> = ({
               style={{ display: "none" }}
             />
           </label>
+          <button onClick={generateVideo} disabled={isGenerating}>
+            {isGenerating ? "生成中..." : "生成视频"}
+          </button>
         </div>
       </div>
 

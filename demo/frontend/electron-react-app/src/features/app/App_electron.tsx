@@ -6,7 +6,7 @@ import { ResourceManager } from "@features/resource";
 import { TextToRecords } from "@features/text-to-records";
 import { ProjectSettings as IProjectSettings, Record } from "@types";
 import ApiService from "@services/ApiService";
-import { loadSettings } from "@features/common/components/Settings/Settings";
+import { loadSettings, saveSettings } from "@features/common/components/Settings/Settings";
 import log from "electron-log";
 
 function AppElectron() {
@@ -28,6 +28,26 @@ function AppElectron() {
         try {
           await ApiService.healthCheck();
           log.info("后端连接成功");
+
+          // 从后端数据库加载持久化设置，合并到当前设置中
+          try {
+            const backendSettings = await ApiService.getSettings();
+            log.info("从后端加载设置:", backendSettings);
+            if (backendSettings && Object.keys(backendSettings).length > 0) {
+              setProjectSettings(prev => {
+                const merged = { ...prev };
+                // 将后端 key-value 映射到前端 ProjectSettings 字段
+                if (backendSettings.videoOutputPath) {
+                  merged.outputPath = backendSettings.videoOutputPath;
+                }
+                // 立即持久化合并后的设置到 localStorage
+                saveSettings(merged);
+                return merged;
+              });
+            }
+          } catch (settingsErr) {
+            log.warn("加载后端设置失败，使用本地设置:", settingsErr);
+          }
         } catch (error) {
           log.warn("后端连接失败，将使用模拟数据:", error);
         }

@@ -43,7 +43,12 @@ public class FFmpegAudioProcessor {
             String ffmpegCommand = generateFFmpegCommand(timeline, outputPath);
             logger.debug("FFmpeg命令: {}", ffmpegCommand);
 
-            // 2. 执行命令
+            // 2. 如果所有 segment 均无效，创建静音音频
+            if (ffmpegCommand.isEmpty()) {
+                return createSilentAudio(timeline.getTotalDurationSeconds(), outputPath);
+            }
+
+            // 3. 执行命令
             executeFFmpegCommand(ffmpegCommand);
 
             long duration = System.currentTimeMillis() - startTime;
@@ -66,82 +71,93 @@ public class FFmpegAudioProcessor {
         List<AudioSegment> segments = timeline.getSegments();
         double totalDuration = timeline.getTotalDurationSeconds();
 
-        // 添加所有输入文件
+        // 先解析所有音频文件路径，并记录哪些 segment 有效
+        List<AudioSegment> validSegments = new ArrayList<>();
         for (AudioSegment segment : segments) {
             String audioFile = findAudioFilePath(segment.getAudioId());
-            cmd.append(" -i \"").append(audioFile).append("\"");
+            File f = new File(audioFile);
+            if (f.exists()) {
+                validSegments.add(segment);
+                cmd.append(" -i \"").append(audioFile).append("\"");
+            } else {
+                logger.warn("跳过不存在的音频文件: {} (解析路径: {})", segment.getAudioId(), audioFile);
+            }
+        }
+
+        // 如果所有 segment 都被跳过，直接创建静音音频
+        if (validSegments.isEmpty()) {
+            logger.info("所有音频段均无效，创建静音音频");
+            return ""; // 返回空字符串，由调用方处理
         }
 
         // 构建复杂滤镜
-        if (!segments.isEmpty()) {
-            cmd.append(" -filter_complex \"");
+        cmd.append(" -filter_complex \"");
 
-            // 分别处理BGM和音效/语音
-            List<String> bgmStreams = new ArrayList<>();
-            List<String> sfxStreams = new ArrayList<>();
-            Map<String, Integer> bgmInstanceCount = new HashMap<>(); // 跟踪每个BGM的实例数
+        // 分别处理BGM和音效/语音
+        List<String> bgmStreams = new ArrayList<>();
+        List<String> sfxStreams = new ArrayList<>();
+        Map<String, Integer> bgmInstanceCount = new HashMap<>(); // 跟踪每个BGM的实例数
 
-            for (int i = 0; i < segments.size(); i++) {
-                AudioSegment segment = segments.get(i);
-                double startTime = segment.getStartFrame() / timeline.getFrameRate();
-                double endTime = segment.getEndFrame() / timeline.getFrameRate();
-                double segmentDuration = endTime - startTime;
+        for (int vi = 0; vi < validSegments.size(); vi++) {
+            AudioSegment segment = validSegments.get(vi);
+            double startTime = segment.getStartFrame() / timeline.getFrameRate();
+            double endTime = segment.getEndFrame() / timeline.getFrameRate();
+            double segmentDuration = endTime - startTime;
 
-                if (isBgmSegment(segment)) {
-                    // **修复：确保每个BGM文件只创建一个流**
-                    String bgmKey = segment.getAudioId();
-                    int instanceNum = bgmInstanceCount.getOrDefault(bgmKey, 0);
-                    bgmInstanceCount.put(bgmKey, instanceNum + 1);
+            if (isBgmSegment(segment)) {
+                // **修复：确保每个BGM文件只创建一个流**
+                String bgmKey = segment.getAudioId();
+                int instanceNum = bgmInstanceCount.getOrDefault(bgmKey, 0);
+                bgmInstanceCount.put(bgmKey, instanceNum + 1);
 
-                    String streamName = "bgm_" + bgmKey + "_" + instanceNum;
+                String streamName = "bgm_" + bgmKey + "_" + instanceNum;
 
-                    // BGM处理：循环播放指定时长
-                    String filter = String.format(
-                            "[%d]aloop=loop=-1:size=2e+9,atrim=0:%.2f,volume=%.2f,adelay=%.0f|%.0f[%s]",
-                            i, segmentDuration, segment.getVolume(), startTime * 1000, startTime * 1000, streamName);
+                // BGM处理：循环播放指定时长
+                String filter = String.format(
+                        "[%d]aloop=loop=-1:size=2e+9,atrim=0:%.2f,volume=%.2f,adelay=%.0f|%.0f[%s]",
+                        vi, segmentDuration, segment.getVolume(), startTime * 1000, startTime * 1000, streamName);
 
-                    cmd.append(filter).append(";");
-                    bgmStreams.add("[" + streamName + "]");
+                cmd.append(filter).append(";");
+                bgmStreams.add("[" + streamName + "]");
 
-                    logger.debug("BGM处理: {} 实例{} 开始{}秒, 持续{}秒, 音量: {}",
-                            segment.getAudioId(), instanceNum, startTime, segmentDuration, segment.getVolume());
-                } else {
-                    // 音效/语音处理
-                    String streamName = "sfx" + i;
-                    String filter = String.format(
-                            "[%d]adelay=%.0f|%.0f,volume=%.2f[%s]",
-                            i, startTime * 1000, startTime * 1000, segment.getVolume(), streamName);
+                logger.debug("BGM处理: {} 实例{} 开始{}秒, 持续{}秒, 音量: {}",
+                        segment.getAudioId(), instanceNum, startTime, segmentDuration, segment.getVolume());
+            } else {
+                // 音效/语音处理
+                String streamName = "sfx" + vi;
+                String filter = String.format(
+                        "[%d]adelay=%.0f|%.0f,volume=%.2f[%s]",
+                        vi, startTime * 1000, startTime * 1000, segment.getVolume(), streamName);
 
-                    cmd.append(filter).append(";");
-                    sfxStreams.add("[" + streamName + "]");
+                cmd.append(filter).append(";");
+                sfxStreams.add("[" + streamName + "]");
 
-                    logger.debug("音效处理: {} 开始{}秒, 音量: {}",
-                            segment.getAudioId(), startTime, segment.getVolume());
-                }
+                logger.debug("音效处理: {} 开始{}秒, 音量: {}",
+                        segment.getAudioId(), startTime, segment.getVolume());
             }
-
-            // **修复：分别混合BGM和音效，然后合并**
-            if (!bgmStreams.isEmpty()) {
-                cmd.append(String.join("", bgmStreams));
-                cmd.append("amix=inputs=").append(bgmStreams.size()).append(":duration=longest[bgm_mix];");
-            }
-
-            if (!sfxStreams.isEmpty()) {
-                cmd.append(String.join("", sfxStreams));
-                cmd.append("amix=inputs=").append(sfxStreams.size()).append(":duration=longest[sfx_mix];");
-            }
-
-            // 最终合并
-            if (!bgmStreams.isEmpty() && !sfxStreams.isEmpty()) {
-                cmd.append("[bgm_mix][sfx_mix]amix=inputs=2:duration=longest");
-            } else if (!bgmStreams.isEmpty()) {
-                cmd.append("[bgm_mix]anull");
-            } else if (!sfxStreams.isEmpty()) {
-                cmd.append("[sfx_mix]anull");
-            }
-
-            cmd.append("\"");
         }
+
+        // **修复：分别混合BGM和音效，然后合并**（在 for 循环外面）
+        if (!bgmStreams.isEmpty()) {
+            cmd.append(String.join("", bgmStreams));
+            cmd.append("amix=inputs=").append(bgmStreams.size()).append(":duration=longest[bgm_mix];");
+        }
+
+        if (!sfxStreams.isEmpty()) {
+            cmd.append(String.join("", sfxStreams));
+            cmd.append("amix=inputs=").append(sfxStreams.size()).append(":duration=longest[sfx_mix];");
+        }
+
+        // 最终合并
+        if (!bgmStreams.isEmpty() && !sfxStreams.isEmpty()) {
+            cmd.append("[bgm_mix][sfx_mix]amix=inputs=2:duration=longest");
+        } else if (!bgmStreams.isEmpty()) {
+            cmd.append("[bgm_mix]anull");
+        } else if (!sfxStreams.isEmpty()) {
+            cmd.append("[sfx_mix]anull");
+        }
+
+        cmd.append("\"");
 
         // 输出参数
         cmd.append(" -ac 2 -ar 44100 \"").append(outputPath).append("\"");

@@ -239,7 +239,52 @@ class ApiService {
     }
   }
 
-  // 生成视频
+  // 获取应用设置（从后端数据库加载持久化配置）
+  async getSettings(): Promise<Record<string, string>> {
+    try {
+      const response = await apiClient.get('/settings');
+      log.info('获取应用设置成功:', response.data);
+      return response.data;
+    } catch (error) {
+      log.error('获取应用设置失败:', error);
+      return {};
+    }
+  }
+
+  // 保存应用设置到后端数据库
+  async updateSettings(settings: Record<string, string>): Promise<Record<string, string>> {
+    try {
+      const response = await apiClient.put('/settings', settings);
+      log.info('保存应用设置成功:', response.data);
+      return response.data;
+    } catch (error) {
+      log.error('保存应用设置失败:', error);
+      throw error;
+    }
+  }
+
+  // 查询视频生成进度
+  async getVideoProgress(taskId: string): Promise<{
+    stage: number;
+    current: number;
+    total: number;
+    message: string;
+    completed: boolean;
+    error: boolean;
+    outputPath: string;
+    elapsedMs: number;
+    percent: number;
+  }> {
+    try {
+      const response = await apiClient.get(`/generate-video/progress/${taskId}`);
+      return response.data;
+    } catch (error) {
+      log.error('查询视频进度失败:', error);
+      throw error;
+    }
+  }
+
+  // 生成视频（异步 — 返回 taskId，前端轮询进度）
   async generateVideo(
     records: any[],
     outputPath: string,
@@ -270,10 +315,10 @@ class ApiService {
    * @param height 预览图高度，默认 720
    * @returns blob URL，可直接用于 <img src>。调用方需在组件卸载时调用 URL.revokeObjectURL()
    */
-  async getRecordPreview(record: any, width = 1920, height = 1080): Promise<string> {
+  async getRecordPreview(record: any, width = 1920, height = 1080, forceRefresh = false): Promise<string> {
     try {
       const response = await apiClient.post(
-        `/records/preview?width=${width}&height=${height}`,
+        `/records/preview?width=${width}&height=${height}&forceRefresh=${forceRefresh}`,
         record,
         { responseType: 'blob' },
       );

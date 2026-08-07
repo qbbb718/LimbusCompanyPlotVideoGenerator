@@ -22,11 +22,16 @@ public class ColorSerializer extends StdSerializer<Color> {
             return;
         }
 
-        // 将颜色转换为十六进制格式，前端期望的格式
-        String hex = String.format("#%02X%02X%02X",
-                color.getRed(),
-                color.getGreen(),
-                color.getBlue());
+        // 将颜色转换为十六进制格式；alpha < 255 时追加 AA 分量
+        String hex;
+        if (color.getAlpha() < 255) {
+            hex = String.format("#%02X%02X%02X%02X",
+                    color.getRed(), color.getGreen(),
+                    color.getBlue(), color.getAlpha());
+        } else {
+            hex = String.format("#%02X%02X%02X",
+                    color.getRed(), color.getGreen(), color.getBlue());
+        }
 
         logger.info("序列化颜色: R=" + color.getRed() +
                 ", G=" + color.getGreen() +

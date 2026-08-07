@@ -17,6 +17,7 @@ import com.lbc_plot.resource.model.MyCharacter;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Record {
     private String uuid; // 避免修改顺序破坏dirty
     private int durationFrames; // 持续时间（帧数）
@@ -153,6 +154,7 @@ public class Record {
         this.isDirty = true;
     }
 
+    @JsonProperty("isDirty")
     public boolean isDirty() {
         return isDirty;
     }

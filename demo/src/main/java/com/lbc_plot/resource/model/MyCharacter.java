@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
@@ -25,6 +26,7 @@ import com.lbc_plot.render.video.CharacterRef;
 /**
  * 角色类
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MyCharacter {
     private String characterID;
     private String characterName;

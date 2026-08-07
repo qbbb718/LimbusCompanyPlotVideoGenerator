@@ -1,5 +1,6 @@
 package com.lbc_plot.render.audio.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -11,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AudioCommand {
     private AudioCommandType type; // BGM_ACTIVE, SFX_PLAY, VOICE_PLAY
+    @JsonAlias("path") // 兼容前端字段名
     private String audioId; // 音频文件标识
     private Float volume; // 音量
     private Integer fadeDuration; // 淡入淡出帧数

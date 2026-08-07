@@ -5,11 +5,13 @@ import java.awt.image.BufferedImage;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.lbc_plot.common.util.io.ImageReader;
 import com.lbc_plot.config.ProjectConfig;
 
 import java.awt.image.BufferedImage;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Background {
     private String uuid; // 唯一id（保证换源后能直接替换
     private String path; // 文件存储路径
@@ -140,14 +142,17 @@ public class Background {
 
     // Compatibility getters for JDBI BindBean (some DAOs expect these property
     // names)
+    @JsonIgnore
     public String getBackgroundID() {
         return uuid;
     }
 
+    @JsonIgnore
     public String getImagePath() {
         return path;
     }
 
+    @JsonIgnore
     public String getDisplayName() {
         return name;
     }
@@ -155,6 +160,7 @@ public class Background {
     /**
      * Source is optional; DAOs may bind :source. Return null by default.
      */
+    @JsonIgnore
     public String getSource() {
         return null;
     }

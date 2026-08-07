@@ -14,6 +14,11 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidt
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  // 跟踪已在本会话中成功缓存过预览的 UUID。首次查看 dirty record 时强制刷新以
+  // 重新生成缓存，之后（同一会话，未再次编辑）则直接使用磁盘缓存。
+  const previewedRef = useRef<Set<string>>(new Set());
+  // 记录上次渲染时 record 对应的 isDirty 状态，用于检测 record 是否在渲染后又被编辑
+  const lastDirtyRef = useRef<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -31,11 +36,32 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidt
           blobUrlRef.current = null;
         }
 
-        const url = await ApiService.getRecordPreview(selectedRecord, videoWidth, videoHeight);
+        const uuid = selectedRecord.uuid;
+        const currentlyDirty = selectedRecord.isDirty === true;
+        const wasDirty = lastDirtyRef.current.get(uuid);
+        const alreadyPreviewed = previewedRef.current.has(uuid);
+
+        // 决定是否强制刷新：
+        // 1. 首次渲染该 record，且 record 标记为 dirty → 强制刷新以更新缓存
+        // 2. record 在上次预览后又变回 dirty → 强制刷新（被编辑了）
+        // 3. 其他情况 → 使用缓存
+        const forceRefresh =
+          currentlyDirty && (!alreadyPreviewed || wasDirty === false);
+
+        const url = await ApiService.getRecordPreview(
+          selectedRecord, videoWidth, videoHeight,
+          forceRefresh,
+        );
+
         if (cancelled) {
           URL.revokeObjectURL(url);
           return;
         }
+
+        // 渲染成功后标记该 UUID 已缓存
+        previewedRef.current.add(uuid);
+        lastDirtyRef.current.set(uuid, currentlyDirty);
+
         blobUrlRef.current = url;
         setPreviewUrl(url);
         setError(null);

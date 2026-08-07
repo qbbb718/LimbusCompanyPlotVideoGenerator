@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lbc_plot.resource.model.Background;
 
@@ -13,6 +14,7 @@ import java.awt.image.BufferedImage;
  * 背景可视化元素
  * 封装背景图像及其显示属性
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BackgroundVisual extends VisualElement {
     @JsonProperty
     private Background background;

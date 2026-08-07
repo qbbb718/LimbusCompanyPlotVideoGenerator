@@ -80,7 +80,8 @@ public class DatabaseInitializer implements CommandLineRunner {
                 logger.info("数据库已包含 {} 个表，检查是否缺少必要表...", tableCount);
 
                 // 检查关键表是否存在
-                String[] requiredTables = { "characters", "portraits", "backgrounds", "audios", "character_portraits" };
+                String[] requiredTables = { "characters", "portraits", "backgrounds", "audios", "character_portraits",
+                        "app_settings" };
                 boolean allTablesExist = true;
 
                 for (String tableName : requiredTables) {
@@ -222,6 +223,34 @@ public class DatabaseInitializer implements CommandLineRunner {
                         }
                     } catch (Exception e) {
                         logger.warn("检查 audios 表结构时出错", e);
+                    }
+
+                    // 检查并移除 audios 表中旧 audio_id 列的 NOT NULL 约束
+                    try {
+                        Integer audioIdCol = jdbcTemplate.queryForObject(
+                                "SELECT count(*) FROM pragma_table_info('audios') WHERE name='audio_id' AND \"notnull\"=1",
+                                Integer.class);
+                        if (audioIdCol != null && audioIdCol > 0) {
+                            logger.info("audios 表 audio_id 列存在 NOT NULL 约束，正在迁移...");
+                            // SQLite 不支持直接修改约束，通过重建表来移除 NOT NULL
+                            jdbcTemplate.execute("CREATE TABLE audios_new ("
+                                    + "audio_id TEXT,"
+                                    + "uuid TEXT PRIMARY KEY NOT NULL,"
+                                    + "name TEXT NOT NULL,"
+                                    + "path TEXT NOT NULL,"
+                                    + "type TEXT,"
+                                    + "tags TEXT,"
+                                    + "created_time DATETIME DEFAULT CURRENT_TIMESTAMP"
+                                    + ")");
+                            jdbcTemplate.execute("INSERT INTO audios_new "
+                                    + "(audio_id, uuid, name, path, type, tags, created_time) "
+                                    + "SELECT audio_id, uuid, name, path, type, tags, created_time FROM audios");
+                            jdbcTemplate.execute("DROP TABLE audios");
+                            jdbcTemplate.execute("ALTER TABLE audios_new RENAME TO audios");
+                            logger.info("audios 表迁移完成，audio_id 列 NOT NULL 约束已移除");
+                        }
+                    } catch (Exception e) {
+                        logger.warn("迁移 audios 表 audio_id 约束时出错（可能已迁移过）: {}", e.getMessage());
                     }
                 }
             }

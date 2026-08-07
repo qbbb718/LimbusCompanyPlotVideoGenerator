@@ -12,6 +12,7 @@ import com.lbc_plot.resource.model.MyCharacter;
 /**
  * 对话内容类
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonDeserialize(builder = Dialogue.Builder.class)
 public class Dialogue {
     // 常量定义
@@ -26,7 +27,7 @@ public class Dialogue {
     }
 
     public enum Emotion {
-        NORMAL, HAPPY, ANGRY, SAD, SURPRISED, CONFUSED, NERVOUS;
+        NORMAL, HAPPY, ANGRY, SAD, SURPRISED, CONFUSED, NERVOUS, BLUSH, HURT;
 
         /**
          * 大小写不敏感反序列化，兼容前端传入的小写值 (如 "normal", "happy")
@@ -193,6 +194,12 @@ public class Dialogue {
         }
         if (containsAny(lowerText, "紧张", "害怕", "担心", "怕", "心跳")) {
             return Emotion.NERVOUS;
+        }
+        if (containsAny(lowerText, "脸红", "害羞", "不好意思", "羞涩", "羞耻")) {
+            return Emotion.BLUSH;
+        }
+        if (containsAny(lowerText, "受伤", "疼痛", "痛", "好痛", "哎哟", "伤口")) {
+            return Emotion.HURT;
         }
 
         // 英文短语支持（基础）

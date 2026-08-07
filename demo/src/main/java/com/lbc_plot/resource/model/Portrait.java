@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.common.util.TextureColorizer;
@@ -22,6 +23,7 @@ import com.lbc_plot.config.ProjectConfig;
 /**
  * 角色立绘差分
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonDeserialize(builder = Portrait.Builder.class)
 public class Portrait {
     private static final Logger logger = LoggerFactory.getLogger(Portrait.class);

@@ -57,6 +57,7 @@ export enum Emotion {
   ANGRY = 'angry',
   SURPRISED = 'surprised',
   CONFUSED = 'confused',
+  NERVOUS = 'nervous',
   BLUSH = 'blush',
   HURT = 'hurt'
 }

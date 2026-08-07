@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./RecordEditor.css";
 import ApiService from "@services/ApiService";
 import { Record, ProjectSettings, Emotion, DialogueAlign } from "@types";
@@ -29,40 +29,84 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   >("text");
   const [isLoading, setIsLoading] = useState(true);
   const [topPanelHeight, setTopPanelHeight] = useState(400);
+
+  // 视频生成进度状态
+  const [videoProgress, setVideoProgress] = useState<{
+    taskId: string;
+    stage: number;
+    current: number;
+    total: number;
+    message: string;
+    percent: number;
+    completed: boolean;
+    error: boolean;
+    outputPath?: string;
+    elapsedMs?: number;
+  } | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Refs so the stable createNewRecord callback can read current visual context
+  // (chars, bg, speaker) without being recreated on every state change.
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
+  const selectedIndexRef = useRef(selectedRecordIndex);
+  selectedIndexRef.current = selectedRecordIndex;
+
   const createNewRecord = useCallback(() => {
     console.log("[RecordEditor] createNewRecord 开始执行");
-    
+
+    // 从当前选中的 record 继承视觉上下文（角色立绘、背景、说话人、音频指令），
+    // 这样预览图立即显示角色名片与角色立绘，用户再按需修改。
+    const currentRecords = recordsRef.current;
+    const currentIndex = selectedIndexRef.current;
+    const inherit = currentRecords.length > 0 ? currentRecords[currentIndex] : null;
+
+    const inheritedChars = inherit?.chars ? JSON.parse(JSON.stringify(inherit.chars)) : [];
+    const inheritedBg = inherit?.bg ? JSON.parse(JSON.stringify(inherit.bg)) : [];
+    const inheritedAudioCommands = inherit?.audioCommands
+      ? JSON.parse(JSON.stringify(inherit.audioCommands))
+      : [];
+    const inheritedSpeakerC = inherit?.dialogue?.speakerC
+      ? JSON.parse(JSON.stringify(inherit.dialogue.speakerC))
+      : [];
+    const inheritedTempImages = inherit?.tempImages
+      ? JSON.parse(JSON.stringify(inherit.tempImages))
+      : [];
+
     const newRecord: Record = {
       uuid: generateUUID(),
-      durationFrames: 30,
+      durationFrames: inherit?.durationFrames ?? 30,
       dialogue: {
         text: "",
-        location: "default",
-        speakerC: [],
-        speakerName: "",
-        faction: "",
-        align: DialogueAlign.LEFT,
+        location: inherit?.dialogue?.location || "default",
+        speakerC: inheritedSpeakerC,
+        speakerName: inherit?.dialogue?.speakerName || "",
+        faction: inherit?.dialogue?.faction || "",
+        align: inherit?.dialogue?.align || DialogueAlign.LEFT,
         speed: 1,
         emotion: Emotion.NORMAL,
       },
-      bg: [],
-      chars: [],
-      tempImages: [],
+      bg: inheritedBg,
+      chars: inheritedChars,
+      tempImages: inheritedTempImages,
       effects: [],
-      audioCommands: [],
+      audioCommands: inheritedAudioCommands,
       isDirty: true,
     };
 
-    console.log("[RecordEditor] 创建新记录，UUID:", newRecord.uuid);
-    
+    console.log("[RecordEditor] 创建新记录，UUID:", newRecord.uuid,
+      "| 继承 chars:", inheritedChars.length,
+      "| bg:", inheritedBg.length,
+      "| audioCommands:", inheritedAudioCommands.length);
+
     setRecords((prev) => {
       const newRecords = prev.length > 0 ? [...prev, newRecord] : [newRecord];
       console.log(`[RecordEditor] 新记录已添加，当前记录总数: ${newRecords.length}`);
-      
+
       // 更新选中索引为最后一条
       setSelectedRecordIndex(newRecords.length - 1);
       console.log(`[RecordEditor] 已设置选中记录索引为: ${newRecords.length - 1}`);
-      
+
       return newRecords;
     });
   }, []);
@@ -179,21 +223,76 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       `./output/video_${new Date().toISOString().replace(/[:.]/g, "-")}.mp4`;
 
     try {
-      setIsLoading(true);
+      setIsGenerating(true);
+      // 异步启动视频生成，立即返回 taskId
       const result = await ApiService.generateVideo(
         records,
         outputPath,
         projectSettings.videoWidth || 1920,
         projectSettings.videoHeight || 1080,
       );
-      alert(
-        `视频生成成功！\n保存路径: ${result.outputPath}\n耗时: ${(result.elapsedMs / 1000).toFixed(1)} 秒`,
-      );
+
+      const taskId = result.taskId || result.outputPath; // 兼容旧格式
+      if (!taskId) {
+        throw new Error("未获取到任务ID");
+      }
+
+      setVideoProgress({
+        taskId,
+        stage: 1,
+        current: 0,
+        total: records.length,
+        message: "视频生成已启动...",
+        percent: 0,
+        completed: false,
+        error: false,
+      });
+
+      // 轮询进度
+      const pollInterval = setInterval(async () => {
+        try {
+          const progress = await ApiService.getVideoProgress(taskId);
+          setVideoProgress({
+            taskId,
+            stage: progress.stage,
+            current: progress.current,
+            total: progress.total,
+            message: progress.message,
+            percent: progress.percent,
+            completed: progress.completed,
+            error: progress.error,
+            outputPath: progress.outputPath,
+            elapsedMs: progress.elapsedMs,
+          });
+
+          if (progress.completed || progress.error) {
+            clearInterval(pollInterval);
+            setIsGenerating(false);
+            if (progress.completed) {
+              alert(
+                `视频生成成功！\n保存路径: ${progress.outputPath}\n耗时: ${((progress.elapsedMs || 0) / 1000).toFixed(1)} 秒`,
+              );
+            } else {
+              alert(`视频生成失败: ${progress.message}`);
+            }
+          }
+        } catch (err) {
+          console.error("查询进度失败:", err);
+        }
+      }, 1000); // 每秒轮询
+
+      // 安全清理：最多轮询 30 分钟
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (isGenerating) {
+          setIsGenerating(false);
+          setVideoProgress(null);
+        }
+      }, 30 * 60 * 1000);
     } catch (error) {
       console.error("生成视频失败:", error);
       alert("生成视频失败，请检查控制台日志");
-    } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -357,6 +456,29 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         </div>
       </ResizablePanel>
 
+      {isGenerating && videoProgress && (
+        <div className="video-progress-bar-container">
+          <div className="video-progress-bar">
+            <div className="progress-header">
+              <span className="progress-stage">
+                {videoProgress.stage === 1 && "渲染Record视频"}
+                {videoProgress.stage === 2 && "连接无声视频"}
+                {videoProgress.stage === 3 && "处理音频"}
+                {videoProgress.stage === 4 && "合并音视频"}
+              </span>
+              <span className="progress-percent">{videoProgress.percent}%</span>
+            </div>
+            <div className="progress-track">
+              <div
+                className="progress-fill"
+                style={{ width: `${videoProgress.percent}%` }}
+              />
+            </div>
+            <div className="progress-message">{videoProgress.message}</div>
+          </div>
+        </div>
+      )}
+
       <div className="editor-bottom-panel" style={{ minHeight: "150px" }}>
         <div className="editor-bottom">
           <RecordList
@@ -370,6 +492,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             deleteRecord={deleteRecord}
             exportRecords={exportRecords}
             importRecords={importRecords}
+            isGenerating={isGenerating}
           />
         </div>
       </div>

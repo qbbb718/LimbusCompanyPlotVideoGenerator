@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.lbc_plot.common.util.VideoAudioMerger;
+import com.lbc_plot.common.util.RecordDurationCalculator;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.audio.model.AudioCommand;
 import com.lbc_plot.render.audio.model.AudioCommandType;
@@ -26,10 +27,10 @@ import com.lbc_plot.render.video.VideoConcatenator;
 
 /**
  * 批量视频处理管理器
- * 
+ *
  * 主要职责：将多个Record（剧本记录）合成为一个完整的视频文件
  * 处理流程：渲染单个Record → 连接视频 → 处理音频 → 合并音视频
- * 
+ *
  * 关键概念：
  * - Record: 单个剧本记录，包含对话、背景、音频指令等
  * - FrameInfo: 记录每个Record在最终视频中的时间位置信息
@@ -37,6 +38,12 @@ import com.lbc_plot.render.video.VideoConcatenator;
  */
 public class BatchVideoProcessor {
     private static final Logger logger = LoggerFactory.getLogger(BatchVideoProcessor.class);
+
+    /** 进度回调接口 — 供外部（如 Controller）监听处理进度 */
+    @FunctionalInterface
+    public interface ProgressListener {
+        void onProgress(int stage, int current, int total, String message);
+    }
 
     /**
      * 处理Record列表并生成最终视频
@@ -64,6 +71,21 @@ public class BatchVideoProcessor {
             int width,
             int height,
             int frameRate) throws Exception {
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null);
+    }
+
+    /**
+     * 带进度回调的版本
+     */
+    public static void processRecordList(
+            List<Record> records,
+            String outputPath,
+            String tempDir,
+            boolean plot,
+            int width,
+            int height,
+            int frameRate,
+            ProgressListener progress) throws Exception {
 
         logger.info("开始处理 {} 个Record", records.size());
         long totalStartTime = System.currentTimeMillis();
@@ -84,52 +106,64 @@ public class BatchVideoProcessor {
             // ==================== 阶段1: 逐个导出Record视频 ====================
             // 将每个Record渲染为独立的视频文件，此时视频不包含音频
             logger.info("=== 阶段1: 渲染单个Record视频 ===");
+            if (progress != null) progress.onProgress(1, 0, records.size(), "开始渲染Record视频...");
             for (int i = 0; i < records.size(); i++) {
                 Record record = records.get(i);
-                // 生成有意义的文件名，包含顺序信息便于调试
-                String videoFileName = generateVideoFileName(record, i);
+                String videoFileName = generateVideoFileName(record);
                 String videoPath = tempDir + File.separator + videoFileName;
 
-                logger.info("处理第 {}/{} 个Record: {}", i + 1, records.size(), videoFileName);
-
-                long recordStartTime = System.currentTimeMillis();
-
-                // 核心渲染：将单个Record渲染为视频文件
-                // 这里会处理对话逐字显示、背景图片、角色立绘等
-                // 改为使用流式版本：
-                RenderResult recordResult = RenderOfVideo.exportRecordVideoStreaming(
-                        record, plot, width, height, videoPath, frameRate);
-
-                long recordDuration = System.currentTimeMillis() - recordStartTime;
-
-                logger.info("Record {} 导出完成，耗时: {}ms", videoFileName, recordDuration);
+                // 先加入路径列表以保证拼接顺序
                 videoPaths.add(videoPath);
 
-                // 关键步骤：记录帧数信息，用于后续音频时间线构建
-                // 每个Record在最终视频中的时间位置很重要，音频需要与此对齐
-                FrameInfo frameInfo = new FrameInfo(
-                        record.getUuid(), // Record唯一标识
-                        currentFrame, // 在最终视频中的开始帧
-                        recordResult.getFrameCount() // 该Record的实际帧数
-                );
-                frameInfos.add(frameInfo);
+                File tempVideoFile = new File(videoPath);
+                if (!record.isDirty() && tempVideoFile.exists()) {
+                    // Record 未修改且临时视频已存在 → 跳过渲染
+                    int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
+                    logger.info("跳过未修改的Record {}/{}, uuid={}, 帧数={} (复用已有视频)",
+                            i + 1, records.size(), record.getUuid(), frameCount);
 
-                // 更新累计帧数，下一个Record从当前结束位置开始
-                currentFrame += recordResult.getFrameCount();
-                logger.debug("Record {} 帧数信息: 开始帧={}, 帧数={}",
-                        record.getUuid(), frameInfo.getStartFrame(), frameInfo.getFrameCount());
+                    FrameInfo frameInfo = new FrameInfo(record.getUuid(), currentFrame, frameCount);
+                    frameInfos.add(frameInfo);
+                    currentFrame += frameCount;
+
+                    if (progress != null) progress.onProgress(1, i + 1, records.size(),
+                            String.format("跳过Record %d/%d (未修改)", i + 1, records.size()));
+                } else {
+                    // Record 已修改或文件不存在 → 正常渲染
+                    logger.info("处理第 {}/{} 个Record: {}", i + 1, records.size(), videoFileName);
+
+                    long recordStartTime = System.currentTimeMillis();
+
+                    RenderResult recordResult = RenderOfVideo.exportRecordVideoStreaming(
+                            record, plot, width, height, videoPath, frameRate);
+
+                    long recordDuration = System.currentTimeMillis() - recordStartTime;
+
+                    logger.info("Record {} 导出完成，耗时: {}ms", videoFileName, recordDuration);
+
+                    FrameInfo frameInfo = new FrameInfo(
+                            record.getUuid(), currentFrame, recordResult.getFrameCount());
+                    frameInfos.add(frameInfo);
+                    currentFrame += recordResult.getFrameCount();
+                    logger.debug("Record {} 帧数信息: 开始帧={}, 帧数={}",
+                            record.getUuid(), frameInfo.getStartFrame(), frameInfo.getFrameCount());
+
+                    if (progress != null) progress.onProgress(1, i + 1, records.size(),
+                            String.format("渲染Record %d/%d", i + 1, records.size()));
+                }
             }
 
             // ==================== 阶段2: 连接所有视频（无声） ====================
-            // 将所有Record视频片段按顺序连接成一个完整的无声视频
             logger.info("=== 阶段2: 连接无声视频 ===");
+            if (progress != null) progress.onProgress(2, 0, 1, "连接无声视频...");
             String silentVideoPath = tempDir + File.separator + "silent_video.mp4";
             VideoConcatenator.concatenateVideos(videoPaths, silentVideoPath);
+            if (progress != null) progress.onProgress(2, 1, 1, "无声视频连接完成");
             logger.info("无声视频生成完成: {}", silentVideoPath);
 
             // ==================== 阶段3: FFmpeg音频处理 ====================
-            // 根据Record中的音频指令(BGM、音效、语音)生成混合音频轨道
             logger.info("=== 阶段3: 音频处理 ===");
+            if (progress != null) progress.onProgress(3, 0, 1, "处理音频...");
             String audioPath = tempDir + File.separator + "mixed_audio.wav";
 
             // 构建音频时间线 - 将离散的音频指令转换为连续的播放计划
@@ -189,11 +223,11 @@ public class BatchVideoProcessor {
             audioProcessor.processAudioTimeline(audioTimeline, audioPath);
 
             logger.info("音频生成完成: {}", audioPath);
+            if (progress != null) progress.onProgress(3, 1, 1, "音频处理完成");
 
             // ==================== 阶段4: 合并音视频 ====================
-            // 将无声视频与混合音频合并，生成最终的视频文件
             logger.info("=== 阶段4: 合并音视频 ===");
-            logger.info("开始合并音视频");
+            if (progress != null) progress.onProgress(4, 0, 1, "合并音视频...");
 
             // 方法1: 直接映射合并（推荐，速度更快）
             // 假设视频和音频时长完全匹配，直接合并
@@ -205,6 +239,7 @@ public class BatchVideoProcessor {
             // outputPath);
 
             logger.info("音视频合并完成: {}", outputPath);
+            if (progress != null) progress.onProgress(4, 1, 1, "音视频合并完成");
 
         } finally {
             // 可选：清理临时文件以释放磁盘空间
@@ -239,25 +274,8 @@ public class BatchVideoProcessor {
      * @param index  在列表中的索引位置
      * @return 生成的文件名
      */
-    private static String generateVideoFileName(Record record, int index) {
-        // 使用4位数字保证顺序，如0001, 0002, ..., 9999
-        String sequence = String.format("%04d", index);
-        String recordID = record.getUuid();
-
-        // 预留扩展：可以添加更多标识信息
-        // 例如添加说话者名称、场景信息等（需要时取消注释）
-        // String identifier = "";
-        // if (record.getDialogue() != null && record.getDialogue().getSpeakerName() !=
-        // null) {
-        // identifier = "_" + record.getDialogue().getSpeakerName();
-        // }
-
-        // String sceneInfo = "";
-        // if (record.getBg() != null && !record.getBg().isEmpty()) {
-        // sceneInfo = "_scene";
-        // }
-
-        return String.format("record%s%s.mp4", sequence, recordID);
+    private static String generateVideoFileName(Record record) {
+        return String.format("record_%s.mp4", record.getUuid());
     }
 
     /**
@@ -309,7 +327,7 @@ public class BatchVideoProcessor {
         }
 
         Record record = records.get(recordIndex);
-        String videoFileName = generateVideoFileName(record, recordIndex);
+        String videoFileName = generateVideoFileName(record);
         String videoPath = tempDir + File.separator + videoFileName;
 
         logger.info("更新第 {} 个Record: {}", recordIndex + 1, videoFileName);
@@ -326,7 +344,7 @@ public class BatchVideoProcessor {
         // 注意：这里会使用之前生成的所有视频文件，只更新其中一个
         List<String> allVideoPaths = new ArrayList<>();
         for (int i = 0; i < records.size(); i++) {
-            String fileName = generateVideoFileName(records.get(i), i);
+            String fileName = generateVideoFileName(records.get(i));
             allVideoPaths.add(tempDir + File.separator + fileName);
         }
 
@@ -408,16 +426,25 @@ public class BatchVideoProcessor {
 
         int currentFrame = 0;
 
-        // 提交所有渲染任务
+        // 提交所有渲染任务（跳过未修改且有缓存视频的Record）
         for (int i = 0; i < records.size(); i++) {
             Record record = records.get(i);
-            String videoFileName = generateVideoFileName(record, i);
+            String videoFileName = generateVideoFileName(record);
             String videoPath = tempDir + File.separator + videoFileName;
             videoPaths.add(videoPath);
 
-            CompletableFuture<RenderResult> future = asyncService.submitRenderTask(record, plot, width, height,
-                    videoPath, frameRate);
-            futures.add(future);
+            File tempVideoFile = new File(videoPath);
+            if (!record.isDirty() && tempVideoFile.exists()) {
+                int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
+                logger.info("跳过未修改的Record(异步) {}/{}, uuid={}, 帧数={}",
+                        i + 1, records.size(), record.getUuid(), frameCount);
+                futures.add(CompletableFuture.completedFuture(
+                        new RenderResult(frameCount, System.currentTimeMillis(), 0)));
+            } else {
+                CompletableFuture<RenderResult> future = asyncService.submitRenderTask(record, plot, width, height,
+                        videoPath, frameRate);
+                futures.add(future);
+            }
         }
 
         // 等待并收集渲染结果（按提交顺序）
@@ -427,7 +454,7 @@ public class BatchVideoProcessor {
             FrameInfo frameInfo = new FrameInfo(record.getUuid(), currentFrame, result.getFrameCount());
             frameInfos.add(frameInfo);
             currentFrame += result.getFrameCount();
-            logger.info("异步渲染完成: {} 帧数={}", generateVideoFileName(record, i), result.getFrameCount());
+            logger.info("异步渲染完成: {} 帧数={}", generateVideoFileName(record), result.getFrameCount());
         }
 
         // 之后流程与同步方法相同：连接视频、处理音频、合并

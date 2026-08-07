@@ -68,7 +68,15 @@ public class ColorDeserializer extends JsonDeserializer<Color> {
             // 移除可能的#前缀
             hex = hex.startsWith("#") ? hex.substring(1) : hex;
 
-            // 确保十六进制字符串长度正确
+            // 确保十六进制字符串长度正确（6位 RGB 或 8位 RGBA）
+            if (hex.length() == 8) {
+                int red = Integer.parseInt(hex.substring(0, 2), 16);
+                int green = Integer.parseInt(hex.substring(2, 4), 16);
+                int blue = Integer.parseInt(hex.substring(4, 6), 16);
+                int alpha = Integer.parseInt(hex.substring(6, 8), 16);
+                logger.info("成功解析十六进制颜色(RGBA) - R:" + red + ", G:" + green + ", B:" + blue + ", A:" + alpha);
+                return new Color(red, green, blue, alpha);
+            }
             if (hex.length() != 6) {
                 logger.warning("十六进制颜色字符串长度不正确: " + hex);
                 return null;

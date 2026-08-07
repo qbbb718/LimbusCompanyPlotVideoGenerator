@@ -49,7 +49,7 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
 
   const handleAddAudio = () => {
     log("添加新音频");
-    // 创建一个新的音频对象
+    // 创建一个新的音频对象（暂不加入 audios 列表，等保存成功后再添加）
     const newAudio: Audio = {
       uuid: `audio_${Date.now()}`,
       name: "新音频",
@@ -58,7 +58,6 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
       tags: [],
     };
 
-    setAudios([...audios, newAudio]);
     setSelectedAudio(newAudio);
     setEditingAudio(newAudio);
     setIsEditing(true);

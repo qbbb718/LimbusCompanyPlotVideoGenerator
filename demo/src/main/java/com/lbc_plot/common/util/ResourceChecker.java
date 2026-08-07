@@ -45,11 +45,18 @@ public class ResourceChecker {
      * 查找音频文件路径（支持多种格式）
      */
     public static String findAudioFilePath(String audioId) {
+        // 伪指令（如 -STOP）不解析为文件路径
+        if (audioId == null || audioId.startsWith("-")) {
+            logger.debug("跳过伪音频指令: {}", audioId);
+            return audioId;
+        }
+
         // 支持的音频格式
         String[] extensions = { ".wav", ".mp3", ".ogg", ".aac" };
 
         // 查找的路径
         String[] searchPaths = {
+                "assets/audios/", // 项目音频资源目录
                 "audio/", // audio/目录
                 "src/main/resources/audio/", // resources目录
                 "" // 当前目录

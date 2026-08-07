@@ -129,6 +129,12 @@ public class AudioTimelineBuilder {
         }
 
         // 创建新的BGM片段（使用标准化音量）
+        // 跳过伪指令（如 -STOP），只结束旧BGM，不创建新片段
+        if (audioId.startsWith("-")) {
+            logger.debug("BGM 停止指令（伪指令 {}），仅结束旧BGM", audioId);
+            return;
+        }
+
         AudioSegment bgmSegment = new AudioSegment(
             audioId,
             frameInfo.getStartFrame(),

@@ -5,6 +5,7 @@ import BasicInfoSection from "./sections/BasicInfoSection";
 import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
 import InterfaceSection from "./sections/InterfaceSection";
+import ApiService from "@services/ApiService";
 
 interface SettingsProps {
   projectSettings: ProjectSettings;
@@ -48,6 +49,11 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleSaveSettings = useCallback(() => {
     saveSettings(projectSettings);
+    // 同步视频输出路径到后端数据库
+    if (projectSettings.outputPath) {
+      ApiService.updateSettings({ videoOutputPath: projectSettings.outputPath })
+        .catch(err => console.warn("同步设置到后端失败:", err));
+    }
     alert("设置已保存！");
   }, [projectSettings]);
 

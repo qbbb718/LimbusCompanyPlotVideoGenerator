@@ -2,6 +2,8 @@ package com.lbc_plot.plot.controller;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +43,9 @@ import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.EffectVisual;
 import com.lbc_plot.render.engine.RenderOfImage;
 import com.lbc_plot.render.engine.BatchVideoProcessor;
+import com.lbc_plot.render.engine.VideoProgressTracker;
 import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.config.AppSettingsService;
 import com.lbc_plot.resource.service.BackgroundService;
 import com.lbc_plot.resource.service.CharacterService;
 
@@ -59,6 +63,9 @@ public class RecordController {
 
     @Autowired
     private BackgroundService backgroundService;
+
+    @Autowired
+    private AppSettingsService appSettingsService;
 
     /**
      * 获取所有记录
@@ -145,6 +152,36 @@ public class RecordController {
     }
 
     /**
+     * 获取应用设置（从数据库加载持久化配置）
+     */
+    @GetMapping("/settings")
+    public Map<String, String> getSettings() {
+        return appSettingsService.getAll();
+    }
+
+    /**
+     * 保存应用设置到数据库
+     */
+    @PutMapping("/settings")
+    public Map<String, String> updateSettings(@RequestBody Map<String, String> settings) {
+        appSettingsService.setAll(settings);
+        logger.info("应用设置已保存: {} 项", settings.size());
+        return appSettingsService.getAll();
+    }
+
+    /**
+     * 查询视频生成进度
+     */
+    @GetMapping("/generate-video/progress/{taskId}")
+    public VideoProgressTracker.ProgressState getVideoProgress(@PathVariable String taskId) {
+        VideoProgressTracker.ProgressState state = VideoProgressTracker.getProgress(taskId);
+        if (state == null) {
+            throw new RuntimeException("任务不存在或已过期: " + taskId);
+        }
+        return state;
+    }
+
+    /**
      * 文本转记录
      */
     @PostMapping("/text-to-records")
@@ -159,89 +196,145 @@ public class RecordController {
     }
 
     /**
-     * 生成视频
-     * 接收 Record 列表及输出参数，调用 BatchVideoProcessor 合成最终视频文件。
+     * 生成视频（异步）
+     * 接收 Record 列表及输出参数，在后台调用 BatchVideoProcessor 合成最终视频文件。
+     * 立即返回 taskId，前端通过 GET /api/generate-video/progress/{taskId} 轮询进度。
      *
      * @param request 包含 records、outputPath、width、height、frameRate 的请求体
-     * @return 包含输出路径和状态信息的响应
+     * @return 包含 taskId 的响应
      */
     @PostMapping("/generate-video")
     public GenerateVideoResponse generateVideo(@RequestBody GenerateVideoRequest request) {
-        long startTime = System.currentTimeMillis();
-        logger.info("开始生成视频: record数={}, outputPath={}, {}x{} @ {}fps",
+        logger.info("收到视频生成请求: record数={}, outputPath={}, {}x{} @ {}fps",
                 request.getRecords() != null ? request.getRecords().size() : 0,
                 request.getOutputPath(), request.getWidth(), request.getHeight(), request.getFrameRate());
 
-        try {
-            if (request.getRecords() == null || request.getRecords().isEmpty()) {
-                throw new IllegalArgumentException("Record 列表为空，无法生成视频");
-            }
-
-            // 使用请求中的参数，未提供则使用默认值
-            String outputPath = request.getOutputPath();
-            if (outputPath == null || outputPath.trim().isEmpty()) {
-                outputPath = "./output/video_" + System.currentTimeMillis() + ".mp4";
-            }
-            // 确保输出目录存在
-            File outFile = new File(outputPath);
-            File outDir = outFile.getParentFile();
-            if (outDir != null && !outDir.exists()) {
-                outDir.mkdirs();
-            }
-
-            int width = request.getWidth() > 0 ? request.getWidth() : ProjectConfig.VIDEO_WIDTH;
-            int height = request.getHeight() > 0 ? request.getHeight() : ProjectConfig.VIDEO_HEIGHT;
-            int frameRate = request.getFrameRate() > 0 ? request.getFrameRate() : ProjectConfig.FRAME_RATE;
-
-            // 临时目录
-            String tempDir = outDir != null ? outDir.getAbsolutePath() : "./output";
-            File tempDirFile = new File(tempDir, "temp_" + System.currentTimeMillis());
-            tempDirFile.mkdirs();
-
-            // 调用批量视频处理器
-            BatchVideoProcessor.processRecordList(
-                    request.getRecords(),
-                    outputPath,
-                    tempDirFile.getAbsolutePath(),
-                    true,  // plot = true
-                    width,
-                    height,
-                    frameRate);
-
-            long elapsed = System.currentTimeMillis() - startTime;
-            logger.info("视频生成成功: outputPath={}, 耗时={} ms", outputPath, elapsed);
-
-            return new GenerateVideoResponse(outputPath, "视频生成成功", elapsed);
-        } catch (Exception e) {
-            long elapsed = System.currentTimeMillis() - startTime;
-            logger.error("生成视频失败: 耗时={} ms, 错误={}", elapsed, e.getMessage(), e);
-            throw new RuntimeException("生成视频失败: " + e.getMessage(), e);
+        if (request.getRecords() == null || request.getRecords().isEmpty()) {
+            throw new IllegalArgumentException("Record 列表为空，无法生成视频");
         }
+
+        // 使用请求中的参数，未提供则使用默认值
+        String outputPath = request.getOutputPath();
+        if (outputPath == null || outputPath.trim().isEmpty()) {
+            outputPath = "./output/video_" + System.currentTimeMillis() + ".mp4";
+        }
+
+        // 规范化输出路径：如果是目录则追加默认文件名
+        File outFile = new File(outputPath);
+        final File outDir;
+        if (outFile.isDirectory()) {
+            outDir = outFile;
+            outputPath = new File(outDir, "video_" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
+        } else {
+            outDir = outFile.getParentFile();
+        }
+        if (outDir != null && !outDir.exists()) {
+            outDir.mkdirs();
+        }
+
+        final int width = request.getWidth() > 0 ? request.getWidth() : ProjectConfig.VIDEO_WIDTH;
+        final int height = request.getHeight() > 0 ? request.getHeight() : ProjectConfig.VIDEO_HEIGHT;
+        final int frameRate = request.getFrameRate() > 0 ? request.getFrameRate() : ProjectConfig.FRAME_RATE;
+        final String finalOutputPath = outputPath;
+        final List<Record> records = request.getRecords();
+
+        // 创建进度跟踪任务
+        String taskId = VideoProgressTracker.createTask(records.size());
+
+        // 异步执行视频生成
+        CompletableFuture.runAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            try {
+                // 持久化临时目录（用于增量渲染复用）
+                File tempDirFile = new File(outDir, "temp");
+                tempDirFile.mkdirs();
+
+                BatchVideoProcessor.processRecordList(
+                        records,
+                        finalOutputPath,
+                        tempDirFile.getAbsolutePath(),
+                        true,  // plot = true
+                        width,
+                        height,
+                        frameRate,
+                        (stage, current, total, message) -> {
+                            VideoProgressTracker.updateProgress(taskId, stage, current, total, message);
+                        });
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                logger.info("视频生成成功: outputPath={}, 耗时={} ms", finalOutputPath, elapsed);
+                VideoProgressTracker.markComplete(taskId, finalOutputPath, elapsed);
+
+                // 标记所有 Record 为 clean 并持久化
+                for (Record r : records) {
+                    r.markClean();
+                }
+                RecordsIO.saveRecords(records);
+                logger.info("所有 {} 条记录已标记为 clean 并保存", records.size());
+            } catch (Exception e) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                logger.error("生成视频失败: 耗时={} ms, 错误={}", elapsed, e.getMessage(), e);
+                VideoProgressTracker.markError(taskId, "生成视频失败: " + e.getMessage());
+            }
+        });
+
+        return new GenerateVideoResponse(taskId, "视频生成已启动", 0);
     }
 
     /**
-     * 渲染单条记录的预览图
+     * 渲染单条记录的预览图（支持磁盘缓存）
      * 接收 Record JSON，调用 RenderOfImage.renderPre() 渲染为 PNG 图片返回。
+     * 缓存文件: projects/temp/previews/preview_{uuid}_{width}x{height}.png
      *
-     * @param record 要渲染的 Record 对象（JSON body）
-     * @param width  预览图宽度，默认 1280
-     * @param height 预览图高度，默认 720
+     * @param record       要渲染的 Record 对象（JSON body）
+     * @param width        预览图宽度，默认 1920
+     * @param height       预览图高度，默认 1080
+     * @param forceRefresh 强制重新渲染（跳过缓存）
      * @return PNG 图片字节流
      */
     @PostMapping("/records/preview")
     public ResponseEntity<byte[]> renderPreview(
             @RequestBody Record record,
             @RequestParam(defaultValue = "1920") int width,
-            @RequestParam(defaultValue = "1080") int height) {
+            @RequestParam(defaultValue = "1080") int height,
+            @RequestParam(defaultValue = "false") boolean forceRefresh) {
         long startTime = System.currentTimeMillis();
-        logger.info("开始渲染记录预览图: uuid={}, width={}, height={}", record.getUuid(), width, height);
+        logger.info("预览图请求: uuid={}, width={}, height={}, forceRefresh={}",
+                record.getUuid(), width, height, forceRefresh);
 
         try {
+            // 构建缓存路径
+            Path cacheDir = Paths.get("projects/temp/previews");
+            if (!Files.exists(cacheDir)) {
+                Files.createDirectories(cacheDir);
+            }
+            String cacheFileName = String.format("preview_%s_%dx%d.png",
+                    record.getUuid(), width, height);
+            Path cacheFile = cacheDir.resolve(cacheFileName);
+
+            // 非强制刷新且缓存存在 → 直接返回
+            if (!forceRefresh && Files.exists(cacheFile)) {
+                byte[] cachedBytes = Files.readAllBytes(cacheFile);
+                long elapsed = System.currentTimeMillis() - startTime;
+                logger.info("预览图缓存命中: uuid={}, 大小={} bytes, 耗时={} ms",
+                        record.getUuid(), cachedBytes.length, elapsed);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.IMAGE_PNG);
+                headers.setContentLength(cachedBytes.length);
+                return ResponseEntity.ok().headers(headers).body(cachedBytes);
+            }
+
+            // 渲染 + 写缓存
             BufferedImage previewImage = RenderOfImage.renderPre(record, true, width, height);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(previewImage, "PNG", baos);
             byte[] imageBytes = baos.toByteArray();
+
+            // 保存到磁盘缓存
+            Files.write(cacheFile, imageBytes);
+            logger.info("预览图已缓存: {}", cacheFile.toAbsolutePath());
 
             long elapsed = System.currentTimeMillis() - startTime;
             logger.info("预览图渲染完成: uuid={}, 大小={} bytes, 耗时={} ms",
@@ -277,6 +370,11 @@ public class RecordController {
 
             // 使用RecordsIO导入记录
             List<Record> records = RecordsIO.importRecords(tempFile);
+
+            // 导入后标记所有记录为 clean，使预览图缓存可用
+            for (Record r : records) {
+                r.markClean();
+            }
 
             // 保存导入的记录
             RecordsIO.saveRecords(records);

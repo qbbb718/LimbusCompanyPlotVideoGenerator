@@ -89,16 +89,18 @@ public class AudioDAO {
     public static void addAudio(Audio audio) {
         try (Connection conn = SQLiteDatabaseManager.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(
-                        "INSERT INTO audios (uuid, name, path, type, tags) VALUES (?, ?, ?, ?, ?)")) {
+                        "INSERT INTO audios (audio_id, uuid, name, path, type, tags) VALUES (?, ?, ?, ?, ?, ?)")) {
 
+            // 兼容旧schema中 audio_id 的 NOT NULL 约束，与 uuid 保持一致
             stmt.setString(1, audio.getUuid());
-            stmt.setString(2, audio.getName());
-            stmt.setString(3, audio.getPath());
-            stmt.setString(4, audio.getType());
+            stmt.setString(2, audio.getUuid());
+            stmt.setString(3, audio.getName());
+            stmt.setString(4, audio.getPath());
+            stmt.setString(5, audio.getType());
 
             // 将标签列表转换为JSON字符串
             // 简化实现，暂时设置为空字符串
-            stmt.setString(5, "");
+            stmt.setString(6, "");
 
             stmt.executeUpdate();
         } catch (SQLException e) {
