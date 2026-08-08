@@ -557,49 +557,109 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
               }}
             />
             <div className="temp-image-controls">
-              <label>
-                缩放: {temp.scale.toFixed(1)}
-                <input
-                  type="range"
-                  min="0.1"
-                  max="3.0"
-                  step="0.1"
-                  value={temp.scale}
-                  onChange={(e) =>
-                    updateTempImage(index, "scale", parseFloat(e.target.value))
-                  }
-                />
-              </label>
-              <label>
-                X坐标
+              {/* 第一行：缩放文本框+滑块(3/4) | 是否压暗(1/4) */}
+              <div className="char-row">
+                <div className="temp-col-scale">
+                  <span className="char-label-fixed">缩放</span>
+                  <input
+                    type="number"
+                    className="char-input-fixed"
+                    min="0.1"
+                    max="3.0"
+                    step="0.1"
+                    value={temp.scale}
+                    onChange={(e) =>
+                      updateTempImage(index, "scale", parseFloat(e.target.value) || 1.0)
+                    }
+                  />
+                  <div className="char-slider-auto">
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="3.0"
+                      step="0.1"
+                      value={temp.scale}
+                      onChange={(e) =>
+                        updateTempImage(index, "scale", parseFloat(e.target.value))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="temp-col-dim">
+                  <label>是否压暗</label>
+                  <input
+                    type="checkbox"
+                    checked={temp.dim}
+                    onChange={(e) =>
+                      updateTempImage(index, "dim", e.target.checked)
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* 第二行：X坐标调整（同角色立绘格式） */}
+              <div className="char-row">
+                <span className="char-label-fixed">X坐标调整</span>
                 <input
                   type="number"
+                  className="char-input-fixed"
                   value={temp.posX}
                   onChange={(e) =>
                     updateTempImage(index, "posX", parseInt(e.target.value) || 0)
                   }
                 />
-              </label>
-              <label>
-                Y坐标
+                <div className="char-slider-auto">
+                  <div className="adjX-quick-positions">
+                    {[-3, -2, -1, 0, 1, 2, 3].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() =>
+                          updateTempImage(
+                            index,
+                            "posX",
+                            videoWidth / 2 + Math.floor((videoWidth * n) / 6),
+                          )
+                        }
+                        className="adjX-quick-btn"
+                        title={`${videoWidth / 2 + Math.floor((videoWidth * n) / 6)}`}
+                      />
+                    ))}
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={videoWidth}
+                    value={temp.posX}
+                    onChange={(e) =>
+                      updateTempImage(index, "posX", parseInt(e.target.value))
+                    }
+                    className="adjX-slider"
+                  />
+                </div>
+              </div>
+
+              {/* 第三行：Y坐标调整（同角色立绘格式） */}
+              <div className="char-row">
+                <span className="char-label-fixed">Y坐标调整</span>
                 <input
                   type="number"
+                  className="char-input-fixed"
                   value={temp.posY}
                   onChange={(e) =>
                     updateTempImage(index, "posY", parseInt(e.target.value) || 0)
                   }
                 />
-              </label>
-              <label className="dim-label">
                 <input
-                  type="checkbox"
-                  checked={temp.dim}
+                  type="range"
+                  min={-videoWidth}
+                  max={videoWidth}
+                  value={temp.posY}
                   onChange={(e) =>
-                    updateTempImage(index, "dim", e.target.checked)
+                    updateTempImage(index, "posY", parseInt(e.target.value))
                   }
+                  className="char-slider-auto"
                 />
-                压暗
-              </label>
+              </div>
             </div>
           </div>
         ))}

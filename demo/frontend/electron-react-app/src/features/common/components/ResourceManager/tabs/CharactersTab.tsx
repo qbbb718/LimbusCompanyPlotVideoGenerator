@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { MyCharacter, Portrait } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@root/features/common/config/appConfig";
@@ -39,10 +39,59 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
     null,
   );
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   // 日志函数
   const log = (message: string, data?: any) => {
     console.log(`[CharactersTab] ${message}`, data);
+  };
+
+  /** 导出角色 — 若选中则导出选中角色，否则导出全部 */
+  const handleExportCharacters = async () => {
+    try {
+      const ids = selectedCharacter
+        ? [selectedCharacter.characterID]
+        : characters.map((c) => c.characterID);
+      if (ids.length === 0) {
+        alert("没有可导出的角色");
+        return;
+      }
+      log("导出角色", ids);
+      const blob = await ApiService.exportCharacters(ids);
+      // 触发浏览器下载
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `characters_${new Date().toISOString().slice(0, 10)}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      alert(`成功导出 ${ids.length} 个角色`);
+    } catch (error) {
+      console.error("导出角色失败:", error);
+      alert("导出角色失败，请重试");
+    }
+  };
+
+  /** 导入角色 — 选择 ZIP 文件后上传 */
+  const handleImportCharacters = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      log("导入角色", file.name);
+      const importedChars = await ApiService.importCharacters(file);
+      // 刷新列表
+      const allChars = await ApiService.getCharacters();
+      setCharacters(allChars);
+      alert(`成功导入 ${importedChars.length} 个角色`);
+    } catch (error) {
+      console.error("导入角色失败:", error);
+      alert("导入角色失败，请检查文件格式");
+    } finally {
+      // 重置 input 以便重复选择同一文件
+      e.target.value = "";
+    }
   };
 
   const handleAddCharacter = () => {
@@ -109,6 +158,15 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
         <button className="btn-primary" onClick={handleAddCharacter}>
           添加角色
         </button>
+        <button onClick={handleExportCharacters}>导出角色</button>
+        <input
+          type="file"
+          ref={importFileRef}
+          style={{ display: "none" }}
+          accept=".zip"
+          onChange={handleImportCharacters}
+        />
+        <button onClick={() => importFileRef.current?.click()}>导入角色</button>
       </div>
 
       <div className="characters-grid">

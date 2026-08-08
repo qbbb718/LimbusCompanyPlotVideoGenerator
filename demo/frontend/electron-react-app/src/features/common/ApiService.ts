@@ -376,6 +376,34 @@ class ApiService {
     }
   }
 
+  // 导出角色为 ZIP 文件
+  async exportCharacters(characterIds: string[]): Promise<Blob> {
+    try {
+      const response = await apiClient.post('/characters/export', characterIds, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导出角色失败:', error);
+      throw error;
+    }
+  }
+
+  // 从 ZIP 文件导入角色
+  async importCharacters(file: File): Promise<any[]> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post('/characters/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导入角色失败:', error);
+      throw error;
+    }
+  }
+
   // 上传立绘图片文件到后端
   // 文件会被保存到角色目录（目录名=characterId）中，命名为 {portraitId}.{ext}
   async uploadPortraitFile(

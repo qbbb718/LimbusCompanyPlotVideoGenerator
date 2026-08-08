@@ -374,31 +374,49 @@
 }
 
 .temp-image-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.temp-image-controls label {
-  font-size: 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
-.temp-image-controls label.dim-label {
-  flex-direction: row;
+/* 缩放区域：占第一行的 3/4 */
+.temp-col-scale {
+  flex: 3;
+  display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  min-width: 0;
 }
 
-.temp-image-controls input[type="range"] {
-  width: 100%;
+.temp-col-scale .char-slider-auto {
+  flex: 1;
+  min-width: 0;
 }
 
-.temp-image-controls input[type="number"] {
+.temp-col-scale .char-slider-auto input[type="range"] {
   width: 100%;
-  padding: 4px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+  margin: 0;
+}
+
+/* 压暗区域：占第一行的 1/4 */
+.temp-col-dim {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.temp-col-dim label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.temp-col-dim input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 }

@@ -6,7 +6,11 @@
       "Bash(disown)",
       "Bash(npx tsc *)",
       "Bash(sqlite3 data/project.db \"SELECT portrait_id, character_id, image_path, port_name FROM portraits LIMIT 10;\")",
-      "Bash(mvn -q exec:java -Dexec.mainClass=\"com.lbc_plot.AppLauncher\" -Dexec.args=\"--check-db 2>&1\")"
+      "Bash(mvn -q exec:java -Dexec.mainClass=\"com.lbc_plot.AppLauncher\" -Dexec.args=\"--check-db 2>&1\")",
+      "Bash(cd e:\\\\\\\\LimbusCompanyPlotVideoGenerator\\\\\\\\demo)",
+      "Bash(sqlite3 data/project.db \"SELECT portraitID, characterID, thumbnail_path, image_path FROM character_portraits;\")",
+      "Bash(sqlite3.exe data/project.db \"SELECT portraitID, characterID, thumbnail_path, image_path FROM character_portraits;\")",
+      "Bash(sqlite3 data/project.db \"SELECT portrait_id, character_id, thumbnail_path, image_path FROM character_portraits;\")"
     ]
   }
 }

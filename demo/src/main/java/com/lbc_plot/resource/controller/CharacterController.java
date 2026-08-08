@@ -2,12 +2,30 @@ package com.lbc_plot.resource.controller;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Logger;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,7 +35,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.lbc_plot.resource.character.CharacterCardImageCache;
 import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.dao.CharacterMapper;
@@ -450,6 +471,13 @@ public class CharacterController {
                 }
             }
 
+            // 删除关联的立绘记录（portraits 表 + character_portraits 表）
+            jdbi.useExtension(PortraitDAO.class, dao -> {
+                dao.deleteCharacterPortraits(id);
+                dao.deleteByCharacterId(id);
+            });
+            logger.info("已清理角色 " + id + " 的立绘记录");
+
             jdbi.useExtension(CharacterDAO.class, dao -> dao.deleteCharacter(id, deleteFiles));
             logger.info("成功删除角色: " + id);
         } catch (Exception e) {
@@ -457,6 +485,302 @@ public class CharacterController {
             e.printStackTrace();
             throw new RuntimeException("删除角色失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 导出角色为 ZIP 文件
+     * ZIP 内含 characters.json（角色元数据）和各角色的立绘原图及缩略图
+     */
+    @PostMapping("/characters/export")
+    public ResponseEntity<Resource> exportCharacters(@RequestBody List<String> characterIds) {
+        try {
+            logger.info("导出角色请求，数量: " + (characterIds != null ? characterIds.size() : 0));
+
+            // 1. 从数据库加载角色（含立绘）
+            String charactersDir = appConfig.getAssets().getCharacters();
+            List<MyCharacter> characters = jdbi.withHandle(handle -> {
+                handle.registerRowMapper(new CharacterMapper(jdbi));
+                CharacterDAO dao = handle.attach(CharacterDAO.class);
+                List<MyCharacter> result = new ArrayList<>();
+                if (characterIds != null) {
+                    for (String id : characterIds) {
+                        dao.findById(id).ifPresent(result::add);
+                    }
+                }
+                return result;
+            });
+            logger.info("找到 " + characters.size() + " 个角色待导出");
+
+            // 2. 在临时目录创建 ZIP
+            Path tempZip = Files.createTempFile("characters_export_", ".zip");
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.enable(SerializationFeature.INDENT_OUTPUT);
+
+            try (ZipOutputStream zos = new ZipOutputStream(
+                    new FileOutputStream(tempZip.toFile()))) {
+
+                // 3. 写入 characters.json
+                zos.putNextEntry(new ZipEntry("characters.json"));
+                byte[] jsonBytes = mapper.writeValueAsBytes(characters);
+                zos.write(jsonBytes);
+                zos.closeEntry();
+
+                // 4. 写入每个角色的立绘图片和缩略图
+                for (MyCharacter ch : characters) {
+                    String folderName = ch.getFolderName();
+                    if (folderName == null || folderName.isEmpty()) {
+                        continue;
+                    }
+
+                    if (ch.getPortraits() != null) {
+                        for (Portrait p : ch.getPortraits()) {
+                            // 立绘原图
+                            String imagePath = p.getImagePath();
+                            if (imagePath != null && !imagePath.isEmpty()) {
+                                File imageFile = new File(charactersDir, imagePath);
+                                addFileToZip(zos, imageFile,
+                                        folderName + "/" + imageFile.getName());
+                            }
+
+                            // 缩略图
+                            String thumbnailPath = p.getThumbnailPath();
+                            if (thumbnailPath != null && !thumbnailPath.isEmpty()) {
+                                // thumbnailPath 是 URL 如 "/assets/characters/{id}/thumbnails/x.png"
+                                String fsPath = thumbnailPath.startsWith("/")
+                                        ? thumbnailPath.substring(1)
+                                        : thumbnailPath;
+                                File thumbFile = new File(fsPath);
+                                if (thumbFile.exists()) {
+                                    addFileToZip(zos, thumbFile,
+                                            folderName + "/thumbnails/" + thumbFile.getName());
+                                } else {
+                                    logger.warning("缩略图文件不存在，跳过: " + thumbFile.getAbsolutePath());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5. 返回下载
+            Resource resource = new UrlResource(tempZip.toUri());
+            String fileName = "characters_" + System.currentTimeMillis() + ".zip";
+            logger.info("导出完成: " + fileName);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/zip"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + fileName + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            logger.severe("导出角色失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("导出角色失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 从 ZIP 文件导入角色
+     */
+    @PostMapping("/characters/import")
+    public List<MyCharacter> importCharacters(@RequestParam("file") MultipartFile file) {
+        try {
+            logger.info("导入角色请求，文件: " + file.getOriginalFilename());
+
+            // 1. 保存上传的 ZIP 到临时文件
+            Path tempZip = Files.createTempFile("characters_import_", ".zip");
+            Files.copy(file.getInputStream(), tempZip,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            // 2. 先完整读取 ZIP 内容到内存
+            Map<String, byte[]> zipEntries = new HashMap<>();
+            String charactersJson = null;
+
+            try (ZipInputStream zis = new ZipInputStream(
+                    new FileInputStream(tempZip.toFile()))) {
+                java.util.zip.ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    String name = entry.getName();
+                    if (entry.isDirectory()) {
+                        zis.closeEntry();
+                        continue;
+                    }
+                    byte[] data = zis.readAllBytes();
+                    if ("characters.json".equals(name)) {
+                        charactersJson = new String(data, java.nio.charset.StandardCharsets.UTF_8);
+                    } else {
+                        zipEntries.put(name, data);
+                    }
+                    zis.closeEntry();
+                }
+            }
+
+            if (charactersJson == null) {
+                throw new RuntimeException("无效的角色导出文件：缺少 characters.json");
+            }
+
+            // 3. 反序列化角色列表
+            ObjectMapper mapper = new ObjectMapper();
+            List<MyCharacter> importedChars = mapper.readValue(charactersJson,
+                    mapper.getTypeFactory().constructCollectionType(List.class, MyCharacter.class));
+
+            List<MyCharacter> result = new ArrayList<>();
+            String charactersDir = appConfig.getAssets().getCharacters();
+            String timestamp = String.valueOf(System.currentTimeMillis());
+
+            // 4. 逐个处理角色
+            for (int i = 0; i < importedChars.size(); i++) {
+                MyCharacter ch = importedChars.get(i);
+                String oldFolderName = ch.getFolderName();
+
+                // 检查 ID 是否冲突，若冲突则分配新 ID
+                final String newCharId;
+                String origCharId = ch.getCharacterID();
+                MyCharacter existing = jdbi.withHandle(handle -> {
+                    CharacterDAO dao = handle.attach(CharacterDAO.class);
+                    return dao.findById(origCharId).orElse(null);
+                });
+
+                if (existing != null) {
+                    newCharId = "char_import_" + timestamp + "_" + i;
+                    logger.info("角色 ID 冲突，已分配新 ID: " + origCharId + " → " + newCharId);
+                    ch.setCharacterID(newCharId);
+                } else {
+                    newCharId = origCharId;
+                }
+
+                // 创建角色目录
+                String newFolderName = characterFolderService.resolveOrCreateFolder(newCharId);
+                ch.setFolderName(newFolderName);
+
+                // 处理立绘文件
+                if (ch.getPortraits() != null) {
+                    for (Portrait p : ch.getPortraits()) {
+                        // 更新 characterID
+                        p.setCharacterID(newCharId);
+
+                        // 保留原 portraitID（或在冲突时生成新的）
+                        String origPortraitId = p.getPortraitID();
+                        // 检查 portrait ID 是否冲突
+                        Portrait existingPortrait = jdbi.withExtension(
+                                PortraitDAO.class,
+                                dao -> dao.findById(origPortraitId).orElse(null));
+                        if (existingPortrait != null) {
+                            p.setNewPortraitID();
+                            logger.info("立绘 ID 冲突，已生成新 ID: " + origPortraitId + " → "
+                                    + p.getPortraitID());
+                        }
+
+                        // 保存 JSON 中的缩略图路径，因为 setImagePath() 会将其清空
+                        String jsonThumbnailPath = p.getThumbnailPath();
+
+                        // 从 ZIP 中恢复立绘原图
+                        if (oldFolderName != null && p.getImagePath() != null) {
+                            String oldImageFileName = new File(p.getImagePath()).getName();
+                            String zipImageEntry = oldFolderName + "/" + oldImageFileName;
+                            byte[] imageData = zipEntries.get(zipImageEntry);
+
+                            if (imageData != null) {
+                                String ext = oldImageFileName.contains(".")
+                                        ? oldImageFileName.substring(
+                                                oldImageFileName.lastIndexOf('.'))
+                                        : ".png";
+                                String newFileName = p.getPortraitID() + ext;
+                                File destFile = new File(charactersDir,
+                                        newFolderName + "/" + newFileName);
+                                destFile.getParentFile().mkdirs();
+                                Files.write(destFile.toPath(), imageData);
+                                p.setImagePath(newFolderName + "/" + newFileName);
+                            } else {
+                                logger.warning("ZIP 中未找到立绘文件: " + zipImageEntry
+                                        + "，已清除立绘路径");
+                                p.setImagePath(null);
+                            }
+                        }
+
+                        // 从 ZIP 中恢复缩略图（使用保存的 jsonThumbnailPath，
+                        // 因为 setImagePath() 已将其清空）
+                        if (oldFolderName != null && jsonThumbnailPath != null
+                                && !jsonThumbnailPath.isEmpty()) {
+                            String oldThumbFileName = new File(jsonThumbnailPath).getName();
+                            String zipThumbEntry = oldFolderName + "/thumbnails/"
+                                    + oldThumbFileName;
+                            byte[] thumbData = zipEntries.get(zipThumbEntry);
+
+                            if (thumbData != null) {
+                                String newThumbFileName = "thumbnail_" + p.getPortraitID()
+                                        + ".png";
+                                String subdir = appConfig.getAssets()
+                                        .getCharacterThumbnailsSubdir();
+                                File destDir = new File(charactersDir,
+                                        newFolderName + "/" + subdir);
+                                destDir.mkdirs();
+                                File destFile = new File(destDir, newThumbFileName);
+                                Files.write(destFile.toPath(), thumbData);
+                                p.setThumbnailPath("/assets/characters/" + newFolderName
+                                        + "/" + subdir + "/" + newThumbFileName);
+                            } else {
+                                logger.warning("ZIP 中未找到缩略图: " + zipThumbEntry
+                                        + "，已清除缩略图路径");
+                                p.setThumbnailPath(null);
+                            }
+                        }
+                    }
+                }
+
+                // 保存角色到数据库
+                jdbi.inTransaction(handle -> {
+                    CharacterDAO charDao = handle.attach(CharacterDAO.class);
+                    PortraitDAO portDao = handle.attach(PortraitDAO.class);
+
+                    // 保存角色基本信息
+                    charDao.addCharacter(ch);
+
+                    // 先清理该角色的旧立绘记录（重复导入时会残留）
+                    portDao.deleteCharacterPortraits(newCharId);
+                    portDao.deleteByCharacterId(newCharId);
+                    logger.info("已清理角色 " + newCharId + " 的旧立绘记录");
+
+                    // 保存立绘
+                    if (ch.getPortraits() != null && !ch.getPortraits().isEmpty()) {
+                        for (Portrait p : ch.getPortraits()) {
+                            portDao.save(p);
+                        }
+                        portDao.saveCharacterPortraits(newCharId, ch.getPortraits());
+                    }
+
+                    return null;
+                });
+
+                result.add(ch);
+                logger.info("成功导入角色: " + ch.getCharacterName() + " (ID: " + newCharId
+                        + ")");
+            }
+
+            // 清理临时文件
+            Files.deleteIfExists(tempZip);
+
+            logger.info("导入完成，共 " + result.size() + " 个角色");
+            return result;
+        } catch (Exception e) {
+            logger.severe("导入角色失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("导入角色失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 向 ZIP 输出流添加一个文件
+     */
+    private void addFileToZip(ZipOutputStream zos, File file, String entryName)
+            throws IOException {
+        if (!file.exists()) {
+            logger.warning("文件不存在，跳过: " + file.getAbsolutePath());
+            return;
+        }
+        zos.putNextEntry(new ZipEntry(entryName));
+        byte[] data = Files.readAllBytes(file.toPath());
+        zos.write(data);
+        zos.closeEntry();
     }
 
     /**
