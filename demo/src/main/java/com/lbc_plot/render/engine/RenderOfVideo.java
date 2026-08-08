@@ -10,6 +10,7 @@ import java.awt.font.LineBreakMeasurer;
 import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
 import java.util.ArrayList;
@@ -35,6 +36,13 @@ import com.lbc_plot.render.video.VideoExporter;
 public class RenderOfVideo {
     private static final Logger logger = LoggerFactory.getLogger(RenderOfVideo.class);
 
+    /** 视频分层类型常量 */
+    public static final String LAYER_FULL = "FULL";
+    public static final String LAYER_UI_ONLY = "UI_ONLY";
+    public static final String LAYER_BG_CHARACTERS = "BG_CHARACTERS";
+    public static final String LAYER_BACKGROUND_ONLY = "BACKGROUND_ONLY";
+    public static final String LAYER_CHARACTERS_ONLY = "CHARACTERS_ONLY";
+
     /**
      * 高质量流式视频导出 - 避免内存溢出且保证质量
      */
@@ -45,15 +53,37 @@ public class RenderOfVideo {
             int height,
             String outputPath,
             int frameRate) throws Exception {
+        return exportRecordVideoStreaming(record, plot, width, height, outputPath, frameRate, LAYER_FULL);
+    }
 
-        logger.info("开始高质量流式视频导出: {}", outputPath);
+    /**
+     * 高质量流式视频导出（支持分层导出）
+     *
+     * @param layerType 分层类型: FULL / UI_ONLY / BG_CHARACTERS / BACKGROUND_ONLY / CHARACTERS_ONLY
+     */
+    public static RenderResult exportRecordVideoStreaming(
+            Record record,
+            boolean plot,
+            int width,
+            int height,
+            String outputPath,
+            int frameRate,
+            String layerType) throws Exception {
+
+        logger.info("开始高质量流式视频导出: {} (layerType={}, transparent={})", outputPath, layerType,
+                isTransparentLayer(layerType));
         long startTime = System.currentTimeMillis();
 
         // 在开始时记录内存使用情况
         Runtime runtime = Runtime.getRuntime();
         long initialMemory = runtime.totalMemory() - runtime.freeMemory();
 
-        try (VideoExporter exporter = new VideoExporter(outputPath, width, height, frameRate)) {
+        // 确定是否需要文本动画
+        boolean needsTextAnimation = LAYER_FULL.equals(layerType) || LAYER_UI_ONLY.equals(layerType);
+        // 确定是否需要透明通道
+        boolean transparent = isTransparentLayer(layerType);
+
+        try (VideoExporter exporter = new VideoExporter(outputPath, width, height, frameRate, transparent)) {
 
             logger.info("使用编码方式: {}", exporter.getEncodingMethod());
 
@@ -62,24 +92,34 @@ public class RenderOfVideo {
             logger.info("需要渲染 {} 帧 (约 {} 秒)",
                     requiredFrames, String.format("%.2f", requiredFrames / (double) frameRate));
 
-            // 2. 渲染静态背景（只渲染一次）
-            logger.debug("渲染静态背景");
-            BufferedImage staticBackground = RenderOfImage.renderPreExceptDialogue(record, plot, width, height);
+            // 2. 根据分层类型渲染静态背景（只渲染一次）
+            logger.debug("渲染静态背景 (layerType={})", layerType);
+            BufferedImage staticBackground = renderStaticLayer(record, plot, width, height, layerType);
 
-            // 3. 预计算文本动画状态（传入总帧数）
-            List<TextAnimationState> textStates = generateTextAnimationStates(
-                    record.getDialogue(), frameRate, requiredFrames); // 🔥 新增参数
+            // 3. 预计算文本动画状态（仅当需要文本动画时）
+            List<TextAnimationState> textStates = null;
+            if (needsTextAnimation) {
+                textStates = generateTextAnimationStates(
+                        record.getDialogue(), frameRate, requiredFrames);
+            }
 
             int framesRendered = 0;
 
             // 4. 流式渲染所有帧
             for (int frameIndex = 0; frameIndex < requiredFrames; frameIndex++) {
-                // 根据当前帧索引确定文本状态
-                String currentText = getTextForFrame(textStates, frameIndex);
+                BufferedImage frame;
 
-                // 动态渲染当前帧
-                BufferedImage frame = renderSingleFrame(staticBackground, currentText,
-                        record.getDialogue().isNarrator(), width, height);
+                if (needsTextAnimation) {
+                    // 根据当前帧索引确定文本状态
+                    String currentText = getTextForFrame(textStates, frameIndex);
+
+                    // 动态渲染当前帧
+                    frame = renderSingleFrame(staticBackground, currentText,
+                            record.getDialogue().isNarrator(), width, height);
+                } else {
+                    // 无文本动画：直接使用静态背景
+                    frame = copyImage(staticBackground);
+                }
 
                 // 立即写入视频文件
                 exporter.writeFrame(frame);
@@ -103,16 +143,88 @@ public class RenderOfVideo {
             long finalMemory = runtime.totalMemory() - runtime.freeMemory();
             long totalMemoryUsed = finalMemory - initialMemory;
 
-            logger.info("高质量流式视频导出完成: 共渲染 {} 帧, 耗时: {}ms, 总内存使用: {} MB",
-                    framesRendered, duration,
+            logger.info("高质量流式视频导出完成: layerType={}, 共渲染 {} 帧, 耗时: {}ms, 总内存使用: {} MB",
+                    layerType, framesRendered, duration,
                     String.format("%.1f", totalMemoryUsed / (1024.0 * 1024.0)));
 
             return new RenderResult(framesRendered, startTime, duration);
 
         } catch (Exception e) {
-            logger.error("高质量流式视频导出失败", e);
+            logger.error("高质量流式视频导出失败 (layerType={})", layerType, e);
             throw e;
         }
+    }
+
+    /**
+     * 根据分层类型渲染静态背景层
+     */
+    private static BufferedImage renderStaticLayer(Record record, boolean plot, int width, int height,
+            String layerType) throws IOException {
+        switch (layerType) {
+            case LAYER_FULL:
+            case LAYER_BG_CHARACTERS:
+                // 完整背景: 背景 + 角色立绘 + 临时图片 + 边框 + UI背景(无对话文本)
+                return RenderOfImage.renderPreExceptDialogue(record, plot, width, height);
+            case LAYER_UI_ONLY:
+                // 仅UI背景: UI元素(对话框、说话人、地点) + 0.8缩放后的border位置效果
+                return renderUIOnlyStaticBackground(record, plot, width, height);
+            case LAYER_BACKGROUND_ONLY:
+                // 仅背景
+                return RenderOfImage.renderBackgroundOnly(record, plot, width, height);
+            case LAYER_CHARACTERS_ONLY:
+                // 仅角色立绘
+                return RenderOfImage.renderCharactersOnly(record, width, height);
+            default:
+                logger.warn("未知的分层类型: {}, 回退到完整渲染", layerType);
+                return RenderOfImage.renderPreExceptDialogue(record, plot, width, height);
+        }
+    }
+
+    /**
+     * 渲染仅UI静态背景（不含对话文本，用于UI_ONLY视频的文本动画叠加）
+     * 透明底！只绘制 border + UI框架(对话框/说话人/地点)，不包含对话文字和黑底
+     */
+    private static BufferedImage renderUIOnlyStaticBackground(Record record, boolean plot, int width, int height)
+            throws IOException {
+        FrameComposerService composer = new FrameComposerService();
+
+        if (plot) {
+            // 剧情模式: 仅 0.8倍缩放后的 border（无黑底，保持透明）
+            BufferedImage borderLayer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = borderLayer.createGraphics();
+            try {
+                RenderQualityUtils.setupUltraQualityRendering(g2d);
+                int scaledW = (int) (width * 0.8f);
+                int scaledH = (int) (height * 0.8f);
+                int offsetX = (width - scaledW) / 2;
+                int offsetY = (height - scaledH) / 2;
+                g2d.drawImage(RenderOfImage.border, offsetX, offsetY, scaledW, scaledH, null);
+            } finally {
+                g2d.dispose();
+            }
+            composer.addImageLayer(borderLayer, 0, 0);
+        }
+
+        // 叠加UI框架元素（对话框、说话人名片、地点等，不含对话文本）
+        BufferedImage uiFrame = RenderOfImage.renderUI(plot, record.getDialogue(), width, height);
+        composer.addImageLayer(uiFrame, 0, 0);
+
+        // 合成（透明底）
+        BufferedImage result = composer.compose();
+        if (result == null) {
+            result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        } else if (result.getWidth() != width || result.getHeight() != height) {
+            result = RenderQualityUtils.scaleImageHighQuality(result, width, height);
+        }
+        composer.clearLayers();
+        return result;
+    }
+
+    /**
+     * 判断分层是否需要透明通道
+     */
+    private static boolean isTransparentLayer(String layerType) {
+        return LAYER_UI_ONLY.equals(layerType) || LAYER_CHARACTERS_ONLY.equals(layerType);
     }
 
     /**

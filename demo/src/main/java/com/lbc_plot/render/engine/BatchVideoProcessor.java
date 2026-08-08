@@ -71,7 +71,22 @@ public class BatchVideoProcessor {
             int width,
             int height,
             int frameRate) throws Exception {
-        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null);
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null, RenderOfVideo.LAYER_FULL);
+    }
+
+    /**
+     * 带分层类型的版本
+     */
+    public static void processRecordList(
+            List<Record> records,
+            String outputPath,
+            String tempDir,
+            boolean plot,
+            int width,
+            int height,
+            int frameRate,
+            String layerType) throws Exception {
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null, layerType);
     }
 
     /**
@@ -86,6 +101,22 @@ public class BatchVideoProcessor {
             int height,
             int frameRate,
             ProgressListener progress) throws Exception {
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, progress, RenderOfVideo.LAYER_FULL);
+    }
+
+    /**
+     * 带进度回调和分层类型的版本
+     */
+    public static void processRecordList(
+            List<Record> records,
+            String outputPath,
+            String tempDir,
+            boolean plot,
+            int width,
+            int height,
+            int frameRate,
+            ProgressListener progress,
+            String layerType) throws Exception {
 
         logger.info("开始处理 {} 个Record", records.size());
         long totalStartTime = System.currentTimeMillis();
@@ -135,7 +166,7 @@ public class BatchVideoProcessor {
                     long recordStartTime = System.currentTimeMillis();
 
                     RenderResult recordResult = RenderOfVideo.exportRecordVideoStreaming(
-                            record, plot, width, height, videoPath, frameRate);
+                            record, plot, width, height, videoPath, frameRate, layerType);
 
                     long recordDuration = System.currentTimeMillis() - recordStartTime;
 
@@ -338,7 +369,8 @@ public class BatchVideoProcessor {
                 ProjectConfig.VIDEO_WIDTH,
                 ProjectConfig.VIDEO_HEIGHT,
                 videoPath,
-                ProjectConfig.FRAME_RATE);
+                ProjectConfig.FRAME_RATE,
+                RenderOfVideo.LAYER_FULL);
 
         // 获取所有视频文件路径（按顺序）
         // 注意：这里会使用之前生成的所有视频文件，只更新其中一个

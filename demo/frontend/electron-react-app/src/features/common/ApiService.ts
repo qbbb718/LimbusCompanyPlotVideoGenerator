@@ -285,12 +285,14 @@ class ApiService {
   }
 
   // 生成视频（异步 — 返回 taskId，前端轮询进度）
+  // layerTypes: 可选的分层导出列表，如 ["FULL", "UI_ONLY", "BACKGROUND_ONLY"]
   async generateVideo(
     records: any[],
     outputPath: string,
     width: number,
     height: number,
     frameRate: number = 30,
+    layerTypes: string[] = ["FULL"],
   ) {
     try {
       const response = await apiClient.post('/generate-video', {
@@ -299,6 +301,7 @@ class ApiService {
         width,
         height,
         frameRate,
+        layerTypes,
       });
       return response.data;
     } catch (error) {

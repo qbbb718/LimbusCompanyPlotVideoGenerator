@@ -205,9 +205,10 @@ public class RecordController {
      */
     @PostMapping("/generate-video")
     public GenerateVideoResponse generateVideo(@RequestBody GenerateVideoRequest request) {
-        logger.info("收到视频生成请求: record数={}, outputPath={}, {}x{} @ {}fps",
+        logger.info("收到视频生成请求: record数={}, outputPath={}, {}x{} @ {}fps, layerTypes={}",
                 request.getRecords() != null ? request.getRecords().size() : 0,
-                request.getOutputPath(), request.getWidth(), request.getHeight(), request.getFrameRate());
+                request.getOutputPath(), request.getWidth(), request.getHeight(), request.getFrameRate(),
+                request.getLayerTypes());
 
         if (request.getRecords() == null || request.getRecords().isEmpty()) {
             throw new IllegalArgumentException("Record 列表为空，无法生成视频");
@@ -235,35 +236,70 @@ public class RecordController {
         final int width = request.getWidth() > 0 ? request.getWidth() : ProjectConfig.VIDEO_WIDTH;
         final int height = request.getHeight() > 0 ? request.getHeight() : ProjectConfig.VIDEO_HEIGHT;
         final int frameRate = request.getFrameRate() > 0 ? request.getFrameRate() : ProjectConfig.FRAME_RATE;
-        final String finalOutputPath = outputPath;
         final List<Record> records = request.getRecords();
 
-        // 创建进度跟踪任务
-        String taskId = VideoProgressTracker.createTask(records.size());
+        // 获取导出分层类型，默认为完整视频
+        final List<String> layerTypes;
+        List<String> reqLayerTypes = request.getLayerTypes();
+        if (reqLayerTypes == null || reqLayerTypes.isEmpty()) {
+            layerTypes = java.util.Collections.singletonList("FULL");
+        } else {
+            layerTypes = reqLayerTypes;
+        }
 
-        // 异步执行视频生成
+        // 分层后缀映射 (suffix, extension)
+        // 透明层使用 .mov (QTRLE编码含alpha通道)，不透明层使用 .mp4
+        final java.util.Map<String, String> layerSuffixes = java.util.Map.of(
+                "FULL", "_full",
+                "UI_ONLY", "_ui",
+                "BG_CHARACTERS", "_bg_characters",
+                "BACKGROUND_ONLY", "_bg",
+                "CHARACTERS_ONLY", "_characters");
+        // 需要透明通道的分层 → .mov 格式
+        final java.util.Set<String> transparentLayers = java.util.Set.of("UI_ONLY", "CHARACTERS_ONLY");
+
+        // 基础输出路径（去掉 .mp4 后缀，稍后按分层追加）
+        final String baseOutputPath = outputPath.replaceAll("(?i)\\.mp4$", "");
+        final List<String> outputPaths = new java.util.ArrayList<>();
+
+        // 创建进度跟踪任务（总 record 数 * 分层数）
+        String taskId = VideoProgressTracker.createTask(records.size() * layerTypes.size());
+
         CompletableFuture.runAsync(() -> {
             long startTime = System.currentTimeMillis();
             try {
-                // 持久化临时目录（用于增量渲染复用）
-                File tempDirFile = new File(outDir, "temp");
-                tempDirFile.mkdirs();
+                for (String layerType : layerTypes) {
+                    String suffix = layerSuffixes.getOrDefault(layerType, "");
+                    String ext = transparentLayers.contains(layerType) ? ".mov" : ".mp4";
+                    String layerOutputPath = baseOutputPath + suffix + ext;
+                    outputPaths.add(layerOutputPath);
 
-                BatchVideoProcessor.processRecordList(
-                        records,
-                        finalOutputPath,
-                        tempDirFile.getAbsolutePath(),
-                        true,  // plot = true
-                        width,
-                        height,
-                        frameRate,
-                        (stage, current, total, message) -> {
-                            VideoProgressTracker.updateProgress(taskId, stage, current, total, message);
-                        });
+                    // 每个分层使用独立的临时目录，避免缓存冲突
+                    File layerTempDir = new File(outDir, "temp" + suffix);
+                    layerTempDir.mkdirs();
+
+                    logger.info("开始生成分层视频: layerType={}, outputPath={}", layerType, layerOutputPath);
+
+                    BatchVideoProcessor.processRecordList(
+                            records,
+                            layerOutputPath,
+                            layerTempDir.getAbsolutePath(),
+                            true,  // plot = true
+                            width,
+                            height,
+                            frameRate,
+                            (stage, current, total, message) -> {
+                                VideoProgressTracker.updateProgress(taskId, stage, current, total,
+                                        "[" + layerType + "] " + message);
+                            },
+                            layerType);
+                }
 
                 long elapsed = System.currentTimeMillis() - startTime;
-                logger.info("视频生成成功: outputPath={}, 耗时={} ms", finalOutputPath, elapsed);
-                VideoProgressTracker.markComplete(taskId, finalOutputPath, elapsed);
+                logger.info("视频生成成功: outputPaths={}, 耗时={} ms", outputPaths, elapsed);
+                VideoProgressTracker.markComplete(taskId,
+                        outputPaths.size() == 1 ? outputPaths.get(0) : String.join(", ", outputPaths),
+                        elapsed);
 
                 // 标记所有 Record 为 clean 并持久化
                 for (Record r : records) {
@@ -278,7 +314,7 @@ public class RecordController {
             }
         });
 
-        return new GenerateVideoResponse(taskId, "视频生成已启动", 0);
+        return new GenerateVideoResponse(taskId, "视频生成已启动 (" + layerTypes.size() + " 个分层)", 0);
     }
 
     /**
@@ -459,6 +495,7 @@ public class RecordController {
         private int width;
         private int height;
         private int frameRate;
+        private List<String> layerTypes;
 
         public List<Record> getRecords() {
             return records;
@@ -498,6 +535,14 @@ public class RecordController {
 
         public void setFrameRate(int frameRate) {
             this.frameRate = frameRate;
+        }
+
+        public List<String> getLayerTypes() {
+            return layerTypes;
+        }
+
+        public void setLayerTypes(List<String> layerTypes) {
+            this.layerTypes = layerTypes;
         }
     }
 

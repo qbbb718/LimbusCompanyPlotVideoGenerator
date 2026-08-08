@@ -211,7 +211,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     setSelectedRecordIndex(index + 1);
   };
 
-  const generateVideo = async () => {
+  const generateVideo = async (layerTypes: string[] = ["FULL"]) => {
     if (records.length === 0) {
       alert("没有可生成的记录");
       return;
@@ -230,6 +230,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         outputPath,
         projectSettings.videoWidth || 1920,
         projectSettings.videoHeight || 1080,
+        30,
+        layerTypes,
       );
 
       const taskId = result.taskId || result.outputPath; // 兼容旧格式

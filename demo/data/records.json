@@ -25,7 +25,7 @@
     "volume" : null,
     "fadeDuration" : null
   } ],
-  "isDirty" : true,
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -93,7 +93,7 @@
     "volume" : null,
     "fadeDuration" : null
   } ],
-  "isDirty" : true,
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -161,7 +161,7 @@
     "volume" : null,
     "fadeDuration" : null
   } ],
-  "isDirty" : true,
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -224,7 +224,7 @@
   },
   "tempImages" : [ ],
   "audioCommands" : [ ],
-  "isDirty" : true,
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -280,7 +280,7 @@
   },
   "tempImages" : [ ],
   "audioCommands" : [ ],
-  "isDirty" : true,
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",

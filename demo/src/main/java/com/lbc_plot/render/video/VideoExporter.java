@@ -14,9 +14,9 @@ import com.lbc_plot.render.engine.RenderOfVideo;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -34,19 +34,37 @@ public class VideoExporter implements AutoCloseable {
     private OutputStream ffmpegInput;
     private final Java2DFrameConverter converter;
     private FFmpegFrameRecorder recorder;
+    private boolean transparent;
+
+    // 首帧已保存标记（调试用，验证 alpha 渲染是否正确）
+    private boolean firstFrameSaved = false;
 
     public VideoExporter(String outputPath, int width, int height, int frameRate) {
-        this(outputPath, width, height, frameRate, VideoQualityConfig.HIGH_QUALITY);
+        this(outputPath, width, height, frameRate, VideoQualityConfig.HIGH_QUALITY, false);
     }
 
     public VideoExporter(String outputPath, int width, int height, int frameRate,
             VideoQualityConfig.VideoPreset preset) {
+        this(outputPath, width, height, frameRate, preset, false);
+    }
+
+    /**
+     * 带透明通道支持的构造函数
+     * @param transparent true 时输出带 alpha 通道的视频（MOV/QTRLE 格式）
+     */
+    public VideoExporter(String outputPath, int width, int height, int frameRate, boolean transparent) {
+        this(outputPath, width, height, frameRate, VideoQualityConfig.HIGH_QUALITY, transparent);
+    }
+
+    public VideoExporter(String outputPath, int width, int height, int frameRate,
+            VideoQualityConfig.VideoPreset preset, boolean transparent) {
         this.outputPath = outputPath;
         this.width = width;
         this.height = height;
         this.frameRate = frameRate;
         this.converter = new Java2DFrameConverter();
         this.preset = preset;
+        this.transparent = transparent;
         initialize();
     }
 
@@ -57,17 +75,69 @@ public class VideoExporter implements AutoCloseable {
      */
     private void initialize() {
         try {
-            logger.info("初始化高质量流式视频导出器: {}x{}, {}fps, {}", width, height, frameRate, outputPath);
-
-            // 方法1: 使用JavaCV FFmpegFrameRecorder（推荐，与现有高质量代码兼容）
-            initializeJavaCVRecorder();
-
-            // 方法2: 备选方案 - 使用FFmpeg管道（如果JavaCV有问题）
-            // initializeFFmpegPipe();
-
+            if (transparent) {
+                logger.info("初始化透明通道视频导出器: {}x{}, {}fps, {} (PNG/MOV)", width, height, frameRate, outputPath);
+                initializeTransparentPipe();
+            } else {
+                logger.info("初始化高质量流式视频导出器: {}x{}, {}fps, {}", width, height, frameRate, outputPath);
+                // 方法1: 使用JavaCV FFmpegFrameRecorder
+                initializeJavaCVRecorder();
+            }
         } catch (Exception e) {
             logger.error("初始化高质量视频导出器失败", e);
             throw new RuntimeException("视频导出器初始化失败", e);
+        }
+    }
+
+    /**
+     * 初始化透明通道FFmpeg管道（raw RGBA 输入，PNG编码，保留Alpha）
+     * 直接写入原始 RGBA 字节流给 FFmpeg，避免 ImageIO PNG 编解码环节可能
+     * 导致的色差和 alpha 丢失问题。rawvideo 格式可以完全控制像素通道顺序。
+     */
+    private void initializeTransparentPipe() {
+        try {
+            // rawvideo RGBA 输入 → PNG编码器(rgba) → MOV容器
+            // rawvideo pipe 跳过 PNG 编解码环节，直接传递原始 RGBA 像素，
+            // 避免 Java ImageIO PNG 编码 → FFmpeg PNG 解码 过程中可能的
+            // 色彩空间转换和 alpha 通道丢失
+            String[] ffmpegCommand = {
+                    "ffmpeg", "-y",
+                    "-f", "rawvideo",
+                    "-pixel_format", "rgba",
+                    "-video_size", width + "x" + height,
+                    "-framerate", String.valueOf(frameRate),
+                    "-i", "-",
+                    "-c:v", "png",
+                    "-pix_fmt", "rgba",
+                    "-r", String.valueOf(frameRate),
+                    outputPath
+            };
+
+            logger.debug("FFmpeg透明通道命令: {}", String.join(" ", ffmpegCommand));
+
+            ProcessBuilder pb = new ProcessBuilder(ffmpegCommand);
+            ffmpegProcess = pb.start();
+            ffmpegInput = ffmpegProcess.getOutputStream();
+
+            // 后台线程消费 stderr，防止 FFmpeg 管道阻塞，同时记录错误
+            final Process proc = ffmpegProcess;
+            Thread stderrReader = new Thread(() -> {
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(proc.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        logger.warn("FFmpeg(透明): {}", line);
+                    }
+                } catch (IOException ignored) {
+                }
+            }, "ffmpeg-transparent-stderr");
+            stderrReader.setDaemon(true);
+            stderrReader.start();
+
+            logger.info("透明通道FFmpeg管道初始化成功 (rawvideo RGBA → PNG rgba → MOV)");
+
+        } catch (IOException e) {
+            throw new RuntimeException("透明通道FFmpeg管道初始化失败", e);
         }
     }
 
@@ -140,7 +210,10 @@ public class VideoExporter implements AutoCloseable {
      * 写入高质量帧
      */
     public void writeFrame(BufferedImage frame) throws IOException {
-        if (recorder != null) {
+        if (transparent) {
+            // 透明通道：使用 raw RGBA pipe → PNG rgba → MOV
+            writeFrameTransparent(frame);
+        } else if (recorder != null) {
             // 使用JavaCV录制器（高质量）
             writeFrameWithJavaCV(frame);
         } else {
@@ -150,11 +223,75 @@ public class VideoExporter implements AutoCloseable {
     }
 
     /**
+     * 写入透明通道帧 — 直接写原始 RGBA 数据到 FFmpeg rawvideo 管道
+     * 避免 ImageIO PNG 编解码环节，确保 alpha 通道精确传递
+     */
+    private void writeFrameTransparent(BufferedImage frame) throws IOException {
+        // 确保使用带alpha通道的格式 (TYPE_INT_ARGB)
+        BufferedImage argbFrame = ensureAlphaCompatible(frame);
+
+        // 调试：保存首帧为 PNG 文件，方便验证 alpha 通道是否正确渲染
+        if (!firstFrameSaved) {
+            firstFrameSaved = true;
+            saveDebugFrame(argbFrame);
+        }
+
+        // 将 TYPE_INT_ARGB 帧转换为原始 RGBA 字节流，写入 FFmpeg 管道
+        byte[] rgbaBytes = convertFrameToRGBA(argbFrame);
+        ffmpegInput.write(rgbaBytes);
+        // 注意：不调用 flush() 以避免过多系统调用；
+        // FFmpeg rawvideo demuxer 按固定帧大小读取，不需要 flush 来分隔帧
+    }
+
+    /**
+     * 将 TYPE_INT_ARGB (ARGB int packed) 转换为原始 RGBA 字节流
+     * Java TYPE_INT_ARGB 像素顺序: 0xAARRGGBB (int 中: A-R-G-B)
+     * FFmpeg rawvideo rgba 期望: byte[R, G, B, A] 逐像素连续
+     */
+    private byte[] convertFrameToRGBA(BufferedImage argbFrame) {
+        int w = argbFrame.getWidth();
+        int h = argbFrame.getHeight();
+        int[] pixels = argbFrame.getRGB(0, 0, w, h, null, 0, w);
+        byte[] rgba = new byte[w * h * 4];
+
+        for (int i = 0; i < pixels.length; i++) {
+            int pixel = pixels[i];
+            int base = i * 4;
+            // ARGB int → RGBA bytes
+            rgba[base]     = (byte) ((pixel >> 16) & 0xFF); // R
+            rgba[base + 1] = (byte) ((pixel >> 8) & 0xFF);  // G
+            rgba[base + 2] = (byte) (pixel & 0xFF);          // B
+            rgba[base + 3] = (byte) ((pixel >> 24) & 0xFF);  // A
+        }
+
+        return rgba;
+    }
+
+    /**
+     * 调试用：保存首帧到磁盘，验证 alpha 通道渲染是否正确
+     */
+    private void saveDebugFrame(BufferedImage argbFrame) {
+        try {
+            File debugDir = new File("./projects/temp");
+            if (!debugDir.exists()) {
+                debugDir.mkdirs();
+            }
+            File debugFile = new File(debugDir, "debug_transparent_first_frame.png");
+            ImageIO.write(argbFrame, "png", debugFile);
+            logger.info("调试首帧已保存: {} ({}x{}, type={})",
+                    debugFile.getAbsolutePath(),
+                    argbFrame.getWidth(), argbFrame.getHeight(),
+                    argbFrame.getType() == BufferedImage.TYPE_INT_ARGB ? "TYPE_INT_ARGB" : "other");
+        } catch (IOException e) {
+            logger.warn("保存调试首帧失败: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 使用JavaCV写入帧（保持高质量）
      */
     private void writeFrameWithJavaCV(BufferedImage frame) {
         try {
-            // 🔥 使用与现有高质量代码相同的图像处理逻辑
             BufferedImage compatibleFrame = ensureHighQualityCompatible(frame);
             Frame videoFrame = converter.convert(compatibleFrame);
             recorder.record(videoFrame);
@@ -169,21 +306,18 @@ public class VideoExporter implements AutoCloseable {
      * 使用FFmpeg管道写入帧（高质量备选）
      */
     private void writeFrameWithFFmpegPipe(BufferedImage frame) throws IOException {
-        // 使用PNG格式保持高质量（而不是PPM）
         writeImageAsPNG(frame, ffmpegInput);
         ffmpegInput.flush();
     }
 
     /**
-     * 确保高质量兼容的图像格式（与现有代码一致）
+     * 确保高质量兼容的图像格式（与现有代码一致，用于不透明视频）
      */
     private BufferedImage ensureHighQualityCompatible(BufferedImage frame) {
-        // 使用与现有高质量代码相同的逻辑
         if (frame.getType() == BufferedImage.TYPE_3BYTE_BGR) {
             return frame;
         }
 
-        // 转换为兼容格式，同时保持高质量
         BufferedImage compatibleImage = new BufferedImage(
                 frame.getWidth(),
                 frame.getHeight(),
@@ -198,10 +332,31 @@ public class VideoExporter implements AutoCloseable {
     }
 
     /**
+     * 确保alpha兼容的图像格式（TYPE_INT_ARGB，用于透明视频）
+     */
+    private BufferedImage ensureAlphaCompatible(BufferedImage frame) {
+        if (frame.getType() == BufferedImage.TYPE_INT_ARGB) {
+            return frame;
+        }
+
+        // 转换为带alpha的格式
+        BufferedImage argbImage = new BufferedImage(
+                frame.getWidth(),
+                frame.getHeight(),
+                BufferedImage.TYPE_INT_ARGB);
+
+        Graphics2D g2d = argbImage.createGraphics();
+        RenderQualityUtils.setupUltraQualityRendering(g2d);
+        g2d.drawImage(frame, 0, 0, null);
+        g2d.dispose();
+
+        return argbImage;
+    }
+
+    /**
      * 将图像写入为PNG格式（高质量）
      */
     private void writeImageAsPNG(BufferedImage image, OutputStream out) throws IOException {
-        // 使用PNG编码保持高质量
         ImageIO.write(image, "png", out);
     }
 
@@ -209,7 +364,9 @@ public class VideoExporter implements AutoCloseable {
      * 获取当前使用的编码方式（用于调试）
      */
     public String getEncodingMethod() {
-        if (recorder != null) {
+        if (transparent) {
+            return "FFmpeg rawvideo RGBA管道 (透明通道/MOV)";
+        } else if (recorder != null) {
             return "JavaCV FFmpegFrameRecorder (高质量)";
         } else {
             return "FFmpeg PNG管道 (高质量备选)";
@@ -220,32 +377,50 @@ public class VideoExporter implements AutoCloseable {
     public void close() throws Exception {
         logger.info("关闭高质量视频导出器");
 
-        try {
-            if (recorder != null) {
+        // 先关闭输入管道，告知FFmpeg写入完毕
+        if (ffmpegInput != null) {
+            try {
+                ffmpegInput.flush();
+                ffmpegInput.close();
+            } catch (IOException e) {
+                // FFmpeg可能已崩溃导致管道关闭，忽略此错误
+                logger.debug("关闭FFmpeg输入管道时(可能已关闭): {}", e.getMessage());
+            }
+        }
+
+        // 等待FFmpeg进程结束
+        if (ffmpegProcess != null) {
+            try {
+                int exitCode = ffmpegProcess.waitFor();
+                if (exitCode != 0) {
+                    logger.warn("FFmpeg进程退出码: {} (可能有错误，请查看上方 stderr 日志)", exitCode);
+                } else {
+                    logger.debug("FFmpeg进程正常退出");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.warn("等待FFmpeg进程时被中断");
+            }
+        }
+
+        // 关闭JavaCV录制器
+        if (recorder != null) {
+            try {
                 recorder.stop();
                 recorder.release();
                 logger.debug("JavaCV录制器已关闭");
+            } catch (Exception e) {
+                logger.warn("关闭JavaCV录制器时出错: {}", e.getMessage());
             }
+        }
 
-            if (ffmpegInput != null) {
-                ffmpegInput.close();
-            }
-
-            if (ffmpegProcess != null) {
-                int exitCode = ffmpegProcess.waitFor();
-                if (exitCode != 0) {
-                    logger.warn("FFmpeg进程退出码: {}", exitCode);
-                }
-                logger.debug("FFmpeg进程已关闭");
-            }
-
-            if (converter != null) {
+        // 关闭帧转换器
+        if (converter != null) {
+            try {
                 converter.close();
+            } catch (Exception e) {
+                logger.debug("关闭帧转换器时出错: {}", e.getMessage());
             }
-
-        } catch (Exception e) {
-            logger.error("关闭视频导出器时发生错误", e);
-            throw e;
         }
     }
 }
