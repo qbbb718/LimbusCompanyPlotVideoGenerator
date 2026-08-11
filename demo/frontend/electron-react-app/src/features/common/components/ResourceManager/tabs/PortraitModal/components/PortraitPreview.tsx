@@ -151,7 +151,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
                 width: "100%",
                 height: "500px", // 增加高度以适应更大的裁剪区域
                 overflow: "hidden",
-                backgroundColor: "#f5f5f5",
+                backgroundColor: "#ffffff",
                 border: "1px solid #ddd",
                 borderRadius: "4px",
               }}

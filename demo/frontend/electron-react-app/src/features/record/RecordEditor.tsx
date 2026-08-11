@@ -431,21 +431,24 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         <div className="editor-top">
           <ResizablePanel
             direction="horizontal"
-            defaultSize={400}
-            minSize={300}
+            defaultSize={600}
+            minSize={200}
             className="preview-panel"
           >
             <RecordPreview
               selectedRecord={selectedRecord}
               videoWidth={projectSettings.videoWidth}
               videoHeight={projectSettings.videoHeight}
+              records={records}
+              selectedRecordIndex={selectedRecordIndex}
+              setSelectedRecordIndex={setSelectedRecordIndex}
             />
           </ResizablePanel>
 
           <ResizablePanel
             direction="horizontal"
-            defaultSize={400}
-            minSize={300}
+            defaultSize={200}
+            minSize={200}
             className="properties-panel"
           >
             <div className="properties-container">

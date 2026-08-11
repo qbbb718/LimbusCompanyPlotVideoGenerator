@@ -7,9 +7,19 @@ interface RecordPreviewProps {
   selectedRecord: Record;
   videoWidth: number;
   videoHeight: number;
+  records: Record[];
+  selectedRecordIndex: number;
+  setSelectedRecordIndex: (index: number) => void;
 }
 
-const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidth, videoHeight }) => {
+const RecordPreview: React.FC<RecordPreviewProps> = ({
+  selectedRecord,
+  videoWidth,
+  videoHeight,
+  records,
+  selectedRecordIndex,
+  setSelectedRecordIndex,
+}) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +146,19 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({ selectedRecord, videoWidt
         )}
       </div>
       <div className="preview-timeline">
-        <div className="timeline-placeholder">时间轴</div>
+        <div className="timeline-track">
+          {records.map((record, index) => (
+            <div
+              key={record.uuid}
+              className={`timeline-block ${index === selectedRecordIndex ? "active" : ""}`}
+              title={`#${index + 1} ${record.dialogue.speakerName || "旁白"}: ${record.dialogue.text.substring(0, 20)}`}
+              onClick={() => setSelectedRecordIndex(index)}
+              style={{ width: `${100 / records.length}%` }}
+            >
+              <span className="timeline-label">{index + 1}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

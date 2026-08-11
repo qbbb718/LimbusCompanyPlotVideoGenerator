@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Portrait } from "@types";
+import { BASE_URL } from "@services/ApiService";
 import {
   mapEmotion,
   getStandardEmotions,
@@ -83,30 +84,47 @@ const PortraitSettings: React.FC<PortraitSettingsProps> = ({
       </div>
 
       <div className="form-group">
-        <label>调整位置 X</label>
-        <input
-          type="number"
-          value={currentPortrait.adjX}
-          onChange={(e) =>
-            setEditingPortrait({
-              ...currentPortrait,
-              adjX: parseInt(e.target.value) || 0,
-            })
-          }
-        />
+        <label>调整位置</label>
+        <div className="form-row">
+          <div className="form-row-item">
+            <label className="form-row-label">X</label>
+            <input
+              type="number"
+              value={currentPortrait.adjX}
+              onChange={(e) =>
+                setEditingPortrait({
+                  ...currentPortrait,
+                  adjX: parseInt(e.target.value) || 0,
+                })
+              }
+            />
+          </div>
+          <div className="form-row-item">
+            <label className="form-row-label">Y</label>
+            <input
+              type="number"
+              value={currentPortrait.adjY}
+              onChange={(e) =>
+                setEditingPortrait({
+                  ...currentPortrait,
+                  adjY: parseInt(e.target.value) || 0,
+                })
+              }
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="form-group">
-        <label>调整位置 Y</label>
-        <input
-          type="number"
-          value={currentPortrait.adjY}
-          onChange={(e) =>
-            setEditingPortrait({
-              ...currentPortrait,
-              adjY: parseInt(e.target.value) || 0,
-            })
-          }
+      <div className="form-group crop-hint">
+        <p className="crop-hint-text">
+          请从下巴框选至头顶（不含头发厚度）
+          <br />
+          裁剪区域将用于计算缩放比例
+        </p>
+        <img
+          className="crop-hint-image"
+          src={`${BASE_URL}/assets/guides/head-crop-guideline.png`}
+          alt="头部裁剪区域示例"
         />
       </div>
     </div>

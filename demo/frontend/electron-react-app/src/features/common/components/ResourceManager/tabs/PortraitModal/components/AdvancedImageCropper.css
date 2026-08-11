@@ -10,7 +10,7 @@
 
 .advanced-cropper__stencil {
   border: 2px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 9999px rgba(255, 255, 255, 0.88);
 }
 
 /* 提高图片渲染质量 */
