@@ -145,46 +145,14 @@ public class PlainTextRecordsParser {
             Matcher mBg = BG_PATTERN.matcher(line);
             if (mBg.matches()) {
                 String bgPath = mBg.group(1).trim();
-                // derive a display name for the background from filename (strip extension)
+                // 从用户输入中提取显示名称（去除路径和扩展名）
                 String name = bgPath;
                 int slash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
-                if (slash >= 0)
-                    name = bgPath.substring(slash + 1);
+                if (slash >= 0) name = bgPath.substring(slash + 1);
                 int dot = name.lastIndexOf('.');
-                if (dot > 0)
-                    name = name.substring(0, dot);
-                // If DB-backed BackgroundService is available, try to find the background entry
-                if (backgroundService != null) {
-                    try {
-                        java.util.Optional<Background> byPath = backgroundService.findByPath(bgPath);
-                        if (byPath.isPresent()) {
-                            currentBg = byPath.get();
-                        } else {
-                            String filename = bgPath;
-                            int lastSlash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
-                            if (lastSlash >= 0)
-                                filename = bgPath.substring(lastSlash + 1);
-                            boolean found = false;
-                            for (Background b : backgroundService.findAll()) {
-                                if (b.getPath() != null) {
-                                    if (b.getPath().endsWith(filename) || b.getPath().endsWith(bgPath)) {
-                                        currentBg = b;
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (!found) {
-                                currentBg = backgroundService.findOrCreateByPath(bgPath, name, "parser");
-                            }
-                        }
-                    } catch (Exception ex) {
-                        logger.debug("BackgroundService lookup failed: {}", ex.getMessage());
-                        currentBg = new Background(bgPath, name);
-                    }
-                } else {
-                    currentBg = new Background(bgPath, name);
-                }
+                if (dot > 0) name = name.substring(0, dot);
+
+                currentBg = resolveBackground(bgPath, name, backgroundService);
                 pendingBg = currentBg;
                 logger.debug("背景指令: {} (解析为: {}), 将附加到下一条对话", bgPath, name);
                 continue;
@@ -533,6 +501,109 @@ public class PlainTextRecordsParser {
             logger.debug("AudioDAO lookup failed for BGM '{}': {}", bgmName, e.getMessage());
         }
         return bgmName;
+    }
+
+    /**
+     * 解析用户输入的背景名称，按优先级查找对应的 Background 对象。
+     *
+     * <p>查找顺序：
+     * <ol>
+     *   <li>DB 精确路径匹配（backgroundService.findByPath）</li>
+     *   <li>DB 显示名称匹配（backgroundService.findByName）</li>
+     *   <li>DB 文件名后缀匹配（遍历所有背景，path 以输入文件名结尾）</li>
+     *   <li>文件系统搜索（assets/backgrounds/ 目录，支持无扩展名模糊匹配，
+     *       优先 PNG > JPG > 其他，同格式选文件更大者）</li>
+     *   <li>以上均未找到时，以原始输入创建 Background（后续渲染时会记录错误）</li>
+     * </ol>
+     *
+     * @param bgPath 用户输入的原始背景引用（如 "sunset" 或 "sunset.png"）
+     * @param name   去除路径和扩展名后的显示名称
+     * @return 解析到的 Background 对象
+     */
+    private static Background resolveBackground(String bgPath, String name,
+            BackgroundService backgroundService) {
+        if (backgroundService != null) {
+            try {
+                // 1) 精确路径匹配
+                java.util.Optional<Background> byPath = backgroundService.findByPath(bgPath);
+                if (byPath.isPresent()) {
+                    logger.info("背景通过精确路径匹配: {} -> {}", bgPath, byPath.get().getName());
+                    return byPath.get();
+                }
+
+                // 2) 显示名称匹配（用户导入后重命名的情况）
+                java.util.Optional<Background> byName = backgroundService.findByName(name);
+                if (byName.isPresent()) {
+                    logger.info("背景通过显示名称匹配: {} -> {}", name, byName.get().getPath());
+                    return byName.get();
+                }
+
+                // 3) 文件名后缀 + 显示名称遍历匹配
+                String filename = bgPath;
+                int lastSlash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
+                if (lastSlash >= 0) filename = bgPath.substring(lastSlash + 1);
+                logger.info("背景精确/名称查找未命中，开始遍历 {} 条背景记录 (lookup={}, filename={})",
+                        backgroundService.findAll().size(), bgPath, filename);
+                for (Background b : backgroundService.findAll()) {
+                    String p = b.getPath();
+                    if (p != null) {
+                        if (p.endsWith(filename) || p.endsWith(bgPath)) {
+                            logger.info("背景通过文件名后缀匹配: {} -> {}", bgPath, p);
+                            return b;
+                        }
+                    }
+                    // 同时也检查显示名称（不区分大小写）
+                    String n = b.getName();
+                    if (n != null && (n.equalsIgnoreCase(name) || n.equalsIgnoreCase(bgPath))) {
+                        logger.info("背景通过显示名称遍历匹配: {} -> {} ({})", bgPath, n, b.getPath());
+                        return b;
+                    }
+                }
+
+                // 4) 文件系统搜索
+                String resolvedPath = com.lbc_plot.common.util.io.ImageReader.findBackgroundFile(bgPath);
+                if (resolvedPath != null) {
+                    logger.info("背景在文件系统中找到: {} -> {}", bgPath, resolvedPath);
+                    // 提取文件名部分作为显示名称
+                    String resolvedName = resolvedPath.replace('\\', '/');
+                    int rs = resolvedName.lastIndexOf('/');
+                    resolvedName = (rs >= 0) ? resolvedName.substring(rs + 1) : resolvedName;
+                    int rd = resolvedName.lastIndexOf('.');
+                    if (rd > 0) resolvedName = resolvedName.substring(0, rd);
+                    return backgroundService.findOrCreateByPath(resolvedPath,
+                            resolvedName.isEmpty() ? name : resolvedName, "parser");
+                }
+
+                // 5) 未找到，以原始输入创建（渲染时会记录错误日志）
+                logger.warn("背景未在 DB 或文件系统中找到: {}，将以原始输入创建", bgPath);
+                return backgroundService.findOrCreateByPath(bgPath, name, "parser");
+
+            } catch (Exception ex) {
+                logger.warn("BackgroundService 查找异常，回退到文件系统搜索: {}", ex.getMessage());
+                return tryFilesystemFallback(bgPath, name);
+            }
+        } else {
+            logger.info("BackgroundService 不可用，使用文件系统后备查找: {}", bgPath);
+            return tryFilesystemFallback(bgPath, name);
+        }
+    }
+
+    /**
+     * 无 BackgroundService 时的文件系统后备查找
+     */
+    private static Background tryFilesystemFallback(String bgPath, String name) {
+        String resolvedPath = com.lbc_plot.common.util.io.ImageReader.findBackgroundFile(bgPath);
+        if (resolvedPath != null) {
+            logger.debug("文件系统后备查找成功: {} -> {}", bgPath, resolvedPath);
+            // 使用文件系统中的显示名
+            String resolvedName = resolvedPath.replace('\\', '/');
+            int rs = resolvedName.lastIndexOf('/');
+            resolvedName = (rs >= 0) ? resolvedName.substring(rs + 1) : resolvedName;
+            int rd = resolvedName.lastIndexOf('.');
+            if (rd > 0) resolvedName = resolvedName.substring(0, rd);
+            return new Background(resolvedPath, resolvedName.isEmpty() ? name : resolvedName);
+        }
+        return new Background(bgPath, name);
     }
 
     /**

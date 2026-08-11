@@ -300,14 +300,12 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     const bg = backgrounds.find((b) => b.uuid === backgroundId);
     const name = bg?.name || "该背景";
 
-    const step1 = window.confirm(
-      `确定删除背景「${name}」吗？\n\n点击「确定」后将再询问是否同时删除图片文件。`,
+    const confirmed = window.confirm(
+      `确定删除背景「${name}」吗？\n\n将同时删除数据库记录和磁盘中的图片文件。`,
     );
-    if (!step1) return;
+    if (!confirmed) return;
 
-    const deleteFiles = window.confirm(
-      `是否同时删除磁盘中的背景图片文件？\n\n  确定 → 同时删除图片和数据库记录（建议）\n  取消 → 仅删除数据库记录，保留图片文件`,
-    );
+    const deleteFiles = true;
 
     try {
       log("删除背景", { backgroundId, deleteFiles });

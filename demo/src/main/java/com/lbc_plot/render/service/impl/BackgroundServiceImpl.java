@@ -25,6 +25,11 @@ public class BackgroundServiceImpl implements BackgroundService {
     }
 
     @Override
+    public Optional<Background> findByName(String displayName) {
+        return backgroundDAO.findByName(displayName);
+    }
+
+    @Override
     public Background findOrCreateByPath(String path, String displayName, String source) {
         return backgroundDAO.findOrCreateByPath(path, displayName, source);
     }

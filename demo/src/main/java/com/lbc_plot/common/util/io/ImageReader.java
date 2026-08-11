@@ -84,6 +84,120 @@ public class ImageReader {
         }
     }
 
+    /**
+     * 在 backgrounds 目录中按用户输入的名称搜索背景文件。
+     *
+     * <p>搜索策略：
+     * <ol>
+     *   <li>若输入含扩展名，查找精确匹配文件</li>
+     *   <li>若输入无扩展名，查找所有同名不同扩展名的文件</li>
+     *   <li>多个匹配时，优选 PNG > JPG/JPEG > 其他，同格式则选文件更大者</li>
+     * </ol>
+     *
+     * @param userInput 用户输入的背景名称（如 "sunset" 或 "sunset.png"）
+     * @return 匹配文件的相对路径（如 "assets/backgrounds/sunset.png"），未找到返回 null
+     */
+    public static String findBackgroundFile(String userInput) {
+        if (userInput == null || userInput.isBlank()) return null;
+
+        String bgDir = ProjectConfig.BACKGROUNDS_PATH;
+        // 规范化路径
+        if (bgDir.startsWith("./")) bgDir = bgDir.substring(2);
+        File dir = new File(bgDir);
+        if (!dir.exists() || !dir.isDirectory()) {
+            // 尝试备用路径
+            String altPath = ProjectConfig.ASSETS_BASE_PATH + "backgrounds/";
+            if (altPath.startsWith("./")) altPath = altPath.substring(2);
+            dir = new File(altPath);
+        }
+        if (!dir.exists() || !dir.isDirectory()) return null;
+
+        String input = userInput.trim();
+        int dot = input.lastIndexOf('.');
+        String baseName = (dot > 0) ? input.substring(0, dot) : input;
+        String ext = (dot > 0) ? input.substring(dot + 1).toLowerCase() : null;
+
+        File bestFile = null;
+        long bestSize = -1;
+        int bestFormatRank = Integer.MAX_VALUE; // 越小越好
+
+        File[] files = dir.listFiles();
+        if (files == null) return null;
+
+        for (File f : files) {
+            if (!f.isFile()) continue;
+            String fName = f.getName();
+            String fBase;
+            String fExt;
+            int fDot = fName.lastIndexOf('.');
+            if (fDot > 0) {
+                fBase = fName.substring(0, fDot);
+                fExt = fName.substring(fDot + 1).toLowerCase();
+            } else {
+                fBase = fName;
+                fExt = "";
+            }
+
+            // 名称不匹配则跳过
+            if (!fBase.equalsIgnoreCase(baseName)) continue;
+
+            // 如果用户指定了扩展名，则必须精确匹配
+            if (ext != null && !fExt.equalsIgnoreCase(ext)) continue;
+
+            // 跳过非图片文件
+            if (!isImageExtension(fExt)) continue;
+
+            int formatRank = getImageFormatRank(fExt);
+            long size = f.length();
+
+            // 优选：格式更好，或同格式下文件更大
+            if (formatRank < bestFormatRank || (formatRank == bestFormatRank && size > bestSize)) {
+                bestFile = f;
+                bestSize = size;
+                bestFormatRank = formatRank;
+            }
+        }
+
+        if (bestFile != null) {
+            // 返回相对于项目根的标准化路径
+            String absPath = bestFile.getAbsolutePath().replace('\\', '/');
+            String normalizedBgDir = bgDir.replace('\\', '/');
+            if (absPath.startsWith(normalizedBgDir)) {
+                return absPath;
+            }
+            // 尝试以 ASSETS_BASE_PATH 为前缀
+            String altBgDir = (ProjectConfig.ASSETS_BASE_PATH + "backgrounds/").replace('\\', '/');
+            if (altBgDir.startsWith("./")) altBgDir = altBgDir.substring(2);
+            if (absPath.startsWith(altBgDir)) {
+                return absPath;
+            }
+            return absPath;
+        }
+
+        return null;
+    }
+
+    /** 图片扩展名判断 */
+    private static boolean isImageExtension(String ext) {
+        if (ext == null) return false;
+        return ext.equals("png") || ext.equals("jpg") || ext.equals("jpeg")
+                || ext.equals("webp") || ext.equals("bmp") || ext.equals("gif");
+    }
+
+    /** 图片格式优先级：PNG > JPG > WebP > BMP > GIF > 其他 */
+    private static int getImageFormatRank(String ext) {
+        if (ext == null) return 99;
+        switch (ext.toLowerCase()) {
+            case "png":  return 1;
+            case "jpg":
+            case "jpeg": return 2;
+            case "webp": return 3;
+            case "bmp":  return 4;
+            case "gif":  return 5;
+            default:     return 10;
+        }
+    }
+
     public static BufferedImage readCharacters(String fileName) throws IOException {
         File f = new File(fileName);
         if (f.isAbsolute()) {

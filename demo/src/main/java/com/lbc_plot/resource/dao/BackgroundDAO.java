@@ -30,6 +30,10 @@ public interface BackgroundDAO {
     @UseRowMapper(BackgroundMapper.class)
     Optional<Background> findByPath(@Bind("path") String imagePath);
 
+    @SqlQuery("SELECT * FROM backgrounds WHERE LOWER(display_name) = LOWER(:name) LIMIT 1")
+    @UseRowMapper(BackgroundMapper.class)
+    Optional<Background> findByName(@Bind("name") String displayName);
+
     @SqlUpdate("INSERT INTO backgrounds (background_id, image_path, display_name, source, thumbnail_path) VALUES (:backgroundID, :imagePath, :displayName, :source, :thumbnailPath)")
     void save(@BindBean Background bg);
 
@@ -70,7 +74,12 @@ public interface BackgroundDAO {
      * 更新背景（API控制器使用）
      */
     default boolean updateBackground(Background background) {
-        return update(background);
+        return updateWithExplicitBinding(
+                background.getUuid(),
+                background.getPath(),
+                background.getName(),
+                background.getSource(),
+                background.getThumbnailPath());
     }
 
     /**

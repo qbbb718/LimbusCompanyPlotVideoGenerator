@@ -10,6 +10,8 @@ public interface BackgroundService {
 
     Optional<Background> findByPath(String path);
 
+    Optional<Background> findByName(String displayName);
+
     Background findOrCreateByPath(String path, String displayName, String source);
 
     List<Background> findAll();
