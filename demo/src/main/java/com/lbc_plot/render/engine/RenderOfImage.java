@@ -685,7 +685,8 @@ public class RenderOfImage {
     private static BufferedImage loadTempCardFromDisk(String cacheKey) {
         try {
             java.io.File dir = new java.io.File(TEMP_CARD_DIR);
-            if (!dir.exists()) return null;
+            if (!dir.exists())
+                return null;
             java.io.File file = new java.io.File(dir, cacheKey.replace("|", "_") + ".png");
             if (file.exists()) {
                 logger.info("从磁盘加载临时名片: {}", file.getAbsolutePath());

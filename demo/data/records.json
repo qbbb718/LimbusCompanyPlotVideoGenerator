@@ -1,5 +1,5 @@
 [ {
-  "uuid" : "618b4309-a2e9-461b-838a-5844dda165db",
+  "uuid" : "412d521d-5c91-4162-b1cd-5c7410c11555",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "嘿，老兄",
@@ -56,7 +56,7 @@
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "aa091646-24fa-4195-80d8-b14d3163e857",
+      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
       "path" : "Story_private_room.png",
       "name" : "Story_private_room",
       "thumbnailPath" : null
@@ -67,7 +67,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "92a6894f-d046-4f9e-9a6b-3708bab26394",
+  "uuid" : "b527d8d3-6f16-408a-83b3-6dab4c71e727",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "或者是女士，我不确定",
@@ -124,7 +124,7 @@
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "aa091646-24fa-4195-80d8-b14d3163e857",
+      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
       "path" : "Story_private_room.png",
       "name" : "Story_private_room",
       "thumbnailPath" : null
@@ -135,7 +135,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "0650db83-3a76-475b-81db-16d377e06d64",
+  "uuid" : "1a636419-6ff6-401f-bdc9-3adb89a6eda4",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "咳，总之呢……",
@@ -192,7 +192,7 @@
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "aa091646-24fa-4195-80d8-b14d3163e857",
+      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
       "path" : "Story_private_room.png",
       "name" : "Story_private_room",
       "thumbnailPath" : null
@@ -203,7 +203,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "1bf565de-8329-4be0-a867-e8c8fe0a66fd",
+  "uuid" : "fb224f61-14fa-4120-9bed-fed948d2bb73",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -255,7 +255,7 @@
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "aa091646-24fa-4195-80d8-b14d3163e857",
+      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
       "path" : "Story_private_room.png",
       "name" : "Story_private_room",
       "thumbnailPath" : null
@@ -266,7 +266,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "c9356bc7-5401-41c4-bd50-734d891884e0",
+  "uuid" : "2c57727e-e3fe-40cc-9724-7e3cb852cf23",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -311,7 +311,7 @@
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "aa091646-24fa-4195-80d8-b14d3163e857",
+      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
       "path" : "Story_private_room.png",
       "name" : "Story_private_room",
       "thumbnailPath" : null

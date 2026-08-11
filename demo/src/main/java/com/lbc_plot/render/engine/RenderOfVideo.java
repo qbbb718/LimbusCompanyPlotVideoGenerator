@@ -182,30 +182,14 @@ public class RenderOfVideo {
 
     /**
      * 渲染仅UI静态背景（不含对话文本，用于UI_ONLY视频的文本动画叠加）
-     * 透明底！只绘制 border + UI框架(对话框/说话人/地点)，不包含对话文字和黑底
+     * 透明底！只绘制 UI框架(对话框/说话人/地点)，不包含对话文字、黑底和边框。
+     * 边框（border）属于背景层，由 BG_CHARACTERS 层提供，不应在 UI_ONLY 层重复绘制。
      */
     private static BufferedImage renderUIOnlyStaticBackground(Record record, boolean plot, int width, int height)
             throws IOException {
         FrameComposerService composer = new FrameComposerService();
 
-        if (plot) {
-            // 剧情模式: 仅 0.8倍缩放后的 border（无黑底，保持透明）
-            BufferedImage borderLayer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2d = borderLayer.createGraphics();
-            try {
-                RenderQualityUtils.setupUltraQualityRendering(g2d);
-                int scaledW = (int) (width * 0.8f);
-                int scaledH = (int) (height * 0.8f);
-                int offsetX = (width - scaledW) / 2;
-                int offsetY = (height - scaledH) / 2;
-                g2d.drawImage(RenderOfImage.border, offsetX, offsetY, scaledW, scaledH, null);
-            } finally {
-                g2d.dispose();
-            }
-            composer.addImageLayer(borderLayer, 0, 0);
-        }
-
-        // 叠加UI框架元素（对话框、说话人名片、地点等，不含对话文本）
+        // 叠加UI框架元素（对话框、说话人名片、地点等，不含对话文本和边框）
         BufferedImage uiFrame = RenderOfImage.renderUI(plot, record.getDialogue(), width, height);
         composer.addImageLayer(uiFrame, 0, 0);
 

@@ -55,3 +55,4 @@ demo/target/classes/com/lbc_plot/config/ProjectConfig.class
 demo/frontend/electron-react-app/dist/win-unpacked/resources/app.asar
 *.mp4
 /输出测试
+/输出测试

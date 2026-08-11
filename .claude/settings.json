@@ -10,7 +10,8 @@
       "Bash(cd e:\\\\\\\\LimbusCompanyPlotVideoGenerator\\\\\\\\demo)",
       "Bash(sqlite3 data/project.db \"SELECT portraitID, characterID, thumbnail_path, image_path FROM character_portraits;\")",
       "Bash(sqlite3.exe data/project.db \"SELECT portraitID, characterID, thumbnail_path, image_path FROM character_portraits;\")",
-      "Bash(sqlite3 data/project.db \"SELECT portrait_id, character_id, thumbnail_path, image_path FROM character_portraits;\")"
+      "Bash(sqlite3 data/project.db \"SELECT portrait_id, character_id, thumbnail_path, image_path FROM character_portraits;\")",
+      "Bash(ffmpeg -encoders)"
     ]
   }
 }

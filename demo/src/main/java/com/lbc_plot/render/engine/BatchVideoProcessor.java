@@ -140,7 +140,8 @@ public class BatchVideoProcessor {
             if (progress != null) progress.onProgress(1, 0, records.size(), "开始渲染Record视频...");
             for (int i = 0; i < records.size(); i++) {
                 Record record = records.get(i);
-                String videoFileName = generateVideoFileName(record);
+                String videoExt = getVideoExtension(layerType);
+                String videoFileName = generateVideoFileName(record, videoExt);
                 String videoPath = tempDir + File.separator + videoFileName;
 
                 // 先加入路径列表以保证拼接顺序
@@ -187,7 +188,8 @@ public class BatchVideoProcessor {
             // ==================== 阶段2: 连接所有视频（无声） ====================
             logger.info("=== 阶段2: 连接无声视频 ===");
             if (progress != null) progress.onProgress(2, 0, 1, "连接无声视频...");
-            String silentVideoPath = tempDir + File.separator + "silent_video.mp4";
+            String videoExt = getVideoExtension(layerType);
+            String silentVideoPath = tempDir + File.separator + "silent_video" + videoExt;
             VideoConcatenator.concatenateVideos(videoPaths, silentVideoPath);
             if (progress != null) progress.onProgress(2, 1, 1, "无声视频连接完成");
             logger.info("无声视频生成完成: {}", silentVideoPath);
@@ -292,21 +294,32 @@ public class BatchVideoProcessor {
 
     /**
      * 生成有意义的视频文件名（包含顺序信息和Record标识）
-     * 
-     * 文件名格式: record{顺序号}{RecordID}.mp4
-     * 例如: record0001abc123.mp4, record0002def456.mp4
-     * 
+     *
+     * 文件名格式: record_{RecordID}.{extension}
+     * 例如: record_abc123.mp4, record_def456.mov
+     *
      * 这样命名便于：
      * 1. 按顺序识别视频片段
      * 2. 通过RecordID关联到原始数据
      * 3. 调试时快速定位问题Record
-     * 
+     *
      * @param record 当前Record对象
-     * @param index  在列表中的索引位置
+     * @param ext    文件扩展名（含点，如 ".mp4" 或 ".mov"）
      * @return 生成的文件名
      */
-    private static String generateVideoFileName(Record record) {
-        return String.format("record_%s.mp4", record.getUuid());
+    private static String generateVideoFileName(Record record, String ext) {
+        return String.format("record_%s%s", record.getUuid(), ext);
+    }
+
+    /**
+     * 根据分层类型返回视频文件扩展名
+     * 透明通道层使用 .mov（支持 alpha），不透明层使用 .mp4
+     */
+    private static String getVideoExtension(String layerType) {
+        if (RenderOfVideo.LAYER_UI_ONLY.equals(layerType) || RenderOfVideo.LAYER_CHARACTERS_ONLY.equals(layerType)) {
+            return ".mov";
+        }
+        return ".mp4";
     }
 
     /**
@@ -358,7 +371,7 @@ public class BatchVideoProcessor {
         }
 
         Record record = records.get(recordIndex);
-        String videoFileName = generateVideoFileName(record);
+        String videoFileName = generateVideoFileName(record, ".mp4");
         String videoPath = tempDir + File.separator + videoFileName;
 
         logger.info("更新第 {} 个Record: {}", recordIndex + 1, videoFileName);
@@ -376,7 +389,7 @@ public class BatchVideoProcessor {
         // 注意：这里会使用之前生成的所有视频文件，只更新其中一个
         List<String> allVideoPaths = new ArrayList<>();
         for (int i = 0; i < records.size(); i++) {
-            String fileName = generateVideoFileName(records.get(i));
+            String fileName = generateVideoFileName(records.get(i), ".mp4");
             allVideoPaths.add(tempDir + File.separator + fileName);
         }
 
@@ -461,7 +474,7 @@ public class BatchVideoProcessor {
         // 提交所有渲染任务（跳过未修改且有缓存视频的Record）
         for (int i = 0; i < records.size(); i++) {
             Record record = records.get(i);
-            String videoFileName = generateVideoFileName(record);
+            String videoFileName = generateVideoFileName(record, ".mp4");
             String videoPath = tempDir + File.separator + videoFileName;
             videoPaths.add(videoPath);
 
@@ -486,7 +499,7 @@ public class BatchVideoProcessor {
             FrameInfo frameInfo = new FrameInfo(record.getUuid(), currentFrame, result.getFrameCount());
             frameInfos.add(frameInfo);
             currentFrame += result.getFrameCount();
-            logger.info("异步渲染完成: {} 帧数={}", generateVideoFileName(record), result.getFrameCount());
+            logger.info("异步渲染完成: {} 帧数={}", generateVideoFileName(record, ".mp4"), result.getFrameCount());
         }
 
         // 之后流程与同步方法相同：连接视频、处理音频、合并

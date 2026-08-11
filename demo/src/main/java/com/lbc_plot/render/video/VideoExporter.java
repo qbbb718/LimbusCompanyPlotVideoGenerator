@@ -26,6 +26,33 @@ import javax.imageio.ImageIO;
 public class VideoExporter implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(VideoExporter.class);
 
+    /**
+     * 透明视频编码方案
+     */
+    private enum TransparentCodec {
+        /** Apple ProRes 4444 — 视频后期行业标准，所有专业编辑软件完美支持 */
+        PRO_RES_4444("ProRes 4444", "prores_ks", "yuva444p10le"),
+        /** PNG 编码 + MOV 容器 — 通用兼容降级方案 */
+        PNG_MOV("PNG/MOV", "png", "rgba");
+
+        private final String displayName;
+        private final String codecName;
+        private final String pixelFormat;
+
+        TransparentCodec(String displayName, String codecName, String pixelFormat) {
+            this.displayName = displayName;
+            this.codecName = codecName;
+            this.pixelFormat = pixelFormat;
+        }
+
+        String getDisplayName() { return displayName; }
+        String getCodecName() { return codecName; }
+        String getPixelFormat() { return pixelFormat; }
+    }
+
+    /** ProRes 编码器可用性缓存：null=未检测，true=可用，false=不可用 */
+    private static Boolean proresAvailable = null;
+
     private String outputPath;
     private int width = ProjectConfig.VIDEO_WIDTH;
     private int height = ProjectConfig.VIDEO_HEIGHT;
@@ -76,7 +103,7 @@ public class VideoExporter implements AutoCloseable {
     private void initialize() {
         try {
             if (transparent) {
-                logger.info("初始化透明通道视频导出器: {}x{}, {}fps, {} (PNG/MOV)", width, height, frameRate, outputPath);
+                logger.info("初始化透明通道视频导出器: {}x{}, {}fps, {}", width, height, frameRate, outputPath);
                 initializeTransparentPipe();
             } else {
                 logger.info("初始化高质量流式视频导出器: {}x{}, {}fps, {}", width, height, frameRate, outputPath);
@@ -90,31 +117,25 @@ public class VideoExporter implements AutoCloseable {
     }
 
     /**
-     * 初始化透明通道FFmpeg管道（raw RGBA 输入，PNG编码，保留Alpha）
-     * 直接写入原始 RGBA 字节流给 FFmpeg，避免 ImageIO PNG 编解码环节可能
+     * 初始化透明通道FFmpeg管道（raw RGBA 输入 → 透明编码 → MOV容器）
+     *
+     * <p>编码器选择策略：
+     * <ol>
+     *   <li>首选 ProRes 4444 — 视频后期行业标准，After Effects/Premiere/DaVinci 完美支持</li>
+     *   <li>降级 PNG/MOV — ProRes 不可用时使用，通用兼容</li>
+     * </ol>
+     *
+     * <p>直接写入原始 RGBA 字节流给 FFmpeg，避免 ImageIO PNG 编解码环节可能
      * 导致的色差和 alpha 丢失问题。rawvideo 格式可以完全控制像素通道顺序。
      */
     private void initializeTransparentPipe() {
+        TransparentCodec codec = selectTransparentCodec();
+        String[] ffmpegCommand = buildTransparentCommand(codec);
+
+        logger.info("FFmpeg透明通道命令 ({}): {}", codec.getDisplayName(),
+                String.join(" ", ffmpegCommand));
+
         try {
-            // rawvideo RGBA 输入 → PNG编码器(rgba) → MOV容器
-            // rawvideo pipe 跳过 PNG 编解码环节，直接传递原始 RGBA 像素，
-            // 避免 Java ImageIO PNG 编码 → FFmpeg PNG 解码 过程中可能的
-            // 色彩空间转换和 alpha 通道丢失
-            String[] ffmpegCommand = {
-                    "ffmpeg", "-y",
-                    "-f", "rawvideo",
-                    "-pixel_format", "rgba",
-                    "-video_size", width + "x" + height,
-                    "-framerate", String.valueOf(frameRate),
-                    "-i", "-",
-                    "-c:v", "png",
-                    "-pix_fmt", "rgba",
-                    "-r", String.valueOf(frameRate),
-                    outputPath
-            };
-
-            logger.debug("FFmpeg透明通道命令: {}", String.join(" ", ffmpegCommand));
-
             ProcessBuilder pb = new ProcessBuilder(ffmpegCommand);
             ffmpegProcess = pb.start();
             ffmpegInput = ffmpegProcess.getOutputStream();
@@ -126,7 +147,7 @@ public class VideoExporter implements AutoCloseable {
                         new java.io.InputStreamReader(proc.getErrorStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        logger.warn("FFmpeg(透明): {}", line);
+                        logger.warn("FFmpeg({}): {}", codec.getDisplayName(), line);
                     }
                 } catch (IOException ignored) {
                 }
@@ -134,11 +155,96 @@ public class VideoExporter implements AutoCloseable {
             stderrReader.setDaemon(true);
             stderrReader.start();
 
-            logger.info("透明通道FFmpeg管道初始化成功 (rawvideo RGBA → PNG rgba → MOV)");
+            logger.info("透明通道FFmpeg管道初始化成功 (rawvideo RGBA → {} → MOV)",
+                    codec.getDisplayName());
 
         } catch (IOException e) {
-            throw new RuntimeException("透明通道FFmpeg管道初始化失败", e);
+            throw new RuntimeException("透明通道FFmpeg管道初始化失败 (" + codec.getDisplayName() + ")", e);
         }
+    }
+
+    /**
+     * 选择透明视频编码方案：优先 ProRes 4444，不可用时降级到 PNG/MOV
+     */
+    private TransparentCodec selectTransparentCodec() {
+        if (isProResAvailable()) {
+            return TransparentCodec.PRO_RES_4444;
+        }
+        logger.info("ProRes 4444 编码器不可用，降级使用 PNG/MOV");
+        return TransparentCodec.PNG_MOV;
+    }
+
+    /**
+     * 根据编码方案构建 FFmpeg 命令
+     */
+    private String[] buildTransparentCommand(TransparentCodec codec) {
+        if (codec == TransparentCodec.PRO_RES_4444) {
+            // ProRes 4444: 10-bit YUV 4:4:4 + alpha，行业标准
+            // -profile:v 4 = 4444, -vendor apl0 = Apple 兼容标志
+            return new String[] {
+                    "ffmpeg", "-y",
+                    "-f", "rawvideo",
+                    "-pixel_format", "rgba",
+                    "-video_size", width + "x" + height,
+                    "-framerate", String.valueOf(frameRate),
+                    "-i", "-",
+                    "-c:v", codec.getCodecName(),
+                    "-profile:v", "4",
+                    "-pix_fmt", codec.getPixelFormat(),
+                    "-vendor", "apl0",
+                    "-f", "mov",
+                    "-r", String.valueOf(frameRate),
+                    outputPath
+            };
+        } else {
+            // PNG/MOV: 8-bit RGBA，通用兼容
+            return new String[] {
+                    "ffmpeg", "-y",
+                    "-f", "rawvideo",
+                    "-pixel_format", "rgba",
+                    "-video_size", width + "x" + height,
+                    "-framerate", String.valueOf(frameRate),
+                    "-i", "-",
+                    "-c:v", codec.getCodecName(),
+                    "-pix_fmt", codec.getPixelFormat(),
+                    "-f", "mov",
+                    "-r", String.valueOf(frameRate),
+                    outputPath
+            };
+        }
+    }
+
+    /**
+     * 检测 ProRes 4444 编码器是否可用（结果缓存，仅首次检测）
+     * 通过 {@code ffmpeg -encoders} 输出中搜索 "prores_ks" 来判断。
+     */
+    private static synchronized boolean isProResAvailable() {
+        if (proresAvailable != null) {
+            return proresAvailable;
+        }
+        try {
+            Process p = new ProcessBuilder("ffmpeg", "-encoders").start();
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(p.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains("prores_ks")) {
+                    proresAvailable = true;
+                    logger.info("检测到 ProRes 4444 编码器可用 (prores_ks)");
+                    break;
+                }
+            }
+            reader.close();
+            p.waitFor();
+            if (proresAvailable == null) {
+                proresAvailable = false;
+                logger.info("未检测到 prores_ks 编码器，将使用 PNG/MOV 降级方案");
+            }
+        } catch (Exception e) {
+            proresAvailable = false;
+            logger.info("ProRes 编码器检测失败: {}，将使用 PNG/MOV 降级方案", e.getMessage());
+        }
+        return proresAvailable;
     }
 
     /**
@@ -211,7 +317,7 @@ public class VideoExporter implements AutoCloseable {
      */
     public void writeFrame(BufferedImage frame) throws IOException {
         if (transparent) {
-            // 透明通道：使用 raw RGBA pipe → PNG rgba → MOV
+            // 透明通道：使用 raw RGBA pipe → 透明编码器 → MOV（ProRes 4444 优先，PNG 降级）
             writeFrameTransparent(frame);
         } else if (recorder != null) {
             // 使用JavaCV录制器（高质量）
@@ -365,7 +471,9 @@ public class VideoExporter implements AutoCloseable {
      */
     public String getEncodingMethod() {
         if (transparent) {
-            return "FFmpeg rawvideo RGBA管道 (透明通道/MOV)";
+            return "FFmpeg rawvideo RGBA管道 (透明通道: "
+                    + (isProResAvailable() ? "ProRes 4444" : "PNG")
+                    + "/MOV)";
         } else if (recorder != null) {
             return "JavaCV FFmpegFrameRecorder (高质量)";
         } else {
