@@ -1,5 +1,5 @@
 [ {
-  "uuid" : "412d521d-5c91-4162-b1cd-5c7410c11555",
+  "uuid" : "3a081b7d-c726-4d7c-8fde-4d8c63217afa",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "嘿，老兄",
@@ -67,7 +67,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "b527d8d3-6f16-408a-83b3-6dab4c71e727",
+  "uuid" : "1cbbd0e7-13d3-4e8d-9100-16f54ce6531e",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "或者是女士，我不确定",
@@ -135,7 +135,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "1a636419-6ff6-401f-bdc9-3adb89a6eda4",
+  "uuid" : "f1d1089a-e6aa-4fff-8c8a-e47188fcac4a",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "咳，总之呢……",
@@ -203,7 +203,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "fb224f61-14fa-4120-9bed-fed948d2bb73",
+  "uuid" : "5b84cbb9-7d47-45af-90a4-0ab97489165e",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
@@ -223,7 +223,12 @@
     "emotion" : "ANGRY"
   },
   "tempImages" : [ ],
-  "audioCommands" : [ ],
+  "audioCommands" : [ {
+    "type" : "BGM_ACTIVE",
+    "audioId" : "-STOP",
+    "volume" : null,
+    "fadeDuration" : null
+  } ],
   "isDirty" : false,
   "chars" : [ {
     "chara" : {
@@ -266,7 +271,7 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "2c57727e-e3fe-40cc-9724-7e3cb852cf23",
+  "uuid" : "3ca267f4-e2f2-41bb-88b7-d5de44fdaeb6",
   "durationFrames" : 0,
   "dialogue" : {
     "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",

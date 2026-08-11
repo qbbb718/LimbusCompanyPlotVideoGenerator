@@ -276,6 +276,9 @@ public class PlainTextRecordsParser {
                 if (pendingStop) {
                     currentBgm = null;
                     pendingStop = false;
+                    // 将 STOP 作为伪指令附加到本条 record，以便 AudioTimelineBuilder
+                    // 在当前 record 的起始帧结束旧 BGM（handleBgmStart 识别 "-" 前缀）
+                    rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, "-STOP"));
                 }
                 if (pendingBgm != null) {
                     rec.addAudioCommand(pendingBgm);
