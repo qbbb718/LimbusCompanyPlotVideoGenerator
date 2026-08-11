@@ -38,9 +38,6 @@ const AudioSection: React.FC<AudioSectionProps> = ({ projectSettings, handleChan
           />
           <span className="value-display">{projectSettings.voiceVolume}</span>
         </div>
-      </div>
-
-      <div className="form-row">
         <div className="form-group">
           <label>音效音量</label>
           <input
@@ -53,6 +50,9 @@ const AudioSection: React.FC<AudioSectionProps> = ({ projectSettings, handleChan
           />
           <span className="value-display">{projectSettings.sfxVolume}</span>
         </div>
+      </div>
+
+      <div className="form-row">
         <div className="form-group">
           <label>BGM增益</label>
           <input
@@ -65,9 +65,6 @@ const AudioSection: React.FC<AudioSectionProps> = ({ projectSettings, handleChan
           />
           <span className="value-display">{projectSettings.bgmGain}</span>
         </div>
-      </div>
-
-      <div className="form-row">
         <div className="form-group">
           <label>语音增益</label>
           <input

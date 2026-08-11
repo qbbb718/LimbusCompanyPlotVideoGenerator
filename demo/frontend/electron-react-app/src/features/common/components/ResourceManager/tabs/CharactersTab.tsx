@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { MyCharacter, Portrait } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@root/features/common/config/appConfig";
@@ -41,16 +41,64 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  // 导出多选状态
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedExportIds, setSelectedExportIds] = useState<Set<string>>(new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  // 退出选择模式时清空勾选
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedExportIds(new Set());
+  };
+
+  // 全选复选框的 indeterminate（半选）状态
+  useEffect(() => {
+    if (selectAllRef.current) {
+      const count = selectedExportIds.size;
+      selectAllRef.current.indeterminate =
+        count > 0 && count < characters.length;
+    }
+  }, [selectedExportIds, characters.length]);
+
+  // 角色列表或搜索词变化时清除多选
+  useEffect(() => {
+    setSelectedExportIds(new Set());
+  }, [characters.length, searchTerm]);
+
   // 日志函数
   const log = (message: string, data?: any) => {
     console.log(`[CharactersTab] ${message}`, data);
   };
 
-  /** 导出角色 — 若选中则导出选中角色，否则导出全部 */
+  /** 切换单个角色的导出勾选状态 */
+  const toggleExportSelect = (characterId: string) => {
+    setSelectedExportIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(characterId)) {
+        next.delete(characterId);
+      } else {
+        next.add(characterId);
+      }
+      return next;
+    });
+  };
+
+  /** 全选/取消全选（仅作用于当前可见角色） */
+  const toggleSelectAll = () => {
+    const allSelected = characters.every((c) => selectedExportIds.has(c.characterID));
+    if (allSelected) {
+      setSelectedExportIds(new Set());
+    } else {
+      setSelectedExportIds(new Set(characters.map((c) => c.characterID)));
+    }
+  };
+
+  /** 导出角色 — 优先导出勾选的角色，无勾选时导出全部 */
   const handleExportCharacters = async () => {
     try {
-      const ids = selectedCharacter
-        ? [selectedCharacter.characterID]
+      const ids = selectedExportIds.size > 0
+        ? Array.from(selectedExportIds)
         : characters.map((c) => c.characterID);
       if (ids.length === 0) {
         alert("没有可导出的角色");
@@ -152,13 +200,36 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {selectionMode && (
+          <label className="select-all-checkbox">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={
+                characters.length > 0 &&
+                characters.every((c) => selectedExportIds.has(c.characterID))
+              }
+              onChange={toggleSelectAll}
+            />
+            全选
+          </label>
+        )}
         <button onClick={() => openResourceFolder("characters")}>
           打开角色文件夹
         </button>
         <button className="btn-primary" onClick={handleAddCharacter}>
           添加角色
         </button>
-        <button onClick={handleExportCharacters}>导出角色</button>
+        {selectionMode ? (
+          <>
+            <button onClick={handleExportCharacters}>
+              确认导出 ({selectedExportIds.size})
+            </button>
+            <button onClick={exitSelectionMode}>取消</button>
+          </>
+        ) : (
+          <button onClick={() => setSelectionMode(true)}>选择导出</button>
+        )}
         <input
           type="file"
           ref={importFileRef}
@@ -185,6 +256,18 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
               setShowCharacterModal(true);
             }}
           >
+            {selectionMode && (
+              <div
+                className="character-card-checkbox"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedExportIds.has(character.characterID)}
+                  onChange={() => toggleExportSelect(character.characterID)}
+                />
+              </div>
+            )}
             <CharacterAvatar character={character} />
             <div className="character-info">
               <h3>{character.characterName}</h3>

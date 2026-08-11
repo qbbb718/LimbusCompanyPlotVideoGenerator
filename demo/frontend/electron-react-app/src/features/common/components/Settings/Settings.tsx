@@ -4,7 +4,6 @@ import { ProjectSettings, DEFAULT_PROJECT_SETTINGS, SETTINGS_STORAGE_KEY } from 
 import BasicInfoSection from "./sections/BasicInfoSection";
 import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
-import InterfaceSection from "./sections/InterfaceSection";
 import ApiService from "@services/ApiService";
 
 interface SettingsProps {
@@ -81,10 +80,32 @@ const Settings: React.FC<SettingsProps> = ({
         handleChange={handleChange}
       />
 
-      <InterfaceSection
-        projectSettings={projectSettings}
-        handleChange={handleChange}
-      />
+      <div className="settings-section settings-about">
+        <h3>关于</h3>
+        <div className="settings-section-content">
+          <div className="about-links">
+            <a
+              href="https://github.com/qbbb718/LimbusCompanyPlotVideoGenerator"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="about-link"
+            >
+              GitHub 仓库
+            </a>
+            <a
+              href="https://www.bilibili.com/video/BV1例视频BV号"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="about-link"
+            >
+              使用教程视频
+            </a>
+          </div>
+          <p className="about-attribution">
+            所用美术素材来自月海伦娜与边狱巴士中文wiki
+          </p>
+        </div>
+      </div>
 
       <div className="settings-actions">
         <button className="save-button" onClick={handleSaveSettings}>

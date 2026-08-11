@@ -140,3 +140,26 @@
 .reset-button:hover {
   background-color: #e6f7ff;
 }
+
+/* 关于区域 */
+.about-links {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.about-link {
+  color: #1890ff;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
+
+.about-attribution {
+  margin: 0;
+  font-size: 13px;
+  color: #888;
+}

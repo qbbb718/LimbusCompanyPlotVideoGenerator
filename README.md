@@ -3,112 +3,30 @@
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
-[![Electron](https://img.shields.io/badge/Electron-27-blue.svg)](https://www.electronjs.org/)
+[![Electron](https://img.shields.io/badge/Electron-39-blue.svg)](https://www.electronjs.org/)
 
 一个用于自动生成《边狱公司》(Limbus Company) 剧情视频的工具，支持将剧情脚本转换为包含人物立绘、背景、音效和配音的完整视频。
 
-## 功能特点
+## 快速安装（普通用户）
 
+### 方式一：下载安装包（推荐）
 
-See project-specific documentation in demo/src/main/resources/docs/. For current priorities, see docs/TODO.md.
-## 技术架构
-### 后端
-- **Java 21**: 核心开发语言
-- **Spring Boot 3.2.0**: 应用框架
-- **JavaCV**: 视频处理和合成
-- **SQLite + JDBI**: 数据持久化
-- **Jackson**: JSON数据处理
-- **SLF4J + Logback**: 日志管理。后端日志文件会输出到 `demo/logs/log-<timestamp>.log`。
+从 [GitHub Releases](../../releases) 下载最新版 `LimbusCompany Plot Video Generator Setup x.x.x.exe`，双击安装。
 
-### 前端
-- **React 18**: 用户界面框架
-- **Electron**: 桌面应用封装
-- **Material-UI**: UI组件库
-- **Axios**: HTTP客户端
-- **react-beautiful-dnd**: 拖拽功能
+- 安装包已包含所有依赖，**无需额外安装 Java、Maven 或 Node.js**
+- 安装完成后桌面自动创建快捷方式，双击即可使用
+- 支持自定义安装路径
 
-## 安装与运行
+### 方式二：从源码运行（开发者）
 
-### 环境要求
-- Java 21 或更高版本
-- Maven 3.6+
-- Node.js 16+ 和 npm
-- FFmpeg (用于视频处理)
+见下方 [开发环境搭建](#开发环境搭建)。
 
-### 一键启动（推荐）
+### 更新
 
-运行项目根目录下的 `start_all.bat` 脚本即可一键启动后端和前端：
+- **自动更新**：启动时自动检查 GitHub Releases，发现新版本会弹出通知，点击即可安装
+- **手动更新**：下载新版安装包，覆盖安装到同一目录，资源数据（角色、背景、音频）自动保留
 
-```bash
-e:/LimbusCompanyPlotVideoGenerator/start_all.bat
-```
-
-此脚本会自动：
-1. 检查Java、Maven和Node.js环境
-2. 启动后端Spring Boot服务（启动时会清理旧数据库文件并确保使用 `demo/data/project.db`）
-3. 安装前端依赖（如果需要）
-4. 启动前端Electron应用
-
-   启动后，前端会在 `demo/frontend/electron-react-app/logs/` 目录生成一个带时间戳的 `frontend-*.log` 文件，包含主进程和渲染进程的 console 输出，用于排查问题。
-
-### 分别启动
-
-#### 后端启动
-1. 进入项目目录
-```bash
-cd e:/LimbusCompanyPlotVideoGenerator/demo
-```
-
-2. 使用Maven启动Spring Boot应用
-```bash
-mvn spring-boot:run
-```
-
-或者直接运行批处理文件
-```bash
-e:/LimbusCompanyPlotVideoGenerator/demo/run_bootstrap.bat
-```
-
-#### 前端启动
-1. 进入前端应用目录
-```bash
-cd e:/LimbusCompanyPlotVideoGenerator/demo/frontend/electron-react-app
-```
-
-2. 安装依赖
-```bash
-npm install
-```
-
-3. 启动开发环境
-```bash
-npm run electron-dev
-```
-
-## 项目结构
-
-**为了简化维护，所有可变数据集中在 `demo/data`，后台日志存放于 [demo/logs](demo/logs)，前端日志在 [demo/frontend/electron-react-app/logs](demo/frontend/electron-react-app/logs)。**
-
-
-
-```
-LimbusCompanyPlotVideoGenerator/
-├── demo/                    # 后端应用
-│   ├── data/               # 数据库文件
-│   ├── frontend/           # 前端应用
-│   │   ├── demo.html       # 简单HTML演示
-│   │   └── electron-react-app/ # Electron+React应用
-│   ├── src/                # Java源代码
-│   │   └── main/           # 主要源代码
-│   ├── pom.xml             # Maven配置
-│   └── run_*.bat           # 启动脚本
-├── note/                   # 项目文档
-│   ├── FRONTEND_MODEL.md   # 前端模型文档
-│   └── PROJECT_CONTEXT.md  # 项目上下文
-├── src/                    # 前端组件源码
-│   └── components/         # React组件
-└── package.json            # 前端依赖配置
-```
+> ⚠️ 请勿删除安装目录下的 `data/` 和 `assets/` 文件夹，这些是你的资源库数据。
 
 ## 使用指南
 
@@ -122,7 +40,7 @@ LimbusCompanyPlotVideoGenerator/
 - 角色管理：编辑角色信息、立绘列表和属性
 - 背景管理：管理背景图片和标签
 - 音效管理：管理音频资源和分类
-- 支持搜索、筛选和拖拽排序功能
+- 支持搜索、筛选功能
 
 ### 文本转剧情功能
 - 支持将特定格式的文本转换为剧情记录
@@ -134,26 +52,77 @@ LimbusCompanyPlotVideoGenerator/
   旁白: 对话内容
   ```
 
+## 技术架构
+
+### 后端
+- **Java 21**: 核心开发语言
+- **Spring Boot 3.2.0**: 应用框架
+- **JavaCV**: 视频处理和合成
+- **SQLite + JDBI**: 数据持久化
+- **Jackson**: JSON 数据处理
+
+### 前端
+- **React 18**: 用户界面框架
+- **Electron 39**: 桌面应用封装
+- **Axios**: HTTP 客户端
+
+## 开发环境搭建
+
+### 环境要求
+- Java 21 或更高版本
+- Maven 3.6+
+- Node.js 18+ 和 npm
+- FFmpeg（用于视频处理）
+
+### 一键启动（推荐）
+
+运行项目根目录下的 `start_all.bat`：
+
+```bash
+e:/LimbusCompanyPlotVideoGenerator/start_all.bat
+```
+
+此脚本会依次检查环境、启动后端、安装前端依赖、启动前端 Electron 应用。
+
+### 分别启动
+
+#### 后端
+```bash
+cd e:/LimbusCompanyPlotVideoGenerator/demo
+mvn spring-boot:run
+```
+
+#### 前端
+```bash
+cd e:/LimbusCompanyPlotVideoGenerator/demo/frontend/electron-react-app
+npm install
+npm run electron-dev
+```
+
+## 项目结构
+
+```
+LimbusCompanyPlotVideoGenerator/
+├── demo/                           # 后端应用
+│   ├── data/                       # 数据库文件
+│   ├── assets/                     # 素材资源
+│   ├── frontend/                   # 前端应用
+│   │   └── electron-react-app/     # Electron + React 应用
+│   ├── src/                        # Java 源代码
+│   ├── pom.xml                     # Maven 配置
+│   └── build-package.bat           # 打包脚本
+├── note/                           # 项目文档
+│   ├── FRONTEND_MODEL.md
+│   └── PROJECT_CONTEXT.md
+└── .github/workflows/              # CI/CD
+```
+
 ## 文档
 
-- [配置文档](docs/CONFIG_DOCUMENTATION.md) - 详细说明后端配置文件的用途和配置方法
-- [前端模型文档](note/FRONTEND_MODEL.md) - 前端数据模型和组件结构说明
+- [配置文档](docs/CONFIG_DOCUMENTATION.md) - 后端配置文件说明
+- [前端模型文档](note/FRONTEND_MODEL.md) - 前端数据模型和组件结构
 - [项目上下文](note/PROJECT_CONTEXT.md) - 项目背景和设计理念
 - [TODO 列表](docs/TODO.md) - 当前开发任务和优先级
-
-## 开发指南
-
-### 后端开发
-- 使用Maven管理依赖
-- 遵循Spring Boot最佳实践
-- 数据库操作使用JDBI
-- 视频处理使用JavaCV
-
-### 前端开发
-- 基于React和Material-UI构建界面
-- 使用Electron封装为桌面应用
-- 通过Axios与后端API通信
-- 支持拖拽功能的交互设计
 
 ## 贡献指南
 

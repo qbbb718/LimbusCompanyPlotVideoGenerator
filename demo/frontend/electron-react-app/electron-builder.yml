@@ -1,0 +1,55 @@
+appId: com.lbc-plot.video-generator
+productName: "LimbusCompany Plot Video Generator"
+copyright: "Copyright © 2024"
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - build/**/*
+  - public/electron.js
+  - public/preload.js
+  - node_modules/**/*
+
+extraResources:
+  - from: "../../target"
+    to: "."
+    filter:
+      - "demo-*-SNAPSHOT.jar"
+  - from: "../../assets"
+    to: "assets"
+    filter:
+      - "**/*"
+  - from: "../../resources"
+    to: "resources"
+    filter:
+      - "**/*"
+  - from: "../../data"
+    to: "data"
+    filter:
+      - "project.db"
+      - "records.json"
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: public/favicon.ico
+  # 请求管理员权限以确保文件系统操作正常
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "边狱巴士剧情视频生成器"
+  # 卸载时不删除用户数据目录
+  deleteAppDataOnUninstall: false
+
+# 打包时额外的资源映射
+# assets/ 和 data/ 放在安装目录下，与 backend.jar 同级
+# Spring Boot 的 ./assets/ 和 ./data/ 相对路径就能正确解析

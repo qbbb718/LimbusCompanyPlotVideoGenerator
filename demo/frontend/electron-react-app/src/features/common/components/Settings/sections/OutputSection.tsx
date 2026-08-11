@@ -23,7 +23,6 @@ const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleCh
           handleChange('outputPath', result.path);
         }
       } else {
-        // 浏览器环境下回退到手动输入
         const path = prompt('请输入视频输出路径:', projectSettings.outputPath);
         if (path) {
           handleChange('outputPath', path);
@@ -45,7 +44,7 @@ const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleCh
 
   return (
     <div className="settings-section">
-      <h3>输出设置</h3>
+      <h3>输出与界面</h3>
 
       <div className="form-group">
         <label>输出路径</label>
@@ -60,15 +59,27 @@ const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleCh
         </div>
       </div>
 
-      <div className="form-group">
-        <label>视频尺寸</label>
-        <select value={currentSizeKey} onChange={handleVideoSizeChange}>
-          {VIDEO_SIZE_OPTIONS.map((opt) => (
-            <option key={opt.label} value={`${opt.width}x${opt.height}`}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+      <div className="form-row">
+        <div className="form-group">
+          <label>视频尺寸</label>
+          <select value={currentSizeKey} onChange={handleVideoSizeChange}>
+            {VIDEO_SIZE_OPTIONS.map((opt) => (
+              <option key={opt.label} value={`${opt.width}x${opt.height}`}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>主题</label>
+          <select
+            value={projectSettings.theme}
+            onChange={(e) => handleChange('theme', e.target.value)}
+          >
+            <option value="light">浅色</option>
+            <option value="dark">深色</option>
+          </select>
+        </div>
       </div>
     </div>
   );

@@ -9,13 +9,31 @@ const {
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { spawn } = require("child_process");
+const http = require("http");
 const log = require("electron-log");
 const isDev = process.env.NODE_ENV !== "production";
 
+// autoUpdater — 仅在打包后可用，开发模式静默跳过
+let autoUpdater = null;
+if (!isDev) {
+  try {
+    const { autoUpdater: au } = require("electron-updater");
+    autoUpdater = au;
+  } catch (e) {
+    log.warn("electron-updater 不可用:", e.message);
+  }
+}
+
 // 配置electron-log: 运行期间写入带时间戳的日志文件
-// __dirname 指向 demo/frontend/electron-react-app/public
-// 需要向上三级才能到达 demo 目录
-const logDir = path.join(__dirname, "..", "..", "..", "logs");
+let logDir;
+if (isDev) {
+  // 开发模式：__dirname 指向 demo/frontend/electron-react-app/public，向上三级到 demo/logs/
+  logDir = path.join(__dirname, "..", "..", "..", "logs");
+} else {
+  // 生产模式：写入用户数据目录，避免写入只读 asar
+  logDir = path.join(app.getPath("userData"), "logs");
+}
 
 // 查找最新的后端日志文件，以匹配其时间戳
 function findLatestBackendLogFile() {
@@ -127,6 +145,149 @@ function initLogFile() {
 
 // 保持对window对象的全局引用，如果不这样做，当JavaScript对象被垃圾回收时，窗口将自动关闭
 let mainWindow;
+let backendProcess = null;
+
+// ---- 后端生命周期管理 ----
+
+/** 生产模式下找到 backend.jar */
+function findBackendJar() {
+  const resourcesPath = process.resourcesPath;
+  log.info("查找 backend.jar，resourcesPath:", resourcesPath);
+  const files = fs.readdirSync(resourcesPath);
+  const jarFile = files.find((f) => f.startsWith("demo-") && f.endsWith(".jar"));
+  if (jarFile) {
+    return path.join(resourcesPath, jarFile);
+  }
+  // 开发模式回退
+  const devJar = path.join(__dirname, "..", "..", "..", "target");
+  const targetFiles = fs.readdirSync(devJar);
+  const devJarFile = targetFiles.find(
+    (f) => f.startsWith("demo-") && f.endsWith(".jar"),
+  );
+  if (devJarFile) return path.join(devJar, devJarFile);
+  throw new Error("找不到 backend.jar");
+}
+
+/** 首次启动时将 data/、assets/、resources/ 从安装目录复制到用户数据目录 */
+function ensureUserDataFiles(userDataPath) {
+  const resourcesPath = process.resourcesPath;
+  const dirsToCopy = ["data", "assets", "resources"];
+  dirsToCopy.forEach((dir) => {
+    const src = path.join(resourcesPath, dir);
+    const dest = path.join(userDataPath, dir);
+    if (!fs.existsSync(src)) {
+      log.info(`跳过复制 ${dir}：源目录不存在`);
+      return;
+    }
+    if (fs.existsSync(dest)) {
+      log.info(`跳过复制 ${dir}：目标已存在`);
+      return;
+    }
+    // 递归复制
+    fs.cpSync(src, dest, { recursive: true });
+    log.info(`已复制 ${dir} 到用户数据目录: ${dest}`);
+  });
+  // 确保 logs 目录存在
+  const logsDir = path.join(userDataPath, "logs");
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+}
+
+/** 查找 Java 可执行文件 */
+function findJava() {
+  if (isDev) return "java"; // 开发模式使用系统 PATH 中的 java
+
+  // 生产模式：优先使用内置 JRE
+  const bundledJre = path.join(process.resourcesPath, "jre", "bin", "java.exe");
+  if (fs.existsSync(bundledJre)) {
+    log.info("使用内置 JRE:", bundledJre);
+    return bundledJre;
+  }
+  // 回退到系统 Java
+  log.info("内置 JRE 不存在，回退到系统 Java");
+  return "java";
+}
+
+/** 启动 Spring Boot 后端 */
+function startBackend(userDataPath) {
+  const javaPath = findJava();
+  const jarPath = findBackendJar();
+  log.info("启动后端:", javaPath, "-jar", jarPath);
+  log.info("后端工作目录:", userDataPath);
+
+  backendProcess = spawn(javaPath, ["-jar", jarPath, "--server.port=8081"], {
+    cwd: userDataPath,
+    stdio: "pipe",
+    env: {
+      ...process.env,
+      JAVA_TOOL_OPTIONS:
+        "-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai",
+    },
+  });
+
+  backendProcess.stdout.on("data", (data) => {
+    log.info(`[backend] ${data.toString().trim()}`);
+  });
+
+  backendProcess.stderr.on("data", (data) => {
+    log.warn(`[backend:err] ${data.toString().trim()}`);
+  });
+
+  backendProcess.on("error", (err) => {
+    log.error("后端进程启动失败:", err.message);
+    backendProcess = null;
+  });
+
+  backendProcess.on("exit", (code, signal) => {
+    log.info(`后端进程退出，code=${code}, signal=${signal}`);
+    backendProcess = null;
+  });
+}
+
+/** 轮询后端健康检查，就绪后 resolve */
+function waitForBackend(url, retries = 60, interval = 2000) {
+  return new Promise((resolve, reject) => {
+    let attempt = 0;
+    const check = () => {
+      attempt++;
+      http
+        .get(url, (res) => {
+          if (res.statusCode === 200) {
+            log.info(`后端就绪 (attempt ${attempt})`);
+            resolve();
+          } else if (attempt < retries) {
+            setTimeout(check, interval);
+          } else {
+            reject(new Error(`后端未就绪，状态码=${res.statusCode}`));
+          }
+        })
+        .on("error", () => {
+          if (attempt < retries) {
+            setTimeout(check, interval);
+          } else {
+            reject(new Error(`后端未就绪，已重试 ${retries} 次`));
+          }
+        });
+    };
+    check();
+  });
+}
+
+/** 停止后端 */
+function stopBackend() {
+  if (backendProcess) {
+    log.info("正在停止后端进程...");
+    backendProcess.kill("SIGTERM");
+    // 给进程一些时间优雅退出
+    setTimeout(() => {
+      if (backendProcess) {
+        log.warn("强制终止后端进程");
+        backendProcess.kill("SIGKILL");
+      }
+    }, 5000);
+  }
+}
 
 function createWindow() {
   // 创建浏览器窗口
@@ -144,14 +305,14 @@ function createWindow() {
     },
     webSecurity: false,
     frame: true, // 使用系统默认标题栏
+    show: false, // 等待后端就绪后再显示
   });
 
   // 加载应用
   // 开发模式加载本地服务器，生产模式加载打包后的静态文件
-  // electron-builder 打包后，__dirname 指向 app.asar 内部，build 目录与 electron.js 同级
   const startUrl = isDev
     ? "http://localhost:3000"
-    : `file://${path.join(__dirname, "index.html").replace(/\\/g, "/")}`;
+    : `file://${path.join(__dirname, "..", "build", "index.html").replace(/\\/g, "/")}`;
 
   mainWindow.loadURL(startUrl);
 
@@ -275,9 +436,49 @@ function createMenu() {
 
 // Electron会在初始化后并准备创建浏览器窗口时，调用这个函数
 // 部分API在ready事件触发后才能使用
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   initLogFile();
+
+  if (!isDev) {
+    // 生产模式：准备用户数据目录、启动后端、等待就绪
+    try {
+      const userDataPath = app.getPath("userData");
+      log.info("用户数据目录:", userDataPath);
+      ensureUserDataFiles(userDataPath);
+      startBackend(userDataPath);
+
+      // 显示一个加载提示（可选：splash窗口）
+      log.info("等待后端启动...");
+      await waitForBackend("http://localhost:8081/api/health");
+      log.info("后端启动完成，创建窗口");
+    } catch (err) {
+      log.error("启动后端失败:", err.message);
+      dialog.showErrorBox(
+        "启动失败",
+        `无法启动后端服务: ${err.message}\n\n请确认已安装 Java 21 或更高版本。`,
+      );
+      app.quit();
+      return;
+    }
+  }
+
   createWindow();
+
+  // 生产模式检查更新
+  if (!isDev && autoUpdater) {
+    try {
+      autoUpdater.setFeedURL({
+        provider: "github",
+        owner: "qbbb718",
+        repo: "LimbusCompanyPlotVideoGenerator",
+      });
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {
+        // 静默失败，更新检查不应影响正常使用
+      });
+    } catch (e) {
+      log.warn("自动更新检查失败:", e.message);
+    }
+  }
 });
 
 // 当全部窗口关闭时退出应用
@@ -295,9 +496,43 @@ app.on("activate", () => {
   }
 });
 
+// 应用退出前停止后端
+app.on("before-quit", () => {
+  stopBackend();
+});
+
 app.on("will-quit", () => {
+  stopBackend();
   if (logStream) {
     logStream.end();
+  }
+});
+
+// ---- 自动更新事件 ----
+if (!isDev && autoUpdater) {
+  autoUpdater.on("update-available", (info) => {
+    log.info("发现新版本:", info.version);
+    if (mainWindow) {
+      mainWindow.webContents.send("update-available", info);
+    }
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    log.info("更新已下载:", info.version);
+    if (mainWindow) {
+      mainWindow.webContents.send("update-downloaded", info);
+    }
+  });
+
+  autoUpdater.on("error", (err) => {
+    log.warn("自动更新错误:", err.message);
+  });
+}
+
+// IPC: 渲染进程可请求安装更新
+ipcMain.handle("update:install", () => {
+  if (autoUpdater) {
+    autoUpdater.quitAndInstall();
   }
 });
 

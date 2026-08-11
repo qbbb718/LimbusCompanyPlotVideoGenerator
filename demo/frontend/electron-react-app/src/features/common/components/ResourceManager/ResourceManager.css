@@ -64,7 +64,7 @@
 /* 角色相关样式 */
 .characters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
 }
@@ -451,4 +451,37 @@
 
 .crop-preview img {
   width: 100%;
+}
+
+/* 导出多选复选框 */
+.select-all-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.select-all-checkbox input {
+  width: auto;
+  flex: none;
+}
+
+.character-card-checkbox {
+  width: 28px;
+  min-width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9f9f9;
+  border-right: 1px solid #eee;
+  cursor: default;
+}
+
+.character-card-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
 }
