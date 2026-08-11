@@ -286,6 +286,7 @@ class ApiService {
 
   // 生成视频（异步 — 返回 taskId，前端轮询进度）
   // layerTypes: 可选的分层导出列表，如 ["FULL", "UI_ONLY", "BACKGROUND_ONLY"]
+  // keepTempFiles: 是否保留中间文件，便于下次导出时跳过未修改的 Record
   async generateVideo(
     records: any[],
     outputPath: string,
@@ -293,6 +294,7 @@ class ApiService {
     height: number,
     frameRate: number = 30,
     layerTypes: string[] = ["FULL"],
+    keepTempFiles: boolean = false,
   ) {
     try {
       const response = await apiClient.post('/generate-video', {
@@ -302,6 +304,7 @@ class ApiService {
         height,
         frameRate,
         layerTypes,
+        keepTempFiles,
       });
       return response.data;
     } catch (error) {

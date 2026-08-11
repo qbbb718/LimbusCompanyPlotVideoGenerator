@@ -292,7 +292,8 @@ public class RecordController {
                                 VideoProgressTracker.updateProgress(taskId, stage, current, total,
                                         "[" + layerType + "] " + message);
                             },
-                            layerType);
+                            layerType,
+                            request.isKeepTempFiles());
                 }
 
                 long elapsed = System.currentTimeMillis() - startTime;
@@ -496,6 +497,7 @@ public class RecordController {
         private int height;
         private int frameRate;
         private List<String> layerTypes;
+        private boolean keepTempFiles;
 
         public List<Record> getRecords() {
             return records;
@@ -543,6 +545,14 @@ public class RecordController {
 
         public void setLayerTypes(List<String> layerTypes) {
             this.layerTypes = layerTypes;
+        }
+
+        public boolean isKeepTempFiles() {
+            return keepTempFiles;
+        }
+
+        public void setKeepTempFiles(boolean keepTempFiles) {
+            this.keepTempFiles = keepTempFiles;
         }
     }
 

@@ -71,7 +71,7 @@ public class BatchVideoProcessor {
             int width,
             int height,
             int frameRate) throws Exception {
-        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null, RenderOfVideo.LAYER_FULL);
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null, RenderOfVideo.LAYER_FULL, false);
     }
 
     /**
@@ -86,7 +86,7 @@ public class BatchVideoProcessor {
             int height,
             int frameRate,
             String layerType) throws Exception {
-        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null, layerType);
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null, layerType, false);
     }
 
     /**
@@ -101,11 +101,12 @@ public class BatchVideoProcessor {
             int height,
             int frameRate,
             ProgressListener progress) throws Exception {
-        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, progress, RenderOfVideo.LAYER_FULL);
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, progress, RenderOfVideo.LAYER_FULL, false);
     }
 
     /**
      * 带进度回调和分层类型的版本
+     * @param keepTempFiles 是否保留中间文件（便于下次导出跳过未修改的 Record）
      */
     public static void processRecordList(
             List<Record> records,
@@ -116,7 +117,8 @@ public class BatchVideoProcessor {
             int height,
             int frameRate,
             ProgressListener progress,
-            String layerType) throws Exception {
+            String layerType,
+            boolean keepTempFiles) throws Exception {
 
         logger.info("开始处理 {} 个Record", records.size());
         long totalStartTime = System.currentTimeMillis();
@@ -275,9 +277,13 @@ public class BatchVideoProcessor {
             if (progress != null) progress.onProgress(4, 1, 1, "音视频合并完成");
 
         } finally {
-            // 可选：清理临时文件以释放磁盘空间
-            // 在调试阶段可以注释掉，便于检查中间文件
-            // cleanupTempFiles(videoPaths);
+            // 根据用户选项决定是否保留临时文件
+            // 保留临时文件可在下次导出时跳过未修改的 Record，加速导出
+            if (!keepTempFiles) {
+                cleanupTempDir(tempDirectory);
+            } else {
+                logger.info("保留临时文件于: {}", tempDir);
+            }
         }
 
         long totalDuration = System.currentTimeMillis() - totalStartTime;
@@ -330,6 +336,30 @@ public class BatchVideoProcessor {
      * 
      * @param videoPaths 要清理的临时视频文件路径列表
      */
+    /**
+     * 递归删除临时目录及其所有内容
+     */
+    private static void cleanupTempDir(File dir) {
+        if (dir == null || !dir.exists()) return;
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    cleanupTempDir(f);
+                } else {
+                    if (!f.delete()) {
+                        logger.warn("无法删除临时文件: {}", f.getAbsolutePath());
+                    }
+                }
+            }
+        }
+        if (!dir.delete()) {
+            logger.warn("无法删除临时目录: {}", dir.getAbsolutePath());
+        } else {
+            logger.info("已清理临时目录: {}", dir.getAbsolutePath());
+        }
+    }
+
     private static void cleanupTempFiles(List<String> videoPaths) {
         logger.info("开始清理临时文件");
         int deletedCount = 0;

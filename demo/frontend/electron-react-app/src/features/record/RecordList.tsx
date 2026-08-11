@@ -7,7 +7,7 @@ interface RecordListProps {
   selectedRecordIndex: number;
   setSelectedRecordIndex: (index: number) => void;
   createNewRecord: () => void;
-  generateVideo: (layerTypes: string[]) => void;
+  generateVideo: (layerTypes: string[], keepTempFiles: boolean) => void;
   moveRecord: (index: number, direction: "up" | "down") => void;
   duplicateRecord: (index: number) => void;
   deleteRecord: (index: number) => void;
@@ -42,6 +42,7 @@ const RecordList: React.FC<RecordListProps> = ({
   const [selectedLayers, setSelectedLayers] = useState<Set<string>>(
     new Set(["FULL"]),
   );
+  const [keepTempFiles, setKeepTempFiles] = useState(false);
 
   const toggleLayer = (key: string) => {
     setSelectedLayers((prev) => {
@@ -65,7 +66,7 @@ const RecordList: React.FC<RecordListProps> = ({
       return;
     }
     setShowLayerPopup(false);
-    generateVideo(Array.from(selectedLayers));
+    generateVideo(Array.from(selectedLayers), keepTempFiles);
   };
 
   const handleCancelExport = () => {
@@ -90,6 +91,17 @@ const RecordList: React.FC<RecordListProps> = ({
                   {opt.label}
                 </label>
               ))}
+            </div>
+            <div className="layer-popup-divider" />
+            <div className="layer-popup-options">
+              <label className="layer-popup-option">
+                <input
+                  type="checkbox"
+                  checked={keepTempFiles}
+                  onChange={(e) => setKeepTempFiles(e.target.checked)}
+                />
+                保留中间文件，下次导出更快
+              </label>
             </div>
             <div className="layer-popup-actions">
               <button onClick={handleCancelExport}>取消</button>

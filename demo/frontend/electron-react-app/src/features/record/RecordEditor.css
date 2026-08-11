@@ -387,6 +387,11 @@
   cursor: pointer;
 }
 
+.layer-popup-divider {
+  border-top: 1px solid #e8e8e8;
+  margin: 4px 0 12px 0;
+}
+
 .layer-popup-actions {
   display: flex;
   justify-content: flex-end;
