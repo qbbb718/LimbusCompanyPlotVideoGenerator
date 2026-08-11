@@ -305,7 +305,8 @@ public class RenderOfImage {
 
         logger.debug("开始渲染{}个角色立绘", chars.size());
 
-        for (int i = 0; i < chars.size(); i++) {
+        // 逆序渲染：数组末尾先绘制（底层），数组开头后绘制（顶层），与前端列表顺序一致
+        for (int i = chars.size() - 1; i >= 0; i--) {
             CharacterVisual chara = chars.get(i);
             if (!validateCharacterVisual(chara, i))
                 continue;
@@ -383,7 +384,9 @@ public class RenderOfImage {
             return;
         }
         logger.info("开始渲染临时图片层，共 {} 张", tempImages.size());
-        for (TempImageVisual temp : tempImages) {
+        // 逆序渲染：数组末尾先绘制（底层），数组开头后绘制（顶层），与前端列表顺序一致
+        for (int i = tempImages.size() - 1; i >= 0; i--) {
+            TempImageVisual temp = tempImages.get(i);
             try {
                 BufferedImage img = temp.getImage();
                 if (img == null) {
