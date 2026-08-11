@@ -36,6 +36,8 @@ jobs:
       - name: Build Frontend (React)
         run: npm run build
         working-directory: demo/frontend/electron-react-app
+        env:
+          CI: false
 
       - name: Package Electron App
         run: npx electron-builder --win --x64 --publish always
