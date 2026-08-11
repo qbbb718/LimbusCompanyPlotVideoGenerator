@@ -21,7 +21,8 @@
       "Bash(\"C:\\\\Program Files\\\\Java\\\\jdk-21\\\\bin\\\\jlink\" --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.sql,java.xml,jdk.unsupported,jdk.management,jdk.crypto.ec,jdk.zipfs,java.net.http,java.security.jgss,java.security.sasl --strip-debug --no-man-pages --no-header-files --compress=2 --output \"e:/LimbusCompanyPlotVideoGenerator/demo/jre\")",
       "Bash(mvn dependency:resolve -U)",
       "Read(//c/Users/user/.m2/repository/org/bytedeco/javacv/1.5.9/**)",
-      "Bash(rm -rf ~/.m2/repository/org/bytedeco/javacv/1.5.9/javacv-1.5.9-windows-x86_64.jar.lastUpdated ~/.m2/repository/org/bytedeco/javacv/1.5.9/_remote.repositories)"
+      "Bash(rm -rf ~/.m2/repository/org/bytedeco/javacv/1.5.9/javacv-1.5.9-windows-x86_64.jar.lastUpdated ~/.m2/repository/org/bytedeco/javacv/1.5.9/_remote.repositories)",
+      "Bash(cmd.exe /c \"build-package.bat\")"
     ]
   }
 }
