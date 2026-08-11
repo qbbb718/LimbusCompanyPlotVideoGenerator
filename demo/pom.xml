@@ -43,11 +43,24 @@
             <artifactId>spring-boot-starter-data-jdbc</artifactId>
         </dependency>
 
-        <!-- 现有依赖 -->
+        <!-- JavaCV: 仅打包 Windows x86_64 原生库 (javacv-platform 会引入全部18个平台≈1GB) -->
         <dependency>
             <groupId>org.bytedeco</groupId>
-            <artifactId>javacv-platform</artifactId>
+            <artifactId>javacv</artifactId>
             <version>1.5.9</version>
+        </dependency>
+        <!-- Windows x86_64 原生库 -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>1.5.9</version>
+            <classifier>windows-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>6.0-1.5.9</version>
+            <classifier>windows-x86_64</classifier>
         </dependency>
 
         <!-- 日志相关 -->

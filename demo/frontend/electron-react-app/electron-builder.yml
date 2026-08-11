@@ -10,13 +10,17 @@ files:
   - build/**/*
   - public/electron.js
   - public/preload.js
-  - node_modules/**/*
+  # node_modules 由 electron-builder 自动按生产依赖打包，无需手动声明
 
 extraResources:
   - from: "../../target"
     to: "."
     filter:
       - "demo-*-SNAPSHOT.jar"
+  - from: "../../jre"
+    to: "jre"
+    filter:
+      - "**/*"
   - from: "../../assets"
     to: "assets"
     filter:

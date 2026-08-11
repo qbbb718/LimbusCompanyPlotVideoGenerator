@@ -53,6 +53,11 @@ demo/target/classes/com/lbc_plot/config/ProjectConfig.class
 
 # 前端打包产物
 demo/frontend/electron-react-app/dist/win-unpacked/resources/app.asar
+demo/frontend/electron-react-app/release/
+
+# 生成的 JRE（由 jlink 生成，体积大）
+demo/jre/
+
 *.mp4
 /输出测试
 /输出测试
