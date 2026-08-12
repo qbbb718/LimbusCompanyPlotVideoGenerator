@@ -1,9 +1,10 @@
 package com.lbc_plot.render.video;
 
-import org.bytedeco.ffmpeg.ffmpeg;
-import org.bytedeco.javacpp.Loader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.lbc_plot.common.util.FFmpegPathResolver;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,7 +40,7 @@ public class VideoConcatenator {
 
         try {
             // 获取ffmpeg可执行文件路径
-            String ffmpegPath = Loader.load(ffmpeg.class);
+            String ffmpegPath = FFmpegPathResolver.getFFmpegPath();
 
             // 构建FFmpeg命令
             ProcessBuilder pb = new ProcessBuilder(

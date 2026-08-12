@@ -35,13 +35,13 @@ public class VideoAudioMerger {
 
         if ("longest".equals(mode)) {
             command = String.format(
-                    "ffmpeg -y -i \"%s\" -i \"%s\" -c:v copy -filter_complex \"[1:a]amix=inputs=1:duration=longest[outa]\" -map 0:v -map \"[outa]\" -shortest \"%s\"",
-                    videoFile, audioFile, outputFile);
+                    "%s -y -i \"%s\" -i \"%s\" -c:v copy -filter_complex \"[1:a]amix=inputs=1:duration=longest[outa]\" -map 0:v -map \"[outa]\" -shortest \"%s\"",
+                    FFmpegPathResolver.getFFmpegPath(), videoFile, audioFile, outputFile);
         } else {
             // 默认直接映射
             command = String.format(
-                    "ffmpeg -y -i \"%s\" -i \"%s\" -vcodec copy -acodec copy \"%s\"",
-                    videoFile, audioFile, outputFile);
+                    "%s -y -i \"%s\" -i \"%s\" -vcodec copy -acodec copy \"%s\"",
+                    FFmpegPathResolver.getFFmpegPath(), videoFile, audioFile, outputFile);
         }
 
         logger.info("执行视频音频合并({}模式): {}", mode, command);

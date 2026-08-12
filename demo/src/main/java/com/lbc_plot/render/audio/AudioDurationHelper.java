@@ -12,6 +12,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lbc_plot.common.util.FFmpegPathResolver;
 import com.lbc_plot.common.util.ResourceChecker;
 
 /**
@@ -72,8 +73,8 @@ public class AudioDurationHelper {
         String escapedPath = escapeFilePath(audioPath);
 
         String command = String.format(
-                "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"%s\"",
-                escapedPath);
+                "%s -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"%s\"",
+                FFmpegPathResolver.getFFprobePath(), escapedPath);
 
         logger.debug("获取音频时长: {}", command);
 

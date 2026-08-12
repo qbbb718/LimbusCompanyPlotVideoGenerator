@@ -12,6 +12,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lbc_plot.common.util.FFmpegPathResolver;
 import com.lbc_plot.common.util.ResourceChecker;
 import com.lbc_plot.render.audio.model.AudioCommandType;
 import com.lbc_plot.render.audio.model.AudioSegment;
@@ -66,7 +67,7 @@ public class FFmpegAudioProcessor {
      * 生成FFmpeg复杂滤镜命令 - 修复音量叠加问题
      */
     private String generateFFmpegCommand(AudioTimeline timeline, String outputPath) {
-        StringBuilder cmd = new StringBuilder("ffmpeg -y");
+        StringBuilder cmd = new StringBuilder(FFmpegPathResolver.getFFmpegPath() + " -y");
 
         List<AudioSegment> segments = timeline.getSegments();
         double totalDuration = timeline.getTotalDurationSeconds();
@@ -182,8 +183,8 @@ public class FFmpegAudioProcessor {
 
         // 使用FFmpeg生成静音
         String command = String.format(
-                "ffmpeg -y -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t %.2f \"%s\"",
-                duration, outputPath);
+                "%s -y -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -t %.2f \"%s\"",
+                FFmpegPathResolver.getFFmpegPath(), duration, outputPath);
 
         logger.debug("生成静音音频命令: {}", command);
         executeFFmpegCommand(command);
@@ -201,6 +202,7 @@ public class FFmpegAudioProcessor {
     /**
      * 执行FFmpeg命令
      */
+    @SuppressWarnings("deprecation")
     private static void executeFFmpegCommand(String command) throws IOException {
         logger.info("执行FFmpeg命令: {}", command);
 

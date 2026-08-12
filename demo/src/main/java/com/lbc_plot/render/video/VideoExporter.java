@@ -8,6 +8,7 @@ import org.bytedeco.javacv.Java2DFrameConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lbc_plot.common.util.FFmpegPathResolver;
 import com.lbc_plot.common.util.RenderQualityUtils;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.RenderOfVideo;
@@ -182,7 +183,7 @@ public class VideoExporter implements AutoCloseable {
             // ProRes 4444: 10-bit YUV 4:4:4 + alpha，行业标准
             // -profile:v 4 = 4444, -vendor apl0 = Apple 兼容标志
             return new String[] {
-                    "ffmpeg", "-y",
+                    FFmpegPathResolver.getFFmpegPath(), "-y",
                     "-f", "rawvideo",
                     "-pixel_format", "rgba",
                     "-video_size", width + "x" + height,
@@ -199,7 +200,7 @@ public class VideoExporter implements AutoCloseable {
         } else {
             // PNG/MOV: 8-bit RGBA，通用兼容
             return new String[] {
-                    "ffmpeg", "-y",
+                    FFmpegPathResolver.getFFmpegPath(), "-y",
                     "-f", "rawvideo",
                     "-pixel_format", "rgba",
                     "-video_size", width + "x" + height,
@@ -223,7 +224,7 @@ public class VideoExporter implements AutoCloseable {
             return proresAvailable;
         }
         try {
-            Process p = new ProcessBuilder("ffmpeg", "-encoders").start();
+            Process p = new ProcessBuilder(FFmpegPathResolver.getFFmpegPath(), "-encoders").start();
             java.io.BufferedReader reader = new java.io.BufferedReader(
                     new java.io.InputStreamReader(p.getInputStream()));
             String line;
@@ -287,7 +288,7 @@ public class VideoExporter implements AutoCloseable {
         try {
             // 构建高质量FFmpeg命令（与现有高质量设置匹配）
             String[] ffmpegCommand = {
-                    "ffmpeg", "-y",
+                    FFmpegPathResolver.getFFmpegPath(), "-y",
                     "-f", "image2pipe",
                     "-vcodec", "png", // 使用PNG保持高质量，而不是PPM
                     "-r", String.valueOf(frameRate),

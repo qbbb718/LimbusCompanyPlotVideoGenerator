@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lbc_plot.common.util.FFmpegPathResolver;
 import com.lbc_plot.common.util.ResourceChecker;
 
 import java.util.regex.Pattern;
@@ -54,11 +55,12 @@ public class AudioLoudnessMeasurer {
     /**
      * 使用FFmpeg loudnorm过滤器测量响度
      */
+    @SuppressWarnings("deprecation")
     private static float measureWithFFmpeg(String audioPath) throws IOException {
         // FFmpeg命令：使用loudnorm过滤器测量响度
         String command = String.format(
-                "ffmpeg -i \"%s\" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null -",
-                audioPath);
+                "%s -i \"%s\" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null -",
+                FFmpegPathResolver.getFFmpegPath(), audioPath);
 
         logger.debug("执行响度测量命令: {}", command);
 

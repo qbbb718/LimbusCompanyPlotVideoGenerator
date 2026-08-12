@@ -3,6 +3,7 @@ package com.lbc_plot.render.audio;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.lbc_plot.common.util.FFmpegPathResolver;
 import com.lbc_plot.render.audio.model.AudioSegment;
 import com.lbc_plot.render.audio.model.AudioTimeline;
 
@@ -12,7 +13,7 @@ import com.lbc_plot.render.audio.model.AudioTimeline;
 public class TimelineToFFmpegConverter {
 
     public static String convertToFFmpegCommand(AudioTimeline timeline, double frameRate, String outputPath) {
-        StringBuilder cmd = new StringBuilder("ffmpeg");
+        StringBuilder cmd = new StringBuilder(FFmpegPathResolver.getFFmpegPath());
 
         // 1. 添加输入文件
         for (AudioSegment segment : timeline.getSegments()) {
