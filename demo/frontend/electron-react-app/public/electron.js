@@ -12,7 +12,7 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const http = require("http");
 const log = require("electron-log");
-const isDev = process.env.NODE_ENV !== "production";
+const isDev = !app.isPackaged;
 
 // autoUpdater — 仅在打包后可用，开发模式静默跳过
 let autoUpdater = null;

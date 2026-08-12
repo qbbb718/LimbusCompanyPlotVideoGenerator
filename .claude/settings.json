@@ -22,7 +22,17 @@
       "Bash(mvn dependency:resolve -U)",
       "Read(//c/Users/user/.m2/repository/org/bytedeco/javacv/1.5.9/**)",
       "Bash(rm -rf ~/.m2/repository/org/bytedeco/javacv/1.5.9/javacv-1.5.9-windows-x86_64.jar.lastUpdated ~/.m2/repository/org/bytedeco/javacv/1.5.9/_remote.repositories)",
-      "Bash(cmd.exe /c \"build-package.bat\")"
+      "Bash(cmd.exe /c \"build-package.bat\")",
+      "Bash(unzip -l \"/c/Users/user/AppData/Local/electron/Cache/electron-v39.0.0-win32-x64.zip\")",
+      "Bash(rm -rf \"/c/Users/user/AppData/Local/electron/Cache/electron-v39.0.0-win32-x64.zip\" \"/c/Users/user/AppData/Local/electron/Cache/\"*129024547*)",
+      "Read(//c/Users/user/AppData/Local/electron/Cache//**)",
+      "Bash(taskkill /f /im \"LimbusCompany*\")",
+      "Bash(taskkill /f /im electron.exe)",
+      "Bash(cmd //c \"rd /s /q \\\\\"e:\\\\\\\\LimbusCompanyPlotVideoGenerator\\\\\\\\demo\\\\\\\\frontend\\\\\\\\electron-react-app\\\\\\\\release\\\\\"\")",
+      "Bash(powershell -Command \"Remove-Item -Path 'e:\\\\LimbusCompanyPlotVideoGenerator\\\\demo\\\\frontend\\\\electron-react-app\\\\release' -Recurse -Force -ErrorAction Stop\")",
+      "Bash(powershell -Command 'Get-Process | Where-Object { $_.ProcessName -match '\\\\''electron|Limbus|java'\\\\'' } | Select-Object Id, ProcessName, MainWindowTitle')",
+      "Bash(taskkill /f /pid 9620)",
+      "Bash(cmd //c \"taskkill /f /pid 9620\")"
     ]
   }
 }

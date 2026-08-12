@@ -10,6 +10,35 @@ echo.
 set "DEMO_DIR=%~dp0"
 set "FRONTEND_DIR=%DEMO_DIR%frontend\electron-react-app"
 
+REM --- Prerequisite checks ---
+set "HAS_ERROR="
+
+where mvn >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] mvn not found. Please install Maven and add it to PATH.
+    set "HAS_ERROR=1"
+)
+
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] npm not found. Please install Node.js and add it to PATH.
+    set "HAS_ERROR=1"
+)
+
+if not defined JAVA_HOME (
+    echo [WARN] JAVA_HOME is not set. jlink and Maven may not work correctly.
+)
+
+if defined HAS_ERROR (
+    echo.
+    echo Please install the missing tools, then re-run this script.
+    pause
+    exit /b 1
+)
+
+echo Environment check passed.
+echo.
+
 REM --- 0. Generate bundled JRE (skip if exists) ---
 if not exist "%DEMO_DIR%jre\bin\java.exe" (
     echo [0/4] Generating bundled JRE...
@@ -60,9 +89,61 @@ REM --- 3. Package Electron app ---
 echo [3/4] Packaging Electron app...
 echo        This may take a while on first run (downloading Electron binary)...
 echo.
-npx electron-builder --win --x64
+
+REM Kill any leftover processes that might lock build files
+echo        Checking for leftover processes...
+taskkill /f /im java.exe 2>nul
+taskkill /f /im javaw.exe 2>nul
+taskkill /f /im electron.exe 2>nul
+taskkill /f /im "LimbusCompany Plot Video Generator.exe" 2>nul
+
+REM Clean previous build output to avoid stale cache issues
+if exist "%FRONTEND_DIR%release" (
+    echo        Cleaning previous release directory...
+
+    REM Pass 1: try rmdir (fast path if nothing locked)
+    rmdir /s /q "%FRONTEND_DIR%release" 2>nul
+
+    if exist "%FRONTEND_DIR%release" (
+        echo        [WARN] Some files are locked - identifying...
+
+        REM Show which files are locked
+        dir /s /b "%FRONTEND_DIR%release\*" 2>nul | findstr /v "^$" >nul 2>&1
+        if not errorlevel 1 (
+            echo        Locked files:
+            dir /s /b "%FRONTEND_DIR%release\*" 2>nul
+        )
+
+        REM Pass 2: delete everything we can, then retry rmdir
+        del /f /s /q "%FRONTEND_DIR%release\*" 2>nul
+        for /d %%d in ("%FRONTEND_DIR%release\*") do rmdir /s /q "%%d" 2>nul
+        rmdir /s /q "%FRONTEND_DIR%release" 2>nul
+
+        if exist "%FRONTEND_DIR%release" (
+            echo        [WARN] Could not fully clean release/ - still locked by:
+            powershell -NoProfile -Command "$p='%FRONTEND_DIR%release\win-unpacked\resources\app.asar'; if(Test-Path $p){Get-Process|?{$_.Modules.FileName -eq $p}|%%{Write-Host (' '*12+$_.Name+' (PID '+$_.Id+') is holding app.asar')}}" 2>nul
+            echo        Attempting to proceed anyway (electron-builder will try to clean)...
+        ) else (
+            echo        Cleaned successfully after retry.
+        )
+    ) else (
+        echo        Cleaned successfully.
+    )
+) else (
+    echo        No previous release directory to clean.
+)
+
+REM Small delay to let Windows Defender finish scanning any released files
+timeout /t 2 /nobreak >nul
+
+call npx electron-builder --win --x64
 if errorlevel 1 (
-    echo [ERROR] Packaging failed
+    echo.
+    echo [ERROR] Packaging failed.
+    echo        Common causes:
+    echo        1. A file in release\ is locked by another process (try rebooting)
+    echo        2. Electron binary download failed (check VPN/network)
+    echo        3. Antivirus is blocking file operations
     pause
     exit /b 1
 )
