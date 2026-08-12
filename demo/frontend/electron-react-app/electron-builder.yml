@@ -41,7 +41,7 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  icon: public/favicon.ico
+  icon: public/logo512.png
   # 请求管理员权限以确保文件系统操作正常
   requestedExecutionLevel: asInvoker
 
