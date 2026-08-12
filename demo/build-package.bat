@@ -1,4 +1,61 @@
 @echo off
+
+REM ================================================================
+REM  Self-invoke: capture all output to a timestamped log file.
+REM  If BUILD_INNER is set, we are already inside the logging wrapper.
+REM ================================================================
+if defined BUILD_INNER goto :MAIN
+
+REM --- CI detection ---
+if defined CI (
+    set "IS_CI=1"
+) else (
+    set "IS_CI=0"
+)
+
+set "LOGDIR=%~dp0logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+
+REM --- Timezone-safe timestamp (PowerShell, works in both local and CI) ---
+for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'"') do set "TS=%%I"
+if not defined TS set "TS=00000000-000000"
+
+set "LOGFILE=%LOGDIR%\build-%TS%.txt"
+
+echo ============================================
+echo   LimbusCompany Plot Video Generator - Build
+echo ============================================
+echo.
+echo Log: %LOGFILE%
+echo CI mode: %IS_CI%
+echo.
+
+set "BUILD_INNER=1"
+call "%~f0" > "%LOGFILE%" 2>&1
+set "BUILD_EXIT=%ERRORLEVEL%"
+
+echo.
+echo ============================================
+if %BUILD_EXIT% equ 0 (
+    echo   BUILD SUCCEEDED
+) else (
+    echo   BUILD FAILED with exit code %BUILD_EXIT%
+    echo.
+    echo   Last 20 lines of log:
+    echo   ----------------------------------------
+    powershell -NoProfile -Command "Get-Content '%LOGFILE%' -Tail 20"
+    echo   ----------------------------------------
+)
+echo   Full log: %LOGFILE%
+echo ============================================
+
+REM --- Only pause in local (non-CI) environment ---
+if "%IS_CI%"=="0" (
+    pause
+)
+exit /b %BUILD_EXIT%
+
+:MAIN
 setlocal enabledelayedexpansion
 chcp 65001 >nul 2>&1
 
@@ -32,8 +89,7 @@ if not defined JAVA_HOME (
 if defined HAS_ERROR (
     echo.
     echo Please install the missing tools, then re-run this script.
-    pause
-    exit /b 1
+    goto :FATAL
 )
 
 echo Environment check passed.
@@ -48,8 +104,7 @@ if not exist "%DEMO_DIR%jre\bin\java.exe" (
             "%JAVA_HOME%\bin\jlink" --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.sql,java.xml,jdk.unsupported,jdk.management,jdk.crypto.ec,jdk.zipfs,java.net.http,java.security.jgss,java.security.sasl --strip-debug --no-man-pages --no-header-files --compress=zip-6 --output "%DEMO_DIR%jre"
             if errorlevel 1 (
                 echo [ERROR] jlink failed
-                pause
-                exit /b 1
+                goto :FATAL
             )
             echo        JRE generated successfully
         ) else (
@@ -67,8 +122,7 @@ cd /d "%DEMO_DIR%"
 call mvn clean package -DskipTests -q
 if errorlevel 1 (
     echo [ERROR] Backend build failed
-    pause
-    exit /b 1
+    goto :FATAL
 )
 echo        Backend build complete
 echo.
@@ -76,11 +130,17 @@ echo.
 REM --- 2. Build frontend ---
 echo [2/4] Building React frontend...
 cd /d "%FRONTEND_DIR%"
+
+REM --- CI: treat warnings as warnings, not errors ---
+if "%IS_CI%"=="1" (
+    echo        CI mode: skipping ESLint warnings-as-errors
+    set "CI=false"
+)
+
 call npm run build
 if errorlevel 1 (
     echo [ERROR] Frontend build failed
-    pause
-    exit /b 1
+    goto :FATAL
 )
 echo        Frontend build complete
 echo.
@@ -97,55 +157,37 @@ taskkill /f /im javaw.exe 2>nul
 taskkill /f /im electron.exe 2>nul
 taskkill /f /im "LimbusCompany Plot Video Generator.exe" 2>nul
 
-REM Clean previous build output to avoid stale cache issues
+REM Clean previous build output
 if exist "%FRONTEND_DIR%release" (
     echo        Cleaning previous release directory...
-
-    REM Pass 1: try rmdir (fast path if nothing locked)
     rmdir /s /q "%FRONTEND_DIR%release" 2>nul
-
     if exist "%FRONTEND_DIR%release" (
-        echo        [WARN] Some files are locked - identifying...
-
-        REM Show which files are locked
-        dir /s /b "%FRONTEND_DIR%release\*" 2>nul | findstr /v "^$" >nul 2>&1
-        if not errorlevel 1 (
-            echo        Locked files:
-            dir /s /b "%FRONTEND_DIR%release\*" 2>nul
-        )
-
-        REM Pass 2: delete everything we can, then retry rmdir
-        del /f /s /q "%FRONTEND_DIR%release\*" 2>nul
-        for /d %%d in ("%FRONTEND_DIR%release\*") do rmdir /s /q "%%d" 2>nul
-        rmdir /s /q "%FRONTEND_DIR%release" 2>nul
-
-        if exist "%FRONTEND_DIR%release" (
-            echo        [WARN] Could not fully clean release/ - still locked by:
-            powershell -NoProfile -Command "$p='%FRONTEND_DIR%release\win-unpacked\resources\app.asar'; if(Test-Path $p){Get-Process|?{$_.Modules.FileName -eq $p}|%%{Write-Host (' '*12+$_.Name+' (PID '+$_.Id+') is holding app.asar')}}" 2>nul
-            echo        Attempting to proceed anyway (electron-builder will try to clean)...
-        ) else (
-            echo        Cleaned successfully after retry.
-        )
+        echo        [WARN] Failed to clean release/ - files may be locked by another process
     ) else (
-        echo        Cleaned successfully.
+        echo        Cleaned successfully
     )
-) else (
-    echo        No previous release directory to clean.
 )
 
-REM Small delay to let Windows Defender finish scanning any released files
+REM Small delay
 timeout /t 2 /nobreak >nul
 
-call npx electron-builder --win --x64
+REM --- electron-builder: use --publish never in CI to avoid missing GH_TOKEN ---
+if "%IS_CI%"=="1" (
+    echo        CI mode: using --publish never
+    call npx electron-builder --win --x64 --publish never
+) else (
+    call npx electron-builder --win --x64
+)
+
 if errorlevel 1 (
     echo.
     echo [ERROR] Packaging failed.
+    echo.
     echo        Common causes:
     echo        1. A file in release\ is locked by another process (try rebooting)
     echo        2. Electron binary download failed (check VPN/network)
     echo        3. Antivirus is blocking file operations
-    pause
-    exit /b 1
+    goto :FATAL
 )
 
 echo.
@@ -155,4 +197,24 @@ echo   Installer: %FRONTEND_DIR%release\
 echo ============================================
 dir /b "%FRONTEND_DIR%\release\*.exe" 2>nul
 echo.
-pause
+goto :DONE
+
+REM ================================================================
+REM  Centralized exit points - skip pause in CI
+REM ================================================================
+:FATAL
+echo.
+echo ============================================
+echo   BUILD FAILED - see error details above
+echo ============================================
+if "%IS_CI%"=="0" (
+    pause
+)
+exit /b 1
+
+:DONE
+if "%IS_CI%"=="0" (
+    echo Press any key to exit...
+    pause
+)
+exit /b 0
