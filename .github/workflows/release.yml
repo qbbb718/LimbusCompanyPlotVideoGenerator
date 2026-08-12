@@ -33,6 +33,7 @@ jobs:
       - name: Generate Bundled JRE (jlink)
         run: |
           if not exist "demo\jre\bin\java.exe" (
+            if exist "demo\jre" rmdir /s /q "demo\jre"
             jlink --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.sql,java.xml,jdk.unsupported,jdk.management,jdk.crypto.ec,jdk.zipfs,java.net.http,java.security.jgss,java.security.sasl --strip-debug --no-man-pages --no-header-files --compress=zip-6 --output demo\jre
           )
         shell: cmd

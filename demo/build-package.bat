@@ -15,6 +15,7 @@ if not exist "%DEMO_DIR%jre\bin\java.exe" (
     echo [0/4] Generating bundled JRE...
     if defined JAVA_HOME (
         if exist "%JAVA_HOME%\bin\jlink.exe" (
+            if exist "%DEMO_DIR%jre" rmdir /s /q "%DEMO_DIR%jre"
             "%JAVA_HOME%\bin\jlink" --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.sql,java.xml,jdk.unsupported,jdk.management,jdk.crypto.ec,jdk.zipfs,java.net.http,java.security.jgss,java.security.sasl --strip-debug --no-man-pages --no-header-files --compress=zip-6 --output "%DEMO_DIR%jre"
             if errorlevel 1 (
                 echo [ERROR] jlink failed
