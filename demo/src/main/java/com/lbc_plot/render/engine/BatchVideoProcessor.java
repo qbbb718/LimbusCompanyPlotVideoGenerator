@@ -265,11 +265,12 @@ public class BatchVideoProcessor {
             if (progress != null) progress.onProgress(4, 0, 1, "合并音视频...");
 
             // 方法1: 直接映射合并（推荐，速度更快）
-            // 假设视频和音频时长完全匹配，直接合并
+            // 视频轨原样 copy，音频转 AAC 并用静音补齐，成片长度 = 视频时间线长度（各 Record 帧数之和），
+            // 所以 BGM/音效比视频短时不会截断结尾片段
             VideoAudioMerger.mergeVideoAudioDirect(silentVideoPath, audioPath, outputPath);
 
             // 方法2: 以最长文件为准的合并（备选方案）
-            // 如果视频和音频时长不一致，以较长的为准，较短的用静音/黑帧填充
+            // 成片长度取 max(视频, 音频)，适合希望 BGM 播完才结束的场景
             // VideoAudioMerger.mergeVideoAudioLongest(silentVideoPath, audioPath,
             // outputPath);
 
