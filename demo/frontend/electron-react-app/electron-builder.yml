@@ -42,6 +42,14 @@ win:
     - target: nsis
       arch: [x64]
   icon: public/logo512.png
+  # 安装目录名与可执行文件名取自 executableName（不设时取 productName）。
+  # 必须保持无空格：安装路径里带空格时，Spring Boot 3.2 生成的嵌套 jar URL
+  # （jar:nested:/.../BOOT-INF/lib/xxx.jar!/...）里会保留这个空格，JavaCV/JavaCPP
+  # 解析该 URL 时抛 URISyntaxException，FFmpeg 原生库加载失败（UnsatisfiedLinkError），
+  # 而它是 Error 不会被 catch (Exception) 捕获，表现为“导出视频进度永远 0%”。
+  # 只影响安装目录/可执行文件名：productName（界面显示名、卸载项名称）、
+  # shortcutName、安装包文件名（${productName} Setup x.x.x.exe）都不变。
+  executableName: LimbusCompanyPlotVideoGenerator
   # 请求管理员权限以确保文件系统操作正常
   requestedExecutionLevel: asInvoker
 

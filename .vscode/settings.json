@@ -7,5 +7,18 @@
   "Codegeex.SidebarUI.LanguagePreference": "中文",
   "Codegeex.Chat.fontSize": 20,
   "Codegeex.Privacy": true,
+  "files.watcherExclude": {
+    "**/release/**": true,
+    "**/release.old/**": true,
+    "**/target/**": true,
+    "**/jre/**": true,
+    "**/node_modules/**": true
+  },
+  "search.exclude": {
+    "**/release": true,
+    "**/release.old": true,
+    "**/target": true,
+    "**/jre": true
+  },
   "Codegeex.CommitMessage.LanguagePreference": "中文"
 }
