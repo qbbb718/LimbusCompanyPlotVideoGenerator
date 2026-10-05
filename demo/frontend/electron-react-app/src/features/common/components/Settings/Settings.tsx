@@ -4,6 +4,7 @@ import { ProjectSettings, DEFAULT_PROJECT_SETTINGS, SETTINGS_STORAGE_KEY } from 
 import BasicInfoSection from "./sections/BasicInfoSection";
 import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
+import AssetMaintenanceSection from "./sections/AssetMaintenanceSection";
 import ApiService from "@services/ApiService";
 
 interface SettingsProps {
@@ -79,6 +80,8 @@ const Settings: React.FC<SettingsProps> = ({
         projectSettings={projectSettings}
         handleChange={handleChange}
       />
+
+      <AssetMaintenanceSection />
 
       <div className="settings-section settings-about">
         <h3>关于</h3>

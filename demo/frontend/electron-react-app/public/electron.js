@@ -213,18 +213,30 @@ function findJava() {
 function startBackend(userDataPath) {
   const javaPath = findJava();
   const jarPath = findBackendJar();
+  // 随安装包发布的素材目录：后端据此把缺失的素材补齐到用户数据目录（ui/effects 是硬依赖）
+  const bundledAssets = path.join(process.resourcesPath, "assets");
   log.info("启动后端:", javaPath, "-jar", jarPath);
   log.info("后端工作目录:", userDataPath);
+  log.info("安装包素材目录:", bundledAssets);
 
-  backendProcess = spawn(javaPath, ["-jar", jarPath, "--server.port=8081"], {
-    cwd: userDataPath,
-    stdio: "pipe",
-    env: {
-      ...process.env,
-      JAVA_TOOL_OPTIONS:
-        "-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai",
+  backendProcess = spawn(
+    javaPath,
+    [
+      `-Dapp.assets.bundled=${bundledAssets}`,
+      "-jar",
+      jarPath,
+      "--server.port=8081",
+    ],
+    {
+      cwd: userDataPath,
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        JAVA_TOOL_OPTIONS:
+          "-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai",
+      },
     },
-  });
+  );
 
   backendProcess.stdout.on("data", (data) => {
     log.info(`[backend] ${data.toString().trim()}`);

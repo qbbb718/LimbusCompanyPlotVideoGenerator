@@ -234,7 +234,25 @@ echo        3. Antivirus is blocking file operations
 goto :FATAL
 
 :PACK_OK
-REM Packaging succeeded, so the previous build we moved aside can go.
+REM --- Verify the packaged assets before declaring success. ---
+REM ui/ and effects/ are hard requirements for preview rendering and video
+REM export: if they are missing from the payload, the installed app fails at
+REM runtime with a confusing error (or an export that never progresses), so
+REM fail the build here instead of shipping such an installer.
+REM The previous output is still at PACK_OLD at this point, so a failed check
+REM keeps the last good installer around.
+echo        Verifying bundled assets...
+powershell -NoProfile -Command "$a=Join-Path '%PACK_OUTPUT%' 'win-unpacked\resources\assets'; if (-not (Test-Path $a)) { Write-Host ('[ERROR] assets were not packaged: ' + $a); exit 1 }; $need=@('ui\border_1080p.png','ui\dialogBox.png','ui\speaker-camp.png','ui\speaker-name.png','ui\location.png','fonts\ChineseFont.ttf'); $miss=@($need | Where-Object { -not (Test-Path (Join-Path $a $_)) }); $fx=@(Get-ChildItem (Join-Path $a 'effects') -File -ErrorAction SilentlyContinue).Count; if ($miss.Count -gt 0) { Write-Host ('[ERROR] required assets missing from the package: ' + ($miss -join ', ')); exit 1 }; if ($fx -lt 1) { Write-Host ('[ERROR] effects folder is empty in the packaged assets'); exit 1 }; $n=@(Get-ChildItem $a -Recurse -File).Count; Write-Host ('       assets ok: ' + $n + ' files, effects: ' + $fx + ', fonts: ok')"
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Packaged assets check failed.
+    echo         The installer would ship without assets/ui or assets/effects,
+    echo         which breaks preview rendering and video export.
+    echo         Previous output was kept as: %PACK_OLD%
+    goto :FATAL
+)
+
+REM Packaging and the asset check both passed, so the previous build can go.
 if exist "%PACK_OLD%" rmdir /s /q "%PACK_OLD%" 2>nul
 if exist "%PACK_OLD%" echo        [WARN] Could not remove the old output: %PACK_OLD%
 echo.

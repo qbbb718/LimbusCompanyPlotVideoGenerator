@@ -163,3 +163,25 @@
   font-size: 13px;
   color: #888;
 }
+
+/* 素材自检与修复 */
+.settings-hint {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.settings-warning {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #d4380d;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.settings-section-content .save-button:disabled {
+  background-color: #bfbfbf;
+  cursor: not-allowed;
+}

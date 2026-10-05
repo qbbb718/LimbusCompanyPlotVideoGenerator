@@ -263,6 +263,57 @@ class ApiService {
     }
   }
 
+  // 素材自检：素材目录在哪、必需素材（ui/effects/字体）是否齐全
+  async getAssetDiagnostics(): Promise<{
+    assetsDir: string;
+    assetsDirExists: boolean;
+    workingDir: string;
+    bundledDir: string;
+    bundledAvailable: boolean;
+    missing: string[];
+    ok: boolean;
+  }> {
+    try {
+      const response = await apiClient.get('/diagnostics/assets');
+      return response.data;
+    } catch (error) {
+      log.error('素材自检失败:', error);
+      throw error;
+    }
+  }
+
+  // 从安装包补齐缺失素材（幂等，可反复点；只补缺失的文件，不覆盖已有素材）
+  async repairAssets(): Promise<{
+    sync: {
+      bundledDir: string;
+      targetDir: string;
+      bundledAvailable: boolean;
+      bundledFiles: number;
+      copied: number;
+      skipped: number;
+      failed: string[];
+      copiedFiles: string[];
+      note: string;
+      ok: boolean;
+    };
+    diagnostics: {
+      assetsDir: string;
+      bundledDir: string;
+      bundledAvailable: boolean;
+      missing: string[];
+      ok: boolean;
+    };
+  }> {
+    try {
+      const response = await apiClient.post('/diagnostics/assets/sync');
+      log.info('素材补齐结果:', response.data);
+      return response.data;
+    } catch (error) {
+      log.error('素材补齐失败:', error);
+      throw error;
+    }
+  }
+
   // 查询视频生成进度
   async getVideoProgress(taskId: string): Promise<{
     stage: number;
