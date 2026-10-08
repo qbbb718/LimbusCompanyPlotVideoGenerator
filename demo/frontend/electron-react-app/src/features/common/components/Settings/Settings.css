@@ -1,9 +1,24 @@
+/* 设置页是一个垂直滚动容器：
+   flex + min-height:0 让面板被约束在窗口内（而不是被内容撑高），
+   内容超出时面板自身滚动，窗口再小也能看到全部设置项。 */
 .settings-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
   padding: 10px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* 面板的直接子项按内容自然高度排列，禁止被 flex 压缩。
+   否则在矮窗口里 flex 会把每个分区“压扁”，内容被静默裁掉而不是出现滚动条。 */
+.settings-container > h2,
+.settings-container > .settings-section,
+.settings-container > .settings-actions {
+  flex: 0 0 auto;
 }
 
 .settings-container h2 {
@@ -18,6 +33,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: hidden;
+  min-width: 0;
 }
 
 .settings-section h3 {
@@ -30,6 +46,8 @@
 
 .settings-section-content {
   padding: 12px;
+  /* 素材目录、报错信息里可能有很长的无空格字符串，不能让它们撑宽面板 */
+  overflow-wrap: anywhere;
 }
 
 .form-group {
@@ -111,6 +129,14 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 15px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+}
+
+.settings-actions .save-button,
+.settings-actions .reset-button {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
 }
 
 .save-button {
@@ -184,4 +210,47 @@
 .settings-section-content .save-button:disabled {
   background-color: #bfbfbf;
   cursor: not-allowed;
+}
+
+/* 窄窗口：每一行改成上下排列，避免控件被挤成一条缝。
+   注意不要在 .form-group 上用 flex-wrap，那会让文本输入框被拉得很高。 */
+@media (max-width: 900px) {
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-row .form-group {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .form-group label {
+    width: 72px;
+    margin-right: 8px;
+  }
+
+  .form-group input[type="range"] {
+    min-width: 80px;
+  }
+
+  .form-group input[type="text"],
+  .form-group select {
+    min-width: 0;
+  }
+
+  .about-links {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .settings-actions {
+    justify-content: stretch;
+  }
+
+  .settings-actions .save-button,
+  .settings-actions .reset-button {
+    flex: 1 1 auto;
+  }
 }
