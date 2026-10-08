@@ -1,5 +1,6 @@
 package com.lbc_plot.plot.parser;
 
+import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.audio.model.AudioCommand;
 import com.lbc_plot.render.audio.model.AudioCommandType;
 import com.lbc_plot.render.video.BackgroundVisual;
@@ -32,8 +33,11 @@ import org.slf4j.LoggerFactory;
  * 支持的语法（示例）：
  * [BGM文件]
  * {背景图片文件}
- * 角色名: 文本(情绪)
+ * 角色名: 文本(情绪)&lt;位置&gt;
  * 旁白: 文本
+ *
+ * 其中 &lt;位置&gt; 为可选的立绘横向位置（百分比，0% 最左 / 50% 居中 / 100% 最右，缺省居中），
+ * 解析后换算为 CharacterVisual 的 adjX 偏差值。
  */
 public class PlainTextRecordsParser {
 
@@ -44,6 +48,11 @@ public class PlainTextRecordsParser {
     private static final Pattern BG_PATTERN = Pattern.compile("^\\s*\\{(.+?)\\}\\s*");
     private static final Pattern SPEAKER_PATTERN = Pattern.compile("^\\s*([^:]+)\\s*:\\s*(.+)$");
     private static final Pattern EMOTION_PATTERN = Pattern.compile("(.+?)\\((.+?)\\)\\s*$");
+    /** 立绘位置标记：&lt;位置&gt;，如 &lt;0%&gt; / &lt;37.5%&gt; / &lt;100 %&gt;，可写在情绪之前或之后 */
+    private static final Pattern POSITION_PATTERN = Pattern.compile("<\\s*(-?\\d+(?:\\.\\d+)?)\\s*%?\\s*>");
+    /** 位置百分比合法范围（与前端 X坐标滑块一致：0% 最左，100% 最右） */
+    private static final int MIN_POSITION_PERCENT = 0;
+    private static final int MAX_POSITION_PERCENT = 100;
 
     /**
      * 解析文本文件为 Record 列表
@@ -163,6 +172,22 @@ public class PlainTextRecordsParser {
             if (mSpeak.matches()) {
                 String speaker = mSpeak.group(1).trim();
                 String textPart = mSpeak.group(2).trim();
+
+                // 先剥离立绘位置标记 <位置>（如 <0%> / <50%> / <100%>），剩下的文本再解析情绪。
+                // 标记可写在情绪之前或之后（如 "…(HAPPY)<70%>" 或 "…<70%>(HAPPY)"）；
+                // 用 double 保存以支持小数百分比（如 37.5%）。
+                Double positionPercent = null;
+                Matcher mPos = POSITION_PATTERN.matcher(textPart);
+                if (mPos.find() && isPositionToken(textPart.substring(mPos.start(), mPos.end()))) {
+                    try {
+                        positionPercent = Double.parseDouble(mPos.group(1));
+                        textPart = (textPart.substring(0, mPos.start()) + " " + textPart.substring(mPos.end())).trim();
+                        logger.debug("解析立绘位置标记: {}% -> adjX 待换算", positionPercent);
+                    } catch (NumberFormatException nfe) {
+                        logger.debug("无法解析立绘位置标记 '{}'，按普通文本处理", mPos.group(0));
+                        positionPercent = null;
+                    }
+                }
 
                 // 检查情绪：支持更宽容的写法（英文枚举名 / 英文 code / 中文 displayName）
                 Dialogue.Emotion emotion = Dialogue.Emotion.NORMAL;
@@ -366,8 +391,18 @@ public class PlainTextRecordsParser {
 
                         if (chosen != null && portrait != null) {
                             try {
-                                CharacterVisual cv = CharacterVisual.builder(chosen, portrait).bright().build();
+                                // 行内 <位置> 指令换算为 adjX（0% 最左 / 50% 居中 / 100% 最右）
+                                final Integer adjX = toAdjX(positionPercent);
+                                CharacterVisual.Builder cvBuilder = CharacterVisual.builder(chosen, portrait).bright();
+                                if (adjX != null) {
+                                    cvBuilder.adjX(adjX);
+                                }
+                                CharacterVisual cv = cvBuilder.build();
                                 rec.addCharacterVisual(cv);
+                                if (adjX != null) {
+                                    logger.info("立绘位置已应用: 角色={}, 位置={}%, adjX={}",
+                                            chosen.getCharacterName(), positionPercent, adjX);
+                                }
                                 // Also attach a CharacterRef to the Dialogue so UI can render the name/faction
                                 try {
                                     CharacterRef cref = CharacterRef.from(chosen);
@@ -604,6 +639,45 @@ public class PlainTextRecordsParser {
             return new Background(resolvedPath, resolvedName.isEmpty() ? name : resolvedName);
         }
         return new Background(bgPath, name);
+    }
+
+    /**
+     * 判断一个 &lt;...&gt; 片段是否真的是立绘位置标记。
+     *
+     * <p>正则中的百分号与空白都是可选的，因此 "&lt;2&gt;" 这类正文尖括号也会被位置正则命中。
+     * 这里要求片段内至少包含一个 "%" 或小数点，只有这种明确的百分比写法才视为位置指令，
+     * 避免误吞正文中的普通尖括号内容。
+     *
+     * @param token 匹配到的完整尖括号片段（如 "&lt;50%&gt;"、"&lt;37.5%&gt;"）
+     * @return true 表示该片段是位置标记
+     */
+    private static boolean isPositionToken(String token) {
+        return token != null && (token.indexOf('%') >= 0 || token.indexOf('.') >= 0);
+    }
+
+    /**
+     * 把行内 &lt;位置&gt; 的百分比换算为 CharacterVisual 的 adjX 偏差值。
+     *
+     * <p>换算规则（以 1920x1080 为例，{@code VIDEO_WIDTH / 2 = 960}）：
+     * <ul>
+     *   <li>50%（居中）→ adjX = 0</li>
+     *   <li>0%（最左）→ adjX = -960</li>
+     *   <li>100%（最右）→ adjX = +960</li>
+     * </ul>
+     * 即 {@code adjX = (位置% - 50) * VIDEO_WIDTH / 100}。
+     *
+     * @param positionPercent 位置百分比，null 表示未指定（返回 null，交由调用方保持默认居中）
+     * @return 换算后的 adjX，未指定时为 null
+     */
+    private static Integer toAdjX(Double positionPercent) {
+        if (positionPercent == null) {
+            return null;
+        }
+        if (positionPercent < MIN_POSITION_PERCENT || positionPercent > MAX_POSITION_PERCENT) {
+            logger.warn("立绘位置 {}% 超出建议范围 0%-100%，仍将按比例换算", positionPercent);
+        }
+        // 先乘后除并做四舍五入，保留小数位置（如 37.5% -> -240），避免整数除法丢失精度
+        return (int) Math.round((positionPercent - 50.0) * ProjectConfig.VIDEO_WIDTH / 100.0);
     }
 
     /**
