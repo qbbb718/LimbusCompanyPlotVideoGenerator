@@ -485,3 +485,47 @@
   width: 16px;
   height: 16px;
 }
+
+/* ===== 列表项悬浮操作按钮（角色卡片 / 音频条目） =====
+   与「背景」页面的 .background-actions 行为一致：
+   平时隐藏，鼠标悬浮在整张卡片上时出现在右上角。 */
+
+/* 作为绝对定位按钮的定位上下文 */
+.character-card,
+.audio-item {
+  position: relative;
+}
+
+.card-hover-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 2;
+}
+
+.character-card:hover .card-hover-actions,
+.audio-item:hover .card-hover-actions {
+  opacity: 1;
+}
+
+.card-action-btn {
+  font-size: 12px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.card-action-btn.card-delete-btn {
+  background: #ef4444;
+}
+
+.card-action-btn.card-delete-btn:hover {
+  background: #cc3a3a;
+}

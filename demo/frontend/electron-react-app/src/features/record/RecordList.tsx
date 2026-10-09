@@ -137,7 +137,7 @@ const RecordList: React.FC<RecordListProps> = ({
       <div className="record-list-header">
         {/* 标题与"添加记录"按钮放在一起：添加记录是列表自身的操作，靠左更顺手 */}
         <div className="record-list-title">
-          <h3>剧情记录</h3>
+          <h3>剧情列表</h3>
           <button
             className="add-record-btn"
             onClick={createNewRecord}

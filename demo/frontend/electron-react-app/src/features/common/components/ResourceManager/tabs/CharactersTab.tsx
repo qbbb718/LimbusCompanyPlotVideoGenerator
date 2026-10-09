@@ -183,12 +183,28 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       }
 
       log("角色删除成功", characterId);
-      alert("角色删除成功");
     } catch (error) {
       console.error("删除角色失败:", error);
       log("角色删除失败", error);
       alert("删除角色失败，请重试");
     }
+  };
+
+  /**
+   * 卡片右上角悬浮删除按钮的点击处理。
+   * 整个流程只弹一个确认框，确认后连磁盘上的角色素材一起删除。
+   */
+  const handleDeleteCharacterFromCard = (
+    e: React.MouseEvent,
+    character: MyCharacter,
+  ) => {
+    // 阻止冒泡，避免同时触发卡片的「选中」与「双击编辑」
+    e.stopPropagation();
+    const confirmed = window.confirm(
+      `确定删除角色「${character.characterName}」吗？\n\n将同时删除数据库记录和磁盘中的角色素材（立绘原图与缩略图）。`,
+    );
+    if (!confirmed) return;
+    handleDeleteCharacter(character.characterID, true);
   };
 
   return (
@@ -268,6 +284,16 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
                 />
               </div>
             )}
+            {/* 悬浮在卡片右上角的操作按钮，与「背景」页面的卡片保持一致 */}
+            <div className="card-hover-actions">
+              <button
+                className="card-action-btn card-delete-btn"
+                title="删除角色"
+                onClick={(e) => handleDeleteCharacterFromCard(e, character)}
+              >
+                🗑 删除
+              </button>
+            </div>
             <CharacterAvatar character={character} />
             <div className="character-info">
               <h3>{character.characterName}</h3>

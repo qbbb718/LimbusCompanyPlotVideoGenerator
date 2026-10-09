@@ -114,36 +114,79 @@
   overflow: auto;
   border: 1px solid #ddd;
   height: 100%;
+  /* 操作列固定宽度：要完整放下 ↑ ↓ 复制 删除 四个按钮（按钮行约 139px + 单元格内边距 16px），
+     留些余量，避免字体不一致时按钮换行 */
+  --record-list-action-col-width: 180px;
 }
 
+/* 用 grid 轨道代替表格的自动列宽：
+   表格单元格的宽度写不了"% 与 px 混算"（Chromium 会忽略这种声明，列宽退回按剩余空间均分），
+   而 grid 轨道天然支持 %、fr、px 混用，且 fr 轨道只吃"剩余空间"，与单元格内容无关。
+   这样列宽只由下面的模板决定：输入对话内容时，单元格再长也不会把列撑宽或挤窄。 */
 .record-list table {
+  display: block;
   width: 100%;
-  border-collapse: collapse;
+}
+
+.record-list thead,
+.record-list tbody {
+  display: block;
+}
+
+/* 表头吸顶：sticky 元素要能相对滚动容器（.record-list）移动，所以加在 thead 上而不是 th 上 */
+.record-list thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* 列宽约定（列表占满窗口宽度，所以 60% 同时约等于窗口宽度的 60%）：
+   "#" 列最窄，"说话人"列是它的 4 倍，两者按 1 : 4 瓜分
+   扣掉"对话内容列（60%）"与"操作列（180px）"之后的剩余宽度。
+   minmax(0, …) 是为了不让单元格内容把 fr 轨道顶开 */
+.record-list tr {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 3fr)
+    65%
+    var(--record-list-action-col-width);
 }
 
 .record-list th, .record-list td {
   padding: 8px;
   text-align: left;
   border-bottom: 1px solid #ddd;
+  /* 列宽固定后内容不再换行，超出部分省略，避免溢出到相邻列 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .record-list th {
   background-color: #f5f5f5;
-  position: sticky;
-  top: 0;
 }
 
 .record-list tbody tr {
   transition: all 0.15s ease;
-  border-left: 3px solid transparent;
   cursor: pointer;
+}
+
+/* 选中行的左侧强调条放在首个单元格上（不是整行）：
+   行上不加边框，表头行与数据行的 grid 内容宽度才完全一致，列不会错开 3px */
+.record-list tbody td:first-child {
+  border-left: 3px solid transparent;
+  transition: border-color 0.15s ease;
 }
 
 .record-list tbody tr.selected {
   background-color: #e6f7ff;
-  border-left: 3px solid #1890ff;
   font-weight: 500;
   box-shadow: inset 0 0 0 1px rgba(24, 144, 255, 0.12);
+}
+
+.record-list tbody tr.selected td:first-child {
+  border-left-color: #1890ff;
 }
 
 .record-list tbody tr.selected td {

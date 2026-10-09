@@ -131,7 +131,17 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
   };
 
   const handleDeleteAudio = async (audioId: string) => {
-    if (!window.confirm("确定要删除这个音频吗？")) return;
+    const audio = audios.find((a) => a.uuid === audioId);
+    const name = audio?.name || "该音频";
+
+    // 整个删除流程只有这一个弹窗：确认后连磁盘上的音频文件一起删除。
+    if (
+      !window.confirm(
+        `确定删除音频「${name}」吗？\n\n将同时删除数据库记录和磁盘中的音频文件。`,
+      )
+    ) {
+      return;
+    }
 
     try {
       log("删除音频", audioId);
@@ -153,7 +163,6 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
       }
 
       log("音频删除成功", audioId);
-      alert("音频删除成功");
     } catch (error) {
       console.error("删除音频失败:", error);
       log("音频删除失败", error);
@@ -245,6 +254,20 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
             onClick={() => setSelectedAudio(audio)}
             onDoubleClick={() => handleEditAudio(audio)}
           >
+            {/* 悬浮在条目右上角的操作按钮，与「背景」页面的卡片保持一致 */}
+            <div className="card-hover-actions">
+              <button
+                className="card-action-btn card-delete-btn"
+                title="删除音频"
+                onClick={(e) => {
+                  // 阻止冒泡，避免同时触发条目的「选中」与「双击编辑」
+                  e.stopPropagation();
+                  handleDeleteAudio(audio.uuid);
+                }}
+              >
+                🗑 删除
+              </button>
+            </div>
             <div className="audio-info">
               <h3>{audio.name}</h3>
               <p>类型: {audio.type === "bgm" ? "背景音乐" : "音效"}</p>

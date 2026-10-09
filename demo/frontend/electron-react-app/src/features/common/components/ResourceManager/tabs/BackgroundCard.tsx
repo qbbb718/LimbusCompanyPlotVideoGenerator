@@ -25,11 +25,11 @@ const BackgroundCard: React.FC<BackgroundCardProps> = ({
       undefined;
   };
 
+  // 删除按钮只负责转发，确认弹窗统一由 BackgroundsTab 负责。
+  // 这样点一次删除只会出现一个确认框（此前卡片和标签页各弹一次，删完还会再弹提示）。
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`确定删除背景「${background.name}」吗？\n（默认将同时删除相关图片文件）`)) {
-      onDelete(background.uuid);
-    }
+    onDelete(background.uuid);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {

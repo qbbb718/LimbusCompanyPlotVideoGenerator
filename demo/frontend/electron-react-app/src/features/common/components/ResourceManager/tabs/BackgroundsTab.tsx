@@ -300,8 +300,10 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     const bg = backgrounds.find((b) => b.uuid === backgroundId);
     const name = bg?.name || "该背景";
 
+    // 整个删除流程只有这一个弹窗：确认后连磁盘上的原图与缩略图一起删除。
+    // （卡片上的删除按钮已不再单独弹确认框，删除成功后也不再弹提示框）
     const confirmed = window.confirm(
-      `确定删除背景「${name}」吗？\n\n将同时删除数据库记录和磁盘中的图片文件。`,
+      `确定删除背景「${name}」吗？\n\n将同时删除数据库记录和磁盘中的图片文件（原图与缩略图）。`,
     );
     if (!confirmed) return;
 
@@ -321,7 +323,6 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
       }
 
       log("背景删除成功", backgroundId);
-      alert("背景删除成功");
     } catch (error) {
       console.error("删除背景失败:", error);
       log("背景删除失败", error);
