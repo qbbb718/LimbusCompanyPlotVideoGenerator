@@ -27,6 +27,23 @@ export interface ElectronAPI {
   openImageFile: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
   saveFile: (defaultPath: string, data: string) => Promise<{ canceled: boolean; filePath?: string }>;
   readFile: (filePath: string) => Promise<Buffer>;
+  /** 保存工程：更新已关联的工程文件（Ctrl+S） */
+  writeFile: (
+    filePath: string,
+    data: string,
+  ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+  /** 保存工程：弹出保存对话框并写入（首次保存 / 另存为） */
+  saveProjectFile: (
+    defaultPath: string,
+    data: string,
+  ) => Promise<{
+    canceled: boolean;
+    success?: boolean;
+    filePath?: string;
+    error?: string;
+  }>;
+  /** 取文件选择框所选文件的真实路径（用于记住工程文件位置） */
+  getPathForFile: (file: File) => string;
   selectDirectory: () => Promise<{ canceled: boolean; path?: string }>;
 
   // 打开资源目录

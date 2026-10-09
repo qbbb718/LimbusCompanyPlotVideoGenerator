@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 // 暴露受保护的方法给渲染进程
 // intercept renderer console and forward to main process
@@ -34,6 +34,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("dialog:saveFile", defaultPath, data),
   readFile: (filePath) => ipcRenderer.invoke("file:read", filePath),
   selectDirectory: () => ipcRenderer.invoke("dialog:selectDirectory"),
+
+  // 保存工程：更新已关联的工程文件（Ctrl+S，不弹对话框）
+  writeFile: (filePath, data) =>
+    ipcRenderer.invoke("file:write", filePath, data),
+  // 保存工程：弹出保存对话框并写入（工程首次保存 / 另存为）
+  saveProjectFile: (defaultPath, data) =>
+    ipcRenderer.invoke("dialog:saveProjectFile", defaultPath, data),
+  // 取文件选择框所选文件的真实路径（Electron 32 起 File.path 已移除，改用 webUtils）。
+  // "导入工程"用它记住文件路径，之后的 Ctrl+S 直接更新同一个文件。
+  getPathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file) || "";
+    } catch (error) {
+      return "";
+    }
+  },
 
   // 通知
   showNotification: (title, body) =>

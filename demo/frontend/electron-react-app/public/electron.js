@@ -840,10 +840,11 @@ ipcMain.handle("dialog:openImageFile", async () => {
 // 文件对话框
 ipcMain.handle("dialog:openFile", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: "打开工程",
     properties: ["openFile"],
     filters: [
+      { name: "工程文件 (JSON)", extensions: ["json"] },
       { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "bmp"] },
-      { name: "JSON Files", extensions: ["json"] },
       { name: "All Files", extensions: ["*"] },
     ],
   });
@@ -869,6 +870,49 @@ ipcMain.handle("dialog:saveFile", async (event, defaultPath, data) => {
     return { canceled, filePath };
   } else {
     return { canceled };
+  }
+});
+
+// 保存工程：更新工程已关联的文件（Ctrl+S / "保存工程"按钮），不弹对话框。
+// 失败时把原因回传给渲染进程，由前端用文字提示展示，不抛异常。
+ipcMain.handle("file:write", async (event, filePath, data) => {
+  try {
+    if (!filePath || typeof filePath !== "string") {
+      throw new Error("未指定工程文件路径");
+    }
+    fs.writeFileSync(filePath, data, "utf8");
+    return { success: true, filePath };
+  } catch (error) {
+    console.error("保存工程失败:", error);
+    return { success: false, error: String((error && error.message) || error) };
+  }
+});
+
+// 保存工程：工程还没关联文件时弹出保存对话框，选定位置与名称后写入
+ipcMain.handle("dialog:saveProjectFile", async (event, defaultPath, data) => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: "保存工程",
+    defaultPath,
+    filters: [
+      { name: "工程文件 (JSON)", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+
+  if (canceled || !filePath) {
+    return { canceled: true };
+  }
+
+  try {
+    fs.writeFileSync(filePath, data, "utf8");
+    return { canceled: false, success: true, filePath };
+  } catch (error) {
+    console.error("保存工程文件失败:", error);
+    return {
+      canceled: false,
+      success: false,
+      error: String((error && error.message) || error),
+    };
   }
 });
 

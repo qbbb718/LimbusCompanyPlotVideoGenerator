@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import RecordEditor from "@features/record";
+import RecordEditor, { ProjectToast, useProjectWorkspace } from "@features/record";
 import { ResourceManager } from "@features/resource";
 import { Settings } from "@features/settings";
 import { TextToRecords } from "@features/text-to-records";
@@ -12,7 +12,6 @@ function App() {
     "editor" | "resources" | "settings" | "textToRecords"
   >("textToRecords");
   const [appInitialized, setAppInitialized] = useState(false);
-  const [parsedRecords, setParsedRecords] = useState<Record[]>([]);
   const [projectSettings, setProjectSettings] = useState<ProjectSettings>({
     name: "新项目",
     bgmVolume: 0.7,
@@ -27,6 +26,9 @@ function App() {
     videoWidth: 1920,
     videoHeight: 1080,
   });
+
+  // 当前工程由 App 层持有，切换页面（资源管理/设置…）不丢编辑内容；详见 useProjectWorkspace.ts
+  const workspace = useProjectWorkspace(projectSettings.name);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -46,10 +48,10 @@ function App() {
     console.log("[App] handleParsedRecords 被调用");
     console.log(`[App] 接收到的记录数: ${records.length}`);
     console.log("[App] 记录预览:", JSON.stringify(records, null, 2));
-    
-    setParsedRecords(records);
-    console.log("[App] 已设置 parsedRecords 状态");
-    
+
+    workspace.adoptParsedRecords(records);
+    console.log("[App] 已把解析结果接入当前工程");
+
     setActiveTab("editor");
     console.log("[App] 已切换到 editor 标签页");
   };
@@ -60,7 +62,7 @@ function App() {
         return (
           <RecordEditor
             projectSettings={projectSettings}
-            initialRecords={parsedRecords}
+            workspace={workspace}
           />
         );
       case "resources":
@@ -123,6 +125,9 @@ function App() {
       </header>
 
       <main className="app-main">{renderActiveTab()}</main>
+
+      {/* 保存/导入工程的文字提示（非弹窗） */}
+      <ProjectToast toast={workspace.toast} onDismiss={workspace.dismissToast} />
     </div>
   );
 }

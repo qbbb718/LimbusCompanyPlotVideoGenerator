@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App_electron.css";
 import { Settings as ProjectSettingsUI } from "@features/settings";
-import RecordEditor from "@features/record";
+import RecordEditor, { ProjectToast, useProjectWorkspace } from "@features/record";
 import { ResourceManager } from "@features/resource";
 import { TextToRecords } from "@features/text-to-records";
 import { ProjectSettings as IProjectSettings, Record } from "@types";
@@ -14,12 +14,15 @@ function AppElectron() {
     "editor" | "resources" | "settings" | "textToRecords"
   >("textToRecords");
   const [appInitialized, setAppInitialized] = useState(false);
-  const [parsedRecords, setParsedRecords] = useState<Record[] | undefined>(
-    undefined,
-  );
   const [projectSettings, setProjectSettings] = useState<IProjectSettings>(() =>
     loadSettings(),
   );
+
+  // 当前工程（记录 + 选中位置 + 关联的工程文件）由 App 层持有：
+  // 切换到资源管理/设置等页面时会卸载编辑器组件，但工程内容不会丢，
+  // 回到"剧情编辑"时仍是离开前的样子。详见 useProjectWorkspace.ts。
+  const workspace = useProjectWorkspace(projectSettings.name);
+  const { saveProject, importProject } = workspace;
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -99,28 +102,12 @@ function AppElectron() {
   useEffect(() => {
     if (isElectron && window.electronAPI) {
       const handleNewProject = () => setActiveTab("settings");
-      const handleOpenProject = () => {
-        if (window.electronAPI.openFile) {
-          window.electronAPI.openFile().then((result: any) => {
-            if (!result.canceled && result.filePaths.length > 0) {
-              console.log("打开项目文件:", result.filePaths[0]);
-            }
-          });
-        }
-      };
-
-      const handleSaveProject = () => {
-        if (window.electronAPI.saveFile) {
-          const projectData = JSON.stringify(projectSettings);
-          window.electronAPI
-            .saveFile(`${projectSettings.name}.json`, projectData)
-            .then((result: any) => {
-              if (!result.canceled) {
-                console.log("项目已保存到:", result.filePath);
-              }
-            });
-        }
-      };
+      // 菜单"打开项目"：与"导入工程"按钮走同一套流程（载入工程文件并记住路径）
+      const handleOpenProject = () => importProject();
+      // 菜单"保存项目"：与 Ctrl+S / "保存工程"按钮走同一套流程。
+      // 菜单项绑定了 CmdOrCtrl+S，快捷键会被菜单先截获（页面收不到 keydown），
+      // 所以这里必须接上，否则在 Electron 里按 Ctrl+S 什么都不会发生。
+      const handleSaveProject = () => saveProject();
 
       const handleExportVideo = () => console.log("导出视频");
       const handleAbout = () => {
@@ -145,7 +132,9 @@ function AppElectron() {
         window.electronAPI.removeAllListeners("menu-about");
       };
     }
-  }, [isElectron, projectSettings]);
+    // saveProject / importProject 是稳定引用（内部用 ref 读取最新状态），
+    // 这里不会因为编辑内容变化而反复解绑重绑菜单事件。
+  }, [isElectron, saveProject, importProject]);
 
   const handleParsedRecords = (records: Record[]) => {
     log.info("[App_electron] 收到转换后的记录，数量:", records.length);
@@ -154,9 +143,9 @@ function AppElectron() {
       JSON.stringify(records[0], null, 2),
     );
 
-    // 保存记录到状态中，以便在编辑器中使用
-    setParsedRecords(records);
-    log.info("[App_electron] 已保存转换后的记录到状态");
+    // 接入工程工作区：这批记录成为当前工程（尚未关联工程文件，Ctrl+S 会先让选保存位置）
+    workspace.adoptParsedRecords(records);
+    log.info("[App_electron] 已保存转换后的记录到当前工程");
 
     // 跳转到编辑器页面
     log.info("[App_electron] 准备跳转到编辑器页面");
@@ -168,13 +157,13 @@ function AppElectron() {
     switch (activeTab) {
       case "editor":
         log.info(
-          "[App_electron] 渲染编辑器页面，parsedRecords:",
-          parsedRecords?.length || 0,
+          "[App_electron] 渲染编辑器页面，记录数:",
+          workspace.records?.length || 0,
         );
         return (
           <RecordEditor
             projectSettings={projectSettings}
-            initialRecords={parsedRecords}
+            workspace={workspace}
           />
         );
       case "resources":
@@ -238,6 +227,9 @@ function AppElectron() {
       </header>
 
       <main className="app-main">{renderActiveTab()}</main>
+
+      {/* 保存/导入工程的文字提示（非弹窗），任何页面都能看到 */}
+      <ProjectToast toast={workspace.toast} onDismiss={workspace.dismissToast} />
     </div>
   );
 }

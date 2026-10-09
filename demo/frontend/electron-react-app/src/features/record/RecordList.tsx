@@ -11,8 +11,12 @@ interface RecordListProps {
   moveRecord: (index: number, direction: "up" | "down") => void;
   duplicateRecord: (index: number) => void;
   deleteRecord: (index: number) => void;
-  exportRecords: () => void;
-  importRecords: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  /** 保存工程（与 Ctrl+S 相同：已关联文件则更新，否则先选保存位置） */
+  onSaveProject: () => void;
+  /** 导入工程：从工程文件载入记录 */
+  onImportProject: (file?: File) => void;
+  /** 当前工程已关联的文件名；未保存到文件时为 null */
+  projectFileName?: string | null;
   isGenerating?: boolean;
 }
 
@@ -34,8 +38,9 @@ const RecordList: React.FC<RecordListProps> = ({
   moveRecord,
   duplicateRecord,
   deleteRecord,
-  exportRecords,
-  importRecords,
+  onSaveProject,
+  onImportProject,
+  projectFileName,
   isGenerating,
 }) => {
   const [showLayerPopup, setShowLayerPopup] = useState(false);
@@ -72,6 +77,22 @@ const RecordList: React.FC<RecordListProps> = ({
   const handleCancelExport = () => {
     setShowLayerPopup(false);
   };
+
+  /**
+   * @function 选择工程文件后交给上层导入
+   * 取到 File 后立即清空 input 的值，这样同一个文件可以再次选择（否则 onChange 不触发）。
+   */
+  const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) {
+      onImportProject(file);
+    }
+  };
+
+  const saveHint = projectFileName
+    ? `保存工程（Ctrl+S 更新 ${projectFileName}）`
+    : "保存工程（Ctrl+S 首次保存会先让选择保存位置与名称）";
 
   return (
     <div className="record-list-container">
@@ -114,21 +135,46 @@ const RecordList: React.FC<RecordListProps> = ({
       )}
 
       <div className="record-list-header">
-        <h3>剧情记录</h3>
+        {/* 标题与"添加记录"按钮放在一起：添加记录是列表自身的操作，靠左更顺手 */}
+        <div className="record-list-title">
+          <h3>剧情记录</h3>
+          <button
+            className="add-record-btn"
+            onClick={createNewRecord}
+            title="添加记录"
+            aria-label="添加记录"
+          >
+            +
+          </button>
+        </div>
         <div className="record-list-actions">
-          <button onClick={createNewRecord}>添加记录</button>
-          <button onClick={exportRecords}>导出项目</button>
-          <label className="import-button">
-            导入项目
+          <label
+            className="plain-button"
+            title="从工程文件载入记录（导入后 Ctrl+S 可直接更新该文件）"
+          >
+            导入工程
             <input
               type="file"
               accept=".json"
-              onChange={importRecords}
+              onChange={handleImportChange}
               style={{ display: "none" }}
             />
           </label>
-          <button onClick={handleGenerateClick} disabled={isGenerating}>
-            {isGenerating ? "生成中..." : "生成视频"}
+
+          <button
+            className="plain-button"
+            onClick={onSaveProject}
+            title={saveHint}
+          >
+            保存工程
+          </button>
+
+          <button
+            className="import-button"
+            onClick={handleGenerateClick}
+            disabled={isGenerating}
+          >
+            {isGenerating ? "导出中..." : "导出视频"}
           </button>
         </div>
       </div>

@@ -1,0 +1,43 @@
+/* 工程保存/导入的文字提示：悬浮在窗口下方居中，不遮挡编辑区 */
+.project-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 2000;
+  max-width: 70vw;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border-left: 4px solid #1890ff;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-all;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  animation: project-toast-in 0.18s ease-out;
+}
+
+.project-toast-success {
+  border-left-color: #52c41a;
+}
+
+.project-toast-error {
+  border-left-color: #ff4d4f;
+}
+
+.project-toast-info {
+  border-left-color: #1890ff;
+}
+
+@keyframes project-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

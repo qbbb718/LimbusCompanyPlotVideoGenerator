@@ -13,22 +13,35 @@ import GlobalProperties from "./properties/GlobalProperties";
 import { generateUUID } from "./utils";
 import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
+import { ProjectWorkspace } from "./useProjectWorkspace";
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
-  initialRecords?: Record[];
+  /**
+   * 当前工程的工作区（记录、选中位置、文件关联与保存/导入操作）。
+   * 由 App 层持有，所以切换到资源管理等页面再回来，编辑内容不会丢。
+   * 详见 useProjectWorkspace.ts。
+   */
+  workspace: ProjectWorkspace;
 }
 
 const RecordEditor: React.FC<RecordEditorProps> = ({
   projectSettings,
-  initialRecords,
+  workspace,
 }) => {
-  const [records, setRecords] = useState<Record[]>([]);
-  const [selectedRecordIndex, setSelectedRecordIndex] = useState<number>(0);
-  const [activePropertyTab, setActivePropertyTab] = useState<
-    "text" | "characters" | "background" | "effects" | "audio" | "global"
-  >("text");
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    records,
+    setRecords,
+    selectedRecordIndex,
+    setSelectedRecordIndex,
+    activePropertyTab,
+    setActivePropertyTab,
+    isLoadingProject,
+    saveProject,
+    importProject,
+    fileName: projectFileName,
+  } = workspace;
+
   const [topPanelHeight, setTopPanelHeight] = useState(400);
 
   // 视频生成进度状态
@@ -54,10 +67,12 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
 
   // Refs so the stable createNewRecord callback can read current visual context
   // (chars, bg, speaker) without being recreated on every state change.
-  const recordsRef = useRef(records);
-  recordsRef.current = records;
+  const recordsRef = useRef<Record[]>(records || []);
+  recordsRef.current = records || [];
   const selectedIndexRef = useRef(selectedRecordIndex);
   selectedIndexRef.current = selectedRecordIndex;
+  // 空工程只自动补一条记录，避免 StrictMode 下 effect 重跑出两条
+  const autoCreatedRef = useRef(false);
 
   const createNewRecord = useCallback(() => {
     console.log("[RecordEditor] createNewRecord 开始执行");
@@ -106,74 +121,40 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       "| bg:", inheritedBg.length,
       "| audioCommands:", inheritedAudioCommands.length);
 
-    setRecords((prev) => {
-      const newRecords = prev.length > 0 ? [...prev, newRecord] : [newRecord];
-      console.log(`[RecordEditor] 新记录已添加，当前记录总数: ${newRecords.length}`);
+    const newRecords = [...currentRecords, newRecord];
+    setRecords(newRecords);
+    // 更新选中索引为最后一条
+    setSelectedRecordIndex(newRecords.length - 1);
+    console.log(`[RecordEditor] 新记录已添加，当前记录总数: ${newRecords.length}`);
+  }, [setRecords, setSelectedRecordIndex]);
 
-      // 更新选中索引为最后一条
-      setSelectedRecordIndex(newRecords.length - 1);
-      console.log(`[RecordEditor] 已设置选中记录索引为: ${newRecords.length - 1}`);
-
-      return newRecords;
-    });
-  }, []);
-
-  const fetchRecords = useCallback(async () => {
-    console.log("[RecordEditor] fetchRecords 开始执行");
-    try {
-      setIsLoading(true);
-      
-      if (initialRecords && initialRecords.length > 0) {
-        console.log(`[RecordEditor] 检测到 initialRecords，数量: ${initialRecords.length}`);
-        console.log("[RecordEditor] initialRecords 预览:", JSON.stringify(initialRecords, null, 2));
-        
-        setRecords(initialRecords);
-        console.log("[RecordEditor] 已设置 records 状态");
-        
-        setSelectedRecordIndex(0);
-        console.log("[RecordEditor] 已设置选中记录索引为 0");
-        
-        return;
-      }
-      
-      console.log("[RecordEditor] 未检测到 initialRecords，从后端获取记录");
-      const data = await ApiService.getRecords();
-      
-      console.log(`[RecordEditor] 从后端获取到 ${data.length} 条记录`);
-      setRecords(data);
-      
-      if (data.length === 0) {
-        console.log("[RecordEditor] 后端返回空记录，创建新记录");
-        createNewRecord();
-      }
-    } catch (error) {
-      console.error("[RecordEditor] 获取记录失败，使用默认记录:", error);
-      console.error("[RecordEditor] 错误详情:", JSON.stringify(error, null, 2));
-      createNewRecord();
-    } finally {
-      console.log("[RecordEditor] fetchRecords 执行完成");
-      setIsLoading(false);
-    }
-  }, [createNewRecord, initialRecords]);
-
+  // 工程记录由 App 层持有（useProjectWorkspace 负责首次从后端加载）。
+  // 加载完成且确实没有任何记录时补一条空记录，让用户可以直接开始编辑。
   useEffect(() => {
-    console.log("[RecordEditor] useEffect 触发，准备调用 fetchRecords");
-    fetchRecords();
-  }, [fetchRecords]);
+    if (isLoadingProject) return;
+    if (records && records.length === 0 && !autoCreatedRef.current) {
+      autoCreatedRef.current = true;
+      console.log("[RecordEditor] 工程为空，自动创建第一条记录");
+      createNewRecord();
+    }
+  }, [isLoadingProject, records, createNewRecord]);
 
   const updateRecord = (index: number, updatedRecord: Record) => {
-    const newRecords = [...records];
-    newRecords[index] = { ...updatedRecord, isDirty: true };
-    setRecords(newRecords);
+    setRecords((prev) => {
+      const newRecords = [...(prev || [])];
+      newRecords[index] = { ...updatedRecord, isDirty: true };
+      return newRecords;
+    });
   };
 
   const deleteRecord = (index: number) => {
-    if (records.length <= 1) {
+    const currentRecords = recordsRef.current;
+    if (currentRecords.length <= 1) {
       alert("至少需要保留一条记录");
       return;
     }
 
-    const newRecords = records.filter((_, i) => i !== index);
+    const newRecords = currentRecords.filter((_, i) => i !== index);
     setRecords(newRecords);
 
     if (selectedRecordIndex >= newRecords.length) {
@@ -182,14 +163,15 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   };
 
   const moveRecord = (index: number, direction: "up" | "down") => {
+    const currentRecords = recordsRef.current;
     if (
       (direction === "up" && index === 0) ||
-      (direction === "down" && index === records.length - 1)
+      (direction === "down" && index === currentRecords.length - 1)
     ) {
       return;
     }
 
-    const newRecords = [...records];
+    const newRecords = [...currentRecords];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     [newRecords[index], newRecords[targetIndex]] = [
       newRecords[targetIndex],
@@ -205,21 +187,23 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   };
 
   const duplicateRecord = (index: number) => {
-    const recordToDuplicate = records[index];
+    const currentRecords = recordsRef.current;
+    const recordToDuplicate = currentRecords[index];
     const newRecord = {
       ...recordToDuplicate,
       uuid: generateUUID(),
       isDirty: true,
     };
 
-    const newRecords = [...records];
+    const newRecords = [...currentRecords];
     newRecords.splice(index + 1, 0, newRecord);
     setRecords(newRecords);
     setSelectedRecordIndex(index + 1);
   };
 
   const generateVideo = async (layerTypes: string[] = ["FULL"], keepTempFiles: boolean = false) => {
-    if (records.length === 0) {
+    const currentRecords = recordsRef.current;
+    if (currentRecords.length === 0) {
       alert("没有可生成的记录");
       return;
     }
@@ -232,7 +216,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       setIsGenerating(true);
       // 异步启动视频生成，立即返回 taskId
       const result = await ApiService.generateVideo(
-        records,
+        currentRecords,
         outputPath,
         projectSettings.videoWidth || 1920,
         projectSettings.videoHeight || 1080,
@@ -250,7 +234,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         taskId,
         stage: 1,
         current: 0,
-        total: records.length,
+        total: currentRecords.length,
         message: "视频生成已启动...",
         percent: 0,
         completed: false,
@@ -307,71 +291,35 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     }
   };
 
-  const exportRecords = async () => {
-    try {
-      setIsLoading(true);
-      const response = await ApiService.exportRecords(records);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `records_${new Date().toISOString().slice(0, 10)}.json`,
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      alert("导出成功！");
-    } catch (error) {
-      console.error("导出记录失败:", error);
-      alert("导出记录失败，请检查控制台日志");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const importRecords = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      setIsLoading(true);
-      const file = event.target.files?.[0];
-      if (!file) return;
-      const importedRecords = await ApiService.importRecords(file);
-      if (importedRecords && importedRecords.length > 0) {
-        setRecords(importedRecords);
-        setSelectedRecordIndex(0);
-        alert(`成功导入 ${importedRecords.length} 条记录！`);
-      } else {
-        alert("导入的文件中没有找到有效记录");
-      }
-    } catch (error) {
-      console.error("导入记录失败:", error);
-      alert("导入记录失败，请检查文件格式和控制台日志");
-    } finally {
-      setIsLoading(false);
-      event.target.value = "";
-    }
-  };
-
   // Resizing handled by ResizablePanel; removed unused handler to avoid lint warnings.
 
+  const isLoading = isLoadingProject || records === undefined;
   if (isLoading) return <div className="loading">加载中...</div>;
 
+  const currentRecords = records || [];
   const selectedRecord =
-    records[selectedRecordIndex] || (records.length > 0 ? records[0] : null);
+    currentRecords[selectedRecordIndex] ||
+    (currentRecords.length > 0 ? currentRecords[0] : null);
   if (!selectedRecord) {
     return (
       <div className="record-editor">
         <div className="editor-top">
           <div className="record-list-container">
             <div className="record-list-header">
-              <h3>剧情记录</h3>
-              <div className="record-list-actions">
-                <button onClick={createNewRecord}>添加记录</button>
+              <div className="record-list-title">
+                <h3>剧情记录</h3>
+                <button
+                  className="add-record-btn"
+                  onClick={createNewRecord}
+                  title="添加记录"
+                  aria-label="添加记录"
+                >
+                  +
+                </button>
               </div>
             </div>
             <div className="empty-state">
-              <p>暂无剧情记录，请点击"添加记录"按钮创建新记录</p>
+              <p>暂无剧情记录，请点击"+"按钮创建新记录</p>
             </div>
           </div>
         </div>
@@ -447,7 +395,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               selectedRecord={selectedRecord}
               videoWidth={projectSettings.videoWidth}
               videoHeight={projectSettings.videoHeight}
-              records={records}
+              records={currentRecords}
               selectedRecordIndex={selectedRecordIndex}
               setSelectedRecordIndex={setSelectedRecordIndex}
             />
@@ -504,7 +452,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       <div className="editor-bottom-panel" style={{ minHeight: "150px" }}>
         <div className="editor-bottom">
           <RecordList
-            records={records}
+            records={currentRecords}
             selectedRecordIndex={selectedRecordIndex}
             setSelectedRecordIndex={setSelectedRecordIndex}
             createNewRecord={createNewRecord}
@@ -512,8 +460,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             moveRecord={moveRecord}
             duplicateRecord={duplicateRecord}
             deleteRecord={deleteRecord}
-            exportRecords={exportRecords}
-            importRecords={importRecords}
+            onSaveProject={saveProject}
+            onImportProject={importProject}
+            projectFileName={projectFileName}
             isGenerating={isGenerating}
           />
         </div>
