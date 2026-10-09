@@ -34,6 +34,7 @@ import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 
 import com.lbc_plot.common.util.RuntimePaths;
+import com.lbc_plot.common.util.io.ExportNoticeWriter;
 import com.lbc_plot.common.util.json.RecordsIO;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
@@ -58,6 +59,13 @@ import com.lbc_plot.resource.service.CharacterService;
 public class RecordController {
 
     private static final Logger logger = LoggerFactory.getLogger(RecordController.class);
+
+    /**
+     * 输出路径里出现这些扩展名时，说明用户给的是视频文件名而不是导出目录。
+     * 导出目录本身叫 "xxx.mp4" 这种极端情况按文件处理即可，不影响正常使用。
+     */
+    private static final java.util.regex.Pattern VIDEO_FILE_PATTERN =
+            java.util.regex.Pattern.compile("(?i).*\\.(mp4|mov)$");
 
     @Autowired
     private CharacterService characterService;
@@ -215,24 +223,10 @@ public class RecordController {
             throw new IllegalArgumentException("Record 列表为空，无法生成视频");
         }
 
-        // 使用请求中的参数，未提供则使用默认值
-        String outputPath = request.getOutputPath();
-        if (outputPath == null || outputPath.trim().isEmpty()) {
-            outputPath = "./output/video_" + System.currentTimeMillis() + ".mp4";
-        }
-
-        // 规范化输出路径：如果是目录则追加默认文件名
-        File outFile = new File(outputPath);
-        final File outDir;
-        if (outFile.isDirectory()) {
-            outDir = outFile;
-            outputPath = new File(outDir, "video_" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
-        } else {
-            outDir = outFile.getParentFile();
-        }
-        if (outDir != null && !outDir.exists()) {
-            outDir.mkdirs();
-        }
+        // 解析导出目录与基础输出路径（目录不存在时会被创建）
+        OutputTarget target = resolveOutputTarget(request.getOutputPath());
+        final File outDir = target.outDir();
+        String outputPath = target.baseOutputPath();
 
         final int width = request.getWidth() > 0 ? request.getWidth() : ProjectConfig.VIDEO_WIDTH;
         final int height = request.getHeight() > 0 ? request.getHeight() : ProjectConfig.VIDEO_HEIGHT;
@@ -299,6 +293,10 @@ public class RecordController {
 
                 long elapsed = System.currentTimeMillis() - startTime;
                 logger.info("视频生成成功: outputPaths={}, 耗时={} ms", outputPaths, elapsed);
+
+                // 导出目录里追加"美术素材来源"提示文件，供用户发布视频时注明出处
+                ExportNoticeWriter.writeNoticeFile(outDir);
+
                 VideoProgressTracker.markComplete(taskId,
                         outputPaths.size() == 1 ? outputPaths.get(0) : String.join(", ", outputPaths),
                         elapsed);
@@ -456,6 +454,51 @@ public class RecordController {
             System.err.println("导出记录失败: " + e.getMessage());
             throw new RuntimeException("导出记录失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * @function 解析视频导出目标（导出目录 + 基础输出路径）
+     *
+     * 前端"设置 → 输出路径"里填的是导出目录（由文件夹选择框选出来的），所以默认按目录处理：
+     * 目录不存在就创建，视频文件名由后端生成（video_&lt;时间戳&gt;.mp4，之后按分层追加后缀）。
+     * 只有明确给了视频文件名（.mp4/.mov 结尾）或路径指向一个已存在的文件时，才当成文件路径。
+     *
+     * 旧实现用 outFile.isDirectory() 判断，目录还不存在时会被误判成文件名，
+     * 于是 "…\输出测试" 变成了 "…\输出测试_full.mp4"，落在上一级目录里。
+     *
+     * @param requestedPath 请求里的输出路径，为空时使用默认目录 ./output
+     * @return 导出目录与基础输出路径
+     * @throws IllegalStateException 输出目录创建失败（尽早报错，避免渲染到一半才失败）
+     */
+    static OutputTarget resolveOutputTarget(String requestedPath) {
+        String path = requestedPath == null ? "" : requestedPath.trim();
+        if (path.isEmpty()) {
+            path = "./output";
+        }
+
+        File outFile = new File(path);
+        boolean treatAsFile = VIDEO_FILE_PATTERN.matcher(outFile.getName()).matches() || outFile.isFile();
+
+        File outDir;
+        String baseOutputPath;
+        if (treatAsFile) {
+            // 文件路径：视频写到它所在的目录，文件名沿用用户给的（后面再追加分层后缀）
+            outDir = outFile.getAbsoluteFile().getParentFile();
+            baseOutputPath = outFile.getAbsolutePath();
+        } else {
+            // 目录路径：当作导出目录，文件名由后端生成
+            outDir = outFile.getAbsoluteFile();
+            baseOutputPath = new File(outDir, "video_" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
+        }
+
+        if (outDir != null && !outDir.isDirectory() && !outDir.mkdirs() && !outDir.isDirectory()) {
+            throw new IllegalStateException("无法创建输出目录: " + outDir.getAbsolutePath());
+        }
+        return new OutputTarget(outDir, baseOutputPath);
+    }
+
+    /** 导出目标：视频所在的导出目录 + 尚未追加分层后缀的基础输出路径 */
+    record OutputTarget(File outDir, String baseOutputPath) {
     }
 
     /**

@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openResourceFolder: (resourceType) =>
     ipcRenderer.invoke("folder:open", resourceType),
 
+  // 打开任意文件夹（视频导出成功后弹窗里的"打开输出文件夹"按钮）
+  openFolder: (folderPath) => ipcRenderer.invoke("folder:openPath", folderPath),
+
   // 导出日志：把最新若干条日志打成 zip，由主进程弹保存窗口
   exportLogs: () => ipcRenderer.invoke("logs:export"),
 

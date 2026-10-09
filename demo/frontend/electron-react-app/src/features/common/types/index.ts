@@ -32,6 +32,9 @@ export interface ElectronAPI {
   // 打开资源目录
   openResourceFolder: (resourceType: "characters" | "backgrounds" | "audios") => Promise<{ success: boolean; path?: string; error?: string }>;
 
+  // 打开任意文件夹（视频导出成功弹窗使用）
+  openFolder: (folderPath: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+
   // 通知
   showNotification: (title: string, body: string) => Promise<void>;
 

@@ -29,21 +29,30 @@ function AppElectron() {
           await ApiService.healthCheck();
           log.info("后端连接成功");
 
-          // 从后端数据库加载持久化设置，合并到当前设置中
+          // 从后端数据库加载持久化设置，与本地（localStorage）设置对齐
           try {
             const backendSettings = await ApiService.getSettings();
             log.info("从后端加载设置:", backendSettings);
-            if (backendSettings && Object.keys(backendSettings).length > 0) {
-              setProjectSettings(prev => {
-                const merged = { ...prev };
-                // 将后端 key-value 映射到前端 ProjectSettings 字段
-                if (backendSettings.videoOutputPath) {
-                  merged.outputPath = backendSettings.videoOutputPath;
-                }
-                // 立即持久化合并后的设置到 localStorage
-                saveSettings(merged);
-                return merged;
-              });
+
+            // localStorage 是用户最近一次的选择，数据库只是备份：
+            // 旧实现无条件用后端值覆盖本地值，只要有一次保存没能同步到后端
+            // （后端没启动、请求失败等），下次启动就会被数据库里的旧路径盖回去，
+            // 表现为"改过输出路径，下次打开又变回原来的"。
+            const localPath = (loadSettings().outputPath || "").trim();
+            const backendPath = (backendSettings?.videoOutputPath || "").trim();
+
+            if (localPath) {
+              // 本地有设置：以本地为准，并把数据库里的旧值刷新过来
+              if (localPath !== backendPath) {
+                ApiService.updateSettings({ videoOutputPath: localPath }).catch((err) =>
+                  log.warn("把本地输出路径同步到后端失败:", err),
+                );
+              }
+            } else if (backendPath) {
+              // 本地没有（首次运行、换机器、清过缓存）：采用数据库里的备份值
+              const merged = { ...loadSettings(), outputPath: backendPath };
+              saveSettings(merged);
+              setProjectSettings((prev) => ({ ...prev, outputPath: backendPath }));
             }
           } catch (settingsErr) {
             log.warn("加载后端设置失败，使用本地设置:", settingsErr);
@@ -63,6 +72,26 @@ function AppElectron() {
 
     initializeApp();
   }, []);
+
+  // 设置改动即持久化：用户改完输出路径（或其它设置）不用记得点"保存设置"，
+  // 关掉软件重开还是上次改的值。
+  useEffect(() => {
+    saveSettings(projectSettings);
+  }, [projectSettings]);
+
+  // 输出路径变化后同步到后端数据库（防抖，避免在输入框里打字时每敲一个字符发一次请求）。
+  // 数据库只是备份：即使后端没启动，localStorage 里的值也能保证下次启动不丢。
+  useEffect(() => {
+    const path = (projectSettings.outputPath || "").trim();
+    if (!path) return;
+
+    const timer = setTimeout(() => {
+      ApiService.updateSettings({ videoOutputPath: path }).catch((err) =>
+        log.warn("同步输出路径到后端失败:", err),
+      );
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [projectSettings.outputPath]);
 
   const isElectron =
     window.navigator.userAgent.toLowerCase().indexOf("electron") > -1;

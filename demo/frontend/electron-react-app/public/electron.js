@@ -964,6 +964,51 @@ ipcMain.handle("folder:open", async (event, resourceType) => {
   }
 });
 
+// 打开任意文件夹（视频导出成功后弹窗里的"打开输出文件夹"按钮）
+// 与上面的 folder:open 不同：这里的路径由渲染进程给出（来自后端返回的视频输出路径），
+// 不是白名单里的资源目录，因此需要自己校验存在性，避免 shell.openPath 静默失败。
+ipcMain.handle("folder:openPath", async (event, folderPath) => {
+  try {
+    if (typeof folderPath !== "string" || folderPath.trim() === "") {
+      return { success: false, error: "文件夹路径为空" };
+    }
+
+    let target = folderPath.trim();
+    // 后端可能返回相对路径（用户手填的输出路径），按 demo 根目录解析——
+    // 后端 JVM 的工作目录就是 demo/，两边解析结果才一致。
+    const isTrueAbsolute =
+      /^[a-zA-Z]:[\\/]/.test(target) || target.startsWith("\\\\");
+    if (!isTrueAbsolute) {
+      target = path.resolve(__dirname, "..", "..", "..", target);
+    }
+
+    // 传进来若是文件（例如直接给了 .mp4 路径），打开它所在的目录
+    try {
+      if (fs.existsSync(target) && fs.statSync(target).isFile()) {
+        target = path.dirname(target);
+      }
+    } catch (statErr) {
+      console.warn("检查导出路径类型失败，按目录处理:", statErr.message);
+    }
+
+    if (!fs.existsSync(target)) {
+      return { success: false, error: `文件夹不存在: ${target}` };
+    }
+
+    const result = await shell.openPath(target);
+    if (result && result !== "") {
+      console.error("打开导出文件夹时出错:", result);
+      return { success: false, error: result };
+    }
+
+    log.info("已打开输出文件夹:", target);
+    return { success: true, path: target };
+  } catch (err) {
+    console.error("打开导出文件夹失败", err);
+    return { success: false, error: err.message };
+  }
+});
+
 // ---- 日志导出（设置页"获取日志"）----
 
 /** 导出时最多打包几个日志文件（安装版日志目录会一直累积，全量打包没有意义） */

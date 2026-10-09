@@ -1,6 +1,10 @@
 import React, { useCallback } from "react";
 import "./Settings.css";
-import { ProjectSettings, DEFAULT_PROJECT_SETTINGS, SETTINGS_STORAGE_KEY } from "@types";
+import {
+  ProjectSettings,
+  DEFAULT_PROJECT_SETTINGS,
+  SETTINGS_STORAGE_KEY,
+} from "@types";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
@@ -52,14 +56,16 @@ const Settings: React.FC<SettingsProps> = ({
     saveSettings(projectSettings);
     // 同步视频输出路径到后端数据库
     if (projectSettings.outputPath) {
-      ApiService.updateSettings({ videoOutputPath: projectSettings.outputPath })
-        .catch(err => console.warn("同步设置到后端失败:", err));
+      ApiService.updateSettings({
+        videoOutputPath: projectSettings.outputPath,
+      }).catch((err) => console.warn("同步设置到后端失败:", err));
     }
     alert("设置已保存！");
   }, [projectSettings]);
 
   const handleResetSettings = useCallback(() => {
-    if (!window.confirm("确定要重置所有设置为默认值吗？此操作不可撤销。")) return;
+    if (!window.confirm("确定要重置所有设置为默认值吗？此操作不可撤销。"))
+      return;
     setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS });
   }, [setProjectSettings]);
 
@@ -99,7 +105,7 @@ const Settings: React.FC<SettingsProps> = ({
               GitHub 仓库
             </a>
             <a
-              href="https://www.bilibili.com/video/BV1例视频BV号"
+              href="https://www.bilibili.com/video/BV1S5Hx65ETi/"
               target="_blank"
               rel="noopener noreferrer"
               className="about-link"

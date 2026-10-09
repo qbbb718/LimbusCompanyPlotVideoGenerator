@@ -12,6 +12,7 @@ import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
 import { generateUUID } from "./utils";
 import ResizablePanel from "./ResizablePanel_updated";
+import ExportSuccessDialog from "./ExportSuccessDialog";
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
@@ -44,6 +45,12 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     elapsedMs?: number;
   } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // 视频导出成功弹窗数据（替代原来的 alert，含"打开输出文件夹"按钮与素材来源提示）
+  const [exportSuccess, setExportSuccess] = useState<{
+    outputPath?: string;
+    elapsedMs?: number;
+  } | null>(null);
 
   // Refs so the stable createNewRecord callback can read current visual context
   // (chars, bg, speaker) without being recreated on every state change.
@@ -217,10 +224,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       return;
     }
 
-    // 使用项目设置中的输出路径，如果为空则使用默认值
-    const outputPath =
-      projectSettings.outputPath ||
-      `./output/video_${new Date().toISOString().replace(/[:.]/g, "-")}.mp4`;
+    // 传出去的是导出目录（不是文件名）：设置里选的/填的就是文件夹，
+    // 目录不存在时由后端创建，视频文件名（video_<时间戳>_<分层>.mp4）也由后端生成。
+    const outputPath = projectSettings.outputPath?.trim() || "./output";
 
     try {
       setIsGenerating(true);
@@ -272,9 +278,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             clearInterval(pollInterval);
             setIsGenerating(false);
             if (progress.completed) {
-              alert(
-                `视频生成成功！\n保存路径: ${progress.outputPath}\n耗时: ${((progress.elapsedMs || 0) / 1000).toFixed(1)} 秒`,
-              );
+              // 用自定义弹窗展示成功信息：醒目提示素材来源，并提供打开输出文件夹的入口
+              setExportSuccess({
+                outputPath: progress.outputPath,
+                elapsedMs: progress.elapsedMs,
+              });
             } else {
               alert(`视频生成失败: ${progress.message}`);
             }
@@ -483,6 +491,14 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             <div className="progress-message">{videoProgress.message}</div>
           </div>
         </div>
+      )}
+
+      {exportSuccess && (
+        <ExportSuccessDialog
+          outputPath={exportSuccess.outputPath}
+          elapsedMs={exportSuccess.elapsedMs}
+          onClose={() => setExportSuccess(null)}
+        />
       )}
 
       <div className="editor-bottom-panel" style={{ minHeight: "150px" }}>
