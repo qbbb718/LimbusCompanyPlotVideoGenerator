@@ -11,7 +11,7 @@ import "./RecordEditor.css";
  * 生成同名 txt 文件），修改文案时两处需同步。
  */
 const ART_NOTICE_TEXT =
-  "发布视频时请注明-所用美术素材来自月海伦娜与边狱巴士中文wiki";
+  "发布视频时请注明-所用游戏素材来自月海伦娜与边狱巴士中文wiki";
 
 interface ExportSuccessDialogProps {
   /** 后端返回的视频输出路径；多个分层导出时为逗号分隔的多个路径 */
@@ -30,7 +30,10 @@ interface ExportSuccessDialogProps {
  */
 const resolveExportFolder = (outputPath?: string): string => {
   if (!outputPath) return "";
-  const first = outputPath.split(",")[0].trim().replace(/^["']|["']$/g, "");
+  const first = outputPath
+    .split(",")[0]
+    .trim()
+    .replace(/^["']|["']$/g, "");
   if (!first) return "";
 
   // 统一分隔符后再截取最后一段，兼容 Windows 反斜杠与前端可能出现的正斜杠

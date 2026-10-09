@@ -22,7 +22,7 @@
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
     "audioId" : "办公室BGM",
-    "volume" : null,
+    "volume" : 1.0,
     "fadeDuration" : null
   } ],
   "isDirty" : false,
@@ -83,7 +83,7 @@
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
     "audioId" : "-STOP",
-    "volume" : null,
+    "volume" : 1.0,
     "fadeDuration" : null
   } ],
   "isDirty" : false,

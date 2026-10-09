@@ -148,4 +148,5 @@ LimbusCompanyPlotVideoGenerator/
 
 - 感谢月海伦娜和边狱公司中文wiki提供的游戏素材
 - 感谢所有开源项目的贡献者
+- 感谢陪我测试软件的网友们：户用様，黄土様，南平苍様
 
