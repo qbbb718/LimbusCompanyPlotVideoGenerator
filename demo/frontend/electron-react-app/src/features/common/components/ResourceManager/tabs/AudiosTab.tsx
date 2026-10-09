@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Audio, AudioType } from "@types";
-import ApiService, { API_BASE_URL } from "@services/ApiService";
-import { AppConfig } from '@root/features/common/config/appConfig';
+import ApiService from "@services/ApiService";
 import "../ResourceManager.css";
 
 interface AudiosTabProps {
@@ -78,6 +77,26 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     try {
       log("保存音频", editingAudio.name);
       let updatedAudio: Audio;
+      const audioToSave = { ...editingAudio };
+
+      // 1) 若用户选了新文件 → 先上传到后端（后端保存到 {数据目录}/assets/audios）
+      //    以前这里直接用浏览器拿到的本地路径或自己拼的 /assets/... 当文件路径入库，
+      //    文件从未落盘，播放与导出都取不到音频。
+      if (audioFile) {
+        log("检测到新选择的音频文件，开始上传", audioFile.name);
+        const uploadResp = await ApiService.uploadAudioFile(
+          audioFile,
+          audioToSave.name,
+        );
+        log("音频上传完成", uploadResp);
+        audioToSave.path = uploadResp.path;
+      }
+
+      // 音频必须有真实文件才能用于渲染/播放
+      if (!audioToSave.path || audioToSave.path.trim() === "") {
+        alert("请先选择音频文件再保存");
+        return;
+      }
 
       if (
         editingAudio.uuid &&
@@ -86,7 +105,7 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
         // 更新现有音频
         updatedAudio = await ApiService.updateAudio(
           editingAudio.uuid,
-          editingAudio,
+          audioToSave,
         );
         setAudios(
           audios.map((a) => (a.uuid === editingAudio.uuid ? updatedAudio : a)),
@@ -94,7 +113,7 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
         log("音频更新成功", editingAudio.name);
       } else {
         // 添加新音频
-        updatedAudio = await ApiService.addAudio(editingAudio);
+        updatedAudio = await ApiService.addAudio(audioToSave);
         setAudios([...audios, updatedAudio]);
         log("音频添加成功", editingAudio.name);
       }
@@ -103,6 +122,7 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
       setEditingAudio(null);
       setIsEditing(false);
       setShowAudioModal(false);
+      setAudioFile(null);
     } catch (error) {
       console.error("保存音频失败:", error);
       log("音频保存失败", error);
@@ -153,22 +173,18 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
 
     log("选择音频文件", file.name);
 
-    // 在Electron环境中可能存在 file.path 属性
-    let filePath = (file as any).path || file.webkitRelativePath || "";
-    if (!filePath) {
-      // fallback: 将文件放到资源文件夹下的默认位置
-      const nameSansExt = file.name.replace(/\.[^/.]+$/, "");
-      const extMatch = file.name.match(/\.([0-9a-zA-Z]+)$/);
-      const ext = extMatch ? extMatch[1] : "";
-      filePath = `${AppConfig.resources.audiosBasePath}/${nameSansExt}_${Date.now()}${ext ? `.${ext}` : ""}`;
-    }
+    // 只记住 File 对象，真正落盘交给后端 /api/audios/upload。
+    // 注意：不要在这里拼 path。渲染进程拿不到真实磁盘路径（file.path 在新版 Electron 中
+    // 可能为空），而 AppConfig.resources.audiosBasePath 是 URL 前缀（/assets/audios），
+    // 把它当文件路径用会被后端解析成盘符根目录 C:\assets\audios\...，文件根本不存在。
+    setAudioFile(file);
 
-    // 更新编辑中的音频路径和名称
     if (editingAudio) {
       setEditingAudio({
         ...editingAudio,
-        path: filePath,
-        name: file.name.replace(/\.[^/.]+$/, ""), // 移除文件扩展名
+        name: editingAudio.name && editingAudio.name !== "新音频"
+          ? editingAudio.name
+          : file.name.replace(/\.[^/.]+$/, ""),
       });
     }
   };
@@ -182,8 +198,14 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
       setIsPlaying(null);
       log("暂停音频", audio.name);
     } else {
-      // 播放音频 - 使用API端点获取音频文件
-      const audioUrl = `${API_BASE_URL}/audios/${audio.uuid}/file`;
+      // 播放音频 - 直接用静态资源 URL（path 形如 /assets/audios/xxx.mp3）
+      // 不再走 /api/audios/{uuid}/file：静态映射始终指向真实的素材目录，
+      // 而历史数据里存的本地绝对路径在渲染进程里根本取不到文件。
+      const audioUrl = ApiService.getAudioPlaybackUrl(audio.path);
+      if (!audioUrl) {
+        alert("该音频没有可用的文件，请重新选择音频文件并保存");
+        return;
+      }
       audioPlayer.src = audioUrl;
       audioPlayer.play().catch((error) => {
         console.error("播放音频失败:", error);

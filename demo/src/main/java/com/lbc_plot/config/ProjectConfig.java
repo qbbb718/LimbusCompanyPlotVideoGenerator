@@ -1,23 +1,25 @@
 package com.lbc_plot.config;
 
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.awt.Color;
 
+import com.lbc_plot.common.util.RuntimePaths;
+
 /**
  * 项目全局配置（可由 application.yml/properties 覆盖）
  *
- * 保留旧有静态常量以保证向后兼容，Spring 启动时会用注入的值覆盖这些静态字段。
+ * <p>保留旧有静态常量以保证向后兼容，Spring 启动时会用注入的值覆盖这些静态字段。
+ *
+ * <p>素材相关路径（{@link #ASSETS_BASE_PATH} 及各子目录）统一从 {@link RuntimePaths}
+ * 推导为<strong>绝对路径</strong>（{@code {dataRoot}/assets/...}），不再默认到 {@code ./assets}，
+ * 也不再从 {@code app.assets.*} 读取相对路径 —— 那样会让"素材在哪"随 JVM 工作目录变化。
  */
 @Component
 @ConfigurationProperties(prefix = "project")
 public class ProjectConfig {
-
-    @Autowired
-    private AppConfig appConfig;
 
     // 静态字段（向后兼容）
     public static int VIDEO_WIDTH = 1920;
@@ -26,25 +28,26 @@ public class ProjectConfig {
     public static double VIDEO_ASPECT_RATIO = 16.0 / 9.0;
     public static int FRAME_RATE = 30;
 
-    public static String IMAGE_BASE_PATH = "assets/images/";
+    public static String IMAGE_BASE_PATH = assetsSubPath("images/");
     public static String PORTRAIT_BASE_PATH = IMAGE_BASE_PATH + "portraits/";
     public static String THUMBNAIL_BASE_PATH = IMAGE_BASE_PATH + "thumbnails/";
 
-    // 资源路径静态字段
-    public static String ASSETS_BASE_PATH = "./assets/";
-    public static String BACKGROUNDS_PATH = ASSETS_BASE_PATH + "backgrounds/";
-    public static String CHARACTERS_PATH = ASSETS_BASE_PATH + "characters/";
-    public static String EFFECTS_PATH = ASSETS_BASE_PATH + "effects/";
-    public static String UI_PATH = ASSETS_BASE_PATH + "ui/";
-    public static String AUDIOS_PATH = ASSETS_BASE_PATH + "audios/";
+    // 资源路径静态字段（绝对路径，源自 RuntimePaths）
+    public static String ASSETS_BASE_PATH = assetsSubPath("");
+    public static String BACKGROUNDS_PATH = assetsSubPath("backgrounds/");
+    public static String CHARACTERS_PATH = assetsSubPath("characters/");
+    public static String EFFECTS_PATH = assetsSubPath("effects/");
+    public static String UI_PATH = assetsSubPath("ui/");
+    public static String AUDIOS_PATH = assetsSubPath("audios/");
 
     @PostConstruct
     public void init() {
-        // 使用配置的路径更新静态字段。优先使用 `project.*` 下的各个路径配置，
-        // 若未设置则回退到 app.assets 或默认路径。
-        ASSETS_BASE_PATH = normalizePath(appConfig.getAssets().getPath(), "./assets/");
+        // 素材路径已由 RuntimePaths 固定为绝对路径，这里只做一次兜底刷新，
+        // 确保即使静态初始化顺序变化也仍然指向同一个数据根目录。
+        ASSETS_BASE_PATH = assetsSubPath("");
 
-        // 允许单独配置 image/portrait/thumbnail 路径；如果未配置则基于 ASSETS_BASE_PATH 推断。
+        // 允许单独配置 image/portrait/thumbnail 路径（project.* 前缀）；
+        // 未配置时基于 ASSETS_BASE_PATH 推断。
         IMAGE_BASE_PATH = normalizePath(
                 (this.imageBasePath != null && !this.imageBasePath.isBlank()) ? this.imageBasePath
                         : (ASSETS_BASE_PATH + "images/"),
@@ -60,12 +63,29 @@ public class ProjectConfig {
                         : (IMAGE_BASE_PATH + "thumbnails/"),
                 IMAGE_BASE_PATH + "thumbnails/");
 
-        // 背景、人物、音频等路径：优先使用 appConfig.assets 对应字段（若存在），否则回退到 ASSETS_BASE_PATH 下的默认子目录。
-        BACKGROUNDS_PATH = normalizePath(appConfig.getAssets().getBackgrounds(), ASSETS_BASE_PATH + "backgrounds/");
-        CHARACTERS_PATH = normalizePath(appConfig.getAssets().getCharacters(), ASSETS_BASE_PATH + "characters/");
-        EFFECTS_PATH = normalizePath(EFFECTS_PATH, ASSETS_BASE_PATH + "effects/");
-        UI_PATH = normalizePath(UI_PATH, ASSETS_BASE_PATH + "ui/");
-        AUDIOS_PATH = normalizePath(appConfig.getAssets().getAudios(), ASSETS_BASE_PATH + "audios/");
+        // 各素材子目录同样直接锚定到数据根目录下的 assets
+        BACKGROUNDS_PATH = assetsSubPath("backgrounds/");
+        CHARACTERS_PATH = assetsSubPath("characters/");
+        EFFECTS_PATH = assetsSubPath("effects/");
+        UI_PATH = assetsSubPath("ui/");
+        AUDIOS_PATH = assetsSubPath("audios/");
+    }
+
+    /**
+     * 拼接 {@code {dataRoot}/assets/} 下的子路径，返回统一使用正斜杠、以 '/' 结尾的绝对路径。
+     *
+     * <p>保留结尾的 '/' 是因为历史调用方按 {@code PATH + "文件名"} 的方式拼接。
+     */
+    private static String assetsSubPath(String relative) {
+        String base = RuntimePaths.toPortableString(RuntimePaths.getAssetsDir());
+        if (relative == null || relative.isEmpty()) {
+            return base + "/";
+        }
+        String suffix = relative.replace('\\', '/');
+        while (suffix.startsWith("/")) {
+            suffix = suffix.substring(1);
+        }
+        return base + "/" + suffix;
     }
 
     /**
@@ -327,38 +347,35 @@ public class ProjectConfig {
         return parseColor(defaultTextColor, DEFAULT_TEXT_COLOR);
     }
 
-    // 新的配置绑定：接受十六进制字符串
+    /**
+     * 配置绑定：接受十六进制字符串（如 {@code #FBDBB3}）。
+     *
+     * <p>注意：<strong>不要</strong>再为同一属性增加接受 {@link Color} 的重载 setter。
+     * getter 返回 {@code Color} 而 setter 有 {@code String}/{@code Color} 两个重载时，
+     * Spring 的属性绑定会选中 {@code Color} 那个，于是 yml 里的十六进制字符串无法转换，
+     * 直接以 {@code ConverterNotFoundException ... to java.awt.Color} 启动失败。
+     * 解析统一由 {@link #parseColor} 在 getter 侧完成。
+     */
     public void setDefaultTextColor(String hex) {
         this.defaultTextColor = hex;
-    }
-
-    // 兼容旧调用：接受 Color
-    public void setDefaultTextColor(Color defaultTextColor) {
-        this.defaultTextColor = colorToHex(defaultTextColor);
     }
 
     public Color getDefaultBgColor() {
         return parseColor(defaultBgColor, DEFAULT_BG_COLOR);
     }
 
+    /** 见 {@link #setDefaultTextColor(String)} 关于不要重载 Color setter 的说明。 */
     public void setDefaultBgColor(String hex) {
         this.defaultBgColor = hex;
-    }
-
-    public void setDefaultBgColor(Color defaultBgColor) {
-        this.defaultBgColor = colorToHex(defaultBgColor);
     }
 
     public Color getFactionColor() {
         return parseColor(factionColor, FACTION_COLOR);
     }
 
+    /** 见 {@link #setDefaultTextColor(String)} 关于不要重载 Color setter 的说明。 */
     public void setFactionColor(String hex) {
         this.factionColor = hex;
-    }
-
-    public void setFactionColor(Color factionColor) {
-        this.factionColor = colorToHex(factionColor);
     }
 
     public int getDefaultDialogueSpeed() {
@@ -611,12 +628,5 @@ public class ProjectConfig {
             // ignore and fallback
         }
         return fallback;
-    }
-
-    private static String colorToHex(Color c) {
-        if (c == null)
-            return "#000000";
-        String hex = String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
-        return hex;
     }
 }

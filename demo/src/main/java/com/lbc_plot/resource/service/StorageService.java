@@ -1,5 +1,6 @@
 package com.lbc_plot.resource.service;
 
+import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.config.AppConfig;
 import com.lbc_plot.config.StorageConfig;
 import org.slf4j.Logger;
@@ -140,6 +141,104 @@ public class StorageService implements ResourceService<org.springframework.core.
 
         // 返回前端可直接访问的 URL 路径
         return "/assets/backgrounds/thumbnails/" + uniqueFilename;
+    }
+
+    /**
+     * 上传音频文件。
+     *
+     * <p>保存到运行时素材目录下的 audios（{@code {dataRoot}/assets/audios}），
+     * 命名规则为 {@code {名称}_{时间戳}{扩展名}}，并返回可直接入库的 URL 路径
+     * {@code /assets/audios/{文件名}}。
+     *
+     * <p>此前音频只有元数据接口（{@code POST /api/audios}），没有任何上传入口，
+     * 前端只能把"渲染进程里拿不到的本地绝对路径"或 {@code /assets/audios/...} 这种
+     * URL 当成文件路径写进数据库，结果是文件从未真正落盘、播放与导出都取不到音频。
+     *
+     * @param file 上传的音频文件
+     * @param name 可选名称（不含扩展名）；为空时取原文件名的主干
+     * @return 保存后的文件名（不含目录）
+     */
+    public String uploadAudioFile(MultipartFile file, String name) throws IOException {
+        validateAudioFile(file);
+
+        // 音频目录：运行时素材目录下的 audios（绝对路径，由 RuntimePaths 统一解析）
+        Path audiosDir = RuntimePaths.getAudiosDir();
+        if (!Files.exists(audiosDir)) {
+            Files.createDirectories(audiosDir);
+            logger.info("创建音频目录: {}", audiosDir.toAbsolutePath());
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = getAudioFileExtension(originalFilename);
+
+        String stem = (name != null && !name.trim().isEmpty())
+                ? name.trim()
+                : (originalFilename != null && originalFilename.contains(".")
+                        ? originalFilename.substring(0, originalFilename.lastIndexOf('.'))
+                        : String.valueOf(originalFilename));
+
+        // 去掉用户输入里可能带的扩展名，避免出现 xxx.mp3.mp3
+        if (stem.toLowerCase().endsWith(fileExtension.toLowerCase())) {
+            stem = stem.substring(0, stem.length() - fileExtension.length());
+        }
+
+        String uniqueFilename = stem + "_" + System.currentTimeMillis() + fileExtension;
+        // 替换 Windows 非法文件名字符（音频名常含中文，这里只挡非法字符）
+        uniqueFilename = uniqueFilename.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+        Path filePath = audiosDir.resolve(uniqueFilename);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        logger.info("音频文件已保存: {} ({} bytes)", filePath.toAbsolutePath(), file.getSize());
+
+        return uniqueFilename;
+    }
+
+    /** 允许上传的音频扩展名（不含点号，小写） */
+    private static final List<String> SUPPORTED_AUDIO_FORMATS = Arrays.asList(
+            "mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "wma", "opus", "aiff", "aif");
+
+    /**
+     * 校验音频文件：非空、未超过 storage.max.file.size、扩展名在白名单内。
+     *
+     * <p>音频远大于图片，这里沿用 {@code storage.max.file.size}（默认 10MB）作为上限；
+     * 该值与 Spring 的 {@code spring.servlet.multipart.max-file-size}（50MB）共同生效，
+     * 需要放宽时改 {@code storage.max.file.size}。
+     */
+    private void validateAudioFile(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("音频文件为空");
+        }
+
+        long fileSizeMB = file.getSize() / (1024 * 1024);
+        int maxFileSize = storageConfig.getMaxFileSize();
+        if (maxFileSize > 0 && fileSizeMB > maxFileSize) {
+            throw new IllegalArgumentException(
+                    "音频文件大小超过限制: " + fileSizeMB + "MB > " + maxFileSize + "MB");
+        }
+
+        String extension = getAudioFileExtension(file.getOriginalFilename());
+        String bare = extension.startsWith(".") ? extension.substring(1) : extension;
+        if (!SUPPORTED_AUDIO_FORMATS.contains(bare.toLowerCase())) {
+            throw new IllegalArgumentException(
+                    "不支持的音频格式: " + bare + "（支持: " + String.join(", ", SUPPORTED_AUDIO_FORMATS) + "）");
+        }
+    }
+
+    /**
+     * 取音频文件扩展名（含点号）。
+     *
+     * <p>不使用 {@link #getFileExtension}：那个方法的默认值是 {@code .png}，
+     * 对音频来说会写出错误的扩展名。
+     */
+    private String getAudioFileExtension(String filename) {
+        if (filename == null || filename.lastIndexOf('.') == -1) {
+            throw new IllegalArgumentException("无法识别音频格式（文件名缺少扩展名）: " + filename);
+        }
+        String ext = filename.substring(filename.lastIndexOf('.'));
+        if (ext.length() <= 1) {
+            throw new IllegalArgumentException("无法识别音频格式（扩展名为空）: " + filename);
+        }
+        return ext;
     }
 
     /**

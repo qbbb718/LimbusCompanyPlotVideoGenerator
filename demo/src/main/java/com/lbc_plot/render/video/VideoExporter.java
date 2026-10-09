@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.lbc_plot.common.util.FFmpegPathResolver;
 import com.lbc_plot.common.util.RenderQualityUtils;
+import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.RenderOfVideo;
 
@@ -379,7 +380,7 @@ public class VideoExporter implements AutoCloseable {
      */
     private void saveDebugFrame(BufferedImage argbFrame) {
         try {
-            File debugDir = new File("./projects/temp");
+            File debugDir = RuntimePaths.getTempDir().toFile();
             if (!debugDir.exists()) {
                 debugDir.mkdirs();
             }

@@ -63,7 +63,8 @@ public class TempImageVisual extends VisualElement {
                 String fsPath = imagePath.startsWith("/") ? imagePath.substring(1) : imagePath;
                 File f = new File(fsPath);
                 if (f.exists() && f.isFile()) {
-                    image = ImageIO.read(f);
+                    // 统一读图入口：支持 WebP（FFmpeg 兜底）
+                    image = com.lbc_plot.common.util.io.ImageReader.readImageFile(f);
                 }
                 if (image == null) {
                     logger.warn("无法加载临时图片: {}", imagePath);

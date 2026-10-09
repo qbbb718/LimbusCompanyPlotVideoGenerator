@@ -19,6 +19,7 @@ import com.lbc_plot.render.engine.manager.FontLoader;
 import com.lbc_plot.common.util.ImageCropper;
 import com.lbc_plot.common.util.ImageDarkener;
 import com.lbc_plot.common.util.RenderQualityUtils;
+import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.common.util.TextureColorizer;
 import com.lbc_plot.common.util.io.ImageReader;
 import com.lbc_plot.config.ProjectConfig;
@@ -47,8 +48,9 @@ public class RenderOfImage {
     /** 临时名片缓存：key = "name|faction" */
     private static final java.util.concurrent.ConcurrentHashMap<String, BufferedImage> tempCardCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** 工程临时素材根目录 */
-    private static final String TEMP_CARD_DIR = "./projects/temp/cards/";
+    /** 临时名片缓存目录（锚定到数据根目录，不随 JVM 工作目录变化） */
+    private static final String TEMP_CARD_DIR = RuntimePaths.toPortableString(
+            RuntimePaths.getTempDir().resolve("cards")) + "/";
     // 静态代码块 - 类加载时自动执行
     // 读入图片文件
     static {

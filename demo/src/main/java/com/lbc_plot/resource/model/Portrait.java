@@ -222,7 +222,8 @@ public class Portrait {
                         : this.thumbnailPath;
                 java.io.File f = new java.io.File(fsPath);
                 if (f.exists() && f.isFile()) {
-                    this.thumbnail = javax.imageio.ImageIO.read(f);
+                    // 走统一读图入口：WebP 缩略图 ImageIO 读不出来时由 FFmpeg 兜底
+                    this.thumbnail = ImageReader.readImageFile(f);
                 } else {
                     // 回退：用 ImageReader 按资源路径查找（兼容旧值或相对路径）
                     this.thumbnail = ImageReader.readCharacters(this.thumbnailPath);

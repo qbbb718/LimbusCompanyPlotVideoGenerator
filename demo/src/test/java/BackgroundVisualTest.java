@@ -1,6 +1,5 @@
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
 
 import com.lbc_plot.common.util.io.ImageExporter;
 import com.lbc_plot.render.video.BackgroundVisual;
@@ -16,9 +15,6 @@ import java.io.IOException;
  * 专门诊断Background正常但BackgroundVisual异常的问题
  */
 @SpringBootTest(classes = com.lbc_plot.config.Application.class)
-@TestPropertySource(properties = {
-        "app.assets.path=./assets"
-})
 public class BackgroundVisualTest {
 
     private Background testBackground;

@@ -11,6 +11,7 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
+import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.resource.dao.BackgroundDAO;
 import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.dao.MyCharacterMapper;
@@ -31,14 +32,24 @@ import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 public class SpringBootConfig {
 
     /**
-     * 配置数据源
+     * 配置数据源。
+     *
+     * <p>SQLite 连接串统一取自 {@link DatabaseConfig#getDatabaseUrl()}（由 {@link RuntimePaths}
+     * 解析成绝对路径），不再在这里写死 {@code jdbc:sqlite:./data/project.db}。
+     *
+     * <p>旧实现写死相对路径，而 {@code application.yml} 里又是另一个相对路径，导致同一个进程
+     * 通过不同数据访问层可能打开<strong>不同的库文件</strong>，且都随 JVM 工作目录漂移。
+     *
+     * <p>注意：这里显式 setUrl 之后，{@code @ConfigurationProperties(prefix = "spring.datasource")}
+     * 仍会用 yml/环境里的值覆盖，而 yml 的 {@code spring.datasource.url} 又是
+     * {@code ${lbc.datasource.url}}（默认值即本方法选用的同一个绝对路径），因此两条路径最终一致。
      */
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource")
     public DataSource dataSource() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.sqlite.JDBC");
-        dataSource.setUrl("jdbc:sqlite:./data/project.db");
+        dataSource.setUrl(DatabaseConfig.getDatabaseUrl());
         return dataSource;
     }
 

@@ -672,6 +672,29 @@ class ApiService {
     }
   }
 
+  // 上传音频文件到后端，返回 { filename, path, originalFilename }
+  // 后端保存到 {用户数据目录}/assets/audios，path 形如 /assets/audios/xxx.mp3
+  async uploadAudioFile(
+    file: File,
+    name?: string,
+  ): Promise<{ filename: string; path: string; originalFilename: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (name) formData.append('name', name);
+
+      const response = await apiClient.post('/audios/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('上传音频文件失败:', error);
+      throw error;
+    }
+  }
+
   // 添加音频
   async addAudio(audioData: any) {
     try {
@@ -853,6 +876,46 @@ class ApiService {
     const filename = this.extractFilename(audioIdOrPath);
     const encoded = encodeURIComponent(filename);
     return `${AUDIOS_ASSETS_URL}/${encoded}`;
+  }
+
+  /**
+   * 构建音频播放URL（用于 <audio> 播放已保存的音频记录）。
+   *
+   * 与 {@link getAudioFileUrl} 的区别：这里会识别"不可用"的路径并明确返回空字符串。
+   * 历史数据里的 path 可能是前端早期存的本地绝对路径（如 C:/assets/audios/x.wav），
+   * 那种路径在渲染进程里永远取不到文件；若照 {@link getAudioFileUrl} 只取文件名拼接，
+   * 会得到一个必然 404 的 URL（C:/... 被当成文件名编码进 URL），
+   * 调用方也就无法区分"能播但加载失败"和"根本没有有效文件"。
+   *
+   * @param pathOrFilename 数据库中保存的音频 path
+   * @returns 可播放的绝对 URL；路径不可用时返回 ''
+   */
+  getAudioPlaybackUrl(pathOrFilename: string): string {
+    if (!pathOrFilename || !pathOrFilename.trim()) return '';
+
+    const raw = pathOrFilename.trim();
+
+    // 已是完整 URL
+    if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
+
+    // 盘符绝对路径（Windows）：浏览器/渲染进程无法访问本地磁盘，视为不可用
+    if (/^[a-zA-Z]:[\\/]/.test(raw)) return '';
+
+    const normalized = raw.replace(/\\/g, '/');
+
+    // 已带 /assets/ 前缀（后端保存的标准形式）
+    if (normalized.startsWith('/assets/')) {
+      return BASE_URL + encodeURI(normalized);
+    }
+    // ./assets/... 或 assets/...
+    if (normalized.startsWith('./assets/')) {
+      return BASE_URL + encodeURI(normalized.substring(1));
+    }
+    if (normalized.startsWith('assets/')) {
+      return BASE_URL + '/' + encodeURI(normalized);
+    }
+    // 纯文件名 → 音频目录下
+    return `${AUDIOS_ASSETS_URL}/${encodeURIComponent(this.extractFilename(normalized))}`;
   }
 
   /**

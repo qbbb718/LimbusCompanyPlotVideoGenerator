@@ -145,9 +145,48 @@ function initLogFile() {
 
 // 保持对window对象的全局引用，如果不这样做，当JavaScript对象被垃圾回收时，窗口将自动关闭
 let mainWindow;
-let backendProcess = null;
+
+// ---- 单实例守卫 ----
+// 没有这个守卫时，重复启动应用会出现两个 Electron 实例，各自再拉起一个 Spring Boot 后端：
+// 第二个后端因 8081 被占用而启动失败 → 第二个实例走 app.quit() 退出 →
+// 退出时的 stopBackend() 按全局变量杀掉了第一个实例那个“健康”的后端，
+// 结果窗口还在、后端却没了，所有请求都以“请检查后端是否正常运行”告终。
+// 必须在 whenReady 之前调用，保证拿不到锁的实例完全不会去启动后端。
+if (!app.requestSingleInstanceLock()) {
+  console.warn("检测到应用已在运行，本实例直接退出（避免重复启动后端占用 8081）");
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    // 用户重复点击图标时，把已有窗口拉到前台，而不是再开一个实例
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
 
 // ---- 后端生命周期管理 ----
+
+// 8081 是固定端口，用于探测“是否已有后端在跑”（健康检查与前端 API 用同一个地址）。
+const BACKEND_PORT = 8081;
+const BACKEND_HEALTH_URL = `http://localhost:${BACKEND_PORT}/api/health`;
+
+// 本实例自己 spawn 出来的后端进程。只有它会被 stopBackend 结束；
+// 由别的实例启动的后端绝不能被本实例杀掉（这正是原 bug 的核心）。
+let ownedBackendProcess = null;
+// stopBackend 已经发起终止：进程退出事件由 stopBackend 负责收尾，exit handler 不要重复处理
+let backendStopRequested = false;
+
+/** 本实例启动的后端是否仍在运行（spawn 失败时 pid 为 undefined，据此排除） */
+function isOwnedBackendAlive() {
+  return (
+    !!ownedBackendProcess &&
+    typeof ownedBackendProcess.pid === "number" &&
+    ownedBackendProcess.exitCode === null &&
+    !ownedBackendProcess.killed
+  );
+}
 
 /** 生产模式下找到 backend.jar */
 function findBackendJar() {
@@ -209,96 +248,306 @@ function findJava() {
   return "java";
 }
 
-/** 启动 Spring Boot 后端 */
+/**
+ * 启动 Spring Boot 后端（或复用一个已经在跑的后端）。
+ *
+ * 返回 { ok, owned, external }：
+ *   - ok=true, owned=true   → 本实例刚启动并且确认健康，退出时需要一并停止
+ *   - ok=true, external=true → 复用了别的实例已经跑着的后端，本实例退出时不能停它
+ *   - ok=false              → 8081 被非本应用进程占用，或本实例的后端启动失败/未通过健康检查
+ *
+ * 关键点：判定“后端就绪”不能只看端口/健康检查（旧实现正是如此，
+ * 所以第二个实例会误判成“自己的后端就绪”），而是要按 PID 确认响应健康检查的
+ * 就是本实例 spawn 的那个进程。
+ */
 function startBackend(userDataPath) {
-  const javaPath = findJava();
-  const jarPath = findBackendJar();
-  // 随安装包发布的素材目录：后端据此把缺失的素材补齐到用户数据目录（ui/effects 是硬依赖）
-  const bundledAssets = path.join(process.resourcesPath, "assets");
-  log.info("启动后端:", javaPath, "-jar", jarPath);
-  log.info("后端工作目录:", userDataPath);
-  log.info("安装包素材目录:", bundledAssets);
+  // 入口做总兜底：findJava/findBackendJar 在 jar 丢失、安装目录不可读等情况下会同步抛错，
+  // 这里统一转成 { ok:false } 返回值，避免未捕获异常直接崩掉主进程。
+  try {
+    return startBackendInternal(userDataPath);
+  } catch (err) {
+    log.error("启动后端失败:", err.message);
+    return Promise.resolve({ ok: false, owned: false, external: false, reason: err.message });
+  }
+}
 
-  backendProcess = spawn(
-    javaPath,
-    [
-      `-Dapp.assets.bundled=${bundledAssets}`,
-      "-jar",
-      jarPath,
-      "--server.port=8081",
-    ],
-    {
-      cwd: userDataPath,
-      stdio: "pipe",
-      env: {
-        ...process.env,
-        JAVA_TOOL_OPTIONS:
-          "-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai",
-      },
-    },
-  );
-
-  backendProcess.stdout.on("data", (data) => {
-    log.info(`[backend] ${data.toString().trim()}`);
-  });
-
-  backendProcess.stderr.on("data", (data) => {
-    log.warn(`[backend:err] ${data.toString().trim()}`);
-  });
-
-  backendProcess.on("error", (err) => {
-    log.error("后端进程启动失败:", err.message);
-    backendProcess = null;
-  });
-
-  backendProcess.on("exit", (code, signal) => {
-    log.info(`后端进程退出，code=${code}, signal=${signal}`);
-    backendProcess = null;
+/** startBackend 的实际实现（见上方返回约定） */
+function startBackendInternal(userDataPath) {
+  return new Promise((resolve) => {
+    // 0) 先探测 8081：已有一个健康的后端就直接复用，绝不再抢端口
+    probeExistingBackend().then((existing) => {
+      if (existing.alive) {
+        log.info("检测到已有后端在 8081 运行（由其他实例启动），复用它，不再启动新后端");
+        resolve({ ok: true, owned: false, external: true });
+        return;
+      }
+      if (existing.portOccupied) {
+        // 端口被非本应用进程占着：直接判定启动失败，不要盲等 2 分钟
+        const reason = `端口 ${BACKEND_PORT} 已被其他程序占用，且不是本应用的后端`;
+        log.error(reason);
+        resolve({ ok: false, owned: false, external: false, reason });
+        return;
+      }
+      // spawnOwnBackend 内部（findBackendJar 等）可能抛错：同步抛错和 Promise 拒绝都要兜住，
+      // 否则这个 Promise 永远不会 settle，界面会一直卡在“等待后端启动...”。
+      try {
+        spawnOwnBackend(userDataPath)
+          .then(resolve)
+          .catch((err) => {
+            log.error("启动后端失败:", err.message);
+            resolve({ ok: false, owned: false, external: false, reason: err.message });
+          });
+      } catch (err) {
+        log.error("启动后端失败:", err.message);
+        resolve({ ok: false, owned: false, external: false, reason: err.message });
+      }
+    });
   });
 }
 
-/** 轮询后端健康检查，就绪后 resolve */
-function waitForBackend(url, retries = 60, interval = 2000) {
+/** 探测 8081：是否有监听、以及是否是能响应 /api/health 的后端 */
+function probeExistingBackend(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get(BACKEND_HEALTH_URL, (res) => {
+      res.resume();
+      if (res.statusCode === 200) {
+        resolve({ alive: true, portOccupied: true });
+      } else {
+        // 有东西在监听但不是我们的后端
+        resolve({ alive: false, portOccupied: true });
+      }
+    });
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve({ alive: false, portOccupied: true });
+    });
+    req.on("error", (err) => {
+      if (err && err.code === "ECONNREFUSED") {
+        // 无人监听 → 端口空闲，可以启动
+        resolve({ alive: false, portOccupied: false });
+      } else {
+        // 超时/其他错误：宁可当作“被占用”也不要再抢端口
+        resolve({ alive: false, portOccupied: true });
+      }
+    });
+  });
+}
+
+/** 真正 spawn 本实例的后端进程并等待它就绪 */
+function spawnOwnBackend(userDataPath) {
+  return new Promise((resolve) => {
+    const javaPath = findJava();
+    const jarPath = findBackendJar();
+    // 随安装包发布的素材目录：后端据此把缺失的素材补齐到用户数据目录（ui/effects 是硬依赖）
+    const bundledAssets = path.join(process.resourcesPath, "assets");
+    log.info("启动后端:", javaPath, "-jar", jarPath);
+    log.info("后端工作目录:", userDataPath);
+    log.info("安装包素材目录:", bundledAssets);
+
+    const child = spawn(
+      javaPath,
+      [
+        `-Dapp.assets.bundled=${bundledAssets}`,
+        "-jar",
+        jarPath,
+        `--server.port=${BACKEND_PORT}`,
+      ],
+      {
+        cwd: userDataPath,
+        stdio: "pipe",
+        env: {
+          ...process.env,
+          JAVA_TOOL_OPTIONS:
+            "-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai",
+        },
+      },
+    );
+
+    ownedBackendProcess = child;
+    backendStopRequested = false;
+    let spawnFailed = false;
+
+    child.stdout.on("data", (data) => {
+      log.info(`[backend] ${data.toString().trim()}`);
+    });
+
+    child.stderr.on("data", (data) => {
+      log.warn(`[backend:err] ${data.toString().trim()}`);
+    });
+
+    child.on("error", (err) => {
+      log.error("后端进程启动失败:", err.message);
+      spawnFailed = true;
+    });
+
+    child.on("exit", (code, signal) => {
+      log.info(`后端进程退出，code=${code}, signal=${signal}`);
+      if (ownedBackendProcess === child) {
+        ownedBackendProcess = null;
+      }
+      if (!backendStopRequested) {
+        // 进程自己死了（例如端口被抢占、JVM 崩溃）：明确记录，便于排查
+        log.error(
+          `后端进程意外退出（code=${code}, signal=${signal}），此后所有后端请求都会失败`,
+        );
+      }
+    });
+
+    waitForBackend(BACKEND_HEALTH_URL, { targetPid: child.pid })
+      .then((result) => {
+        if (!result.ok) {
+          // resolve 时 ok 一定为 true，这里只是防御性兜底
+          resolve({ ok: false, owned: isOwnedBackendAlive(), external: false, reason: "后端未就绪" });
+          return;
+        }
+        if (!result.owned) {
+          // 健康检查能通但不是本实例的进程（别的实例刚好抢先启动）：不要抢占，也不要在退出时杀它
+          log.warn("8081 上响应健康检查的不是本实例启动的后端，按复用处理，退出时不停止它");
+          resolve({ ok: true, owned: false, external: true });
+          return;
+        }
+        // 再次确认进程还活着：健康检查通过后它也可能立刻退出，此时不能声称“owned”
+        const alive = isOwnedBackendAlive();
+        resolve({ ok: true, owned: alive, external: !alive });
+      })
+      .catch((err) => {
+        // 必须兜底：否则 waitForBackend 失败时这里会一直挂着，界面卡在“等待后端启动...”
+        log.error("等待后端就绪失败:", err.message);
+        resolve({
+          ok: false,
+          owned: isOwnedBackendAlive(),
+          external: false,
+          reason: spawnFailed ? "后端进程无法启动" : err.message,
+        });
+      });
+  });
+}
+
+/**
+ * 轮询后端健康检查。
+ * targetPid 用于确认“健康的后端确实是本实例启动的那个进程”：
+ * 健康检查返回 200 后，用 netstat/lsof 反查监听 8081 的 PID 与 targetPid 比对；
+ * 不等（说明是别的实例抢先启动的后端）则返回 owned=false，由调用方按“复用”处理。
+ * 返回 { ok: true, owned }；超时或本实例后端已退出时 reject。
+ */
+function waitForBackend(url, { retries = 60, interval = 2000, targetPid = null } = {}) {
   return new Promise((resolve, reject) => {
     let attempt = 0;
     const check = () => {
       attempt++;
-      http
-        .get(url, (res) => {
-          if (res.statusCode === 200) {
-            log.info(`后端就绪 (attempt ${attempt})`);
-            resolve();
-          } else if (attempt < retries) {
+      // 我们自己的后端进程已经死了就没必要继续等
+      if (targetPid && !isOwnedBackendAlive()) {
+        reject(new Error("本实例启动的后端进程已退出（端口可能被占用）"));
+        return;
+      }
+      const req = http.get(url, async (res) => {
+        res.resume();
+        if (res.statusCode !== 200) {
+          if (attempt < retries) {
             setTimeout(check, interval);
           } else {
             reject(new Error(`后端未就绪，状态码=${res.statusCode}`));
           }
-        })
-        .on("error", () => {
-          if (attempt < retries) {
-            setTimeout(check, interval);
-          } else {
-            reject(new Error(`后端未就绪，已重试 ${retries} 次`));
-          }
-        });
+          return;
+        }
+        log.info(`后端就绪 (attempt ${attempt})`);
+        if (!targetPid) {
+          resolve({ ok: true, owned: false });
+          return;
+        }
+        let owned = true;
+        try {
+          owned = (await getListenerPid(BACKEND_PORT)) === targetPid;
+        } catch (err) {
+          log.warn("无法确认 8081 监听进程的 PID:", err.message);
+        }
+        resolve({ ok: true, owned });
+      });
+      req.setTimeout(interval, () => req.destroy());
+      req.on("error", () => {
+        if (targetPid && !isOwnedBackendAlive()) {
+          reject(new Error("本实例启动的后端进程已退出（端口可能被占用）"));
+          return;
+        }
+        if (attempt < retries) {
+          setTimeout(check, interval);
+        } else {
+          reject(new Error(`后端未就绪，已重试 ${retries} 次`));
+        }
+      });
     };
     check();
   });
 }
 
-/** 停止后端 */
-function stopBackend() {
-  if (backendProcess) {
-    log.info("正在停止后端进程...");
-    backendProcess.kill("SIGTERM");
-    // 给进程一些时间优雅退出
-    setTimeout(() => {
-      if (backendProcess) {
-        log.warn("强制终止后端进程");
-        backendProcess.kill("SIGKILL");
+/** 在系统 TCP 表中反查监听指定端口的进程 PID（Windows/Unix 通用） */
+function getListenerPid(port) {
+  const { execFile } = require("child_process");
+  return new Promise((resolve) => {
+    const isWin = process.platform === "win32";
+    const cmd = isWin ? "netstat" : "lsof";
+    const args = isWin ? ["-ano"] : ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN"];
+    execFile(cmd, args, { timeout: 5000, windowsHide: true }, (err, stdout) => {
+      if (err && !stdout) {
+        resolve(null);
+        return;
       }
-    }, 5000);
+      const lines = String(stdout).split(/\r?\n/);
+      for (const line of lines) {
+        const t = line.trim();
+        if (isWin) {
+          if (!t.startsWith("TCP")) continue;
+          const parts = t.split(/\s+/);
+          // TCP <本地地址> <外部地址> LISTENING <PID>
+          if (parts[3] !== "LISTENING") continue;
+          if (!parts[1] || !parts[1].endsWith(`:${port}`)) continue;
+          const pid = Number(parts[4]);
+          if (Number.isFinite(pid)) {
+            resolve(pid);
+            return;
+          }
+        } else {
+          // lsof: java <pid> user ... TCP *:8081 (LISTEN)
+          const parts = t.split(/\s+/);
+          if (parts[0] === "COMMAND") continue;
+          const pid = Number(parts[1]);
+          if (Number.isFinite(pid)) {
+            resolve(pid);
+            return;
+          }
+        }
+      }
+      resolve(null);
+    });
+  });
+}
+
+/** 停止后端：只结束本实例自己启动的进程 */
+function stopBackend() {
+  const child = ownedBackendProcess;
+  if (!isOwnedBackendAlive()) {
+    log.info("没有需要停止的后端进程（本实例未启动后端，或后端已退出）");
+    return;
   }
+  log.info(`正在停止本实例启动的后端进程... pid=${child.pid}`);
+  backendStopRequested = true;
+  try {
+    // Windows 上 kill() 等价于 TerminateProcess，端口会立即释放
+    child.kill("SIGTERM");
+  } catch (err) {
+    log.warn("停止后端进程失败:", err.message);
+  }
+  // 给进程一些时间优雅退出
+  setTimeout(() => {
+    if (ownedBackendProcess === child && child.exitCode === null && !child.killed) {
+      log.warn("强制终止后端进程");
+      try {
+        child.kill("SIGKILL");
+      } catch (err) {
+        log.warn("强制终止后端进程失败:", err.message);
+      }
+    }
+  }, 5000);
 }
 
 function createWindow() {
@@ -457,12 +706,27 @@ app.whenReady().then(async () => {
       const userDataPath = app.getPath("userData");
       log.info("用户数据目录:", userDataPath);
       ensureUserDataFiles(userDataPath);
-      startBackend(userDataPath);
 
       // 显示一个加载提示（可选：splash窗口）
       log.info("等待后端启动...");
-      await waitForBackend("http://localhost:8081/api/health");
-      log.info("后端启动完成，创建窗口");
+      // startBackend 内部完成启动 + 健康检查（并按 PID 确认是本实例的后端）
+      const backend = await startBackend(userDataPath);
+      if (!backend.ok) {
+        const reason = backend.reason || "后端未就绪";
+        log.error("启动后端失败:", reason);
+        dialog.showErrorBox(
+          "启动失败",
+          `无法启动后端服务: ${reason}\n\n` +
+            `请确认端口 ${BACKEND_PORT} 未被其他程序占用，且已安装 Java 21 或更高版本。`,
+        );
+        app.quit();
+        return;
+      }
+      if (backend.owned) {
+        log.info("后端启动完成（由本实例启动，退出时会一并停止）");
+      } else {
+        log.info("后端启动完成（复用已有后端，退出时不会停止它）");
+      }
     } catch (err) {
       log.error("启动后端失败:", err.message);
       dialog.showErrorBox(
@@ -508,11 +772,9 @@ app.on("activate", () => {
   }
 });
 
-// 应用退出前停止后端
-app.on("before-quit", () => {
-  stopBackend();
-});
-
+// 应用退出前停止后端。
+// 只在 will-quit 里做一次即可：旧实现在 before-quit 和 will-quit 各调一次，
+// 日志里会出现两条“正在停止后端进程...”，而且重复 kill 同一个句柄并不可靠。
 app.on("will-quit", () => {
   stopBackend();
   if (logStream) {

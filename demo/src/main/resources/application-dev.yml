@@ -5,68 +5,59 @@ management:
         include: health,info,prometheus
 
 spring:
+  # 注意：这里不能写 spring.profiles=dev。本文件按文件名已经绑定到 dev profile，
+  # Spring Boot 3 会因 "spring.profiles" 出现在 profile 专属文档中而直接启动失败
+  # （应以 spring.config.activate.on-profile 表达，而本文件用文件名即可）。
   redis:
     host: localhost
     port: 6379
 
-# async queue properties (示例)
+# 异步渲染队列（绑定到 com.lbc_plot.config.AsyncQueueProperties）
+# 说明：此前本文件里 async: 与 spring: 各出现两次，YAML 中后出现的键会静默覆盖先出现的，
+# 已合并为单一块，避免"改了上面一段却不生效"。键名统一用 kebab-case（Spring 宽松绑定）。
 async:
   queue:
     base-dir: target
     queue-sub-dir: async_render_jobs
     failed-sub-dir: async_render_jobs_failed
     thread-count: 1
+    max-retries: 2
+    retry-delay-ms: 500
     backoff-initial-ms: 500
     backoff-multiplier: 2.0
     backoff-max-ms: 30000
     max-total-retry-ms: 300000
     max-attempts: 10
+
 project:
   videoWidth: 1280
   videoHeight: 720
   videoResolution: "720p"
   frameRate: 30
-  imageBasePath: "assets/images/"
+  # 注意：不要在这里设置 imageBasePath / ASSETS_BASE_PATH 之类的素材根路径。
+  # 素材目录统一由 com.lbc_plot.common.util.RuntimePaths 解析为
+  # {dataRoot}/assets 的绝对路径，相对路径会随 JVM 工作目录漂移。
   defaultTextColor: "#FBDBB3"
   defaultBgColor: "#4C361F"
   factionColor: "#9F6A3B"
 
-app:
-  storageLocation: "dev_storage/"
-
 storage:
-  backgrounds:
-    dir: "assets/backgrounds"
-  thumbnails:
-    dir: "assets/thumbnails"
   enable:
     versioning: true
   max:
     file:
       size: 10
   supported:
-    formats: "jpg,jpeg,png,gif,bmp"
+    formats: "jpg,jpeg,png,gif,bmp,webp"
   generate:
     thumbnails: true
   thumbnail:
     width: 200
     height: 200
 
-async:
-  queue:
-    baseDir: "target"
-    queueSubDir: "async_render_jobs"
-    failedSubDir: "async_render_jobs_failed"
-    maxRetries: 2
-    retryDelayMs: 500
-    threadCount: 1
 app:
-  storageLocation: ./data/storage
   renderThreads: 2
   cacheEnabled: true
-
-spring:
-  profiles: dev
 
 logging:
   level:

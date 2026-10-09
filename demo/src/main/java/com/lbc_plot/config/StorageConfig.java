@@ -58,9 +58,13 @@ public class StorageConfig implements InitializingBean {
     /**
      * 支持的图片格式
      * 用逗号分隔的格式列表
-     * 默认值为 "jpg,jpeg,png,gif,bmp"
+     *
+     * <p>注意：默认 profile 下 application.yml 没有 storage 配置块，实际生效的就是这里的默认值；
+     * 修改后请同步 application.yml / application-dev.yml / application-prod.yml。
+     * 默认值里的 webp 依赖 {@code WebpImageDecoder}（FFmpeg/JavaCV 兜底）才能被读取，
+     * 因为 JDK 自带 ImageIO 不支持 WebP。
      */
-    private String supportedFormats = "jpg,jpeg,png,gif,bmp";
+    private String supportedFormats = "jpg,jpeg,png,gif,bmp,webp";
 
     /**
      * 是否生成缩略图

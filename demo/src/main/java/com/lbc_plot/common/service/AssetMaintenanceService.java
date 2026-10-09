@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.lbc_plot.common.util.BundledAssetSync;
-import com.lbc_plot.config.ProjectConfig;
+import com.lbc_plot.common.util.RuntimePaths;
 
 /**
  * 素材维护服务：素材自检 + 从安装包补齐缺失素材。
@@ -66,26 +66,15 @@ public class AssetMaintenanceService {
     /**
      * 解析运行时素材目录。
      *
-     * <p>与 {@link ProjectConfig} 的配置保持一致，若配置的目录不存在，则回退到
-     * 相对工作目录的 assets、上级目录的 assets（开发期从 demo/ 启动的兼容路径）。
-     * 不使用 classpath 解析，避免与 jar 内路径混淆。
+     * <p>素材目录是唯一确定的：{@link RuntimePaths#getAssetsDir()}，即用户数据目录下的
+     * {@code assets}（Windows 为 {@code %APPDATA%\limbus-company-plot-video-generator\assets}）。
+     *
+     * <p>旧实现会依次猜测"配置路径 → {@code ./assets} → {@code ../assets}"，第一个存在的目录即被采用。
+     * 这让素材位置随 JVM 工作目录变化：从 {@code demo/} 启动就会落到 {@code demo/assets}，
+     * 与安装版实际使用的目录不是同一个。现在不再猜测，只区分"目录是否存在"。
      */
     public Path resolveAssetsDir() {
-        List<Path> candidates = new ArrayList<>();
-        String configured = ProjectConfig.ASSETS_BASE_PATH;
-        if (configured != null && !configured.isBlank()) {
-            candidates.add(Paths.get(configured));
-        }
-        candidates.add(Paths.get("./assets"));
-        candidates.add(Paths.get("../assets"));
-
-        for (Path candidate : candidates) {
-            if (candidate.toFile().isDirectory()) {
-                return candidate.normalize();
-            }
-        }
-        // 都不存在时返回配置路径，便于用户看到期望位置
-        return candidates.get(0).normalize();
+        return RuntimePaths.getAssetsDir();
     }
 
     /** 解析安装包内随包发布的素材目录；开发模式或未传入时返回 null。 */

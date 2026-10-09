@@ -6,14 +6,18 @@ spring:
     name: limbus-company-plot-video-generator
   web:
     resources:
-      static-locations: classpath:/static/,classpath:/public/,classpath:/resources/,classpath:/assets/,file:./assets/
+      # 不再包含 file:./assets/ —— 素材目录由 RuntimePaths 解析为用户数据目录下的绝对路径，
+      # 并通过 WebMvcConfig 的 /assets/** 映射对外提供。
+      static-locations: classpath:/static/,classpath:/public/,classpath:/resources/,classpath:/assets/
   servlet:
     multipart:
       enabled: true
       max-file-size: 50MB
       max-request-size: 50MB
   datasource:
-    url: jdbc:sqlite:./data/project.db
+    # SQLite 用绝对路径，由 DatabaseConfig 从 RuntimePaths 计算后作为该占位符的默认值提供，
+    # 避免不同 JVM 工作目录打开不同的库（旧配置为 ./data/project.db）。
+    url: ${lbc.datasource.url}
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 10
@@ -24,20 +28,36 @@ spring:
     jdbc:
       dialect: sqlite
 
-# 应用配置
-app:
-  assets:
-    path: ./assets
-    audios: ${app.assets.path}/audios
-    backgrounds: ${app.assets.path}/backgrounds
-    characters: ${app.assets.path}/characters
-    thumbnails: ${app.assets.path}/thumbnails
-    # 角色目录下存放立绘缩略图与角色名片图片的子目录名
-    # 缩略图与名片图片都会保存到 {characters}/{角色拼音}/{characterThumbnailsSubdir}/ 下，
-    # 删除角色目录时会一并清理。可自定义，默认 "thumbnails"。
-    characterThumbnailsSubdir: thumbnails
+# 素材路径不再在此配置。
+# 统一由 com.lbc_plot.common.util.RuntimePaths 解析到用户数据目录：
+#   Windows: %APPDATA%\limbus-company-plot-video-generator\assets
+#   其它平台: ~/.limbus-company-plot-video-generator/assets
+# 需要临时切换数据根目录（开发/测试）时，用 -Dlbc.data.dir=<目录> 或环境变量 LBC_DATA_DIR，
+# 不要通过 app.assets.* 指定相对路径。
+#
+# app.assets 下的子目录配置项已移除：AppConfig 直接从 RuntimePaths 推导，
+# 因为一旦在 yml 里写相对路径，解析结果就会重新依赖 JVM 工作目录。
 
 # 自定义配置
+# 文件存储配置（绑定到 com.lbc_plot.config.StorageConfig）
+# 注意：storage.backgrounds.dir / storage.thumbnails.dir 虽然可以在这里绑定，
+# 但 StorageConfig.afterPropertiesSet() 会用 AppConfig（即 RuntimePaths 推导出的绝对路径）
+# 覆盖它们，因此不在此写出无效的相对路径，避免"改了 yml 不生效"的误判。
+storage:
+  enable:
+    versioning: true
+  max:
+    file:
+      size: 10
+  # 允许上传的图片格式（逗号分隔）。webp 由 WebpImageDecoder 用 FFmpeg 兜底解码（保留 alpha）
+  supported:
+    formats: "jpg,jpeg,png,gif,bmp,webp"
+  generate:
+    thumbnails: true
+  thumbnail:
+    width: 200
+    height: 200
+
 audio:
   bgm:
     volume: 0.7

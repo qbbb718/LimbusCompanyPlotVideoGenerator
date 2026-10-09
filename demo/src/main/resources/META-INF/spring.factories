@@ -1,0 +1,5 @@
+# 把 RuntimePaths 解析出的绝对路径注入 Spring 环境（在属性源解析前生效）。
+# 这样 application.yml 里的 ${lbc.datasource.url} 才能拿到真正的绝对路径。
+# 详见 com.lbc_plot.config.RuntimePathsEnvironmentPostProcessor。
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.lbc_plot.config.RuntimePathsEnvironmentPostProcessor

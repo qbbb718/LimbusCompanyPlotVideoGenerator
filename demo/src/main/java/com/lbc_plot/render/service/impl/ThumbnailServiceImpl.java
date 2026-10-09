@@ -70,7 +70,8 @@ public class ThumbnailServiceImpl implements ThumbnailService {
                 }
                 java.io.File imageFile = new java.io.File(imagePath);
                 if (imageFile.isAbsolute() || imagePath.contains(java.io.File.separator)) {
-                    originalImage = javax.imageio.ImageIO.read(imageFile);
+                    // 统一读图入口：支持 WebP（ImageIO 不认，由 FFmpeg 兜底并保留 alpha）
+                    originalImage = com.lbc_plot.common.util.io.ImageReader.readImageFile(imageFile);
                 } else {
                     originalImage = com.lbc_plot.common.util.io.ImageReader.readCharacters(imagePath);
                 }

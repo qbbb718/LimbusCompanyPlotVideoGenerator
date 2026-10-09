@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.lbc_plot.common.util.RuntimePaths;
+
 /**
  * 临时图片控制器
  *
@@ -34,7 +36,8 @@ public class TempImageController {
 
     private static final Logger logger = LoggerFactory.getLogger(TempImageController.class);
 
-    private static final String TEMP_IMAGES_DIR = "./projects/temp/images/";
+    private static final String TEMP_IMAGES_DIR = RuntimePaths.toPortableString(
+            RuntimePaths.getTempDir().resolve("images")) + "/";
     private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
     /**

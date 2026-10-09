@@ -87,25 +87,53 @@ public class AudioDAO {
      * 添加音频
      */
     public static void addAudio(Audio audio) {
-        try (Connection conn = SQLiteDatabaseManager.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(
-                        "INSERT INTO audios (audio_id, uuid, name, path, type, tags) VALUES (?, ?, ?, ?, ?, ?)")) {
+        try (Connection conn = SQLiteDatabaseManager.getConnection()) {
 
-            // 兼容旧schema中 audio_id 的 NOT NULL 约束，与 uuid 保持一致
-            stmt.setString(1, audio.getUuid());
-            stmt.setString(2, audio.getUuid());
-            stmt.setString(3, audio.getName());
-            stmt.setString(4, audio.getPath());
-            stmt.setString(5, audio.getType());
+            // 当前 schema（init_database.sql）的 audios 表没有 audio_id 列，
+            // 只有早期旧库保留该可空列，这里按实际表结构决定是否写入，避免报
+            // "table audios has no column named audio_id" 而无法保存音频。
+            boolean hasAudioIdColumn = hasColumn(conn, "audios", "audio_id");
 
-            // 将标签列表转换为JSON字符串
-            // 简化实现，暂时设置为空字符串
-            stmt.setString(6, "");
+            String sql = hasAudioIdColumn
+                    ? "INSERT INTO audios (audio_id, uuid, name, path, type, tags) VALUES (?, ?, ?, ?, ?, ?)"
+                    : "INSERT INTO audios (uuid, name, path, type, tags) VALUES (?, ?, ?, ?, ?)";
 
-            stmt.executeUpdate();
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                int index = 1;
+
+                if (hasAudioIdColumn) {
+                    // 兼容旧schema中 audio_id 的 NOT NULL 约束，与 uuid 保持一致
+                    stmt.setString(index++, audio.getUuid());
+                }
+
+                stmt.setString(index++, audio.getUuid());
+                stmt.setString(index++, audio.getName());
+                stmt.setString(index++, audio.getPath());
+                stmt.setString(index++, audio.getType());
+
+                // 将标签列表转换为JSON字符串
+                // 简化实现，暂时设置为空字符串
+                stmt.setString(index, "");
+
+                stmt.executeUpdate();
+            }
         } catch (SQLException e) {
             System.err.println("添加音频失败: " + e.getMessage());
             throw new RuntimeException("添加音频失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 判断指定表是否存在某列（基于 SQLite 的 pragma_table_info）
+     */
+    private static boolean hasColumn(Connection conn, String table, String column) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "SELECT count(*) FROM pragma_table_info(?) WHERE name = ?")) {
+            stmt.setString(1, table);
+            stmt.setString(2, column);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
         }
     }
 

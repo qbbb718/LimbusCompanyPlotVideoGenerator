@@ -21,6 +21,35 @@ import java.io.InputStream;
 public class ImageReader {
 
     /**
+     * 统一的文件读图入口：优先 ImageIO，读不出来（如 WebP）时用 FFmpeg 兜底。
+     *
+     * @param file 图片文件
+     * @return BufferedImage，ImageIO 与 FFmpeg 都失败时返回 null
+     */
+    public static BufferedImage readImageFile(File file) throws IOException {
+        if (file == null || !file.exists() || !file.isFile()) {
+            throw new IOException("文件不存在: " + (file == null ? "null" : file.getAbsolutePath()));
+        }
+        // 1) JDK 自带解码（png/jpg/gif/bmp/tif）
+        BufferedImage image = null;
+        try {
+            image = ImageIO.read(file);
+        } catch (IOException e) {
+            // WebP 等格式可能让 ImageIO 直接抛错，转到 FFmpeg 兜底
+            image = null;
+        }
+        if (image != null) {
+            return image;
+        }
+        // 2) FFmpeg 兜底（WebP，保留 alpha）
+        BufferedImage viaFfmpeg = WebpImageDecoder.decodeWithFfmpeg(file);
+        if (viaFfmpeg != null) {
+            return viaFfmpeg;
+        }
+        return null;
+    }
+
+    /**
      * 从resources目录读取图片（推荐方式）
      * 
      * @param resourcePath 相对于resources目录的路径
@@ -35,7 +64,7 @@ public class ImageReader {
             if (!maybeFile.exists() || !maybeFile.isFile()) {
                 throw new IOException("文件不存在: " + resourcePath);
             }
-            return ImageIO.read(maybeFile);
+            return readImageFile(maybeFile);
         }
 
         // 先尝试从 classpath 查找资源
@@ -44,10 +73,14 @@ public class ImageReader {
 
         if (inputStream != null) {
             try {
-                return ImageIO.read(inputStream);
+                BufferedImage image = ImageIO.read(inputStream);
+                if (image != null) {
+                    return image;
+                }
             } finally {
                 inputStream.close();
             }
+            // classpath 资源 ImageIO 读不出来时，回退到文件系统路径再试（含 WebP 兜底）
         }
 
         // classpath 找不到时，回退到文件系统相对路径（相对于 JVM 工作目录，
@@ -56,7 +89,7 @@ public class ImageReader {
         // classpath（src/main/resources/assets/ui/ 不存在），导致 RenderOfImage
         // 静态块加载失败、后续名片图片生成 NPE。
         if (maybeFile.exists() && maybeFile.isFile()) {
-            return ImageIO.read(maybeFile);
+            return readImageFile(maybeFile);
         }
 
         throw new IOException("资源文件不存在: " + resourcePath
@@ -64,20 +97,19 @@ public class ImageReader {
     }
 
     public static BufferedImage readBackGround(String fileName) throws IOException {
-        String resourcePath = ProjectConfig.BACKGROUNDS_PATH + fileName;
+        // ProjectConfig 的路径已是绝对路径，直接命中即可；保留裸文件名兜底，
+        // 兼容数据库里存了"仅文件名"的历史数据。
+        String[] candidates = new String[] {
+                ProjectConfig.BACKGROUNDS_PATH + fileName,
+                fileName
+        };
         try {
-            return readResourceImage(resourcePath);
+            return readResourceImage(candidates[0]);
         } catch (IOException e) {
-            // 回退到文件系统候选路径查找
-            String[] candidates = new String[] {
-                    ProjectConfig.BACKGROUNDS_PATH + fileName,
-                    ProjectConfig.ASSETS_BASE_PATH + "backgrounds/" + fileName,
-                    fileName
-            };
             for (String c : candidates) {
                 File f = new File(c);
                 if (f.exists() && f.isFile()) {
-                    return ImageIO.read(f);
+                    return readImageFile(f);
                 }
             }
             throw new IOException("背景图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")", e);
@@ -95,21 +127,13 @@ public class ImageReader {
      * </ol>
      *
      * @param userInput 用户输入的背景名称（如 "sunset" 或 "sunset.png"）
-     * @return 匹配文件的相对路径（如 "assets/backgrounds/sunset.png"），未找到返回 null
+     * @return 匹配文件的绝对路径（正斜杠形式），未找到返回 null
      */
     public static String findBackgroundFile(String userInput) {
         if (userInput == null || userInput.isBlank()) return null;
 
-        String bgDir = ProjectConfig.BACKGROUNDS_PATH;
-        // 规范化路径
-        if (bgDir.startsWith("./")) bgDir = bgDir.substring(2);
-        File dir = new File(bgDir);
-        if (!dir.exists() || !dir.isDirectory()) {
-            // 尝试备用路径
-            String altPath = ProjectConfig.ASSETS_BASE_PATH + "backgrounds/";
-            if (altPath.startsWith("./")) altPath = altPath.substring(2);
-            dir = new File(altPath);
-        }
+        // ProjectConfig 的路径已是绝对路径，无需再去掉 "./" 前缀或猜测备用目录
+        File dir = new File(ProjectConfig.BACKGROUNDS_PATH);
         if (!dir.exists() || !dir.isDirectory()) return null;
 
         String input = userInput.trim();
@@ -159,19 +183,8 @@ public class ImageReader {
         }
 
         if (bestFile != null) {
-            // 返回相对于项目根的标准化路径
-            String absPath = bestFile.getAbsolutePath().replace('\\', '/');
-            String normalizedBgDir = bgDir.replace('\\', '/');
-            if (absPath.startsWith(normalizedBgDir)) {
-                return absPath;
-            }
-            // 尝试以 ASSETS_BASE_PATH 为前缀
-            String altBgDir = (ProjectConfig.ASSETS_BASE_PATH + "backgrounds/").replace('\\', '/');
-            if (altBgDir.startsWith("./")) altBgDir = altBgDir.substring(2);
-            if (absPath.startsWith(altBgDir)) {
-                return absPath;
-            }
-            return absPath;
+            // 统一返回正斜杠的绝对路径（调用方据此落库并与 ProjectConfig 前缀比对）
+            return bestFile.getAbsolutePath().replace('\\', '/');
         }
 
         return null;
@@ -204,7 +217,7 @@ public class ImageReader {
             if (!f.exists() || !f.isFile()) {
                 throw new IOException("文件不存在: " + fileName);
             }
-            return ImageIO.read(f);
+            return readImageFile(f);
         }
 
         String resourcePath = ProjectConfig.CHARACTERS_PATH + fileName;
@@ -212,14 +225,13 @@ public class ImageReader {
             return readResourceImage(resourcePath);
         } catch (IOException e) {
             String[] candidates = new String[] {
-                    ProjectConfig.CHARACTERS_PATH + fileName,
-                    ProjectConfig.ASSETS_BASE_PATH + "characters/" + fileName,
+                    resourcePath,
                     fileName
             };
             for (String c : candidates) {
                 File cf = new File(c);
                 if (cf.exists() && cf.isFile()) {
-                    return ImageIO.read(cf);
+                    return readImageFile(cf);
                 }
             }
             throw new IOException("人物图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")", e);
@@ -242,14 +254,7 @@ public class ImageReader {
      * @throws IOException 当文件不存在或读取失败时抛出
      */
     public static BufferedImage readImage(String filePath) throws IOException {
-        File file = new File(filePath);
-        if (!file.exists()) {
-            throw new IOException("文件不存在: " + filePath);
-        }
-        if (!file.isFile()) {
-            throw new IOException("路径不是文件: " + filePath);
-        }
-        return ImageIO.read(file);
+        return readImageFile(new File(filePath));
     }
 
     /**

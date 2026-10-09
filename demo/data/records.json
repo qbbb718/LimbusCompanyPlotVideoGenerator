@@ -1,77 +1,9 @@
 [ {
-  "uuid" : "3a081b7d-c726-4d7c-8fde-4d8c63217afa",
+  "uuid" : "70eb1594-257d-467c-89c1-bdcb1b6a1778",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "嘿，老兄",
-    "location" : "Story_private_room",
-    "speakerC" : [ {
-      "characterID" : "char_1785997936961",
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    } ],
-    "speakerName" : "格里高尔",
-    "faction" : "中立",
-    "align" : "LEFT",
-    "speed" : 3,
-    "emotion" : "NORMAL"
-  },
-  "tempImages" : [ ],
-  "audioCommands" : [ {
-    "type" : "BGM_ACTIVE",
-    "audioId" : "BusInside (online-audio-converter.com)",
-    "volume" : null,
-    "fadeDuration" : null
-  } ],
-  "isDirty" : false,
-  "chars" : [ {
-    "chara" : {
-      "characterID" : "char_1785997936961",
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    },
-    "portrait" : {
-      "portraitID" : "portrait_1785997946856",
-      "characterID" : "char_1785997936961",
-      "imagePath" : "char_1785997936961/portrait_1785997946856.png",
-      "portName" : "Gregor-default",
-      "emotion" : "normal",
-      "faceX" : 243,
-      "faceY" : 0,
-      "length" : 192,
-      "adjX" : 0,
-      "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785997946856.png"
-    },
-    "posX" : 644,
-    "posY" : 257,
-    "adjX" : 0,
-    "adjY" : 0,
-    "dim" : false
-  } ],
-  "bg" : [ {
-    "background" : {
-      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
-      "path" : "Story_private_room.png",
-      "name" : "Story_private_room",
-      "thumbnailPath" : null
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true
-  } ]
-}, {
-  "uuid" : "1cbbd0e7-13d3-4e8d-9100-16f54ce6531e",
-  "durationFrames" : 0,
-  "dialogue" : {
-    "text" : "或者是女士，我不确定",
-    "location" : "Story_private_room",
+    "text" : "……",
+    "location" : "办公室",
     "speakerC" : [ {
       "characterID" : "char_1785997936961",
       "characterName" : "格里高尔",
@@ -89,7 +21,7 @@
   "tempImages" : [ ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
-    "audioId" : "BusInside (online-audio-converter.com)",
+    "audioId" : "办公室BGM",
     "volume" : null,
     "fadeDuration" : null
   } ],
@@ -116,18 +48,18 @@
       "adjY" : 0,
       "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998007481.png"
     },
-    "posX" : 644,
+    "posX" : 260,
     "posY" : 257,
-    "adjX" : 0,
+    "adjX" : -384,
     "adjY" : 0,
     "dim" : false
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
-      "path" : "Story_private_room.png",
-      "name" : "Story_private_room",
-      "thumbnailPath" : null
+      "uuid" : "bg_1791465440079",
+      "path" : "/assets/backgrounds/办公室_1791465458644.png",
+      "name" : "办公室",
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1791465440079_1791465458953.png"
     },
     "posX" : 0,
     "posY" : 0,
@@ -135,11 +67,11 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "f1d1089a-e6aa-4fff-8c8a-e47188fcac4a",
+  "uuid" : "96497792-85b3-45b7-b982-462eedb3ce2b",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "咳，总之呢……",
-    "location" : "Story_private_room",
+    "text" : "这是怎么回事",
+    "location" : "办公室",
     "speakerC" : [ {
       "characterID" : "char_1785997936961",
       "characterName" : "格里高尔",
@@ -152,12 +84,12 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "HAPPY"
+    "emotion" : "ANGRY"
   },
   "tempImages" : [ ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
-    "audioId" : "BusInside (online-audio-converter.com)",
+    "audioId" : "办公室BGM",
     "volume" : null,
     "fadeDuration" : null
   } ],
@@ -172,30 +104,30 @@
       "colorText" : "#FBDBB3"
     },
     "portrait" : {
-      "portraitID" : "portrait_1785998297560",
+      "portraitID" : "portrait_1785998312581",
       "characterID" : "char_1785997936961",
-      "imagePath" : "char_1785997936961/portrait_1785998297560.png",
-      "portName" : "格里高尔-face_smile2_L",
-      "emotion" : "happy",
+      "imagePath" : "char_1785997936961/portrait_1785998312581.png",
+      "portName" : "Gregor-face_serious_R",
+      "emotion" : "angry",
       "faceX" : 243,
       "faceY" : 0,
       "length" : 192,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998297560.png"
+      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png"
     },
-    "posX" : 644,
+    "posX" : 1028,
     "posY" : 257,
-    "adjX" : 0,
+    "adjX" : 384,
     "adjY" : 0,
     "dim" : false
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
-      "path" : "Story_private_room.png",
-      "name" : "Story_private_room",
-      "thumbnailPath" : null
+      "uuid" : "bg_1791465440079",
+      "path" : "/assets/backgrounds/办公室_1791465458644.png",
+      "name" : "办公室",
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1791465440079_1791465458953.png"
     },
     "posX" : 0,
     "posY" : 0,
@@ -203,24 +135,17 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "5b84cbb9-7d47-45af-90a4-0ab97489165e",
+  "uuid" : "43a4de8b-7f0d-4606-8e20-ddb93b2e756d",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "别用你那该死的代码让我说些奇怪的话了！听到了吗? 喂, 别在那别过头装作听不见的样子. 该死的. 喂!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
-    "location" : "Story_private_room",
-    "speakerC" : [ {
-      "characterID" : "char_1785997936961",
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    } ],
-    "speakerName" : "格里高尔",
+    "text" : "哇塞...",
+    "location" : "办公室",
+    "speakerC" : [ ],
+    "speakerName" : "旁白",
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "ANGRY"
+    "emotion" : "SURPRISED"
   },
   "tempImages" : [ ],
   "audioCommands" : [ {
@@ -252,74 +177,18 @@
       "adjY" : 0,
       "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png"
     },
-    "posX" : 644,
+    "posX" : 1028,
     "posY" : 257,
-    "adjX" : 0,
-    "adjY" : 0,
-    "dim" : false
-  } ],
-  "bg" : [ {
-    "background" : {
-      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
-      "path" : "Story_private_room.png",
-      "name" : "Story_private_room",
-      "thumbnailPath" : null
-    },
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "visible" : true
-  } ]
-}, {
-  "uuid" : "3ca267f4-e2f2-41bb-88b7-d5de44fdaeb6",
-  "durationFrames" : 0,
-  "dialogue" : {
-    "text" : "……好可爱!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
-    "location" : "Story_private_room",
-    "speakerC" : [ ],
-    "speakerName" : "旁白",
-    "faction" : "中立",
-    "align" : "LEFT",
-    "speed" : 3,
-    "emotion" : "SURPRISED"
-  },
-  "tempImages" : [ ],
-  "audioCommands" : [ ],
-  "isDirty" : false,
-  "chars" : [ {
-    "chara" : {
-      "characterID" : "char_1785997936961",
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    },
-    "portrait" : {
-      "portraitID" : "portrait_1785998312581",
-      "characterID" : "char_1785997936961",
-      "imagePath" : "char_1785997936961/portrait_1785998312581.png",
-      "portName" : "Gregor-face_serious_R",
-      "emotion" : "angry",
-      "faceX" : 243,
-      "faceY" : 0,
-      "length" : 192,
-      "adjX" : 0,
-      "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png"
-    },
-    "posX" : 644,
-    "posY" : 257,
-    "adjX" : 0,
+    "adjX" : 384,
     "adjY" : 0,
     "dim" : true
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "c7b14fef-e633-4e21-8179-80e4dd19e191",
-      "path" : "Story_private_room.png",
-      "name" : "Story_private_room",
-      "thumbnailPath" : null
+      "uuid" : "bg_1791465440079",
+      "path" : "/assets/backgrounds/办公室_1791465458644.png",
+      "name" : "办公室",
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1791465440079_1791465458953.png"
     },
     "posX" : 0,
     "posY" : 0,

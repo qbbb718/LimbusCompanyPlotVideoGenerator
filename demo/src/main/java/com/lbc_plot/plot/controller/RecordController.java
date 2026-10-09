@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 
+import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.common.util.json.RecordsIO;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
@@ -340,8 +341,8 @@ public class RecordController {
                 record.getUuid(), width, height, forceRefresh);
 
         try {
-            // 构建缓存路径
-            Path cacheDir = Paths.get("projects/temp/previews");
+            // 构建缓存路径（锚定到数据根目录，不随 JVM 工作目录变化）
+            Path cacheDir = RuntimePaths.getTempDir().resolve("previews");
             if (!Files.exists(cacheDir)) {
                 Files.createDirectories(cacheDir);
             }
