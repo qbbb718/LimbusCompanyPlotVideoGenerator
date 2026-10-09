@@ -63,8 +63,9 @@ public class PlainTextRecordsParserTest {
             }
         }
 
-        // expecting at least: bgm active, bg change, alice line, bob line, bgm2 change, alice line
-        assertTrue(records.size() >= 6);
+        // [BGM] / {背景} 指令行不单独生成 record，而是附加到下一条对话上：
+        // 3 条对话行 -> 3 条 record（原断言 >= 6 与实现不符，属过期断言）
+        assertEquals(3, records.size(), "[BGM]/[背景] 指令行不应单独生成 record");
 
         // find first Alice record and check it has dialogue and speaker name
         boolean foundAlice = records.stream()

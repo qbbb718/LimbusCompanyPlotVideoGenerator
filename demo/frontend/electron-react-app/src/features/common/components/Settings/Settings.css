@@ -207,6 +207,20 @@
   word-break: break-all;
 }
 
+/* 日志导出结果：导出路径和"请把压缩包发给开发者"分两行显示，长路径不给撑宽面板 */
+.log-export-result {
+  margin: 8px 0 0;
+  padding: 8px;
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #237804;
+  line-height: 1.6;
+  white-space: pre-line;
+  word-break: break-all;
+}
+
 .settings-section-content .save-button:disabled {
   background-color: #bfbfbf;
   cursor: not-allowed;

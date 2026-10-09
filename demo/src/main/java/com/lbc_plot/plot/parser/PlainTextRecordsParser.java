@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,15 +30,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 解析器：把简单的纯文本脚本转换为 List<Record>
+ * 解析器：把简单的纯文本脚本转换为 List&lt;Record&gt;
  * 支持的语法（示例）：
- * [BGM文件]
- * {背景图片文件}
- * 角色名: 文本(情绪)&lt;位置&gt;
- * 旁白: 文本
+ * <pre>
+ * [BGM名称]
+ * {背景图片名称}
+ * 说话人: 对话内容(情绪)%位置%
+ * 旁白: 对话内容
+ * </pre>
  *
- * 其中 &lt;位置&gt; 为可选的立绘横向位置（百分比，0% 最左 / 50% 居中 / 100% 最右，缺省居中），
- * 解析后换算为 CharacterVisual 的 adjX 偏差值。
+ * <p>标点兼容（中英文混写都能识别）：
+ * <ul>
+ *   <li>说话人后的冒号：半角 {@code ":"} 与全角 {@code "："}</li>
+ *   <li>情绪括号：半角 {@code "()"} 与全角 {@code "（）"}</li>
+ *   <li>位置标记的百分号：半角 {@code "%"} 与全角 {@code "％"}</li>
+ *   <li>行首/行尾空白：普通空白、全角空格（U+3000）、不换行空格、BOM</li>
+ * </ul>
+ *
+ * <p>{@code %位置%} 为可选的立绘横向位置（百分比，{@code %0%} 最左 / {@code %50%} 居中 /
+ * {@code %100%} 最右，缺省居中），可写在情绪之前或之后，解析后换算为 CharacterVisual 的 adjX 偏差值。
  */
 public class PlainTextRecordsParser {
 
@@ -46,13 +57,29 @@ public class PlainTextRecordsParser {
     private static final Pattern BGM_PATTERN = Pattern.compile("^\\s*\\[(.+?)\\]\\s*");
     private static final Pattern STOP_PATTERN = Pattern.compile("^\\s*\\[-.*?\\]\\s*");
     private static final Pattern BG_PATTERN = Pattern.compile("^\\s*\\{(.+?)\\}\\s*");
-    private static final Pattern SPEAKER_PATTERN = Pattern.compile("^\\s*([^:]+)\\s*:\\s*(.+)$");
-    private static final Pattern EMOTION_PATTERN = Pattern.compile("(.+?)\\((.+?)\\)\\s*$");
-    /** 立绘位置标记：&lt;位置&gt;，如 &lt;0%&gt; / &lt;37.5%&gt; / &lt;100 %&gt;，可写在情绪之前或之后 */
-    private static final Pattern POSITION_PATTERN = Pattern.compile("<\\s*(-?\\d+(?:\\.\\d+)?)\\s*%?\\s*>");
+    /** 说话行：角色名 + 冒号（兼容半角 ":" 与全角 "："），角色名本身不允许包含冒号 */
+    private static final Pattern SPEAKER_PATTERN = Pattern.compile("^\\s*([^:：]+?)\\s*[:：]\\s*(.+)$");
+    /** 情绪标记：正文末尾的 "（情绪）"，兼容半角 "()" 与全角 "（）"，括号内不含括号 */
+    private static final Pattern EMOTION_PATTERN = Pattern.compile("^(.*?)[（(]([^（()）]*)[）)]\\s*$");
+    /** 立绘位置标记：%位置%，如 %0% / %37.5% / ％100％（兼容半角/全角百分号），可写在情绪之前或之后 */
+    private static final Pattern POSITION_PATTERN = Pattern.compile("[%％]\\s*(-?\\d+(?:\\.\\d+)?)\\s*[%％]");
+    /** 已废弃的旧位置写法 &lt;位置&gt;：不再生效，只用于提示用户改写为 %位置% */
+    private static final Pattern LEGACY_POSITION_PATTERN = Pattern.compile("<\\s*-?\\d+(?:\\.\\d+)?\\s*%?\\s*>");
+    /** 纯英文情绪标记（用于识别写错的情绪名，如 "(NOLMAL)"） */
+    private static final Pattern ASCII_EMOTION_TOKEN = Pattern.compile("[A-Za-z]+");
+    /** 行首/行尾需要忽略的空白：普通空白 + 全角空格 + 不换行空格 + BOM */
+    private static final Pattern EDGE_BLANK_PATTERN = Pattern
+            .compile("^[\\s\\u3000\\u00A0\\uFEFF]+|[\\s\\u3000\\u00A0\\uFEFF]+$");
+
     /** 位置百分比合法范围（与前端 X坐标滑块一致：0% 最左，100% 最右） */
     private static final int MIN_POSITION_PERCENT = 0;
     private static final int MAX_POSITION_PERCENT = 100;
+
+    /**
+     * 停止 BGM 的伪指令：附加在 record 上让 AudioTimelineBuilder 在该 record 的起始帧结束旧 BGM
+     * （handleBgmStart 识别 "-" 前缀）。
+     */
+    private static final String BGM_STOP_COMMAND = "-STOP";
 
     /**
      * 解析文本文件为 Record 列表
@@ -65,19 +92,7 @@ public class PlainTextRecordsParser {
      * 解析文本字符串为 Record 列表
      */
     public static List<Record> parseText(String text) throws IOException {
-        // 将文本字符串转换为临时文件，然后使用现有的parse方法
-        Path tempFile = Files.createTempFile("records", ".txt");
-        try {
-            Files.writeString(tempFile, text);
-            return parse(tempFile, null, null);
-        } finally {
-            // 确保临时文件被删除
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException e) {
-                // 忽略删除失败
-            }
-        }
+        return parseText(text, null, null);
     }
 
     /**
@@ -85,17 +100,8 @@ public class PlainTextRecordsParser {
      */
     public static List<Record> parseText(String text, CharacterService characterService,
             BackgroundService backgroundService) throws IOException {
-        Path tempFile = Files.createTempFile("records", ".txt");
-        try {
-            Files.writeString(tempFile, text);
-            return parse(tempFile, characterService, backgroundService);
-        } finally {
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException e) {
-                // 忽略删除失败
-            }
-        }
+        // 直接在内存中切行解析：不再落地临时文件，省掉每次请求的磁盘 IO 与临时文件残留
+        return parseLines(splitLines(text), characterService, backgroundService);
     }
 
     /**
@@ -114,383 +120,449 @@ public class PlainTextRecordsParser {
      */
     public static List<Record> parse(Path file, CharacterService characterService, BackgroundService backgroundService)
             throws IOException {
+        return parseLines(Files.readAllLines(file), characterService, backgroundService);
+    }
+
+    /**
+     * 逐行解析剧本：把纯文本脚本转换为 List&lt;Record&gt;。
+     *
+     * @param lines             剧本文本按行切分后的结果（顺序即剧情顺序）
+     * @param characterService  可选，用于把说话人映射到 MyCharacter/Portrait
+     * @param backgroundService 可选，用于把 {背景名} 解析为 Background
+     */
+    public static List<Record> parseLines(List<String> lines, CharacterService characterService,
+            BackgroundService backgroundService) {
         List<Record> records = new ArrayList<>();
+        if (lines == null || lines.isEmpty()) {
+            return records;
+        }
 
-        List<String> lines = Files.readAllLines(file);
-        // 当前状态（持续跟踪）
-        AudioCommand currentBgm = null;
-        Background currentBg = null;
-
-        // 待处理的指令（自上次对话以来累积，将附加到下一条对话 record）
-        AudioCommand pendingBgm = null;
-        Background pendingBg = null;
-        boolean pendingStop = false;
+        // 解析过程中的持续状态（当前生效 / 待附加的 BGM 与背景）
+        ParseState state = new ParseState();
 
         for (String rawLine : lines) {
-            String line = rawLine.trim();
-            if (line.isEmpty())
-                continue;
-
-            // STOP 指令：停止当前 BGM（在 BGM_PATTERN 之前检测，避免误匹配为 BGM）
-            if (STOP_PATTERN.matcher(line).matches()) {
-                pendingStop = true;
-                currentBgm = null;
-                logger.debug("BGM 停止指令，将附加到下一条对话");
+            String line = stripEdgeBlanks(rawLine);
+            if (line.isEmpty()) {
                 continue;
             }
 
-            // BGM 行：不单独创建 record，累积到 pending 状态，附加到下一条对话
-            Matcher mBgm = BGM_PATTERN.matcher(line);
-            if (mBgm.matches()) {
-                String bgmFile = mBgm.group(1).trim();
-                String resolvedBgm = resolveBgmName(bgmFile);
-                pendingBgm = new AudioCommand(AudioCommandType.BGM_ACTIVE, resolvedBgm);
-                currentBgm = pendingBgm;
-                logger.debug("BGM 指令: {} (解析为: {}), 将附加到下一条对话", bgmFile, resolvedBgm);
+            // [BGM名称] / [-STOP]：不单独创建 record，累积到 pending 状态附加到下一条对话
+            if (consumeAudioDirective(line, state)) {
                 continue;
             }
 
-            // 背景行：不单独创建 record，累积到 pending 状态，附加到下一条对话
-            Matcher mBg = BG_PATTERN.matcher(line);
-            if (mBg.matches()) {
-                String bgPath = mBg.group(1).trim();
-                // 从用户输入中提取显示名称（去除路径和扩展名）
-                String name = bgPath;
-                int slash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
-                if (slash >= 0) name = bgPath.substring(slash + 1);
-                int dot = name.lastIndexOf('.');
-                if (dot > 0) name = name.substring(0, dot);
-
-                currentBg = resolveBackground(bgPath, name, backgroundService);
-                pendingBg = currentBg;
-                logger.debug("背景指令: {} (解析为: {}), 将附加到下一条对话", bgPath, name);
+            // {背景图片名称}：同样累积到下一条对话
+            if (consumeBackgroundDirective(line, state, backgroundService)) {
                 continue;
             }
 
-            // 说话行
+            // 说话行："说话人: 对话内容(情绪)%位置%"
             Matcher mSpeak = SPEAKER_PATTERN.matcher(line);
             if (mSpeak.matches()) {
-                String speaker = mSpeak.group(1).trim();
-                String textPart = mSpeak.group(2).trim();
-
-                // 先剥离立绘位置标记 <位置>（如 <0%> / <50%> / <100%>），剩下的文本再解析情绪。
-                // 标记可写在情绪之前或之后（如 "…(HAPPY)<70%>" 或 "…<70%>(HAPPY)"）；
-                // 用 double 保存以支持小数百分比（如 37.5%）。
-                Double positionPercent = null;
-                Matcher mPos = POSITION_PATTERN.matcher(textPart);
-                if (mPos.find() && isPositionToken(textPart.substring(mPos.start(), mPos.end()))) {
-                    try {
-                        positionPercent = Double.parseDouble(mPos.group(1));
-                        textPart = (textPart.substring(0, mPos.start()) + " " + textPart.substring(mPos.end())).trim();
-                        logger.debug("解析立绘位置标记: {}% -> adjX 待换算", positionPercent);
-                    } catch (NumberFormatException nfe) {
-                        logger.debug("无法解析立绘位置标记 '{}'，按普通文本处理", mPos.group(0));
-                        positionPercent = null;
-                    }
-                }
-
-                // 检查情绪：支持更宽容的写法（英文枚举名 / 英文 code / 中文 displayName）
-                Dialogue.Emotion emotion = Dialogue.Emotion.NORMAL;
-                boolean emoSpecified = false;
-                boolean emoParsed = false;
-                Matcher mEmo = EMOTION_PATTERN.matcher(textPart);
-                if (mEmo.matches()) {
-                    emoSpecified = true;
-                    textPart = mEmo.group(1).trim();
-                    String rawEmo = mEmo.group(2).trim();
-                    String emoUpper = rawEmo.toUpperCase();
-                    // 1) Try Dialogue enum by name (English) first
-                    try {
-                        emotion = Dialogue.Emotion.valueOf(emoUpper);
-                        emoParsed = true;
-                    } catch (Exception ex) {
-                        // 2) Try storage.Emotion parsing (supports code/name and can be extended to
-                        // Chinese)
-                        try {
-                            com.lbc_plot.resource.model.Emotion se = com.lbc_plot.resource.model.Emotion
-                                    .fromString(rawEmo);
-                            // Map storage.Emotion -> Dialogue.Emotion (best-effort)
-                            switch (se) {
-                                case NORMAL:
-                                    emotion = Dialogue.Emotion.NORMAL;
-                                    break;
-                                case HAPPY:
-                                    emotion = Dialogue.Emotion.HAPPY;
-                                    break;
-                                case ANGRY:
-                                    emotion = Dialogue.Emotion.ANGRY;
-                                    break;
-                                case SAD:
-                                    emotion = Dialogue.Emotion.SAD;
-                                    break;
-                                case SURPRISED:
-                                    emotion = Dialogue.Emotion.SURPRISED;
-                                    break;
-                                case CONFUSED:
-                                    emotion = Dialogue.Emotion.CONFUSED;
-                                    break;
-                                case BLUSH:
-                                    emotion = Dialogue.Emotion.BLUSH;
-                                    break;
-                                case HURT:
-                                    emotion = Dialogue.Emotion.HURT;
-                                    break;
-                                default:
-                                    emotion = Dialogue.Emotion.NORMAL;
-                                    break;
-                            }
-                            emoParsed = true;
-                        } catch (Exception ex2) {
-                            // ignore and leave as unparsed
-                        }
-                    }
-                }
-
-                // 建立 Dialogue
-                Dialogue d = Dialogue.builder().text(textPart).speakerName(speaker).emotion(emotion).build();
-                // 如果没有指定情绪，或指定但未解析成功，则尝试用 NLP 做后备识别
-                if (!emoSpecified || !emoParsed) {
-                    try {
-                        Dialogue.Emotion nlp = d.emotionNLP();
-                        if (nlp != null) {
-                            d.setEmotion(nlp);
-                            emotion = nlp;
-                        }
-                    } catch (Exception ex) {
-                        // ignore NLP failures
-                    }
-                }
-                Record rec = new Record.Builder().dialogue(d).build();
-
-                // 应用待处理的指令到本条对话
-                boolean hasNewBg = false;
-                boolean hasNewBgm = false;
-
-                if (pendingStop) {
-                    currentBgm = null;
-                    pendingStop = false;
-                    // 将 STOP 作为伪指令附加到本条 record，以便 AudioTimelineBuilder
-                    // 在当前 record 的起始帧结束旧 BGM（handleBgmStart 识别 "-" 前缀）
-                    rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, "-STOP"));
-                }
-                if (pendingBgm != null) {
-                    rec.addAudioCommand(pendingBgm);
-                    hasNewBgm = true;
-                    pendingBgm = null;
-                }
-                if (pendingBg != null) {
-                    rec.addBackgroundVisual(new BackgroundVisual(pendingBg));
-                    currentBg = pendingBg;
-                    hasNewBg = true;
-                    pendingBg = null;
-                }
-
-                // 如果本条没有新背景且当前背景存在，则继承当前背景
-                if (!hasNewBg && currentBg != null) {
-                    rec.addBackgroundVisual(new BackgroundVisual(currentBg));
-                }
-                // 如果当前有背景，尝试设置 location
-                if (currentBg != null) {
-                    try {
-                        if (d.getLocation() == null || Dialogue.DEFAULT_LOCATION.equals(d.getLocation())) {
-                            if (currentBg.getName() != null && !currentBg.getName().isBlank()) {
-                                d.setLocation(currentBg.getName());
-                            }
-                        }
-                    } catch (Exception ex) {
-                        logger.debug("Failed to apply background name to dialogue location: {}", ex.getMessage());
-                    }
-                }
-                // 如果本条没有新 BGM 且当前有正在播放的 BGM，则继承
-                if (!hasNewBgm && currentBgm != null) {
-                    rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
-                }
-
-                // Try to resolve speaker -> MyCharacter and Portrait via CharacterService
-                if (characterService != null) {
-                    try {
-                        List<MyCharacter> matches = characterService.searchCharactersByName(speaker);
-                        if (matches == null || matches.isEmpty()) {
-                            // Fallback: try searching with whitespace removed (some sources may include
-                            // invisible spaces)
-                            String compact = speaker.replaceAll("\\s+", "");
-                            if (!compact.equals(speaker)) {
-                                logger.debug("No matches for '{}', trying compacted name '{}'", speaker, compact);
-                                matches = characterService.searchCharactersByName(compact);
-                            }
-                        }
-
-                        if (matches == null || matches.isEmpty()) {
-                            logger.info("No character matches found for speaker '{}', treating as narrator or unknown",
-                                    speaker);
-                        } else {
-                            logger.info("Found {} character match(es) for speaker '{}', using first result: {}",
-                                    matches.size(), speaker, matches.get(0).getCharacterName());
-                        }
-
-                        MyCharacter chosen = null;
-                        if (matches != null && !matches.isEmpty()) {
-                            chosen = matches.get(0);
-                        }
-                        if (chosen == null) {
-                            chosen = MyCharacter.getDefaultNarrator();
-                        }
-
-                        Portrait portrait = null;
-                        try {
-                            // Prefer portrait with matching emotion from the character's portrait list
-                            // Map Dialogue.Emotion -> storage.Emotion via name matching when possible
-                            com.lbc_plot.resource.model.Emotion desired = com.lbc_plot.resource.model.Emotion
-                                    .fromString(emotion.name());
-                            List<com.lbc_plot.resource.model.Portrait> charPortraits = null;
-                            try {
-                                charPortraits = chosen.getPortraits();
-                            } catch (Exception ex) {
-                                // fallback to DAO-based service methods
-                                charPortraits = characterService.getCharacterPortraits(chosen.getCharacterID());
-                            }
-                            if (charPortraits != null && !charPortraits.isEmpty()) {
-                                for (com.lbc_plot.resource.model.Portrait p : charPortraits) {
-                                    if (p.getEmotion() != null && p.getEmotion().equals(desired)) {
-                                        portrait = p;
-                                        break;
-                                    }
-                                }
-                            }
-                            // fallback to service convenience method if not found in-memory
-                            if (portrait == null) {
-                                portrait = characterService.findPortraitByEmotion(chosen.getCharacterID(),
-                                        desired.name());
-                            }
-                            if (portrait != null) {
-                                logger.info("Found portrait '{}' for character '{}' (emotion={})",
-                                        portrait.getPortraitID(), chosen.getCharacterName(), emotion.name());
-                            } else {
-                                logger.debug("No portrait by emotion for character '{}', trying default",
-                                        chosen.getCharacterName());
-                            }
-                        } catch (Exception ex) {
-                            logger.debug("findPortraitByEmotion failed for {}: {}", chosen.getCharacterID(),
-                                    ex.getMessage());
-                        }
-                        if (portrait == null) {
-                            try {
-                                portrait = characterService.getDefaultPortrait(chosen);
-                                if (portrait != null) {
-                                    logger.info("Using default portrait '{}' for character '{}'",
-                                            portrait.getPortraitID(), chosen.getCharacterName());
-                                } else {
-                                    logger.debug("No default portrait available for character '{}'",
-                                            chosen.getCharacterName());
-                                }
-                            } catch (Exception ex) {
-                                logger.debug("getDefaultPortrait failed for {}: {}", chosen.getCharacterID(),
-                                        ex.getMessage());
-                            }
-                        }
-
-                        if (chosen != null && portrait != null) {
-                            try {
-                                // 行内 <位置> 指令换算为 adjX（0% 最左 / 50% 居中 / 100% 最右）
-                                final Integer adjX = toAdjX(positionPercent);
-                                CharacterVisual.Builder cvBuilder = CharacterVisual.builder(chosen, portrait).bright();
-                                if (adjX != null) {
-                                    cvBuilder.adjX(adjX);
-                                }
-                                CharacterVisual cv = cvBuilder.build();
-                                rec.addCharacterVisual(cv);
-                                if (adjX != null) {
-                                    logger.info("立绘位置已应用: 角色={}, 位置={}%, adjX={}",
-                                            chosen.getCharacterName(), positionPercent, adjX);
-                                }
-                                // Also attach a CharacterRef to the Dialogue so UI can render the name/faction
-                                try {
-                                    CharacterRef cref = CharacterRef.from(chosen);
-                                    d.addSpeaker(cref);
-                                } catch (IOException ioe) {
-                                    logger.debug("Failed to build CharacterRef for UI name image: {}",
-                                            ioe.getMessage());
-                                }
-                            } catch (IOException ioe) {
-                                logger.warn("Failed to build CharacterVisual for {}: {}", speaker, ioe.getMessage());
-                            }
-                        }
-                    } catch (Exception e) {
-                        logger.debug("CharacterService lookup failed for '{}': {}", speaker, e.getMessage());
-                    }
-                }
-
-                // 如果本条是旁白，则复制上一条 record 的角色列表以保持画面一致
-                if (d.isNarrator() && !records.isEmpty()) {
-                    try {
-                        List<CharacterVisual> prevChars = records.get(records.size() - 1).getCharacters();
-                        if (prevChars != null && !prevChars.isEmpty()) {
-                            // 深拷贝 prevChars，避免修改原 record 的状态
-                            ObjectMapper om = new ObjectMapper();
-                            List<CharacterVisual> copy = om.convertValue(prevChars,
-                                    new TypeReference<List<CharacterVisual>>() {
-                                    });
-                            // 根据当前 Dialogue 重置 dim 状态（旁白全部压暗；否则仅与 speaker 匹配的立绘为亮）
-                            applyDimState(copy, d);
-                            rec.setCharacters(copy);
-                        }
-                    } catch (Exception ex) {
-                        logger.debug("Failed to copy character visuals for narrator: {}", ex.getMessage());
-                    }
-                }
-
-                records.add(rec);
+                String speaker = stripEdgeBlanks(mSpeak.group(1));
+                String textPart = stripEdgeBlanks(mSpeak.group(2));
+                records.add(buildRecord(speaker, textPart, true, state, characterService, records));
                 continue;
             }
 
             // 未识别行，作为旁白文本
-            Dialogue d = Dialogue.builder().text(line).speakerName(Dialogue.DEFAULT_NARRATOR).build();
-            Record rec = new Record.Builder().dialogue(d).build();
-
-            // 应用待处理的指令（同对话处理逻辑）
-            boolean hasNewBg2 = false;
-            boolean hasNewBgm2 = false;
-
-            if (pendingStop) {
-                currentBgm = null;
-                pendingStop = false;
-            }
-            if (pendingBgm != null) {
-                rec.addAudioCommand(pendingBgm);
-                hasNewBgm2 = true;
-                pendingBgm = null;
-            }
-            if (pendingBg != null) {
-                rec.addBackgroundVisual(new BackgroundVisual(pendingBg));
-                currentBg = pendingBg;
-                hasNewBg2 = true;
-                pendingBg = null;
-            }
-
-            if (!hasNewBg2 && currentBg != null)
-                rec.addBackgroundVisual(new BackgroundVisual(currentBg));
-            if (!hasNewBgm2 && currentBgm != null)
-                rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, currentBgm.getAudioId()));
-            // 如果本条是旁白，复制上一条的角色立绘（如果存在）
-            if (d.isNarrator() && !records.isEmpty()) {
-                try {
-                    List<CharacterVisual> prevChars = records.get(records.size() - 1).getCharacters();
-                    if (prevChars != null && !prevChars.isEmpty()) {
-                        ObjectMapper om = new ObjectMapper();
-                        List<CharacterVisual> copy = om.convertValue(prevChars,
-                                new TypeReference<List<CharacterVisual>>() {
-                                });
-                        applyDimState(copy, d);
-                        rec.setCharacters(copy);
-                    }
-                } catch (Exception ex) {
-                    logger.debug("Failed to copy character visuals for narrator (fallback): {}", ex.getMessage());
-                }
-            }
-            records.add(rec);
+            records.add(buildRecord(Dialogue.DEFAULT_NARRATOR, line, false, state, characterService, records));
         }
 
         return records;
+    }
+
+    /**
+     * 构建一条 record：解析情绪/位置 → 建 Dialogue → 附加音频与背景指令 → 解析说话人立绘 →
+     * 旁白继承上一条的立绘。
+     *
+     * @param speaker         说话人名字
+     * @param rawText         对话正文（尚未剥离情绪/位置标记）
+     * @param resolveSpeaker  是否需要按说话人名字查询 CharacterService
+     *                        （未识别行直接当旁白处理时无需查询）
+     * @param state           解析状态（会被就地更新）
+     * @param records         已解析出的 record 列表（旁白需要参考上一条）
+     */
+    private static Record buildRecord(String speaker, String rawText, boolean resolveSpeaker,
+            ParseState state, CharacterService characterService, List<Record> records) {
+
+        // 1) 先剥离立绘位置标记 %位置%（如 %0% / %50% / %100%），剩下的文本再解析情绪。
+        //    标记可写在情绪之前或之后（如 "…(HAPPY)%70%" 或 "…%70%(HAPPY)"）；
+        //    用 double 保存以支持小数百分比（如 %37.5%）。
+        String textPart = rawText;
+        Double positionPercent = null;
+        Matcher mPos = POSITION_PATTERN.matcher(textPart);
+        if (mPos.find()) {
+            try {
+                positionPercent = Double.parseDouble(mPos.group(1));
+                textPart = splice(textPart.substring(0, mPos.start()), textPart.substring(mPos.end()));
+                logger.debug("解析立绘位置标记: {}% -> adjX 待换算", positionPercent);
+            } catch (NumberFormatException nfe) {
+                logger.debug("无法解析立绘位置标记 '{}'，按普通文本处理", mPos.group(0));
+                positionPercent = null;
+            }
+        }
+        // 旧写法 <位置> 已废弃：不生效，但给一条提示，方便旧脚本迁移
+        if (positionPercent == null) {
+            Matcher mLegacy = LEGACY_POSITION_PATTERN.matcher(textPart);
+            if (mLegacy.find()) {
+                logger.warn("检测到已废弃的位置写法 '{}'（已按普通文本处理），请改用 %位置%，例如 %70%",
+                        mLegacy.group());
+            }
+        }
+
+        // 2) 解析情绪标记（兼容中英括号、中英情绪名）
+        Dialogue.Emotion emotion = Dialogue.Emotion.NORMAL;
+        boolean emotionParsed = false;
+        Matcher mEmo = EMOTION_PATTERN.matcher(textPart);
+        if (mEmo.matches()) {
+            String rawEmo = stripEdgeBlanks(mEmo.group(2));
+            Dialogue.Emotion parsed = parseEmotion(rawEmo);
+            if (parsed != null) {
+                emotion = parsed;
+                emotionParsed = true;
+                textPart = mEmo.group(1).trim();
+            } else if (ASCII_EMOTION_TOKEN.matcher(rawEmo).matches()) {
+                // 纯英文但未识别：视为写错的情绪标记，剥掉标记后回退到 NLP（与历史行为一致）
+                textPart = mEmo.group(1).trim();
+                logger.warn("无法识别的情绪标记 '({})'，已从正文剥离并回退到 NLP/默认情绪", rawEmo);
+            } else {
+                // 括号里不是情绪（如 "（叹气）"、"（笑）"）：保留在正文中，避免吞掉台词
+                logger.debug("括号内容 '({})' 不是已知情绪，保留在正文中", rawEmo);
+            }
+        }
+
+        // 建立 Dialogue
+        Dialogue d = Dialogue.builder().text(textPart).speakerName(speaker).emotion(emotion).build();
+        // 如果没有成功解析出情绪，则尝试用 NLP 做后备识别
+        if (!emotionParsed) {
+            try {
+                Dialogue.Emotion nlp = d.emotionNLP();
+                if (nlp != null) {
+                    d.setEmotion(nlp);
+                    emotion = nlp;
+                }
+            } catch (Exception ex) {
+                // ignore NLP failures
+            }
+        }
+        Record rec = new Record.Builder().dialogue(d).build();
+
+        // 应用待处理的指令（BGM / 停止 / 背景）并继承当前正在播放的 BGM 与背景
+        applyPendingInstructions(rec, state);
+
+        // 如果当前有背景，尝试把它作为本条对话的场景地点
+        if (state.currentBg != null) {
+            try {
+                if (d.getLocation() == null || Dialogue.DEFAULT_LOCATION.equals(d.getLocation())) {
+                    if (state.currentBg.getName() != null && !state.currentBg.getName().isBlank()) {
+                        d.setLocation(state.currentBg.getName());
+                    }
+                }
+            } catch (Exception ex) {
+                logger.debug("Failed to apply background name to dialogue location: {}", ex.getMessage());
+            }
+        }
+
+        // 说话人 -> MyCharacter/Portrait（附带行内位置指令换算出的 adjX）
+        if (resolveSpeaker && characterService != null) {
+            attachCharacterVisual(rec, d, speaker, positionPercent, emotion, characterService);
+        }
+
+        // 旁白：复制上一条 record 的角色立绘以保持画面一致
+        inheritCharactersFromPrevious(rec, d, records);
+
+        return rec;
+    }
+
+    /**
+     * 把累积的待处理指令（BGM / 停止 / 背景）落到本条 record 上，并让本条继承当前生效的
+     * BGM 与背景。调用后 pending 状态被清空。
+     */
+    private static void applyPendingInstructions(Record rec, ParseState state) {
+        boolean hasNewBg = false;
+        boolean hasNewBgm = false;
+
+        if (state.pendingStop) {
+            state.pendingStop = false;
+            state.currentBgm = null;
+            // 将 STOP 作为伪指令附加到本条 record，以便 AudioTimelineBuilder
+            // 在当前 record 的起始帧结束旧 BGM（handleBgmStart 识别 "-" 前缀）
+            rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, BGM_STOP_COMMAND));
+        }
+        if (state.pendingBgm != null) {
+            rec.addAudioCommand(state.pendingBgm);
+            hasNewBgm = true;
+            state.pendingBgm = null;
+        }
+        if (state.pendingBg != null) {
+            rec.addBackgroundVisual(new BackgroundVisual(state.pendingBg));
+            hasNewBg = true;
+            state.pendingBg = null;
+        }
+
+        // 如果本条没有新背景且当前背景存在，则继承当前背景
+        if (!hasNewBg && state.currentBg != null) {
+            rec.addBackgroundVisual(new BackgroundVisual(state.currentBg));
+        }
+        // 如果本条没有新 BGM 且当前有正在播放的 BGM，则继承
+        if (!hasNewBgm && state.currentBgm != null) {
+            rec.addAudioCommand(new AudioCommand(AudioCommandType.BGM_ACTIVE, state.currentBgm.getAudioId()));
+        }
+    }
+
+    /**
+     * 处理 [BGM名称] 与 [-STOP] 指令行。
+     *
+     * @return true 表示该行已被消费（不生成 record）
+     */
+    private static boolean consumeAudioDirective(String line, ParseState state) {
+        // STOP 指令：停止当前 BGM（在 BGM_PATTERN 之前检测，避免误匹配为 BGM）
+        if (STOP_PATTERN.matcher(line).matches()) {
+            state.pendingStop = true;
+            state.currentBgm = null;
+            logger.debug("BGM 停止指令，将附加到下一条对话");
+            return true;
+        }
+
+        // BGM 行：不单独创建 record，累积到 pending 状态，附加到下一条对话
+        Matcher mBgm = BGM_PATTERN.matcher(line);
+        if (mBgm.matches()) {
+            String bgmFile = mBgm.group(1).trim();
+            String resolvedBgm = resolveBgmName(bgmFile);
+            state.pendingBgm = new AudioCommand(AudioCommandType.BGM_ACTIVE, resolvedBgm);
+            state.currentBgm = state.pendingBgm;
+            logger.debug("BGM 指令: {} (解析为: {}), 将附加到下一条对话", bgmFile, resolvedBgm);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 处理 {背景图片名称} 指令行。
+     *
+     * @return true 表示该行已被消费（不生成 record）
+     */
+    private static boolean consumeBackgroundDirective(String line, ParseState state,
+            BackgroundService backgroundService) {
+        Matcher mBg = BG_PATTERN.matcher(line);
+        if (!mBg.matches()) {
+            return false;
+        }
+        String bgPath = mBg.group(1).trim();
+        // 从用户输入中提取显示名称（去除路径和扩展名）
+        String name = bgPath;
+        int slash = Math.max(bgPath.lastIndexOf('/'), bgPath.lastIndexOf('\\'));
+        if (slash >= 0) name = bgPath.substring(slash + 1);
+        int dot = name.lastIndexOf('.');
+        if (dot > 0) name = name.substring(0, dot);
+
+        Background resolved = resolveBackground(bgPath, name, backgroundService);
+        state.currentBg = resolved;
+        state.pendingBg = resolved;
+        logger.debug("背景指令: {} (解析为: {}), 将附加到下一条对话", bgPath, name);
+        return true;
+    }
+
+    /**
+     * 按说话人名字查询角色与立绘，并给 record 添加 CharacterVisual（含行内位置指令换算的 adjX）；
+     * 同时把 CharacterRef 挂到 Dialogue 上供 UI 渲染名字/阵营。
+     */
+    private static void attachCharacterVisual(Record rec, Dialogue d, String speaker,
+            Double positionPercent, Dialogue.Emotion emotion, CharacterService characterService) {
+        try {
+            List<MyCharacter> matches = characterService.searchCharactersByName(speaker);
+            if (matches == null || matches.isEmpty()) {
+                // Fallback: try searching with whitespace removed (some sources may include
+                // invisible spaces)
+                String compact = speaker.replaceAll("\\s+", "");
+                if (!compact.equals(speaker)) {
+                    logger.debug("No matches for '{}', trying compacted name '{}'", speaker, compact);
+                    matches = characterService.searchCharactersByName(compact);
+                }
+            }
+
+            if (matches == null || matches.isEmpty()) {
+                logger.info("No character matches found for speaker '{}', treating as narrator or unknown",
+                        speaker);
+            } else {
+                logger.info("Found {} character match(es) for speaker '{}', using first result: {}",
+                        matches.size(), speaker, matches.get(0).getCharacterName());
+            }
+
+            MyCharacter chosen = null;
+            if (matches != null && !matches.isEmpty()) {
+                chosen = matches.get(0);
+            }
+            if (chosen == null) {
+                chosen = MyCharacter.getDefaultNarrator();
+            }
+
+            Portrait portrait = null;
+            try {
+                // Prefer portrait with matching emotion from the character's portrait list
+                // Map Dialogue.Emotion -> storage.Emotion via name matching when possible
+                com.lbc_plot.resource.model.Emotion desired = com.lbc_plot.resource.model.Emotion
+                        .fromString(emotion.name());
+                List<Portrait> charPortraits = null;
+                try {
+                    charPortraits = chosen.getPortraits();
+                } catch (Exception ex) {
+                    // fallback to DAO-based service methods
+                    charPortraits = characterService.getCharacterPortraits(chosen.getCharacterID());
+                }
+                if (charPortraits != null && !charPortraits.isEmpty()) {
+                    for (Portrait p : charPortraits) {
+                        if (p.getEmotion() != null && p.getEmotion().equals(desired)) {
+                            portrait = p;
+                            break;
+                        }
+                    }
+                }
+                // fallback to service convenience method if not found in-memory
+                if (portrait == null) {
+                    portrait = characterService.findPortraitByEmotion(chosen.getCharacterID(),
+                            desired.name());
+                }
+                if (portrait != null) {
+                    logger.info("Found portrait '{}' for character '{}' (emotion={})",
+                            portrait.getPortraitID(), chosen.getCharacterName(), emotion.name());
+                } else {
+                    logger.debug("No portrait by emotion for character '{}', trying default",
+                            chosen.getCharacterName());
+                }
+            } catch (Exception ex) {
+                logger.debug("findPortraitByEmotion failed for {}: {}", chosen.getCharacterID(),
+                        ex.getMessage());
+            }
+            if (portrait == null) {
+                try {
+                    portrait = characterService.getDefaultPortrait(chosen);
+                    if (portrait != null) {
+                        logger.info("Using default portrait '{}' for character '{}'",
+                                portrait.getPortraitID(), chosen.getCharacterName());
+                    } else {
+                        logger.debug("No default portrait available for character '{}'",
+                                chosen.getCharacterName());
+                    }
+                } catch (Exception ex) {
+                    logger.debug("getDefaultPortrait failed for {}: {}", chosen.getCharacterID(),
+                            ex.getMessage());
+                }
+            }
+
+            if (chosen != null && portrait != null) {
+                try {
+                    // 行内 %位置% 指令换算为 adjX（0% 最左 / 50% 居中 / 100% 最右）
+                    final Integer adjX = toAdjX(positionPercent);
+                    CharacterVisual.Builder cvBuilder = CharacterVisual.builder(chosen, portrait).bright();
+                    if (adjX != null) {
+                        cvBuilder.adjX(adjX);
+                    }
+                    CharacterVisual cv = cvBuilder.build();
+                    rec.addCharacterVisual(cv);
+                    if (adjX != null) {
+                        logger.info("立绘位置已应用: 角色={}, 位置={}%, adjX={}",
+                                chosen.getCharacterName(), positionPercent, adjX);
+                    }
+                    // Also attach a CharacterRef to the Dialogue so UI can render the name/faction
+                    try {
+                        CharacterRef cref = CharacterRef.from(chosen);
+                        d.addSpeaker(cref);
+                    } catch (IOException ioe) {
+                        logger.debug("Failed to build CharacterRef for UI name image: {}",
+                                ioe.getMessage());
+                    }
+                } catch (IOException ioe) {
+                    logger.warn("Failed to build CharacterVisual for {}: {}", speaker, ioe.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("CharacterService lookup failed for '{}': {}", speaker, e.getMessage());
+        }
+    }
+
+    /**
+     * 旁白记录继承上一条 record 的角色立绘，保持画面一致（深拷贝后按当前 Dialogue 重置亮/暗状态）。
+     */
+    private static void inheritCharactersFromPrevious(Record rec, Dialogue d, List<Record> records) {
+        if (d == null || !d.isNarrator() || records == null || records.isEmpty()) {
+            return;
+        }
+        try {
+            List<CharacterVisual> prevChars = records.get(records.size() - 1).getCharacters();
+            if (prevChars == null || prevChars.isEmpty()) {
+                return;
+            }
+            // 深拷贝 prevChars，避免修改原 record 的状态
+            ObjectMapper om = new ObjectMapper();
+            List<CharacterVisual> copy = om.convertValue(prevChars,
+                    new TypeReference<List<CharacterVisual>>() {
+                    });
+            // 根据当前 Dialogue 重置 dim 状态（旁白全部压暗；否则仅与 speaker 匹配的立绘为亮）
+            applyDimState(copy, d);
+            rec.setCharacters(copy);
+        } catch (Exception ex) {
+            logger.debug("Failed to copy character visuals for narrator: {}", ex.getMessage());
+        }
+    }
+
+    /**
+     * 解析情绪标记内容（不区分大小写）。支持：
+     * <ul>
+     *   <li>剧情侧枚举名：NORMAL / HAPPY / ... / NERVOUS</li>
+     *   <li>资源库情绪 code / 枚举名：normal / happy / ...</li>
+     *   <li>资源库情绪中文显示名：正常 / 开心 / 生气 / 悲伤 / 惊讶 / 困惑 / 害羞 / 受伤</li>
+     * </ul>
+     *
+     * @param raw 括号内的原始内容（如 "HAPPY"、"安ger"、"开心"）
+     * @return 识别到的情绪；无法识别时返回 null，由调用方决定回退策略
+     */
+    private static Dialogue.Emotion parseEmotion(String raw) {
+        String token = stripEdgeBlanks(raw);
+        if (token.isEmpty()) {
+            return null;
+        }
+        // 1) 剧情侧枚举（英文枚举名 / 英文 code，含剧情侧专有的 NERVOUS）
+        try {
+            return Dialogue.Emotion.valueOf(token.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            // 继续尝试资源库情绪（主要是中文显示名）
+        }
+        // 2) 资源库情绪：code / 枚举名 / 中文显示名
+        for (com.lbc_plot.resource.model.Emotion se : com.lbc_plot.resource.model.Emotion.values()) {
+            if (se.getCode().equalsIgnoreCase(token)
+                    || se.name().equalsIgnoreCase(token)
+                    || se.getDisplayName().equals(token)) {
+                return toDialogueEmotion(se);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 资源库情绪 -&gt; 剧情侧情绪（剧情侧多一个 NERVOUS，资源库没有对应项）
+     */
+    private static Dialogue.Emotion toDialogueEmotion(com.lbc_plot.resource.model.Emotion se) {
+        switch (se) {
+            case HAPPY:
+                return Dialogue.Emotion.HAPPY;
+            case ANGRY:
+                return Dialogue.Emotion.ANGRY;
+            case SAD:
+                return Dialogue.Emotion.SAD;
+            case SURPRISED:
+                return Dialogue.Emotion.SURPRISED;
+            case CONFUSED:
+                return Dialogue.Emotion.CONFUSED;
+            case BLUSH:
+                return Dialogue.Emotion.BLUSH;
+            case HURT:
+                return Dialogue.Emotion.HURT;
+            case NORMAL:
+            default:
+                return Dialogue.Emotion.NORMAL;
+        }
     }
 
     /**
@@ -547,7 +619,7 @@ public class PlainTextRecordsParser {
      *   <li>DB 显示名称匹配（backgroundService.findByName）</li>
      *   <li>DB 文件名后缀匹配（遍历所有背景，path 以输入文件名结尾）</li>
      *   <li>文件系统搜索（assets/backgrounds/ 目录，支持无扩展名模糊匹配，
-     *       优先 PNG > JPG > 其他，同格式选文件更大者）</li>
+     *       优先 PNG &gt; JPG &gt; 其他，同格式选文件更大者）</li>
      *   <li>以上均未找到时，以原始输入创建 Background（后续渲染时会记录错误）</li>
      * </ol>
      *
@@ -642,21 +714,7 @@ public class PlainTextRecordsParser {
     }
 
     /**
-     * 判断一个 &lt;...&gt; 片段是否真的是立绘位置标记。
-     *
-     * <p>正则中的百分号与空白都是可选的，因此 "&lt;2&gt;" 这类正文尖括号也会被位置正则命中。
-     * 这里要求片段内至少包含一个 "%" 或小数点，只有这种明确的百分比写法才视为位置指令，
-     * 避免误吞正文中的普通尖括号内容。
-     *
-     * @param token 匹配到的完整尖括号片段（如 "&lt;50%&gt;"、"&lt;37.5%&gt;"）
-     * @return true 表示该片段是位置标记
-     */
-    private static boolean isPositionToken(String token) {
-        return token != null && (token.indexOf('%') >= 0 || token.indexOf('.') >= 0);
-    }
-
-    /**
-     * 把行内 &lt;位置&gt; 的百分比换算为 CharacterVisual 的 adjX 偏差值。
+     * 把 %位置% 的百分比换算为 CharacterVisual 的 adjX 偏差值。
      *
      * <p>换算规则（以 1920x1080 为例，{@code VIDEO_WIDTH / 2 = 960}）：
      * <ul>
@@ -678,6 +736,58 @@ public class PlainTextRecordsParser {
         }
         // 先乘后除并做四舍五入，保留小数位置（如 37.5% -> -240），避免整数除法丢失精度
         return (int) Math.round((positionPercent - 50.0) * ProjectConfig.VIDEO_WIDTH / 100.0);
+    }
+
+    /**
+     * 按任意换行符切分文本（兼容 {@code \n}、{@code \r\n}、{@code \r}）。
+     */
+    private static List<String> splitLines(String text) {
+        if (text == null || text.isEmpty()) {
+            return List.of();
+        }
+        return List.of(text.split("\\R", -1));
+    }
+
+    /**
+     * 去掉行首/行尾的空白，包含全角空格（U+3000）、不换行空格与 BOM。
+     * 中文输入法下很容易打出全角空格，直接 {@code trim()} 会把它留在说话人名字里导致匹配失败。
+     */
+    private static String stripEdgeBlanks(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return EDGE_BLANK_PATTERN.matcher(value).replaceAll("");
+    }
+
+    /**
+     * 把被标记切成的两段正文重新拼起来：仅当两侧都是 ASCII 字母/数字时才补一个空格，
+     * 中文正文直接相连，避免剥离标记后在台词里留下多余空格。
+     */
+    private static String splice(String head, String tail) {
+        boolean needSpace = !head.isEmpty() && !tail.isEmpty()
+                && isAsciiWord(head.charAt(head.length() - 1))
+                && isAsciiWord(tail.charAt(0));
+        return (needSpace ? head + " " + tail : head + tail).trim();
+    }
+
+    private static boolean isAsciiWord(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
+
+    /**
+     * 解析过程中的持续状态：当前生效的 BGM/背景，以及累积到"下一条对话"的待处理指令。
+     */
+    private static final class ParseState {
+        /** 当前正在播放的 BGM */
+        private AudioCommand currentBgm;
+        /** 当前生效的背景 */
+        private Background currentBg;
+        /** 待附加到下一条 record 的 BGM */
+        private AudioCommand pendingBgm;
+        /** 待附加到下一条 record 的背景 */
+        private Background pendingBg;
+        /** 是否待附加 BGM 停止指令 */
+        private boolean pendingStop;
     }
 
     /**

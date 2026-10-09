@@ -48,10 +48,11 @@
   ```
   [BGM名称]
   {背景图片名称}
-  说话人: 对话内容(情绪)<位置>
+  说话人: 对话内容(情绪)%位置%
   旁白: 对话内容
   ```
-- `<位置>`：角色在画面中横向的位置，用百分比填写，0% 最左，50% 画面中间，100% 最右。不写则默认居中。
+- `%位置%`：角色在画面中横向的位置，用百分比填写，`%0%` 最左，`%50%` 画面中间，`%100%` 最右。不写则默认居中。
+- 说话人冒号兼容半角 `:` 与全角 `：`，情绪括号兼容半角 `()` 与全角 `（）`，位置标记的百分号兼容 `%` 与 `％`。
 
 ## 技术架构
 
@@ -63,7 +64,7 @@
 - **Jackson**: JSON 数据处理
 
 ### 前端
-- **React 18**: 用户界面框架
+- **React 19**: 用户界面框架
 - **Electron 39**: 桌面应用封装
 - **Axios**: HTTP 客户端
 
@@ -77,10 +78,10 @@
 
 ### 一键启动（推荐）
 
-运行项目根目录下的 `start_all.bat`：
+运行 `demo` 目录下的 `start_all.bat`（根目录下的 `start_all.bat - 快捷方式.lnk` 指向它）：
 
-```bash
-e:/LimbusCompanyPlotVideoGenerator/start_all.bat
+```bat
+demo\start_all.bat
 ```
 
 此脚本会依次检查环境、启动后端、安装前端依赖、启动前端 Electron 应用。
@@ -104,26 +105,28 @@ npm run electron-dev
 
 ```
 LimbusCompanyPlotVideoGenerator/
-├── demo/                           # 后端应用
-│   ├── data/                       # 数据库文件
+├── demo/                           # 后端 + 前端源码
+│   ├── src/main/java/              # Spring Boot 后端
+│   ├── frontend/electron-react-app/# Electron + React 前端
 │   ├── assets/                     # 素材资源
-│   ├── frontend/                   # 前端应用
-│   │   └── electron-react-app/     # Electron + React 应用
-│   ├── src/                        # Java 源代码
+│   ├── data/                       # 数据库文件
 │   ├── pom.xml                     # Maven 配置
-│   └── build-package.bat           # 打包脚本
-├── note/                           # 项目文档
-│   ├── FRONTEND_MODEL.md
-│   └── PROJECT_CONTEXT.md
+│   ├── start_all.bat               # 一键启动（前后端）
+│   └── build-package.bat           # 本地打包脚本
+├── docs/                           # 项目文档
 └── .github/workflows/              # CI/CD
 ```
 
 ## 文档
 
-- [配置文档](docs/CONFIG_DOCUMENTATION.md) - 后端配置文件说明
-- [前端模型文档](note/FRONTEND_MODEL.md) - 前端数据模型和组件结构
-- [项目上下文](note/PROJECT_CONTEXT.md) - 项目背景和设计理念
-- [TODO 列表](docs/TODO.md) - 当前开发任务和优先级
+- [项目文档](docs/项目文档.md) - 模块结构与总体设计
+- [代码导航指南](docs/代码导航指南.md) - 按功能/问题定位代码
+- [前端架构文档](docs/前端架构文档.md) - 组件层级与数据流
+- [前端模型](docs/前端模型.md) - 前后端数据模型字段
+- [API文档](docs/API文档.md) - REST 接口说明
+- [配置文档](docs/配置文档.md) - 后端与前端配置项
+- [本地打包说明](docs/本地打包说明.md) - 出安装包的完整流程与坑
+- [版本更新笔记](docs/版本更新笔记.md) - 各版本改动
 
 ## 贡献指南
 
@@ -139,7 +142,7 @@ LimbusCompanyPlotVideoGenerator/
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 MIT 许可证（见 `package.json` 的 `license` 字段）。
 
 ## 致谢
 

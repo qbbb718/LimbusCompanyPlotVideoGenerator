@@ -26,7 +26,7 @@ const TextInputArea: React.FC<TextInputAreaProps> = ({
         placeholder="示例：
 [巴士内部BGM]
 {不xx就出不去的房间}
-格里高尔: ……(ANGRY)<70%>
+格里高尔: ……(ANGRY)%70%
 [-STOP]
 旁白: 诶呀。"
       />

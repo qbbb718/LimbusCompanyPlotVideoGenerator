@@ -21,8 +21,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
- * 验证 "说话人: 对话内容(情绪)&lt;位置&gt;" 中 &lt;位置&gt; 的解析：
- * 位置为画面横向百分比（0% 最左 / 50% 居中 / 100% 最右），换算为 CharacterVisual 的 adjX。
+ * 验证 "说话人: 对话内容(情绪)%位置%" 中 %位置% 的解析：
+ * 位置为画面横向百分比（%0% 最左 / %50% 居中 / %100% 最右），换算为 CharacterVisual 的 adjX。
+ * 旧的 &lt;位置&gt; 写法已废弃，不再识别。
  */
 public class PlainTextPositionTest {
 
@@ -70,30 +71,33 @@ public class PlainTextPositionTest {
         return visualOf(records, speakerName, 0);
     }
 
-    @Test
-    public void testParsePositionTag_mapsPercentToAdjX() throws IOException {
-        String content = "Alice: 我站左边(HAPPY)<0%>\n"
-                + "Bob: 我在中间<50%>\n"
-                + "Alice: 我靠右<75%>\n"
-                + "Bob: 没说位置\n";
-
+    private List<Record> parse(String content) throws IOException {
         Path tmp = Files.createTempFile("position-script", ".txt");
         Files.writeString(tmp, content);
+        return PlainTextRecordsParser.parse(tmp, mockService());
+    }
 
-        List<Record> records = PlainTextRecordsParser.parse(tmp, mockService());
+    @Test
+    public void testParsePositionTag_mapsPercentToAdjX() throws IOException {
+        String content = "Alice: 我站左边(HAPPY)%0%\n"
+                + "Bob: 我在中间%50%\n"
+                + "Alice: 我靠右%75%\n"
+                + "Bob: 没说位置\n";
+
+        List<Record> records = parse(content);
         assertEquals(4, records.size(), "应生成 4 条记录");
 
-        // <0%> → adjX = -VIDEO_WIDTH/2
+        // %0% → adjX = -VIDEO_WIDTH/2
         CharacterVisual left = firstVisualOf(records, "Alice");
         assertNotNull(left, "应能取到 Alice 的立绘");
         assertEquals(-ProjectConfig.VIDEO_WIDTH / 2, left.getAdjX(), "0% 应为最左");
 
-        // <50%> → adjX = 0（居中）
+        // %50% → adjX = 0（居中）
         CharacterVisual center = firstVisualOf(records, "Bob");
         assertNotNull(center, "应能取到 Bob 的立绘");
         assertEquals(0, center.getAdjX(), "50% 应居中");
 
-        // <75%> → adjX = (75-50)*1920/100 = 480
+        // %75% → adjX = (75-50)*1920/100 = 480
         CharacterVisual right = visualOf(records, "Alice", 1);
         assertNotNull(right, "应能取到 Alice 的第二个立绘");
         assertEquals(480, right.getAdjX(), "75% 应为 +480");
@@ -102,12 +106,9 @@ public class PlainTextPositionTest {
     @Test
     public void testParsePositionTag_positionBeforeEmotion() throws IOException {
         // 位置标记在情绪之前也应能识别
-        String content = "Alice: 先位置后情绪<25%>(ANGRY)\n";
+        String content = "Alice: 先位置后情绪%25%(ANGRY)\n";
 
-        Path tmp = Files.createTempFile("position-order", ".txt");
-        Files.writeString(tmp, content);
-
-        List<Record> records = PlainTextRecordsParser.parse(tmp, mockService());
+        List<Record> records = parse(content);
         assertEquals(1, records.size());
 
         Record rec = records.get(0);
@@ -122,12 +123,7 @@ public class PlainTextPositionTest {
     @Test
     public void testParsePositionTag_absentKeepsCentered() throws IOException {
         // 不写位置时保持默认居中
-        String content = "Alice: 默认居中\n";
-
-        Path tmp = Files.createTempFile("position-absent", ".txt");
-        Files.writeString(tmp, content);
-
-        List<Record> records = PlainTextRecordsParser.parse(tmp, mockService());
+        List<Record> records = parse("Alice: 默认居中\n");
         assertEquals(1, records.size());
 
         assertEquals("默认居中", records.get(0).getDialogue().getText());
@@ -137,12 +133,7 @@ public class PlainTextPositionTest {
     @Test
     public void testParsePositionTag_fullRange() throws IOException {
         // 0% 最左，100% 最右
-        String content = "Alice: 最左<0%>\nBob: 最右<100%>\n";
-
-        Path tmp = Files.createTempFile("position-range", ".txt");
-        Files.writeString(tmp, content);
-
-        List<Record> records = PlainTextRecordsParser.parse(tmp, mockService());
+        List<Record> records = parse("Alice: 最左%0%\nBob: 最右%100%\n");
         assertEquals(2, records.size());
 
         int half = ProjectConfig.VIDEO_WIDTH / 2;
@@ -151,34 +142,57 @@ public class PlainTextPositionTest {
     }
 
     @Test
-    public void testParsePositionTag_notAtLineEnd_isPlainText() throws IOException {
-        // 形如 <...> 但没有百分比/小数的内容属于正文，不应被当作位置指令
-        String content = "Alice: 括号里<不是位置>的文本\n";
-
-        Path tmp = Files.createTempFile("position-inline", ".txt");
-        Files.writeString(tmp, content);
-
-        List<Record> records = PlainTextRecordsParser.parse(tmp, mockService());
-        assertEquals(1, records.size());
-
-        assertEquals("括号里<不是位置>的文本", records.get(0).getDialogue().getText(), "正文应原样保留");
-        assertEquals(0, records.get(0).getCharacters().get(0).getAdjX(), "不应应用位置");
-    }
-
-    @Test
     public void testParsePositionTag_decimalPercent() throws IOException {
         // 支持小数百分比：37.5% → (37.5-50)*1920/100 = -240
-        String content = "Alice: 小数位置<37.5%>(HAPPY)\n";
-
-        Path tmp = Files.createTempFile("position-decimal", ".txt");
-        Files.writeString(tmp, content);
-
-        List<Record> records = PlainTextRecordsParser.parse(tmp, mockService());
+        List<Record> records = parse("Alice: 小数位置%37.5%(HAPPY)\n");
         assertEquals(1, records.size());
 
         Record rec = records.get(0);
         assertEquals("小数位置", rec.getDialogue().getText(), "位置与情绪标记都不应残留于正文");
         assertEquals(com.lbc_plot.plot.model.Dialogue.Emotion.HAPPY, rec.getDialogue().getEmotion());
         assertEquals(-240, rec.getCharacters().get(0).getAdjX(), "37.5% 应为 -240");
+    }
+
+    @Test
+    public void testParsePositionTag_fullWidthPercent() throws IOException {
+        // 全角百分号 ％100％ 与半角等价（中文输入法下很常见）
+        List<Record> records = parse("Alice: 全角位置％100％\n");
+        assertEquals(1, records.size());
+
+        assertEquals("全角位置", records.get(0).getDialogue().getText(), "全角标记不应残留于正文");
+        assertEquals(ProjectConfig.VIDEO_WIDTH / 2, records.get(0).getCharacters().get(0).getAdjX());
+    }
+
+    @Test
+    public void testParsePositionTag_legacyAngleBracketIsPlainText() throws IOException {
+        // 旧写法 <位置> 已废弃：既不做位置换算，也原样保留在正文里
+        List<Record> records = parse("Alice: 旧写法<70%>已废弃\n");
+        assertEquals(1, records.size());
+
+        Record rec = records.get(0);
+        assertEquals("旧写法<70%>已废弃", rec.getDialogue().getText(), "旧标记应原样保留为正文");
+        assertEquals(0, rec.getCharacters().get(0).getAdjX(), "不应应用位置");
+    }
+
+    @Test
+    public void testParsePositionTag_singlePercentIsPlainText() throws IOException {
+        // 只出现一个 % 的正文（如 "50%"）不应被当成位置指令
+        List<Record> records = parse("Alice: 进度才有50%\n");
+        assertEquals(1, records.size());
+
+        assertEquals("进度才有50%", records.get(0).getDialogue().getText(), "正文应原样保留");
+        assertEquals(0, records.get(0).getCharacters().get(0).getAdjX(), "不应应用位置");
+    }
+
+    @Test
+    public void testParsePositionTag_noStraySpaceAfterRemoval() throws IOException {
+        // 剥离标记后，中文之间不应插入空格；英文单词之间才补空格
+        List<Record> cn = parse("Alice: 他说%50%吧\n");
+        assertEquals("他说吧", cn.get(0).getDialogue().getText());
+
+        List<Record> en = PlainTextRecordsParser.parse(
+                Files.writeString(Files.createTempFile("position-en", ".txt"), "Alice: Hello%50%world\n"),
+                mockService());
+        assertEquals("Hello world", en.get(0).getDialogue().getText());
     }
 }

@@ -60,6 +60,8 @@ demo/jre/
 
 *.mp4
 /输出测试
-/输出测试
 /release
 demo/data/project.db
+
+# 一次性清理出来的构建产物/旧日志暂存区（确认没问题后整个目录删掉即可）
+/_to-delete/

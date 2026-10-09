@@ -12,6 +12,11 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const http = require("http");
 const log = require("electron-log");
+const {
+  collectLatestFiles,
+  createZipBuffer,
+  formatTimestamp,
+} = require("./log-export/zip-writer");
 const isDev = !app.isPackaged;
 
 // autoUpdater — 仅在打包后可用，开发模式静默跳过
@@ -956,6 +961,92 @@ ipcMain.handle("folder:open", async (event, resourceType) => {
   } catch (err) {
     console.error("打开资源文件夹失败", err);
     return { success: false, error: err.message };
+  }
+});
+
+// ---- 日志导出（设置页"获取日志"）----
+
+/** 导出时最多打包几个日志文件（安装版日志目录会一直累积，全量打包没有意义） */
+const LOG_EXPORT_MAX_FILES = 10;
+
+/**
+ * 日志目录。与文件顶部 logDir 的分支条件（isDev）保持一致，这样"导出"拿到的就是
+ * 本次运行正在写的那个目录：安装版 `%APPDATA%\limbus-company-plot-video-generator\logs`，
+ * 开发模式 `demo/logs`。
+ */
+function getLogDir() {
+  if (isDev) {
+    // 开发模式：__dirname 是 .../electron-react-app/public，向上三级到 demo/logs/
+    return path.join(__dirname, "..", "..", "..", "logs");
+  }
+  return path.join(app.getPath("userData"), "logs");
+}
+
+/**
+ * 把日志目录里最新的 N 个文件打成 zip，并让用户选保存位置（点"获取日志"时调用）。
+ *
+ * 返回给渲染进程的结构固定为 { ok, ... }，不抛异常：
+ * canceled 由用户点取消产生，属于正常流程，界面只需静默即可。
+ */
+ipcMain.handle("logs:export", async () => {
+  const logDir = getLogDir();
+  try {
+    if (!fs.existsSync(logDir)) {
+      return { ok: false, error: `未找到日志目录：${logDir}`, logDir };
+    }
+
+    const latest = collectLatestFiles(logDir, LOG_EXPORT_MAX_FILES);
+    if (latest.length === 0) {
+      return { ok: false, error: `日志目录里还没有日志文件：${logDir}`, logDir };
+    }
+
+    const now = new Date();
+    const stamp = formatTimestamp(now);
+    const zipName = `limbus-plot-logs-${stamp}.zip`;
+
+    // 先建包再弹保存框：压缩失败（日志正被后端写入、被占用等）应当在弹窗之前就报错，
+    // 而不是让用户选完路径才看到"导出失败"。
+    const zip = await createZipBuffer(latest, { folder: `logs-${stamp}` });
+
+    let defaultPath;
+    try {
+      defaultPath = path.join(app.getPath("downloads"), zipName);
+    } catch (e) {
+      defaultPath = zipName;
+    }
+
+    const { canceled, filePath } = await dialog.showSaveDialog(
+      mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined,
+      {
+        title: "保存日志压缩包",
+        defaultPath,
+        buttonLabel: "保存",
+        filters: [{ name: "ZIP 压缩包", extensions: ["zip"] }],
+      },
+    );
+    if (canceled || !filePath) {
+      return { ok: false, canceled: true };
+    }
+
+    // 用户在保存框里删掉 .zip 后缀时补回来，避免得到一个没法双击打开的文件
+    const target = /\.zip$/i.test(filePath) ? filePath : `${filePath}.zip`;
+    fs.writeFileSync(target, zip.buffer);
+
+    log.info(
+      `已导出日志压缩包: ${target}（${zip.entries.length} 个文件，${zip.zipSize} 字节）`,
+    );
+    return {
+      ok: true,
+      filePath: target,
+      fileCount: zip.entries.length,
+      rawSize: zip.rawSize,
+      zipSize: zip.zipSize,
+      logDir,
+      skipped: zip.skipped,
+    };
+  } catch (err) {
+    log.error("导出日志压缩包失败:", err.message);
+    return { ok: false, error: err.message || String(err), logDir };
   }
 });
 

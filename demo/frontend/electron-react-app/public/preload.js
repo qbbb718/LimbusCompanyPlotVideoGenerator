@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openResourceFolder: (resourceType) =>
     ipcRenderer.invoke("folder:open", resourceType),
 
+  // 导出日志：把最新若干条日志打成 zip，由主进程弹保存窗口
+  exportLogs: () => ipcRenderer.invoke("logs:export"),
+
   // 开发者工具
   openDevTools: () => ipcRenderer.invoke("window:openDevTools"),
 
