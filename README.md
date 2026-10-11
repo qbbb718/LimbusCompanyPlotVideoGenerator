@@ -117,6 +117,22 @@ LimbusCompanyPlotVideoGenerator/
 └── .github/workflows/              # CI/CD
 ```
 
+## 版本号管理
+
+当前版本：**0.2.3**（真源：`demo/frontend/electron-react-app/package.json` 的 `version`）
+
+```powershell
+node scripts\version.mjs                 # 查看各处版本号是否一致
+node scripts\version.mjs 0.2.4 --write   # 一次性同步 package.json / pom.xml / package-lock.json
+node scripts\version.mjs --check         # 校验一致性（CI 用）
+node scripts\version.mjs --check-tag v0.2.4   # 额外校验 git tag（发版前/CI 用）
+```
+
+- 安装包文件名、"关于"弹窗里的版本、自动更新源（`latest.yml`）都来自 `package.json`
+- 后端 jar 版本来自 `demo/pom.xml` 的 `<project><version>`（`demo-0.<版本>-SNAPSHOT.jar`）
+- 改完记得在 [版本更新笔记](docs/版本更新笔记.md) 顶部加一节，提交后打 tag（`git tag v0.2.4`）触发 CI 发版
+- 详细说明与坑：[本地打包说明](docs/本地打包说明.md) 的「改版本号」
+
 ## 文档
 
 - [项目文档](docs/项目文档.md) - 模块结构与总体设计

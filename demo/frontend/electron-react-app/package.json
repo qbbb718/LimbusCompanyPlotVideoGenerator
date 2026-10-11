@@ -1,6 +1,6 @@
 {
   "name": "limbus-company-plot-video-generator",
-  "version": "0.1.0",
+  "version": "0.2.3",
   "private": true,
   "description": "Limbus Company plot video generator desktop application",
   "author": "qbbb718",
@@ -38,7 +38,9 @@
     "electron": "electron .",
     "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
     "electron-pack": "npm run build && electron .",
-    "preelectron-pack": "npm run build"
+    "preelectron-pack": "npm run build",
+    "version:check": "node ../../../scripts/version.mjs --check",
+    "version:test": "node ../../../scripts/version.test.mjs"
   },
   "eslintConfig": {
     "extends": [

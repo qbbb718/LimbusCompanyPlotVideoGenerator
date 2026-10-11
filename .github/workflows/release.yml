@@ -15,6 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 版本号真源是 demo/frontend/electron-react-app/package.json。
+      # tag 版本与实际版本不一致（或 package.json / pom.xml / package-lock.json 三者不一致）时
+      # 立刻失败，而不是打出一个文件名/版本号对不上的安装包。
+      # workflow_dispatch（没有 tag）时只校验三处是否互相一致。
+      - name: Verify version consistency
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            node scripts/version.mjs --check-tag '${{ github.ref_name }}'
+          } else {
+            node scripts/version.mjs --check
+          }
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node scripts/version.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
