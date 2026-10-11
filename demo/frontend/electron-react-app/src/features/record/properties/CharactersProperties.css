@@ -45,6 +45,22 @@
   cursor: pointer;
 }
 
+/* 删除立绘按钮 — 红底白字，尺寸与 ↑↓ 按钮一致 */
+.delete-character-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #fff;
+  background-color: #ff4d4f;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.delete-character-btn:hover {
+  background-color: #ff7875;
+}
+
 .character-details {
   padding: 0;
 }
@@ -102,6 +118,12 @@
 
 .char-col-dim label {
   margin-bottom: 0;
+  /* 灰底白字标签 */
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: #fff;
+  background-color: #8c8c8c;
+  white-space: nowrap;
 }
 
 .char-col-dim input[type="checkbox"] {
@@ -173,6 +195,23 @@
 .add-form {
   border: 1px dashed #ddd;
   background-color: #f9f9f9;
+}
+
+/* 添加立绘按钮 — 蓝底白字，与剧情列表旁的 "+" 按钮同款 */
+.add-portrait-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: #fff;
+  background-color: #1890ff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-portrait-btn:hover {
+  background-color: #40a9ff;
 }
 
 .add-character-confirm-btn {

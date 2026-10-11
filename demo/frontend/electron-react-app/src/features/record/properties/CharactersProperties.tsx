@@ -239,7 +239,12 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                     ↓
                   </button>
                 </div>
-                <button onClick={() => deleteCharacter(index)}>删除</button>
+                <button
+                  className="delete-character-btn"
+                  onClick={() => deleteCharacter(index)}
+                >
+                  删除
+                </button>
               </div>
             </div>
 
@@ -488,10 +493,10 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
           </div>
         ) : (
           <button
-            className="add-character-btn"
+            className="add-portrait-btn"
             onClick={() => setShowAddForm(true)}
           >
-            添加立绘
+            + 添加立绘
           </button>
         )}
       </div>
