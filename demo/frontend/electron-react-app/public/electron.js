@@ -825,7 +825,7 @@ ipcMain.handle("dialog:openImageFile", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ["openFile"],
     filters: [
-      { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "bmp"] },
+      { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "bmp", "webp"] },
       { name: "All Files", extensions: ["*"] },
     ],
   });
@@ -844,7 +844,7 @@ ipcMain.handle("dialog:openFile", async () => {
     properties: ["openFile"],
     filters: [
       { name: "工程文件 (JSON)", extensions: ["json"] },
-      { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "bmp"] },
+      { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "bmp", "webp"] },
       { name: "All Files", extensions: ["*"] },
     ],
   });
