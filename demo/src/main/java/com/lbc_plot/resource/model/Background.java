@@ -1,8 +1,12 @@
 package com.lbc_plot.resource.model;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 // import java.nio.file.Path;
 import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -13,6 +17,9 @@ import java.awt.image.BufferedImage;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Background {
+
+    private static final Logger logger = LoggerFactory.getLogger(Background.class);
+
     private String uuid; // 唯一id（保证换源后能直接替换
     private String path; // 文件存储路径
     private String name; // 背景显示名（用于场景地点显示）
@@ -70,27 +77,19 @@ public class Background {
      */
     private void loadImage() {
         try {
-            System.out.println("正在懒加载背景图像: " + path);
-            // If path already looks like a resource path (contains configured backgrounds
-            // path),
-            // read it directly; otherwise treat it as filename and use readBackGround.
-            String p = (path == null) ? null : (path.startsWith("/") ? path.substring(1) : path);
-            String configuredBgPath = ProjectConfig.BACKGROUNDS_PATH;
-            if (configuredBgPath != null && configuredBgPath.startsWith("./")) {
-                configuredBgPath = configuredBgPath.substring(2);
-            }
-            if (p != null && configuredBgPath != null && p.startsWith(configuredBgPath)) {
-                image = ImageReader.readResourceImage(p);
+            // 磁盘上已经是完整绝对路径（数据库里既有绝对路径，也有 /assets/xxx URL 形式，
+            // 还有历史遗留的裸文件名）时直接读盘，其余交给 readBackGround 按候选路径解析。
+            File resolved = ImageReader.resolveBackgroundFile(path);
+            if (resolved.isFile()) {
+                image = ImageReader.readImageFile(resolved);
             } else {
                 image = ImageReader.readBackGround(path);
             }
             if (image == null) {
-                System.err.println("无法加载背景图像: " + path);
-                // 可以设置一个默认图像或抛出异常
+                logger.warn("无法加载背景图像: {}", path);
             }
         } catch (Exception e) {
-            System.err.println("加载背景图像时发生错误: " + e.getMessage());
-            e.printStackTrace();
+            logger.warn("加载背景图像时发生错误: {} ({})", path, e.getMessage());
         }
     }
 

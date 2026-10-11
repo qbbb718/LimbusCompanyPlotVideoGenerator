@@ -4,9 +4,13 @@ import com.lbc_plot.config.ProjectConfig;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 图片读取工具类
@@ -17,6 +21,17 @@ import java.io.InputStream;
  * ImageReader.readResourceImage("assets/ui/name_tag.png");
  * BufferedImage image3 =
  * ImageReader.readFileImage("demo/src/main/resources/assets/ui/image.png");
+ *
+ * <h2>路径约定</h2>
+ * 同一个素材在系统里有三种写法，本类都必须能读：
+ * <ol>
+ *   <li><b>URL 形式</b>：{@code /assets/backgrounds/x.png} —— 数据库/前端保存的就是这个；</li>
+ *   <li><b>绝对路径</b>：{@code C:/Users/.../assets/backgrounds/x.png}；</li>
+ *   <li><b>裸文件名</b>：{@code x.png}（历史数据）。</li>
+ * </ol>
+ * {@link #readBackGround(String)} / {@link #readCharacters(String)} 内部用
+ * {@link #collectCandidates} 生成候选列表，避免出现
+ * {@code .../assets/backgrounds//assets/backgrounds/x.png} 这类重复拼接。
  */
 public class ImageReader {
 
@@ -30,23 +45,25 @@ public class ImageReader {
         if (file == null || !file.exists() || !file.isFile()) {
             throw new IOException("文件不存在: " + (file == null ? "null" : file.getAbsolutePath()));
         }
-        // 1) JDK 自带解码（png/jpg/gif/bmp/tif）
-        BufferedImage image = null;
-        try {
-            image = ImageIO.read(file);
-        } catch (IOException e) {
-            // WebP 等格式可能让 ImageIO 直接抛错，转到 FFmpeg 兜底
-            image = null;
+        // WebP 先做魔数判断并直接交给 FFmpeg：Java 21 的 ImageIO 对它会返回 null，
+        // 走一遍 ImageIO 只是白读一次文件。
+        if (WebpImageDecoder.isWebp(file)) {
+            BufferedImage viaFfmpeg = WebpImageDecoder.decodeWithFfmpeg(file);
+            if (viaFfmpeg != null) {
+                return viaFfmpeg;
+            }
         }
-        if (image != null) {
-            return image;
+        // 1) JDK 自带解码（png/jpg/gif/bmp/tif）
+        try {
+            BufferedImage image = ImageIO.read(file);
+            if (image != null) {
+                return image;
+            }
+        } catch (IOException e) {
+            // 某些格式可能让 ImageIO 直接抛错，转到 FFmpeg 兜底
         }
         // 2) FFmpeg 兜底（WebP，保留 alpha）
-        BufferedImage viaFfmpeg = WebpImageDecoder.decodeWithFfmpeg(file);
-        if (viaFfmpeg != null) {
-            return viaFfmpeg;
-        }
-        return null;
+        return WebpImageDecoder.decodeWithFfmpeg(file);
     }
 
     /**
@@ -57,63 +74,210 @@ public class ImageReader {
      * @throws IOException 当读取失败时抛出
      */
     public static BufferedImage readResourceImage(String resourcePath) throws IOException {
-        // 如果传入的是绝对路径（例如 Windows 下的 C:\... 或以 / 开头的绝对路径），
-        // 则直接从文件系统读取，而不是从 classpath 资源中查找。
+        return readResourceImage(resourcePath, new File(resourcePath));
+    }
+
+    /**
+     * 从 resources 目录读取图片，允许调用方指定「文件系统回退路径」。
+     *
+     * <p>回退路径存在的意义：{@code border_1080p.png} 等资源位于 {@code demo/assets/ui/}
+     * 而未打进 classpath，此时需要按相对 JVM 工作目录的路径去磁盘找。
+     *
+     * @param resourcePath classpath 资源路径
+     * @param fallbackFile 文件系统回退文件
+     */
+    private static BufferedImage readResourceImage(String resourcePath, File fallbackFile) throws IOException {
+        if (resourcePath == null || resourcePath.isBlank()) {
+            throw new IOException("资源路径为空");
+        }
         File maybeFile = new File(resourcePath);
-        if (maybeFile.isAbsolute()) {
+
+        // 1) 真正的文件系统绝对路径（Windows 盘符 / UNC）直接读盘。
+        //    注意 /assets/... 这种「URL 形式」不算：它在 Linux 下虽然也 isAbsolute()，
+        //    但指的是 URL 根，当文件读只会得到盘符根目录下的不存在路径。
+        if (isRealFileSystemPath(resourcePath)) {
             if (!maybeFile.exists() || !maybeFile.isFile()) {
                 throw new IOException("文件不存在: " + resourcePath);
             }
             return readImageFile(maybeFile);
         }
 
-        // 先尝试从 classpath 查找资源
+        // 2) classpath 资源
         ClassLoader classLoader = ImageReader.class.getClassLoader();
-        InputStream inputStream = classLoader.getResourceAsStream(resourcePath);
-
-        if (inputStream != null) {
-            try {
+        URL resource = classLoader.getResource(resourcePath);
+        if (resource != null) {
+            try (InputStream inputStream = resource.openStream()) {
                 BufferedImage image = ImageIO.read(inputStream);
                 if (image != null) {
                     return image;
                 }
-            } finally {
-                inputStream.close();
             }
-            // classpath 资源 ImageIO 读不出来时，回退到文件系统路径再试（含 WebP 兜底）
+            // ImageIO 读不出来（如 WebP）：再整体读一次字节交给 FFmpeg 兜底
+            BufferedImage viaFfmpeg = decodeResourceAsWebp(resource, resourcePath);
+            if (viaFfmpeg != null) {
+                return viaFfmpeg;
+            }
         }
 
-        // classpath 找不到时，回退到文件系统相对路径（相对于 JVM 工作目录，
-        // 即 mvn spring-boot:run 启动时的 demo 目录）。
-        // 修复场景：border_1080p.png 等资源存在于 demo/assets/ui/ 下，但未打进
-        // classpath（src/main/resources/assets/ui/ 不存在），导致 RenderOfImage
-        // 静态块加载失败、后续名片图片生成 NPE。
-        if (maybeFile.exists() && maybeFile.isFile()) {
-            return readImageFile(maybeFile);
+        // 3) classpath 找不到时，回退到文件系统相对路径（相对于 JVM 工作目录，
+        //    即 mvn spring-boot:run 启动时的 demo 目录）。
+        if (fallbackFile.exists() && fallbackFile.isFile()) {
+            return readImageFile(fallbackFile);
         }
 
         throw new IOException("资源文件不存在: " + resourcePath
-                + "（已尝试 classpath 与文件系统相对路径 " + maybeFile.getAbsolutePath() + "）");
+                + "（已尝试 classpath 与文件系统相对路径 " + fallbackFile.getAbsolutePath() + "）");
+    }
+
+    /**
+     * 把 classpath 资源整体读出来，确认是 WebP 后交给 FFmpeg 解码。
+     * 只在「ImageIO 已失败」的冷路径上才会被调用。
+     */
+    private static BufferedImage decodeResourceAsWebp(URL resource, String description) {
+        try (InputStream in = resource.openStream()) {
+            return WebpImageDecoder.decodeWebpBytes(readAllBytes(in), description);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private static byte[] readAllBytes(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(8192, in.available()));
+        byte[] buffer = new byte[8192];
+        int n;
+        while ((n = in.read(buffer)) > 0) {
+            out.write(buffer, 0, n);
+        }
+        return out.toByteArray();
+    }
+
+    /** 是否为「真正的」文件系统绝对路径（排除 {@code /assets/...} 这种 URL 形式） */
+    private static boolean isRealFileSystemPath(String path) {
+        if (!new File(path).isAbsolute()) {
+            return false;
+        }
+        return !(path.startsWith("/") && !path.startsWith("//"));
+    }
+
+    /**
+     * 生成读取某个素材时要依次尝试的候选路径。
+     *
+     * <p>这是「路径重复拼接」的修复点：数据库里存的是 URL
+     * （{@code /assets/backgrounds/x.png}）或已经带目录的路径时，不能无脑再拼一次
+     * {@code ProjectConfig.*_PATH}，否则会得到
+     * {@code .../assets/backgrounds//assets/backgrounds/x.png}。
+     *
+     * @param raw           调用方传入的原始路径
+     * @param configuredDir ProjectConfig 中该素材目录的绝对路径（以 '/' 结尾）
+     * @param dirName       素材目录名，用于识别裸的 "backgrounds/"、"characters/" 前缀
+     */
+    private static List<String> collectCandidates(String raw, String configuredDir, String dirName) {
+        List<String> candidates = new ArrayList<>(4);
+        if (raw == null || raw.isBlank()) {
+            return candidates;
+        }
+        String value = raw.trim().replace('\\', '/');
+        String normalized = stripAssetPrefixes(value);
+
+        if (isRealFileSystemPath(value)) {
+            // 已经是绝对路径，直接用
+            candidates.add(value);
+        } else if (normalized.startsWith(dirName + "/")) {
+            // 形如 backgrounds/x.png / characters/x.png：锚定到配置目录
+            candidates.add(configuredDir + strippedPrefix(normalized, dirName + "/"));
+        } else {
+            candidates.add(configuredDir + normalized);
+        }
+
+        // 兜底 1：原样（相对 JVM 工作目录）
+        // 兜底 2：去掉 /assets/ 等前缀（兼容 assets/ 直接位于工作目录的旧布局）
+        addIfAbsent(candidates, value);
+        addIfAbsent(candidates, normalized);
+        return candidates;
+    }
+
+    /**
+     * 反复剥掉 {@code ./}、{@code /assets/}、{@code assets/} 前缀，直到不再变化。
+     *
+     * <p>必须循环：{@code ./assets/backgrounds/x.png} 要先去掉 {@code ./} 才能看到
+     * {@code assets/}，只按固定顺序各去一次会漏掉组合形式。
+     */
+    private static String stripAssetPrefixes(String value) {
+        String current = value;
+        while (true) {
+            String next = strippedPrefix(current, "./");
+            next = strippedPrefix(next, "/assets/");
+            next = strippedPrefix(next, "assets/");
+            if (next.equals(current)) {
+                return current;
+            }
+            current = next;
+        }
+    }
+
+    /** 去掉前缀（大小写敏感，调用方已统一分隔符） */
+    private static String strippedPrefix(String value, String prefix) {
+        return value.startsWith(prefix) ? value.substring(prefix.length()) : value;
+    }
+
+    private static void addIfAbsent(List<String> list, String value) {
+        if (value != null && !value.isBlank() && !list.contains(value)) {
+            list.add(value);
+        }
+    }
+
+    /**
+     * 把「素材路径 / URL」解析为磁盘文件。
+     *
+     * <p>与 {@link #collectCandidates} 使用同一套前缀规则，供需要判断
+     * “这个素材到底在不在磁盘上”的调用方复用（例如 {@code Background.loadImage}）。
+     *
+     * @param raw          原始路径（{@code /assets/...} URL、绝对路径或裸文件名）
+     * @param configuredDir ProjectConfig 中该素材目录的绝对路径（以 '/' 结尾）
+     * @param dirName      素材目录名，如 {@code backgrounds}
+     * @return 解析后的 File；{@code raw} 为空时返回 {@code new File(configuredDir)}
+     */
+    public static File resolveAssetFile(String raw, String configuredDir, String dirName) {
+        List<String> candidates = collectCandidates(raw, configuredDir, dirName);
+        return candidates.isEmpty() ? new File(configuredDir) : new File(candidates.get(0));
+    }
+
+    /** 背景素材路径 → 磁盘文件（等价于 {@code resolveAssetFile(raw, BACKGROUNDS_PATH, "backgrounds")}） */
+    public static File resolveBackgroundFile(String raw) {
+        return resolveAssetFile(raw, ProjectConfig.BACKGROUNDS_PATH, "backgrounds");
+    }
+
+    /** 角色素材路径 → 磁盘文件（等价于 {@code resolveAssetFile(raw, CHARACTERS_PATH, "characters")}） */
+    public static File resolveCharacterFile(String raw) {
+        return resolveAssetFile(raw, ProjectConfig.CHARACTERS_PATH, "characters");
+    }
+
+    /** 该素材路径在磁盘上是否存在（URL 形式 / 绝对路径 / 裸文件名都支持） */
+    public static boolean assetExists(String raw, String configuredDir, String dirName) {
+        return resolveAssetFile(raw, configuredDir, dirName).isFile();
     }
 
     public static BufferedImage readBackGround(String fileName) throws IOException {
-        // ProjectConfig 的路径已是绝对路径，直接命中即可；保留裸文件名兜底，
-        // 兼容数据库里存了"仅文件名"的历史数据。
-        String[] candidates = new String[] {
-                ProjectConfig.BACKGROUNDS_PATH + fileName,
-                fileName
-        };
-        try {
-            return readResourceImage(candidates[0]);
-        } catch (IOException e) {
-            for (String c : candidates) {
-                File f = new File(c);
-                if (f.exists() && f.isFile()) {
-                    return readImageFile(f);
-                }
+        List<String> candidates = collectCandidates(fileName, ProjectConfig.BACKGROUNDS_PATH,
+                "backgrounds");
+        for (String candidate : candidates) {
+            File file = new File(candidate);
+            if (file.isFile()) {
+                return readImageFile(file);
             }
-            throw new IOException("背景图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")", e);
         }
+        // 磁盘上没有时，再按 classpath 资源试一遍（数据库里可能存的是 classpath 内路径）
+        for (String candidate : candidates) {
+            try {
+                BufferedImage image = readResourceImage(candidate, new File(candidate));
+                if (image != null) {
+                    return image;
+                }
+            } catch (IOException ignored) {
+                // 继续尝试下一个候选
+            }
+        }
+        throw new IOException("背景图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")");
     }
 
     /**
@@ -212,30 +376,26 @@ public class ImageReader {
     }
 
     public static BufferedImage readCharacters(String fileName) throws IOException {
-        File f = new File(fileName);
-        if (f.isAbsolute()) {
-            if (!f.exists() || !f.isFile()) {
-                throw new IOException("文件不存在: " + fileName);
+        List<String> candidates = collectCandidates(fileName, ProjectConfig.CHARACTERS_PATH,
+                "characters");
+        for (String candidate : candidates) {
+            File file = new File(candidate);
+            if (file.isFile()) {
+                return readImageFile(file);
             }
-            return readImageFile(f);
         }
-
-        String resourcePath = ProjectConfig.CHARACTERS_PATH + fileName;
-        try {
-            return readResourceImage(resourcePath);
-        } catch (IOException e) {
-            String[] candidates = new String[] {
-                    resourcePath,
-                    fileName
-            };
-            for (String c : candidates) {
-                File cf = new File(c);
-                if (cf.exists() && cf.isFile()) {
-                    return readImageFile(cf);
+        // 磁盘上没有时，再按 classpath 资源试一遍
+        for (String candidate : candidates) {
+            try {
+                BufferedImage image = readResourceImage(candidate, new File(candidate));
+                if (image != null) {
+                    return image;
                 }
+            } catch (IOException ignored) {
+                // 继续尝试下一个候选
             }
-            throw new IOException("人物图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")", e);
         }
+        throw new IOException("人物图片未找到: " + fileName + " (尝试路径: " + String.join(", ", candidates) + ")");
     }
 
     public static BufferedImage readEffects(String fileName) throws IOException {
