@@ -130,6 +130,11 @@ export interface Portrait {
   adjX: number;
   adjY: number;
   thumbnailPath: string;
+  /**
+   * 是否为该角色的默认立绘。由后端从 character_portraits.is_default 读出，
+   * 是默认立绘的唯一真实来源（不要再依赖 portraits[0] 的位置约定）。
+   */
+  defaultPortrait?: boolean;
   file?: File; // 仅前端使用，上传到后端后清除，不序列化到 JSON
 }
 

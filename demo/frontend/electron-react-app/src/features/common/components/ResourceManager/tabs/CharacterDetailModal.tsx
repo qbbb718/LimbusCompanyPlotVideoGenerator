@@ -7,6 +7,10 @@ import CharacterInfoSection from "./CharacterDetailModal/CharacterInfoSection";
 import TagsSection from "./CharacterDetailModal/TagsSection";
 import PortraitsSection from "./CharacterDetailModal/PortraitsSection";
 import PortraitModal from "./PortraitModal";
+import {
+  getDefaultPortrait,
+  markDefaultPortrait,
+} from "@features/common/utils/portraitUtils";
 
 interface CharacterDetailModalProps {
   character: MyCharacter | null;
@@ -122,18 +126,18 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     }
 
     // 获取角色的默认立绘裁剪状态
-    const defaultCropState =
-      currentCharacter.portraits.length > 0
-        ? {
-            faceX: currentCharacter.portraits[0].faceX || 0,
-            faceY: currentCharacter.portraits[0].faceY || 0,
-            length: currentCharacter.portraits[0].length || 100,
-          }
-        : {
-            faceX: 0,
-            faceY: 0,
-            length: 100,
-          };
+    const defaultPortraitData = getDefaultPortrait(currentCharacter.portraits);
+    const defaultCropState = defaultPortraitData
+      ? {
+          faceX: defaultPortraitData.faceX || 0,
+          faceY: defaultPortraitData.faceY || 0,
+          length: defaultPortraitData.length || 100,
+        }
+      : {
+          faceX: 0,
+          faceY: 0,
+          length: 100,
+        };
 
     // 创建一个带有默认裁剪状态的空立绘对象
     const defaultPortrait: Portrait = {
@@ -192,26 +196,22 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (!editingCharacter) return;
 
     try {
-      // 调用API设置默认立绘
+      // 调用API设置默认立绘（后端会清除该角色其他立绘的默认标记）
       await ApiService.setDefaultPortrait(
         editingCharacter.characterID,
         portraitId,
       );
 
-      // 更新本地状态，将选中的立绘移到第一位
-      const portraitIndex = editingCharacter.portraits.findIndex(
-        (p) => p.portraitID === portraitId,
+      // 本地同步默认标记。默认立绘由 defaultPortrait 字段表示，
+      // 不再靠"把立绘挪到数组第一位"来模拟——那样刷新页面后就会被后端顺序覆盖。
+      setEditingCharacter((prev) =>
+        prev
+          ? {
+              ...prev,
+              portraits: markDefaultPortrait(prev.portraits, portraitId),
+            }
+          : prev,
       );
-      if (portraitIndex !== -1) {
-        const newPortraits = [...editingCharacter.portraits];
-        const defaultPortrait = newPortraits.splice(portraitIndex, 1)[0];
-        newPortraits.unshift(defaultPortrait);
-
-        setEditingCharacter({
-          ...editingCharacter,
-          portraits: newPortraits,
-        });
-      }
     } catch (error) {
       console.error("设置默认立绘失败:", error);
       alert("设置默认立绘失败，请重试");
@@ -372,11 +372,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         <PortraitModal
           characterId={editingCharacter.characterID}
           portrait={editingPortrait}
-          defaultPortrait={
-            editingCharacter.portraits.length > 0
-              ? editingCharacter.portraits[0]
-              : null
-          }
+          defaultPortrait={getDefaultPortrait(editingCharacter.portraits)}
           isNewPortrait={isAddingNewPortrait}
           onClose={() => {
             setShowPortraitModal(false);

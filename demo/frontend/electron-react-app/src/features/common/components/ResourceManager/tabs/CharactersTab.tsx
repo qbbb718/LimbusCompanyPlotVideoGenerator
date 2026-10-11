@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { MyCharacter, Portrait } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@root/features/common/config/appConfig";
+import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
 import "../ResourceManager.css";
 import PortraitModal from "./PortraitModal";
 import CharacterDetailModal from "./CharacterDetailModal";
@@ -348,11 +349,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
         <PortraitModal
           characterId={selectedCharacter.characterID}
           portrait={editingPortrait}
-          defaultPortrait={
-            selectedCharacter.portraits.length > 0
-              ? selectedCharacter.portraits[0]
-              : null
-          }
+          defaultPortrait={getDefaultPortrait(selectedCharacter.portraits)}
           onClose={() => setShowPortraitModal(false)}
           onSave={(portrait) => {
             // 如果是编辑现有立绘

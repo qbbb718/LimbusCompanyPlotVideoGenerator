@@ -332,6 +332,12 @@ public class CharacterController {
 
                 // 更新立绘信息
                 if (character.getPortraits() != null && !character.getPortraits().isEmpty()) {
+                    // 重建关联关系前先记下当前的默认立绘。
+                    // deleteCharacterPortraits 会连默认标记一起删掉，若不留存快照，
+                    // 后面 saveCharacterPortraits 只能退回"列表第一个是默认"，
+                    // 用户的默认立绘选择就被重置了。
+                    String preservedDefaultPortraitId = portraitDao.findDefaultPortraitId(id);
+
                     // 先删除旧的关联关系
                     portraitDao.deleteCharacterPortraits(id);
 
@@ -356,8 +362,8 @@ public class CharacterController {
                         }
                     }
 
-                    // 保存新的关联关系
-                    portraitDao.saveCharacterPortraits(id, character.getPortraits());
+                    // 保存新的关联关系（保留原有默认立绘，入参带标记时以入参为准）
+                    portraitDao.saveCharacterPortraits(id, character.getPortraits(), preservedDefaultPortraitId);
                 }
 
                 return null;

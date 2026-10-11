@@ -45,6 +45,14 @@ public class Portrait {
     String thumbnailPath;
     @JsonIgnore
     BufferedImage thumbnail;
+    /**
+     * 是否为角色默认立绘。
+     *
+     * 注意：该字段不在 portraits 表中，而是来自关联表 character_portraits.is_default，
+     * 由 PortraitMapper 在 JOIN 查询时填充。它是"默认立绘"的唯一真实来源，
+     * 前端不再依赖 portraits[0] 的位置约定。
+     */
+    boolean defaultPortrait;
 
     // 默认值
     private static final String DEFAULT_PORTRAITID = null;
@@ -206,6 +214,17 @@ public class Portrait {
     }
 
     /**
+     * 是否为该角色的默认立绘（数据来源：character_portraits.is_default）
+     */
+    public boolean isDefaultPortrait() {
+        return defaultPortrait;
+    }
+
+    public void setDefaultPortrait(boolean defaultPortrait) {
+        this.defaultPortrait = defaultPortrait;
+    }
+
+    /**
      * 带懒加载的getter方法
      * 如果image为null，会根据imagePath自动加载图像
      *
@@ -271,6 +290,7 @@ public class Portrait {
         this.adjX = builder.adjX;
         this.adjY = builder.adjY;
         this.thumbnailPath = builder.thumbnailPath;
+        this.defaultPortrait = builder.defaultPortrait;
 
         // 应用智能默认值
         applySmartDefaults();
@@ -337,6 +357,8 @@ public class Portrait {
         private int adjY = DEFAULT_ADJ_Y;
         @JsonProperty
         private String thumbnailPath;
+        @JsonProperty
+        private boolean defaultPortrait;
 
         // 无参构造器（JSON反序列化必需）
         public Builder() {
@@ -425,6 +447,11 @@ public class Portrait {
 
         public Builder thumbnailPath(String thumbnailPath) {
             this.thumbnailPath = thumbnailPath;
+            return this;
+        }
+
+        public Builder defaultPortrait(boolean defaultPortrait) {
+            this.defaultPortrait = defaultPortrait;
             return this;
         }
 

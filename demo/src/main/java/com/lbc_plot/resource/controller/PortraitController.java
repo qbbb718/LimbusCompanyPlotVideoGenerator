@@ -270,7 +270,9 @@ public class PortraitController {
                 }
 
                 // 更新角色的默认立绘
-                // 使用character_portraits表来标记默认立绘
+                // 使用character_portraits表来标记默认立绘（同一角色只保留一个默认）
+                // 关联记录可能缺失（例如立绘刚上传还没保存过角色），先补齐再设置
+                dao.ensureCharacterPortrait(characterId, portraitId);
                 dao.setDefaultPortrait(characterId, portraitId);
 
                 // 重新生成名片图片

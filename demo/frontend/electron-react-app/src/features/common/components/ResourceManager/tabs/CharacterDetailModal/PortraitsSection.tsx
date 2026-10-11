@@ -1,6 +1,7 @@
 import React from "react";
 import { MyCharacter, Portrait } from "@types";
 import PortraitCard from "./PortraitCard";
+import { isDefaultPortraitId } from "@features/common/utils/portraitUtils";
 
 interface PortraitsSectionProps {
   character: MyCharacter;
@@ -17,12 +18,8 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
   onDeletePortrait,
   onAddPortrait,
 }) => {
-  const isDefaultPortrait = (portraitId: string) => {
-    return (
-      character.portraits?.length > 0 &&
-      character.portraits[0].portraitID === portraitId
-    );
-  };
+  const isDefaultPortrait = (portraitId: string) =>
+    isDefaultPortraitId(character.portraits, portraitId);
 
   return (
     <div className="portraits-section">

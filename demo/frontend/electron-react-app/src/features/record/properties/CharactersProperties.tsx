@@ -8,6 +8,7 @@ import {
   Emotion,
 } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
+import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
 import "../RecordEditor.css";
 import "./CharactersProperties.css";
 
@@ -397,11 +398,9 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                           colorBg: selectedChara.colorBg,
                           colorText: selectedChara.colorText,
                         });
-                        if (selectedChara.portraits.length > 0) {
-                          setNewPortrait(selectedChara.portraits[0]);
-                        } else {
-                          setNewPortrait(null);
-                        }
+                        const defaultPortrait =
+                          getDefaultPortrait(selectedChara.portraits);
+                        setNewPortrait(defaultPortrait);
                       }
                     }}
                   >

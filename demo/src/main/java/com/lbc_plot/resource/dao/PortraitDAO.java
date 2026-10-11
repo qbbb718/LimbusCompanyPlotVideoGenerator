@@ -84,7 +84,21 @@ public interface PortraitDAO {
     }
 
     // ========== 查询操作 ==========
-    @SqlQuery("SELECT * FROM portraits WHERE character_id = :characterId ORDER BY port_name")
+    /**
+     * 查询角色的立绘列表。
+     *
+     * 默认立绘（character_portraits.is_default = 1）排在最前，其余按名称排序。
+     * 这样 portraits[0] 既保持历史约定的"默认立绘"，又不会因为立绘改名而改变默认项；
+     * 同时把 is_default 读进 Portrait.defaultPortrait，供前端显示"默认立绘"标记。
+     */
+    @SqlQuery("""
+            SELECT p.*, COALESCE(cp.is_default, 0) AS is_default
+            FROM portraits p
+            LEFT JOIN character_portraits cp
+                ON cp.portrait_id = p.portrait_id AND cp.character_id = p.character_id
+            WHERE p.character_id = :characterId
+            ORDER BY COALESCE(cp.is_default, 0) DESC, p.port_name
+            """)
     @UseRowMapper(PortraitMapper.class)
     List<Portrait> findByCharacterId(@Bind("characterId") String characterId);
 
@@ -194,22 +208,79 @@ public interface PortraitDAO {
             @Bind("order") int order);
 
     /**
-     * 批量保存角色-立绘关联关系
-     * 
+     * 批量保存角色-立绘关联关系。
+     *
+     * is_default 的取值优先级：
+     * 1. 入参中立绘自带的 defaultPortrait（前端"设为默认立绘"后保存时传回）；
+     * 2. 数据库中已有的默认立绘（保持用户此前的选择，避免保存角色时被重置）；
+     * 3. 都不存在时取列表第一个（兼容首次创建角色的场景）。
+     *
+     * 之前的实现无条件把第一个立绘设为默认，导致用户每次点击"保存"都会把默认立绘
+     * 改回列表首项。
+     *
      * @param characterId 角色ID
-     * @param portraits   立绘列表（第一个立绘将设为默认）
+     * @param portraits   立绘列表
      */
     @Transaction
     default void saveCharacterPortraits(String characterId, List<Portrait> portraits) {
+        saveCharacterPortraits(characterId, portraits, findDefaultPortraitId(characterId));
+    }
+
+    /**
+     * 批量保存角色-立绘关联关系，并显式指定重建前需要保留的默认立绘。
+     *
+     * 调用方如果先执行了 deleteCharacterPortraits（例如 CharacterController 更新角色时
+     * 重建关联关系），必须先把原默认立绘ID查出来通过 preservedDefaultId 传进来，
+     * 否则默认标记已随关联记录一起被删除，只能退回列表首项。
+     *
+     * @param characterId         角色ID
+     * @param portraits           立绘列表
+     * @param preservedDefaultId  重建前该角色的默认立绘ID，可为 null
+     */
+    @Transaction
+    default void saveCharacterPortraits(String characterId, List<Portrait> portraits,
+            String preservedDefaultId) {
+        if (portraits == null || portraits.isEmpty()) {
+            return;
+        }
+
+        String defaultPortraitId = null;
+        for (Portrait portrait : portraits) {
+            if (portrait.isDefaultPortrait()) {
+                defaultPortraitId = portrait.getPortraitID();
+                break;
+            }
+        }
+
+        if (defaultPortraitId == null) {
+            // 入参没带默认标记时，沿用传入的（或数据库里已有的）默认立绘
+            defaultPortraitId = preservedDefaultId;
+        }
+
         for (int i = 0; i < portraits.size(); i++) {
-            saveCharacterPortrait(
-                    characterId,
-                    portraits.get(i).getPortraitID(),
-                    i == 0, // 第一个立绘是默认
-                    i // 顺序
-            );
+            Portrait portrait = portraits.get(i);
+            boolean isDefault = defaultPortraitId != null
+                    ? defaultPortraitId.equals(portrait.getPortraitID())
+                    : i == 0; // 没有任何依据时退回第一个立绘
+            saveCharacterPortrait(characterId, portrait.getPortraitID(), isDefault, i);
         }
     }
+
+    /**
+     * 查询角色当前默认立绘的ID。
+     *
+     * 说明：按 (is_default, display_order, created_time) 排序取第一条，
+     * 这样即使历史数据里存在多个默认标记（旧实现的遗留），也能稳定取到一个。
+     *
+     * @return 默认立绘ID，没有关联记录时返回 null
+     */
+    @SqlQuery("""
+            SELECT portrait_id FROM character_portraits
+            WHERE character_id = :characterId
+            ORDER BY is_default DESC, display_order, created_time
+            LIMIT 1
+            """)
+    String findDefaultPortraitId(@Bind("characterId") String characterId);
 
     /**
      * 删除角色的所有立绘关联关系
@@ -220,13 +291,48 @@ public interface PortraitDAO {
     void deleteCharacterPortraits(@Bind("characterId") String characterId);
 
     /**
-     * 设置默认立绘
-     * 
+     * 设置默认立绘（同一角色下保证只有一个默认）。
+     *
+     * 之前只执行 UPDATE ... SET is_default = 1，旧的默认立绘仍保留 is_default = 1，
+     * 于是读取时按名称排序可能又取回旧立绘。这里先清空该角色的所有默认标记再设置新的。
+     *
      * @param characterId 角色ID
      * @param portraitId  立绘ID
      */
-    @SqlUpdate("UPDATE character_portraits SET is_default = 1 WHERE character_id = :characterId AND portrait_id = :portraitId")
-    void setDefaultPortrait(
+    @Transaction
+    default void setDefaultPortrait(String characterId, String portraitId) {
+        clearDefaultPortraits(characterId);
+        markPortraitAsDefault(characterId, portraitId);
+    }
+
+    /**
+     * 清空角色所有立绘的默认标记
+     */
+    @SqlUpdate("UPDATE character_portraits SET is_default = 0 WHERE character_id = :characterId")
+    void clearDefaultPortraits(@Bind("characterId") String characterId);
+
+    /**
+     * 把指定立绘标记为默认
+     */
+    @SqlUpdate("""
+            UPDATE character_portraits SET is_default = 1
+            WHERE character_id = :characterId AND portrait_id = :portraitId
+            """)
+    int markPortraitAsDefault(
+            @Bind("characterId") String characterId,
+            @Bind("portraitId") String portraitId);
+
+    /**
+     * 新增角色-立绘关联（若不存在，用于"设置默认立绘"时关联记录缺失的兜底）。
+     */
+    @SqlUpdate("""
+            INSERT OR IGNORE INTO character_portraits
+            (character_id, portrait_id, is_default, display_order)
+            VALUES (:characterId, :portraitId, 0,
+                COALESCE((SELECT MAX(display_order) + 1 FROM character_portraits
+                          WHERE character_id = :characterId), 0))
+            """)
+    void ensureCharacterPortrait(
             @Bind("characterId") String characterId,
             @Bind("portraitId") String portraitId);
 }
