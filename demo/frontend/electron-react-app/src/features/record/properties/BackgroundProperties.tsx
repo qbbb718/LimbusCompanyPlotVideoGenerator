@@ -52,13 +52,14 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
     }
   };
 
-  const addBackground = () => {
-    if (!selectedBackground) {
+  const addBackground = (background?: Background) => {
+    const target = background || selectedBackground;
+    if (!target) {
       alert("请选择背景");
       return;
     }
     const newBackground: BackgroundVisual = {
-      background: selectedBackground,
+      background: target,
       posX: 0,
       posY: 0,
       scale: 1,
@@ -70,6 +71,12 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
     });
     setSelectedBackground(null);
     setShowSelector(false);
+  };
+
+  // 双击直接添加背景，无需再点“确认添加”
+  const handleBackgroundDoubleClick = (bg: Background) => {
+    setSelectedBackground(bg);
+    addBackground(bg);
   };
 
   const updateBackground = (index: number, field: string, value: any) => {
@@ -131,6 +138,8 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                     key={bg.uuid}
                     className={`background-item ${selectedBackground?.uuid === bg.uuid ? "selected" : ""}`}
                     onClick={() => setSelectedBackground(bg)}
+                    onDoubleClick={() => handleBackgroundDoubleClick(bg)}
+                    title="双击直接添加该背景"
                   >
                     <div className="background-thumbnail">
                       <img
@@ -155,7 +164,14 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
               </div>
             </div>
             <div className="background-selector-footer">
-              <button onClick={addBackground} disabled={!selectedBackground}>
+              <span className="background-selector-hint">
+                双击缩略图可直接添加
+              </span>
+              <button
+                className="confirm-btn"
+                onClick={() => addBackground()}
+                disabled={!selectedBackground}
+              >
                 确认添加
               </button>
             </div>

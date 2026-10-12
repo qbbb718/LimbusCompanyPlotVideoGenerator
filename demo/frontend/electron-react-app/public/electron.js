@@ -971,28 +971,40 @@ ipcMain.handle("dialog:selectDirectory", async () => {
   return { canceled };
 });
 
-// 打开资源目录
+/**
+ * 素材根目录（{dataRoot}/assets）。
+ *
+ * 素材不在项目目录里：后端（com.lbc_plot.common.util.RuntimePaths）把数据根目录固定在用户
+ * 数据目录，所有素材都放在其下的 assets/，安装版首次启动时由 ensureUserDataFiles 从安装包
+ * 复制过去。因此这里必须用 app.getPath("userData") 解析，而不是 __dirname 往上找项目根目录
+ * ——旧实现按 demoRoot 拼路径，"打开xx文件夹"打开的是仓库里那个几乎空的 assets/。
+ *
+ *   Windows: %APPDATA%\limbus-company-plot-video-generator\assets
+ *   其它平台: ~/.limbus-company-plot-video-generator/assets
+ *
+ * 后端还支持用环境变量 LBC_DATA_DIR 覆盖数据根目录（RuntimePaths 的第 2 优先级），而本进程的
+ * 环境变量会被 spawn 的后端继承，所以这里按同样的优先级解析，避免两边指向不同目录。
+ * （第 1 优先级的 -Dlbc.data.dir 是后端 JVM 的系统属性，主进程看不到，故不处理。）
+ */
+function getAssetsDir() {
+  const override = (process.env.LBC_DATA_DIR || "").trim();
+  const dataRoot = override ? path.resolve(override) : app.getPath("userData");
+  return path.join(dataRoot, "assets");
+}
+
+// 打开资源目录（"资源管理"页各 tab 的"打开角色/背景/音频文件夹"按钮）
 ipcMain.handle("folder:open", async (event, resourceType) => {
   try {
-    // 计算demo项目根目录，Electron main文件位于 demo/frontend/electron-react-app/public
-    const demoRoot = path.resolve(__dirname, "..", "..", "..");
-
-    let folderPath;
-    switch (resourceType) {
-      case "backgrounds":
-        folderPath = path.join(demoRoot, "assets", "backgrounds");
-        break;
-      case "characters":
-        folderPath = path.join(demoRoot, "assets", "characters");
-        break;
-      case "audios":
-        folderPath = path.join(demoRoot, "resources", "audios");
-        break;
-      default:
-        throw new Error("未知资源类型: " + resourceType);
+    // {dataRoot}/assets 下的三个素材子目录，与后端 RuntimePaths 的
+    // getCharactersDir / getBackgroundsDir / getAudiosDir 一一对应
+    const ASSET_SUBDIRS = ["characters", "backgrounds", "audios"];
+    if (!ASSET_SUBDIRS.includes(resourceType)) {
+      throw new Error("未知资源类型: " + resourceType);
     }
 
-    // 确保目录存在
+    const folderPath = path.join(getAssetsDir(), resourceType);
+
+    // 确保目录存在：后端还没建过该素材目录时，用户看到的是空目录而不是一句报错
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
     }
@@ -1004,6 +1016,7 @@ ipcMain.handle("folder:open", async (event, resourceType) => {
       return { success: false, error: result };
     }
 
+    log.info("已打开资源文件夹:", folderPath);
     return { success: true, path: folderPath };
   } catch (err) {
     console.error("打开资源文件夹失败", err);
