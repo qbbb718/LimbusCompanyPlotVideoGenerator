@@ -11,6 +11,13 @@
       "faction" : "未设定",
       "colorBg" : "#4C361F",
       "colorText" : "#FBDBB3"
+    }, {
+      "characterID" : "char_1791800699958",
+      "characterName" : "新角色",
+      "height" : 170,
+      "faction" : "未设定",
+      "colorBg" : "#4C361F",
+      "colorText" : "#FBDBB3"
     } ],
     "speakerName" : "格里高尔",
     "faction" : "中立",
@@ -25,7 +32,6 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
-  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -46,20 +52,50 @@
       "length" : 192,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png"
+      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
+      "defaultPortrait" : false
     },
-    "posX" : 1028,
+    "posX" : 1112,
     "posY" : 257,
     "adjX" : 384,
     "adjY" : 0,
     "dim" : false
+  }, {
+    "chara" : {
+      "characterID" : "char_1791800699958",
+      "characterName" : "新角色",
+      "height" : 170,
+      "faction" : "未设定",
+      "colorBg" : "#4C361F",
+      "colorText" : "#FBDBB3"
+    },
+    "portrait" : {
+      "portraitID" : "portrait_1791800709646",
+      "characterID" : "char_1791800699958",
+      "imagePath" : "char_1791800699958/portrait_1791800709646.webp",
+      "portName" : "巴里-default",
+      "emotion" : "normal",
+      "faceX" : 423,
+      "faceY" : 108,
+      "length" : 176,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : "/assets/characters/char_1791800699958/thumbnails/thumbnail_portrait_1791800709646.png",
+      "defaultPortrait" : true
+    },
+    "posX" : 520,
+    "posY" : 121,
+    "adjX" : 0,
+    "adjY" : 0,
+    "dim" : false
   } ],
+  "isDirty" : false,
   "bg" : [ {
     "background" : {
-      "uuid" : "bg_1791465440079",
-      "path" : "/assets/backgrounds/办公室_1791465458644.png",
+      "uuid" : "bg_1786455477902",
+      "path" : "http://localhost:8081/assets/backgrounds/不xx_1786455491887.png",
       "name" : "办公室",
-      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1791465440079_1791465458953.png"
+      "thumbnailPath" : "http://localhost:8081/assets/backgrounds/thumbnails/thumb_bg_1786455477902_1786455492375.png"
     },
     "posX" : 0,
     "posY" : 0,
@@ -86,7 +122,6 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
-  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -107,14 +142,16 @@
       "length" : 192,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png"
+      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
+      "defaultPortrait" : false
     },
-    "posX" : 1028,
+    "posX" : 1112,
     "posY" : 257,
     "adjX" : 384,
     "adjY" : 0,
     "dim" : true
   } ],
+  "isDirty" : false,
   "bg" : [ {
     "background" : {
       "uuid" : "bg_1791465440079",

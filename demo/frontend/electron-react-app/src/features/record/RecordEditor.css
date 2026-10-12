@@ -375,6 +375,59 @@
   border-radius: 4px;
 }
 
+/* ===== 全局设置 tab =====
+   输出路径的"输入框 + 浏览按钮"组合与设置页同名（.path-input-group），
+   但属性面板是单列布局、输入框本来就是整宽，所以样式只作用于本面板，
+   不引入设置页的 flex 表单样式（那会把其它属性面板的 label 挤到同一行）。 */
+.global-properties .path-input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.global-properties .path-input-group input:not([type="range"]) {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  border-radius: 4px 0 0 4px;
+  border-right: none;
+}
+
+.global-properties .path-input-group button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  background-color: #1890ff;
+  color: #fff;
+  border: 1px solid #1890ff;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+
+.global-properties .path-input-group button:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+/* 音量：滑块占满剩余宽度，右侧百分比定宽，避免拖动时数字跳动导致滑块抖动 */
+.global-properties .volume-slider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.global-properties .volume-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  margin-right: 10px;
+  height: 6px;
+  cursor: pointer;
+}
+
+.global-properties .volume-slider span {
+  flex: 0 0 auto;
+  width: 42px;
+  text-align: right;
+}
+
 .loading {
   display: flex;
   justify-content: center;

@@ -7,6 +7,12 @@ interface RecordPreviewProps {
   selectedRecord: Record;
   videoWidth: number;
   videoHeight: number;
+  /**
+   * 是否按剧情模式渲染（全局设置里的"剧情类型"：剧情 → true，人格故事 → false）。
+   * 后端 renderPre(record, plot, w, h) 用它决定是否叠加立绘/黑边与 0.8 缩放，
+   * 所以切换剧情类型时预览图必须重新取一次（见下面的 useEffect 依赖）。
+   */
+  plot: boolean;
   records: Record[];
   selectedRecordIndex: number;
   setSelectedRecordIndex: (index: number) => void;
@@ -16,6 +22,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   selectedRecord,
   videoWidth,
   videoHeight,
+  plot,
   records,
   selectedRecordIndex,
   setSelectedRecordIndex,
@@ -76,7 +83,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
         const url = await ApiService.getRecordPreview(
           selectedRecord, videoWidth, videoHeight,
-          forceRefresh,
+          forceRefresh, plot,
         );
 
         if (cancelled) {
@@ -108,7 +115,9 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedRecord, videoWidth, videoHeight]);
+    // plot 变化（切换"剧情类型"）时重新取图：后端缓存按 plot 分开存，
+    // 不需要 forceRefresh，但必须重新请求一次才能拿到另一种样式的图。
+  }, [selectedRecord, videoWidth, videoHeight, plot]);
 
   // 组件卸载时清理 blob URL
   useEffect(() => {

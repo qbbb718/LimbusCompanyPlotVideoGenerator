@@ -156,16 +156,42 @@
 ```
 - **响应**: 文件下载 (JSON)
 
+### 渲染单条记录的预览图
+- **URL**: `POST /records/preview`
+- **说明**: 按当前设置把一条记录渲染成 PNG 预览图（结果按 `uuid + 分辨率 + 剧情模式` 缓存在 `projects/temp/previews/`）
+- **查询参数**:
+  - `width`（默认 1920）/ `height`（默认 1080）- 预览图尺寸
+  - `forceRefresh`（默认 false）- 跳过缓存重新渲染
+  - `plot`（默认 true）- 是否剧情模式：全局设置里选「剧情」为 `true`，选「人格故事」为 `false`。
+    该值直接传给 `RenderOfImage.renderPre(record, plot, width, height)`，两种模式各存一份缓存
+- **请求体**: `Record` JSON 对象
+- **响应**: PNG 图片字节流
+
 ### 生成视频
 - **URL**: `POST /generate-video`
-- **说明**: 根据记录列表生成视频
+- **说明**: 根据记录列表异步生成视频，立即返回 `taskId`，进度用 `GET /generate-video/progress/{taskId}` 轮询
 - **请求体**:
 ```json
 {
-  "records": [...]
+  "records": [ ... ],
+  "outputPath": "E:\\导出目录",
+  "width": 1920,
+  "height": 1080,
+  "frameRate": 30,
+  "layerTypes": ["FULL"],
+  "keepTempFiles": false,
+  "projectName": "我的项目",
+  "plot": true
 }
 ```
-- **响应**: `String` - 生成结果或任务ID
+- **`outputPath`**: 导出目录（不是文件名），目录不存在时后端会创建
+- **`layerTypes`**: 导出分层，取值 `FULL` / `UI_ONLY` / `BG_CHARACTERS` / `BACKGROUND_ONLY` / `CHARACTERS_ONLY`，
+  分别追加后缀 `_full` / `_ui` / `_bg_characters` / `_bg` / `_characters`（透明层导出 `.mov`，其余 `.mp4`）
+- **`projectName`**: 项目名称，作为导出视频文件名前缀（`项目名称_video_<时间戳><后缀>.mp4`）；
+  名称里的非法文件名字符会被过滤，为空则不加前缀
+- **`plot`**: 是否剧情模式（全局设置的「剧情类型」：剧情 `true` / 人格故事 `false`），
+  默认 `true`；该值传给 `BatchVideoProcessor.processRecordList(...)` 影响画面样式
+- **响应**: 任务ID（`taskId`）
 
 ---
 

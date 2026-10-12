@@ -10,6 +10,7 @@ import CharactersProperties from "./properties/CharactersProperties";
 import BackgroundProperties from "./properties/BackgroundProperties";
 import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
+import { plotOf } from "@features/common/utils/projectSettings";
 import { generateUUID } from "./utils";
 import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
@@ -17,6 +18,8 @@ import { ProjectWorkspace } from "./useProjectWorkspace";
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
+  /** 更新项目设置：全局设置 tab 与"设置"页面改的是同一份状态（App 层持有） */
+  setProjectSettings: React.Dispatch<React.SetStateAction<ProjectSettings>>;
   /**
    * 当前工程的工作区（记录、选中位置、文件关联与保存/导入操作）。
    * 由 App 层持有，所以切换到资源管理等页面再回来，编辑内容不会丢。
@@ -27,6 +30,7 @@ interface RecordEditorProps {
 
 const RecordEditor: React.FC<RecordEditorProps> = ({
   projectSettings,
+  setProjectSettings,
   workspace,
 }) => {
   const {
@@ -147,6 +151,18 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     });
   };
 
+  /**
+   * @function 更新项目设置（全局设置 tab 用）
+   * 与"设置"页面写入的是同一份 projectSettings，所以两侧互相同步、
+   * 也会立刻作用到预览图与导出视频上。
+   */
+  const handleProjectSettingsChange = useCallback(
+    (field: keyof ProjectSettings, value: any) => {
+      setProjectSettings((prev) => ({ ...prev, [field]: value }));
+    },
+    [setProjectSettings],
+  );
+
   const deleteRecord = (index: number) => {
     const currentRecords = recordsRef.current;
     if (currentRecords.length <= 1) {
@@ -209,7 +225,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     }
 
     // 传出去的是导出目录（不是文件名）：设置里选的/填的就是文件夹，
-    // 目录不存在时由后端创建，视频文件名（video_<时间戳>_<分层>.mp4）也由后端生成。
+    // 目录不存在时由后端创建，视频文件名（项目名称_video_<时间戳>_<分层>.mp4）也由后端生成。
     const outputPath = projectSettings.outputPath?.trim() || "./output";
 
     try {
@@ -223,6 +239,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         30,
         layerTypes,
         keepTempFiles,
+        // 项目名称 → 导出视频文件名前缀；剧情类型 → 后端 plot（决定是否叠加立绘/黑边）
+        projectSettings.name,
+        plotOf(projectSettings),
       );
 
       const taskId = result.taskId || result.outputPath; // 兼容旧格式
@@ -371,7 +390,12 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           />
         );
       case "global":
-        return <GlobalProperties projectSettings={projectSettings} />;
+        return (
+          <GlobalProperties
+            projectSettings={projectSettings}
+            onChange={handleProjectSettingsChange}
+          />
+        );
       default:
         return null;
     }
@@ -397,6 +421,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               selectedRecord={selectedRecord}
               videoWidth={projectSettings.videoWidth}
               videoHeight={projectSettings.videoHeight}
+              plot={plotOf(projectSettings)}
               records={currentRecords}
               selectedRecordIndex={selectedRecordIndex}
               setSelectedRecordIndex={setSelectedRecordIndex}

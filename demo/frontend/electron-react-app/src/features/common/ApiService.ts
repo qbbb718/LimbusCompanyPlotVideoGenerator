@@ -338,6 +338,8 @@ class ApiService {
   // 生成视频（异步 — 返回 taskId，前端轮询进度）
   // layerTypes: 可选的分层导出列表，如 ["FULL", "UI_ONLY", "BACKGROUND_ONLY"]
   // keepTempFiles: 是否保留中间文件，便于下次导出时跳过未修改的 Record
+  // projectName: 项目名称，后端作为导出视频文件名前缀（"项目名称_"）
+  // plot: 是否剧情模式（全局设置里的"剧情类型"：剧情 true / 人格故事 false）
   async generateVideo(
     records: any[],
     outputPath: string,
@@ -346,6 +348,8 @@ class ApiService {
     frameRate: number = 30,
     layerTypes: string[] = ["FULL"],
     keepTempFiles: boolean = false,
+    projectName: string = "",
+    plot: boolean = true,
   ) {
     try {
       const response = await apiClient.post('/generate-video', {
@@ -356,6 +360,8 @@ class ApiService {
         frameRate,
         layerTypes,
         keepTempFiles,
+        projectName,
+        plot,
       });
       return response.data;
     } catch (error) {
@@ -368,14 +374,16 @@ class ApiService {
    * 渲染单条记录的预览图
    * 将 Record JSON 发送到后端，由 RenderOfImage.renderPre() 渲染为 PNG 图片。
    * @param record 要渲染的 Record 对象
-   * @param width  预览图宽度，默认 1280
-   * @param height 预览图高度，默认 720
+   * @param width  预览图宽度，默认 1920
+   * @param height 预览图高度，默认 1080
+   * @param forceRefresh 强制重新渲染（跳过缓存）
+   * @param plot   是否剧情模式（与导出视频用同一个 plot：剧情 true / 人格故事 false）
    * @returns blob URL，可直接用于 <img src>。调用方需在组件卸载时调用 URL.revokeObjectURL()
    */
-  async getRecordPreview(record: any, width = 1920, height = 1080, forceRefresh = false): Promise<string> {
+  async getRecordPreview(record: any, width = 1920, height = 1080, forceRefresh = false, plot = true): Promise<string> {
     try {
       const response = await apiClient.post(
-        `/records/preview?width=${width}&height=${height}&forceRefresh=${forceRefresh}`,
+        `/records/preview?width=${width}&height=${height}&forceRefresh=${forceRefresh}&plot=${plot}`,
         record,
         { responseType: 'blob' },
       );

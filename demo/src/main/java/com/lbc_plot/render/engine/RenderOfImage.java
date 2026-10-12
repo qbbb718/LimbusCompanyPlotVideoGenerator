@@ -77,7 +77,8 @@ public class RenderOfImage {
     /**
      * 设计画布宽度。
      *
-     * <p><b>为什么渲染必须先画在 1080p 设计画布上：</b>所有素材的坐标与比例都是按 1080p 标定的 ——
+     * <p>
+     * <b>为什么渲染必须先画在 1080p 设计画布上：</b>所有素材的坐标与比例都是按 1080p 标定的 ——
      * {@link ProjectConfig} 里的字号/锚点、{@link CharacterVisual#getPosX()} 的立绘位置、
      * 立绘缩放比（{@code DEFAULT_CHARACTER_HEAD_LENGTH / portrait.length}）、
      * {@code border_1080p.png} 等 UI 素材的原始像素尺寸，全都是 1080p 空间里的数值。
@@ -85,7 +86,8 @@ public class RenderOfImage {
      * {@code width/height} 只是<strong>最终输出尺寸</strong>，内部一律在 1080p 设计画布上合成，
      * 最后<strong>只缩放一次</strong>到输出尺寸（见 {@link #composeFinalImage}）。
      *
-     * <p>反面教材（本类修复前的写法）：把背景/UI 提前缩放成输出尺寸，再把它们塞进 1080p 画布，
+     * <p>
+     * 反面教材（本类修复前的写法）：把背景/UI 提前缩放成输出尺寸，再把它们塞进 1080p 画布，
      * 于是低分辨率下背景被缩了两次、变得只有左上角一小块，而立绘/边框仍是 1080p 的比例，
      * 看起来就是"立绘没有跟着缩小"。
      */
@@ -101,7 +103,8 @@ public class RenderOfImage {
     /**
      * 创建"设计画布"合成器：显式把画布固定为 1080p 设计尺寸。
      *
-     * <p>不能依赖 {@link FrameComposerService} 的默认尺寸——图层管理器会在
+     * <p>
+     * 不能依赖 {@link FrameComposerService} 的默认尺寸——图层管理器会在
      * {@code addImageLayer} 时把自己的 width/height 撑大，画布尺寸必须由调用方显式设定。
      */
     private static FrameComposerService newDesignComposer() {
@@ -130,16 +133,17 @@ public class RenderOfImage {
             renderBackground(composer, record);
             if (plot) {
                 renderCharacters(composer, record);
-                renderTempImages(composer, record);
-                composer.addImageLayer(border, 0, 0);
-                // 缩放0.8：先把背景+角色+border合成一张，再缩小到 0.8 居中
-                BufferedImage coImage = composer.compose();
-                logger.info("中间合成: coImage 尺寸={}x{}, 目标缩放={}, 目标位置=({},{})",
-                        coImage.getWidth(), coImage.getHeight(),
-                        PLOT_SCENE_SCALE, designW / 10, designH / 10);
-                composer.addSolidColorLayer(0x000000, 255, 0, 0, designW, designH);
-                composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
             }
+            renderTempImages(composer, record);
+            composer.addImageLayer(border, 0, 0);
+            // 缩放0.8：先把背景+角色+border合成一张，再缩小到 0.8 居中
+            BufferedImage coImage = composer.compose();
+            logger.info("中间合成: coImage 尺寸={}x{}, 目标缩放={}, 目标位置=({},{})",
+                    coImage.getWidth(), coImage.getHeight(),
+                    PLOT_SCENE_SCALE, designW / 10, designH / 10);
+            composer.addSolidColorLayer(0x000000, 255, 0, 0, designW, designH);
+            composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
+            // }原本plot大括号在这里
 
             renderUIAndDialogue(composer, record, plot);
 
@@ -171,13 +175,15 @@ public class RenderOfImage {
             renderBackground(composer, record);
             if (plot) {
                 renderCharacters(composer, record);
-                renderTempImages(composer, record);
-                composer.addImageLayer(border, 0, 0);
-                // 缩放0.8
-                BufferedImage coImage = composer.compose();
-                composer.addSolidColorLayer(0x000000, 255, 0, 0, designW, designH);
-                composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
             }
+            renderTempImages(composer, record);
+            composer.addImageLayer(border, 0, 0);
+            // 缩放0.8
+            BufferedImage coImage = composer.compose();
+            composer.addSolidColorLayer(0x000000, 255, 0, 0, designW, designH);
+            composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
+            // }原本plot大括号在这里
+
             renderUIBackground(composer, plot, record.getDialogue());
 
             // 除了对话都渲染了,虽然上面是静态的
@@ -247,7 +253,8 @@ public class RenderOfImage {
         }
 
         // 始终全屏拉伸背景到设计画布，0.8 缩放 + 居中由 renderPre / renderPreExceptDialogue
-        // 中的 addImageLayerScaled(coImage, designW/10, designH/10, PLOT_SCENE_SCALE) 统一完成；
+        // 中的 addImageLayerScaled(coImage, designW/10, designH/10, PLOT_SCENE_SCALE)
+        // 统一完成；
         // 输出分辨率的缩放只在最后 composeFinalImage 里做一次。
         logger.info("  → 背景全屏拉伸至 {}x{}（0.8 缩放由上层 compose+scale 统一处理）", designW, designH);
         renderFullScreenBackground(composer, bgList, designW, designH);
@@ -695,7 +702,8 @@ public class RenderOfImage {
     /**
      * 合成最终图像：在设计画布上合成，然后<strong>只在此处</strong>缩放到请求的输出尺寸。
      *
-     * <p>1080p 输出时这里不做任何缩放（{@code actual == 期望}），低分辨率输出时整幅画面
+     * <p>
+     * 1080p 输出时这里不做任何缩放（{@code actual == 期望}），低分辨率输出时整幅画面
      * （背景/立绘/边框/UI/文字）等比缩小一次，因此任何分辨率下的构图都与 1080p 完全一致。
      */
     private static BufferedImage composeFinalImage(FrameComposerService composer, int width, int height) {
@@ -779,7 +787,8 @@ public class RenderOfImage {
     /**
      * 渲染整个UI（<strong>返回设计画布尺寸的 UI 图层</strong>，不按输出分辨率缩放）。
      *
-     * <p>UI 素材（对话框/名片/地点牌）与 {@link ProjectConfig} 里的锚点都是 1080p 设计尺寸，
+     * <p>
+     * UI 素材（对话框/名片/地点牌）与 {@link ProjectConfig} 里的锚点都是 1080p 设计尺寸，
      * 因此这里固定画在设计画布上；调用方把整幅画面一次性缩放到输出分辨率
      * （见 {@link #composeFinalImage}）。若在这里提前缩放，UI 会被缩放两次而缩到左上角。
      *

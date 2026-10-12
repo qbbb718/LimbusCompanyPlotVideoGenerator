@@ -74,9 +74,20 @@ public class RecordController {
      * 低分辨率下背景/UI 被缩放两次、立绘看起来没跟着缩小的问题）。旧的缓存文件仍然是坏图，
      * 而缓存命中只看 uuid+分辨率，所以必须换文件名让旧缓存失效。
      *
+     * <p>v3：预览图开始区分剧情模式（plot），缓存文件名里追加了模式标记，
+     * 同时让按"剧情"渲染的旧缓存（无标记）一并失效。
+     *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v2";
+    private static final String PREVIEW_CACHE_VERSION = "v3";
+
+    /**
+     * 文件名里不允许出现的字符（Windows 限制最严，跨平台按这一套过滤即可）：
+     * 路径分隔符、通配符、冒号以及控制字符。项目名称来自用户输入，
+     * 直接拼进文件名会让"输出路径\项目名_video_xxx.mp4"这种路径创建失败。
+     */
+    private static final java.util.regex.Pattern ILLEGAL_FILE_NAME_CHARS =
+            java.util.regex.Pattern.compile("[\\\\/:*?\"<>|\\x00-\\x1f]");
 
     @Autowired
     private CharacterService characterService;
@@ -220,28 +231,32 @@ public class RecordController {
      * 接收 Record 列表及输出参数，在后台调用 BatchVideoProcessor 合成最终视频文件。
      * 立即返回 taskId，前端通过 GET /api/generate-video/progress/{taskId} 轮询进度。
      *
-     * @param request 包含 records、outputPath、width、height、frameRate 的请求体
+     * @param request 包含 records、outputPath、width、height、frameRate、projectName、plot 的请求体
      * @return 包含 taskId 的响应
      */
     @PostMapping("/generate-video")
     public GenerateVideoResponse generateVideo(@RequestBody GenerateVideoRequest request) {
-        logger.info("收到视频生成请求: record数={}, outputPath={}, {}x{} @ {}fps, layerTypes={}",
+        logger.info("收到视频生成请求: record数={}, outputPath={}, {}x{} @ {}fps, layerTypes={}, projectName={}, plot={}",
                 request.getRecords() != null ? request.getRecords().size() : 0,
                 request.getOutputPath(), request.getWidth(), request.getHeight(), request.getFrameRate(),
-                request.getLayerTypes());
+                request.getLayerTypes(), request.getProjectName(), request.isPlot());
 
         if (request.getRecords() == null || request.getRecords().isEmpty()) {
             throw new IllegalArgumentException("Record 列表为空，无法生成视频");
         }
 
         // 解析导出目录与基础输出路径（目录不存在时会被创建）
-        OutputTarget target = resolveOutputTarget(request.getOutputPath());
+        // 项目名称作为导出视频文件名前缀（"项目名称_"），见 resolveOutputTarget。
+        OutputTarget target = resolveOutputTarget(request.getOutputPath(), request.getProjectName());
         final File outDir = target.outDir();
         String outputPath = target.baseOutputPath();
 
         final int width = request.getWidth() > 0 ? request.getWidth() : ProjectConfig.VIDEO_WIDTH;
         final int height = request.getHeight() > 0 ? request.getHeight() : ProjectConfig.VIDEO_HEIGHT;
         final int frameRate = request.getFrameRate() > 0 ? request.getFrameRate() : ProjectConfig.FRAME_RATE;
+        // 剧情类型：全局设置里选"剧情"时 plot = true（立绘 + 黑边 + 0.8 缩放居中），
+        // "人格故事"时 false（只画背景与 UI/对话）。未传该字段的旧调用方保持原行为（true）。
+        final boolean plot = request.isPlot();
         final List<Record> records = request.getRecords();
 
         // 获取导出分层类型，默认为完整视频
@@ -280,8 +295,12 @@ public class RecordController {
                     String layerOutputPath = baseOutputPath + suffix + ext;
                     outputPaths.add(layerOutputPath);
 
-                    // 每个分层使用独立的临时目录，避免缓存冲突
-                    File layerTempDir = new File(outDir, "temp" + suffix);
+                    // 每个分层使用独立的临时目录，避免缓存冲突。
+                    // 临时目录再按剧情类型分开：勾选"保留中间文件"时，下次导出会复用这些
+                    // 渲染好的片段（record_uuid.mp4），而切换剧情类型后画面完全不同，
+                    // 复用会让同一条视频里前半段是剧情样式、后半段是人格故事样式。
+                    // 剧情模式沿用原来的 "temp{后缀}" 目录名，老的中间文件仍能命中。
+                    File layerTempDir = new File(outDir, "temp" + suffix + (plot ? "" : "_plain"));
                     layerTempDir.mkdirs();
 
                     logger.info("开始生成分层视频: layerType={}, outputPath={}", layerType, layerOutputPath);
@@ -290,7 +309,7 @@ public class RecordController {
                             records,
                             layerOutputPath,
                             layerTempDir.getAbsolutePath(),
-                            true,  // plot = true
+                            plot,  // 来自全局设置的"剧情类型"
                             width,
                             height,
                             frameRate,
@@ -331,12 +350,14 @@ public class RecordController {
     /**
      * 渲染单条记录的预览图（支持磁盘缓存）
      * 接收 Record JSON，调用 RenderOfImage.renderPre() 渲染为 PNG 图片返回。
-     * 缓存文件: projects/temp/previews/preview_{版本}_{uuid}_{width}x{height}.png
+     * 缓存文件: projects/temp/previews/preview_{版本}_{uuid}_{width}x{height}_{模式}.png
      *
      * @param record       要渲染的 Record 对象（JSON body）
      * @param width        预览图宽度，默认 1920
      * @param height       预览图高度，默认 1080
      * @param forceRefresh 强制重新渲染（跳过缓存）
+     * @param plot         是否剧情模式（全局设置的"剧情类型"：剧情 true / 人格故事 false），
+     *                     决定是否叠加立绘/黑边与 0.8 缩放；两种模式各存一份缓存
      * @return PNG 图片字节流
      */
     @PostMapping("/records/preview")
@@ -344,10 +365,11 @@ public class RecordController {
             @RequestBody Record record,
             @RequestParam(defaultValue = "1920") int width,
             @RequestParam(defaultValue = "1080") int height,
-            @RequestParam(defaultValue = "false") boolean forceRefresh) {
+            @RequestParam(defaultValue = "false") boolean forceRefresh,
+            @RequestParam(defaultValue = "true") boolean plot) {
         long startTime = System.currentTimeMillis();
-        logger.info("预览图请求: uuid={}, width={}, height={}, forceRefresh={}",
-                record.getUuid(), width, height, forceRefresh);
+        logger.info("预览图请求: uuid={}, width={}, height={}, forceRefresh={}, plot={}",
+                record.getUuid(), width, height, forceRefresh, plot);
 
         try {
             // 构建缓存路径（锚定到数据根目录，不随 JVM 工作目录变化）
@@ -355,8 +377,10 @@ public class RecordController {
             if (!Files.exists(cacheDir)) {
                 Files.createDirectories(cacheDir);
             }
-            String cacheFileName = String.format("preview_%s_%s_%dx%d.png",
-                    PREVIEW_CACHE_VERSION, record.getUuid(), width, height);
+            // 缓存键必须带上 plot：同一 uuid/分辨率下，剧情模式与人格故事的画面并不相同，
+            // 只按 uuid+分辨率缓存会让切换剧情类型后的预览图一直显示旧样式。
+            String cacheFileName = String.format("preview_%s_%s_%dx%d_%s.png",
+                    PREVIEW_CACHE_VERSION, record.getUuid(), width, height, plot ? "plot" : "plain");
             Path cacheFile = cacheDir.resolve(cacheFileName);
 
             // 非强制刷新且缓存存在 → 直接返回
@@ -373,7 +397,7 @@ public class RecordController {
             }
 
             // 渲染 + 写缓存
-            BufferedImage previewImage = RenderOfImage.renderPre(record, true, width, height);
+            BufferedImage previewImage = RenderOfImage.renderPre(record, plot, width, height);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(previewImage, "PNG", baos);
@@ -483,21 +507,30 @@ public class RecordController {
      * @function 解析视频导出目标（导出目录 + 基础输出路径）
      *
      * 前端"设置 → 输出路径"里填的是导出目录（由文件夹选择框选出来的），所以默认按目录处理：
-     * 目录不存在就创建，视频文件名由后端生成（video_&lt;时间戳&gt;.mp4，之后按分层追加后缀）。
+     * 目录不存在就创建，视频文件名由后端生成
+     * （项目名称_video_&lt;时间戳&gt;.mp4，之后按分层追加后缀）。
      * 只有明确给了视频文件名（.mp4/.mov 结尾）或路径指向一个已存在的文件时，才当成文件路径。
      *
      * 旧实现用 outFile.isDirectory() 判断，目录还不存在时会被误判成文件名，
      * 于是 "…\输出测试" 变成了 "…\输出测试_full.mp4"，落在上一级目录里。
      *
+     * 文件名的"项目名称_"前缀来自全局设置里的项目名称：一个导出目录里往往躺着好几个项目的
+     * 视频，带上项目名才分得清哪个是哪个。项目名称为空（或过滤后为空）时不加前缀，
+     * 保持原来的命名。
+     *
      * @param requestedPath 请求里的输出路径，为空时使用默认目录 ./output
+     * @param projectName   项目名称，作为导出视频文件名前缀（可为空）
      * @return 导出目录与基础输出路径
      * @throws IllegalStateException 输出目录创建失败（尽早报错，避免渲染到一半才失败）
      */
-    static OutputTarget resolveOutputTarget(String requestedPath) {
+    static OutputTarget resolveOutputTarget(String requestedPath, String projectName) {
         String path = requestedPath == null ? "" : requestedPath.trim();
         if (path.isEmpty()) {
             path = "./output";
         }
+
+        // 形如 "我的项目_"；项目名称为空/全是非法字符时是空串（不加前缀）
+        String prefix = projectNamePrefix(projectName);
 
         File outFile = new File(path);
         boolean treatAsFile = VIDEO_FILE_PATTERN.matcher(outFile.getName()).matches() || outFile.isFile();
@@ -505,19 +538,42 @@ public class RecordController {
         File outDir;
         String baseOutputPath;
         if (treatAsFile) {
-            // 文件路径：视频写到它所在的目录，文件名沿用用户给的（后面再追加分层后缀）
+            // 文件路径：视频写到它所在的目录，文件名沿用用户给的（前面加项目名前缀，后面再追加分层后缀）
             outDir = outFile.getAbsoluteFile().getParentFile();
-            baseOutputPath = outFile.getAbsolutePath();
+            baseOutputPath = new File(outDir, prefix + outFile.getName()).getAbsolutePath();
         } else {
             // 目录路径：当作导出目录，文件名由后端生成
             outDir = outFile.getAbsoluteFile();
-            baseOutputPath = new File(outDir, "video_" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
+            baseOutputPath = new File(outDir,
+                    prefix + "video_" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
         }
 
         if (outDir != null && !outDir.isDirectory() && !outDir.mkdirs() && !outDir.isDirectory()) {
             throw new IllegalStateException("无法创建输出目录: " + outDir.getAbsolutePath());
         }
         return new OutputTarget(outDir, baseOutputPath);
+    }
+
+    /**
+     * @function 把项目名称转成文件名前缀
+     *
+     * 项目名称是用户随手填的，可能带空格、路径分隔符、问号等，直接拼进路径会创建失败
+     * （Windows 下 "\\ / : * ? \" < > |" 都不允许出现在文件名里），所以先过滤掉这些字符，
+     * 再去掉首尾的空白与点（Windows 不允许文件名以点或空格结尾）。过滤后为空就不加前缀。
+     *
+     * @param projectName 项目名称
+     * @return 形如 "项目名称_" 的前缀；项目名称为空或过滤后为空时返回空串
+     */
+    static String projectNamePrefix(String projectName) {
+        if (projectName == null) {
+            return "";
+        }
+        String cleaned = ILLEGAL_FILE_NAME_CHARS.matcher(projectName).replaceAll("").trim();
+        // Windows 文件名不能以点结尾（"我的项目." 会被系统吞掉末尾的点）
+        while (cleaned.endsWith(".")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1).trim();
+        }
+        return cleaned.isEmpty() ? "" : cleaned + "_";
     }
 
     /** 导出目标：视频所在的导出目录 + 尚未追加分层后缀的基础输出路径 */
@@ -565,6 +621,13 @@ public class RecordController {
         private int frameRate;
         private List<String> layerTypes;
         private boolean keepTempFiles;
+        /** 项目名称：作为导出视频文件名前缀（"项目名称_"），空则不加前缀 */
+        private String projectName;
+        /**
+         * 是否剧情模式：全局设置里选"剧情"为 true、"人格故事"为 false。
+         * 默认 true —— 字段出现之前的老调用方就是按剧情模式导出的，行为保持不变。
+         */
+        private boolean plot = true;
 
         public List<Record> getRecords() {
             return records;
@@ -620,6 +683,22 @@ public class RecordController {
 
         public void setKeepTempFiles(boolean keepTempFiles) {
             this.keepTempFiles = keepTempFiles;
+        }
+
+        public String getProjectName() {
+            return projectName;
+        }
+
+        public void setProjectName(String projectName) {
+            this.projectName = projectName;
+        }
+
+        public boolean isPlot() {
+            return plot;
+        }
+
+        public void setPlot(boolean plot) {
+            this.plot = plot;
         }
     }
 

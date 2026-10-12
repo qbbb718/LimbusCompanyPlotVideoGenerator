@@ -163,6 +163,7 @@ function AppElectron() {
         return (
           <RecordEditor
             projectSettings={projectSettings}
+            setProjectSettings={setProjectSettings}
             workspace={workspace}
           />
         );

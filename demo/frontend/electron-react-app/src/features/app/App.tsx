@@ -62,6 +62,7 @@ function App() {
         return (
           <RecordEditor
             projectSettings={projectSettings}
+            setProjectSettings={setProjectSettings}
             workspace={workspace}
           />
         );

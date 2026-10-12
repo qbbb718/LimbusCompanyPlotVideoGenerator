@@ -1,13 +1,12 @@
 import React from 'react';
 import { ProjectSettings } from '../../../types';
+import {
+  VIDEO_SIZE_OPTIONS,
+  parseVideoSizeKey,
+  pickOutputDirectory,
+  videoSizeKey,
+} from '@features/common/utils/projectSettings';
 import '../Settings.css';
-
-const VIDEO_SIZE_OPTIONS = [
-  { label: '640 × 360', width: 640, height: 360 },
-  { label: '854 × 480', width: 854, height: 480 },
-  { label: '1280 × 720', width: 1280, height: 720 },
-  { label: '1920 × 1080', width: 1920, height: 1080 },
-];
 
 interface OutputSectionProps {
   projectSettings: ProjectSettings;
@@ -17,16 +16,9 @@ interface OutputSectionProps {
 const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleChange }) => {
   const handleOutputPathChange = async () => {
     try {
-      if (window.electronAPI && window.electronAPI.selectDirectory) {
-        const result = await window.electronAPI.selectDirectory();
-        if (!result.canceled && result.path) {
-          handleChange('outputPath', result.path);
-        }
-      } else {
-        const path = prompt('请输入视频输出路径:', projectSettings.outputPath);
-        if (path) {
-          handleChange('outputPath', path);
-        }
+      const path = await pickOutputDirectory(projectSettings.outputPath);
+      if (path) {
+        handleChange('outputPath', path);
       }
     } catch (error) {
       console.error('选择输出路径失败:', error);
@@ -34,12 +26,16 @@ const OutputSection: React.FC<OutputSectionProps> = ({ projectSettings, handleCh
     }
   };
 
-  const currentSizeKey = `${projectSettings.videoWidth}x${projectSettings.videoHeight}`;
+  const currentSizeKey = videoSizeKey(
+    projectSettings.videoWidth,
+    projectSettings.videoHeight,
+  );
 
   const handleVideoSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const [w, h] = e.target.value.split('x').map(Number);
-    handleChange('videoWidth', w);
-    handleChange('videoHeight', h);
+    const size = parseVideoSizeKey(e.target.value);
+    if (!size) return;
+    handleChange('videoWidth', size.width);
+    handleChange('videoHeight', size.height);
   };
 
   return (
