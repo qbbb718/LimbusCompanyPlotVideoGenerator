@@ -184,20 +184,28 @@ public class RenderOfVideo {
      * 渲染仅UI静态背景（不含对话文本，用于UI_ONLY视频的文本动画叠加）
      * 透明底！只绘制 UI框架(对话框/说话人/地点)，不包含对话文字、黑底和边框。
      * 边框（border）属于背景层，由 BG_CHARACTERS 层提供，不应在 UI_ONLY 层重复绘制。
+     *
+     * <p>UI 素材与锚点都是 1080p 设计尺寸，所以在设计画布上绘制，最后整层缩放到输出分辨率
+     * ——与 {@link RenderOfImage} 保持同一套"设计画布 + 只缩放一次"的规则。
      */
     private static BufferedImage renderUIOnlyStaticBackground(Record record, boolean plot, int width, int height)
             throws IOException {
+        int designW = ProjectConfig.VIDEO_WIDTH;
+        int designH = ProjectConfig.VIDEO_HEIGHT;
+
         FrameComposerService composer = new FrameComposerService();
+        composer.setOutputSize(designW, designH);
 
         // 叠加UI框架元素（对话框、说话人名片、地点等，不含对话文本和边框）
-        BufferedImage uiFrame = RenderOfImage.renderUI(plot, record.getDialogue(), width, height);
+        BufferedImage uiFrame = RenderOfImage.renderUI(plot, record.getDialogue());
         composer.addImageLayer(uiFrame, 0, 0);
 
-        // 合成（透明底）
+        // 合成（透明底，设计画布尺寸），再整层缩放到输出分辨率
         BufferedImage result = composer.compose();
         if (result == null) {
-            result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        } else if (result.getWidth() != width || result.getHeight() != height) {
+            result = new BufferedImage(designW, designH, BufferedImage.TYPE_INT_ARGB);
+        }
+        if (result.getWidth() != width || result.getHeight() != height) {
             result = RenderQualityUtils.scaleImageHighQuality(result, width, height);
         }
         composer.clearLayers();
@@ -318,6 +326,11 @@ public class RenderOfVideo {
 
     /**
      * 渲染单帧图像
+     *
+     * <p>文字锚点、字号、换行宽度都是 1080p 设计值（{@link ProjectConfig}），而
+     * {@code staticBackground} 已经按输出分辨率缩放过了，因此这里用同一个比例
+     * {@code 帧宽 / 设计画布宽} 换算文字参数——否则低分辨率导出时文字会跑到画面外
+     * （例如 640×360 下左对齐文字仍画在 x=376, y=912）。
      */
     private static BufferedImage renderSingleFrame(BufferedImage staticBackground, String text,
             boolean isNarrator, int width, int height) {
@@ -329,22 +342,27 @@ public class RenderOfVideo {
             // 设置高质量渲染
             RenderQualityUtils.setupUltraQualityRendering(g2d);
 
-            // 根据模式选择配置参数
-            int x, y, maxWidth, fontSize;
+            final float designToFrame = ProjectConfig.VIDEO_WIDTH > 0
+                    ? (float) frame.getWidth() / ProjectConfig.VIDEO_WIDTH
+                    : 1f;
+
+            // 根据模式选择配置参数（按 designToFrame 从设计坐标换算到实际帧坐标）
+            int x, y, maxWidth;
+            float fontSize;
             TextAlignment alignment;
             Color textColor = ProjectConfig.DEFAULT_TEXT_COLOR;
 
             if (isNarrator) {
-                x = ProjectConfig.DIALOGUE_CENTER_X;
-                y = ProjectConfig.DIALOGUE_CENTER_Y;
-                maxWidth = ProjectConfig.DIALOGUE_MAX_WIDTH;
-                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE;
+                x = Math.round(ProjectConfig.DIALOGUE_CENTER_X * designToFrame);
+                y = Math.round(ProjectConfig.DIALOGUE_CENTER_Y * designToFrame);
+                maxWidth = Math.round(ProjectConfig.DIALOGUE_MAX_WIDTH * designToFrame);
+                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE * designToFrame;
                 alignment = TextAlignment.CENTER;
             } else {
-                x = ProjectConfig.DIALOGUE_LEFT_X;
-                y = ProjectConfig.DIALOGUE_LEFT_Y;
-                maxWidth = ProjectConfig.DIALOGUE_MAX_WIDTH;
-                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE;
+                x = Math.round(ProjectConfig.DIALOGUE_LEFT_X * designToFrame);
+                y = Math.round(ProjectConfig.DIALOGUE_LEFT_Y * designToFrame);
+                maxWidth = Math.round(ProjectConfig.DIALOGUE_MAX_WIDTH * designToFrame);
+                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE * designToFrame;
                 alignment = TextAlignment.LEFT;
             }
 
@@ -404,9 +422,11 @@ public class RenderOfVideo {
 
     /**
      * 绘制带有高级功能的文字（换行、对齐、锚点等）
+     *
+     * @param fontSize 字号；为浮点数以便按输出分辨率等比换算设计字号
      */
     private static void drawTextWithAdvancedFeatures(Graphics2D g2d, String text, int x, int y,
-            int fontSize, Color color, TextAlignment alignment,
+            float fontSize, Color color, TextAlignment alignment,
             int maxWidth, boolean hasShadow, Color shadowColor,
             int shadowOffsetX, int shadowOffsetY) {
         if (text == null || text.isEmpty()) {

@@ -43,6 +43,12 @@ import com.lbc_plot.resource.service.CharacterService;
 public class RenderOfImage {
     private static final Logger logger = LoggerFactory.getLogger(RenderOfImage.class);
 
+    /**
+     * 剧情画面（背景 + 立绘 + 临时图片 + 边框）在画布中的占比。
+     * 合成后在四周留出 10% 黑边，即居中缩放到 80%。
+     */
+    private static final float PLOT_SCENE_SCALE = 0.8f;
+
     static BufferedImage border, dialogBox, speaker_camp, speaker_name, location;
 
     /** 临时名片缓存：key = "name|faction" */
@@ -69,6 +75,42 @@ public class RenderOfImage {
     }
 
     /**
+     * 设计画布宽度。
+     *
+     * <p><b>为什么渲染必须先画在 1080p 设计画布上：</b>所有素材的坐标与比例都是按 1080p 标定的 ——
+     * {@link ProjectConfig} 里的字号/锚点、{@link CharacterVisual#getPosX()} 的立绘位置、
+     * 立绘缩放比（{@code DEFAULT_CHARACTER_HEAD_LENGTH / portrait.length}）、
+     * {@code border_1080p.png} 等 UI 素材的原始像素尺寸，全都是 1080p 空间里的数值。
+     * 因此画布尺寸与输出分辨率必须解耦：{@code renderXxx(record, plot, width, height)} 的
+     * {@code width/height} 只是<strong>最终输出尺寸</strong>，内部一律在 1080p 设计画布上合成，
+     * 最后<strong>只缩放一次</strong>到输出尺寸（见 {@link #composeFinalImage}）。
+     *
+     * <p>反面教材（本类修复前的写法）：把背景/UI 提前缩放成输出尺寸，再把它们塞进 1080p 画布，
+     * 于是低分辨率下背景被缩了两次、变得只有左上角一小块，而立绘/边框仍是 1080p 的比例，
+     * 看起来就是"立绘没有跟着缩小"。
+     */
+    private static int designWidth() {
+        return ProjectConfig.VIDEO_WIDTH;
+    }
+
+    /** 设计画布高度，见 {@link #designWidth()}。 */
+    private static int designHeight() {
+        return ProjectConfig.VIDEO_HEIGHT;
+    }
+
+    /**
+     * 创建"设计画布"合成器：显式把画布固定为 1080p 设计尺寸。
+     *
+     * <p>不能依赖 {@link FrameComposerService} 的默认尺寸——图层管理器会在
+     * {@code addImageLayer} 时把自己的 width/height 撑大，画布尺寸必须由调用方显式设定。
+     */
+    private static FrameComposerService newDesignComposer() {
+        FrameComposerService composer = new FrameComposerService();
+        composer.setOutputSize(designWidth(), designHeight());
+        return composer;
+    }
+
+    /**
      * 渲染record预览图-完整
      */
     public static BufferedImage renderPre(Record record, boolean plot, int width, int height) throws IOException {
@@ -79,11 +121,13 @@ public class RenderOfImage {
                 record.getDialogue() != null ? record.getDialogue().getSpeakerName() : "null",
                 record.getDialogue() != null ? abbreviateText(record.getDialogue().getText()) : "null");
 
-        FrameComposerService composer = new FrameComposerService();
+        final int designW = designWidth();
+        final int designH = designHeight();
+        FrameComposerService composer = newDesignComposer();
 
         try {
-            // 分层渲染
-            renderBackground(composer, record, plot, width, height);
+            // 分层渲染（全部在 1080p 设计画布上，与请求的输出分辨率无关）
+            renderBackground(composer, record);
             if (plot) {
                 renderCharacters(composer, record);
                 renderTempImages(composer, record);
@@ -92,14 +136,14 @@ public class RenderOfImage {
                 BufferedImage coImage = composer.compose();
                 logger.info("中间合成: coImage 尺寸={}x{}, 目标缩放={}, 目标位置=({},{})",
                         coImage.getWidth(), coImage.getHeight(),
-                        0.8f, width / 10, height / 10);
-                composer.addFullScreenMask(255);
-                composer.addImageLayerScaled(coImage, width / 10, height / 10, 0.8f);
+                        PLOT_SCENE_SCALE, designW / 10, designH / 10);
+                composer.addSolidColorLayer(0x000000, 255, 0, 0, designW, designH);
+                composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
             }
 
-            renderUIAndDialogue(composer, record, plot, width, height);
+            renderUIAndDialogue(composer, record, plot);
 
-            // 合成最终图像
+            // 合成最终图像：设计画布 → 请求的输出尺寸，只在此处缩放一次
             return composeFinalImage(composer, width, height);
 
         } catch (Exception e) {
@@ -115,27 +159,30 @@ public class RenderOfImage {
      */
     public static BufferedImage renderPreExceptDialogue(Record record, boolean plot, int width, int height)
             throws IOException {
-        logger.info("开始渲染预处理: plot={}, width={}, height={}", plot, width, height);
+        logger.info("开始渲染预处理: plot={}, 请求尺寸={}x{}, 设计画布={}x{}",
+                plot, width, height, designWidth(), designHeight());
 
-        FrameComposerService composer = new FrameComposerService();
+        final int designW = designWidth();
+        final int designH = designHeight();
+        FrameComposerService composer = newDesignComposer();
 
         try {
-            // 分层渲染
-            renderBackground(composer, record, plot, width, height);
+            // 分层渲染（全部在 1080p 设计画布上，与请求的输出分辨率无关）
+            renderBackground(composer, record);
             if (plot) {
                 renderCharacters(composer, record);
                 renderTempImages(composer, record);
                 composer.addImageLayer(border, 0, 0);
                 // 缩放0.8
                 BufferedImage coImage = composer.compose();
-                composer.addFullScreenMask(255);
-                composer.addImageLayerScaled(coImage, width / 10, height / 10, 0.8f);
+                composer.addSolidColorLayer(0x000000, 255, 0, 0, designW, designH);
+                composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
             }
-            renderUIBackground(composer, plot, record.getDialogue(), width, height);
+            renderUIBackground(composer, plot, record.getDialogue());
 
             // 除了对话都渲染了,虽然上面是静态的
 
-            // 合成最终图像
+            // 合成最终图像：设计画布 → 请求的输出尺寸，只在此处缩放一次
             return composeFinalImage(composer, width, height);
 
         } catch (Exception e) {
@@ -151,8 +198,8 @@ public class RenderOfImage {
      */
     public static BufferedImage renderBackgroundOnly(Record record, boolean plot, int width, int height)
             throws IOException {
-        FrameComposerService composer = new FrameComposerService();
-        renderBackground(composer, record, plot, width, height);
+        FrameComposerService composer = newDesignComposer();
+        renderBackground(composer, record);
         return composeFinalImage(composer, width, height);
     }
 
@@ -160,7 +207,7 @@ public class RenderOfImage {
      * 仅渲染角色立绘
      */
     public static BufferedImage renderCharactersOnly(Record record, int width, int height) throws IOException {
-        FrameComposerService composer = new FrameComposerService();
+        FrameComposerService composer = newDesignComposer();
         renderCharacters(composer, record);
         return composeFinalImage(composer, width, height);
     }
@@ -169,17 +216,18 @@ public class RenderOfImage {
      * 仅渲染UI和对话
      */
     public static BufferedImage renderUIOnly(Record record, boolean plot, int width, int height) throws IOException {
-        FrameComposerService composer = new FrameComposerService();
-        renderUIAndDialogue(composer, record, plot, width, height);
+        FrameComposerService composer = newDesignComposer();
+        renderUIAndDialogue(composer, record, plot);
         return composeFinalImage(composer, width, height);
     }
 
     /**
-     * 渲染背景层
+     * 渲染背景层（铺满 1080p 设计画布；0.8 缩放/居中与输出分辨率缩放由调用方统一处理）
      */
-    private static void renderBackground(FrameComposerService composer, Record record, boolean plot, int width,
-            int height) {
-        logger.info("=== 开始渲染背景层: plot={}, 视频尺寸={}x{} ===", plot, width, height);
+    private static void renderBackground(FrameComposerService composer, Record record) {
+        final int designW = designWidth();
+        final int designH = designHeight();
+        logger.info("=== 开始渲染背景层: 设计画布={}x{} ===", designW, designH);
 
         List<BackgroundVisual> bgList = record.getBackgroundVisuals();
         if (bgList == null || bgList.isEmpty()) {
@@ -198,10 +246,11 @@ public class RenderOfImage {
             }
         }
 
-        // 始终全屏拉伸背景，0.8 缩放 + 居中由 renderPre / renderPreExceptDialogue
-        // 中的 addImageLayerScaled(coImage, w/10, h/10, 0.8) 统一完成
-        logger.info("  → 背景全屏拉伸至 {}x{}（0.8 缩放由上层 compose+scale 统一处理）", width, height);
-        renderFullScreenBackground(composer, bgList, width, height);
+        // 始终全屏拉伸背景到设计画布，0.8 缩放 + 居中由 renderPre / renderPreExceptDialogue
+        // 中的 addImageLayerScaled(coImage, designW/10, designH/10, PLOT_SCENE_SCALE) 统一完成；
+        // 输出分辨率的缩放只在最后 composeFinalImage 里做一次。
+        logger.info("  → 背景全屏拉伸至 {}x{}（0.8 缩放由上层 compose+scale 统一处理）", designW, designH);
+        renderFullScreenBackground(composer, bgList, designW, designH);
     }
 
     /**
@@ -590,10 +639,10 @@ public class RenderOfImage {
     }
 
     /**
-     * 渲染UI和对话层
+     * 渲染UI和对话层（设计画布坐标，与输出分辨率无关；缩放由 {@link #composeFinalImage} 统一完成）
      */
-    private static void renderUIAndDialogue(FrameComposerService composer, Record record, boolean plot, int width,
-            int height) throws IOException {
+    private static void renderUIAndDialogue(FrameComposerService composer, Record record, boolean plot)
+            throws IOException {
         logger.info("开始渲染UI和对话层");
 
         Dialogue dialogue = record.getDialogue();
@@ -602,20 +651,20 @@ public class RenderOfImage {
             throw new IOException("对话信息为空");
         }
 
-        renderUIBackground(composer, plot, dialogue, width, height);
+        renderUIBackground(composer, plot, dialogue);
         renderDialogueText(composer, dialogue);
     }
 
     /**
-     * 渲染UI背景
+     * 渲染UI背景（设计画布坐标）
      */
-    private static void renderUIBackground(FrameComposerService composer, boolean plot, Dialogue dialogue, int width,
-            int height) throws IOException {
+    private static void renderUIBackground(FrameComposerService composer, boolean plot, Dialogue dialogue)
+            throws IOException {
         try {
-            BufferedImage uiImage = renderUI(plot, dialogue, width, height);
+            BufferedImage uiImage = renderUI(plot, dialogue);
             if (uiImage == null) {
                 logger.error("UI渲染失败，生成空UI图像");
-                uiImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                uiImage = new BufferedImage(designWidth(), designHeight(), BufferedImage.TYPE_INT_ARGB);
             }
             composer.addImageLayer(uiImage, 0, 0);
             logger.debug("添加UI图层: 尺寸={}x{}", uiImage.getWidth(), uiImage.getHeight());
@@ -644,7 +693,10 @@ public class RenderOfImage {
     }
 
     /**
-     * 合成最终图像
+     * 合成最终图像：在设计画布上合成，然后<strong>只在此处</strong>缩放到请求的输出尺寸。
+     *
+     * <p>1080p 输出时这里不做任何缩放（{@code actual == 期望}），低分辨率输出时整幅画面
+     * （背景/立绘/边框/UI/文字）等比缩小一次，因此任何分辨率下的构图都与 1080p 完全一致。
      */
     private static BufferedImage composeFinalImage(FrameComposerService composer, int width, int height) {
         logger.info("=== 合成最终图像: 期望尺寸={}x{} ===", width, height);
@@ -657,7 +709,7 @@ public class RenderOfImage {
             int actualW = result.getWidth();
             int actualH = result.getHeight();
             if (actualW != width || actualH != height) {
-                logger.warn("最终图像尺寸与期望不符! 期望={}x{}, 实际={}x{}，自动缩放至期望尺寸",
+                logger.info("输出分辨率 {}x{} ≠ 设计画布 {}x{}，整幅画面等比缩放一次",
                         width, height, actualW, actualH);
                 result = RenderQualityUtils.scaleImageHighQuality(result, width, height);
                 logger.info("缩放后图像尺寸: {}x{}", result.getWidth(), result.getHeight());
@@ -725,21 +777,24 @@ public class RenderOfImage {
     }
 
     /**
-     * 渲染整个UI
-     * 
+     * 渲染整个UI（<strong>返回设计画布尺寸的 UI 图层</strong>，不按输出分辨率缩放）。
+     *
+     * <p>UI 素材（对话框/名片/地点牌）与 {@link ProjectConfig} 里的锚点都是 1080p 设计尺寸，
+     * 因此这里固定画在设计画布上；调用方把整幅画面一次性缩放到输出分辨率
+     * （见 {@link #composeFinalImage}）。若在这里提前缩放，UI 会被缩放两次而缩到左上角。
+     *
      * @param plot     是否为剧情模式
      * @param dialogue 对话信息
-     * @return 渲染后的UI图像
+     * @return 渲染后的UI图像，尺寸为 {@link #designWidth()} × {@link #designHeight()}
      * @throws IOException 当渲染失败时抛出
      */
-    public static BufferedImage renderUI(boolean plot, Dialogue dialogue, int targetWidth, int targetHeight)
-            throws IOException {
+    public static BufferedImage renderUI(boolean plot, Dialogue dialogue) throws IOException {
         Logger logger = LoggerFactory.getLogger(RenderOfImage.class);
-        logger.info("开始渲染UI: plot={}, dialogueSpeaker={}, 目标尺寸={}x{}", plot,
-                dialogue != null ? dialogue.getSpeakerName() : "null", targetWidth, targetHeight);
+        logger.info("开始渲染UI: plot={}, dialogueSpeaker={}, 设计画布={}x{}", plot,
+                dialogue != null ? dialogue.getSpeakerName() : "null", designWidth(), designHeight());
 
-        int width = ProjectConfig.VIDEO_WIDTH;
-        int height = ProjectConfig.VIDEO_HEIGHT;
+        int width = designWidth();
+        int height = designHeight();
         logger.debug("使用画布尺寸: {}x{}", width, height);
 
         if (dialogue == null) {
@@ -747,7 +802,7 @@ public class RenderOfImage {
             throw new IOException("对话信息为空");
         }
 
-        FrameComposerService composer = new FrameComposerService();
+        FrameComposerService composer = newDesignComposer();
 
         try {
             // 渲染对话框UI
@@ -836,21 +891,15 @@ public class RenderOfImage {
                 logger.debug("非剧情模式，跳过地点UI");
             }
 
-            // 合成最终UI图像
+            // 合成最终UI图像（设计画布尺寸，不在这里按输出分辨率缩放）
             logger.info("开始合成UI图像");
             BufferedImage ui = composer.compose();
 
             if (ui == null) {
                 logger.error("UI图像合成失败，返回空图像");
-                ui = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
+                ui = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
             } else {
                 logger.info("UI图像合成成功: 尺寸{}x{}", ui.getWidth(), ui.getHeight());
-
-                // 若 UI 合成尺寸与目标尺寸不匹配，缩放至目标尺寸
-                if (ui.getWidth() != targetWidth || ui.getHeight() != targetHeight) {
-                    logger.info("UI尺寸不匹配，缩放至目标尺寸 {}x{}", targetWidth, targetHeight);
-                    ui = RenderQualityUtils.scaleImageHighQuality(ui, targetWidth, targetHeight);
-                }
 
                 // 调试信息：记录UI图像的基本信息
                 if (logger.isDebugEnabled()) {

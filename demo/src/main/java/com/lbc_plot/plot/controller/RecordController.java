@@ -67,6 +67,17 @@ public class RecordController {
     private static final java.util.regex.Pattern VIDEO_FILE_PATTERN =
             java.util.regex.Pattern.compile("(?i).*\\.(mp4|mov)$");
 
+    /**
+     * 预览图磁盘缓存版本号，参与缓存文件名。
+     *
+     * <p>非 1080p 预览图的渲染管线已改为"1080p 设计画布合成 + 最后统一缩放一次"（修复
+     * 低分辨率下背景/UI 被缩放两次、立绘看起来没跟着缩小的问题）。旧的缓存文件仍然是坏图，
+     * 而缓存命中只看 uuid+分辨率，所以必须换文件名让旧缓存失效。
+     *
+     * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
+     */
+    private static final String PREVIEW_CACHE_VERSION = "v2";
+
     @Autowired
     private CharacterService characterService;
 
@@ -320,7 +331,7 @@ public class RecordController {
     /**
      * 渲染单条记录的预览图（支持磁盘缓存）
      * 接收 Record JSON，调用 RenderOfImage.renderPre() 渲染为 PNG 图片返回。
-     * 缓存文件: projects/temp/previews/preview_{uuid}_{width}x{height}.png
+     * 缓存文件: projects/temp/previews/preview_{版本}_{uuid}_{width}x{height}.png
      *
      * @param record       要渲染的 Record 对象（JSON body）
      * @param width        预览图宽度，默认 1920
@@ -344,8 +355,8 @@ public class RecordController {
             if (!Files.exists(cacheDir)) {
                 Files.createDirectories(cacheDir);
             }
-            String cacheFileName = String.format("preview_%s_%dx%d.png",
-                    record.getUuid(), width, height);
+            String cacheFileName = String.format("preview_%s_%s_%dx%d.png",
+                    PREVIEW_CACHE_VERSION, record.getUuid(), width, height);
             Path cacheFile = cacheDir.resolve(cacheFileName);
 
             // 非强制刷新且缓存存在 → 直接返回
@@ -371,6 +382,18 @@ public class RecordController {
             // 保存到磁盘缓存
             Files.write(cacheFile, imageBytes);
             logger.info("预览图已缓存: {}", cacheFile.toAbsolutePath());
+
+            // 顺手清掉同一 uuid+分辨率的旧版（无版本号）缓存：它是修复前渲染的坏图，
+            // 留着只会占地方、并让人误以为问题还在。失败不影响本次返回。
+            Path legacyCacheFile = cacheDir.resolve(String.format("preview_%s_%dx%d.png",
+                    record.getUuid(), width, height));
+            try {
+                if (Files.deleteIfExists(legacyCacheFile)) {
+                    logger.info("已清理旧版预览图缓存: {}", legacyCacheFile.getFileName());
+                }
+            } catch (Exception ex) {
+                logger.debug("清理旧版预览图缓存失败: {}", ex.getMessage());
+            }
 
             long elapsed = System.currentTimeMillis() - startTime;
             logger.info("预览图渲染完成: uuid={}, 大小={} bytes, 耗时={} ms",

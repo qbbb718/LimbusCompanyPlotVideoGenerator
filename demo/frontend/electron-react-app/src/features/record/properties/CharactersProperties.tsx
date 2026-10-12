@@ -8,23 +8,74 @@ import {
   Emotion,
 } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
+import { AppConfig } from "@features/common/config/appConfig";
 import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
 import "../RecordEditor.css";
 import "./CharactersProperties.css";
+
+/**
+ * 设计画布尺寸（后端 ProjectConfig.VIDEO_WIDTH / VIDEO_HEIGHT，固定 1920×1080）。
+ *
+ * 记录里持久化的坐标（立绘 adjX/adjY、临时图片 posX/posY）都是这个空间里的像素，
+ * 与设置页选的输出分辨率无关 —— 所以同一条记录换任何分辨率导出，构图都完全一致。
+ *
+ * 但编辑器里的滑杆/数值框按**设置页选的视频大小**显示（见 toUiX/toDesignX）：
+ * X 轴滑块范围是 ±视频宽度/2、Y 轴是 ±视频高度，和预览图的实际像素一一对应。
+ * 过去这里硬编码 1280（还叫 videoWidth），滑杆 50% 不等于画面中心、两端也到不了画面边缘。
+ */
+const CANVAS_WIDTH = AppConfig.designCanvas.width;
+const CANVAS_HEIGHT = AppConfig.designCanvas.height;
+
+/** 立绘位置快捷按钮的档位：-3..3 对应画面宽度的 0%、1/6 … 5/6、100% */
+const QUICK_POSITION_STEPS = [-3, -2, -1, 0, 1, 2, 3];
+
+/** 档位 n 对应的画面宽度百分比（50 = 居中） */
+const stepToPercent = (n: number) => 50 + (n * 100) / 6;
+
+/**
+ * 立绘档位 n 在「当前视频宽度」下的 X 偏差：0% → -宽/2、50% → 0、100% → +宽/2。
+ * 与后端 %位置% 换算（adjX = (位置% - 50) * 1920 / 100）走的是同一套语义，只是显示单位不同。
+ */
+const stepToUiAdjX = (n: number, uiWidth: number) => (uiWidth * n) / 6;
+
+/** 临时图片档位 n 的左边缘位置（当前视频宽度下的像素） */
+const stepToUiTempPosX = (n: number, uiWidth: number) =>
+  uiWidth / 2 + (uiWidth * n) / 6;
 
 interface CharactersPropertiesProps {
   selectedRecord: Record;
   selectedRecordIndex: number;
   updateRecord: (index: number, updatedRecord: Record) => void;
+  /** 设置页选的输出视频宽度（滑杆范围的基准）；缺省时回退到设计画布宽度 */
+  videoWidth?: number;
+  /** 设置页选的输出视频高度 */
+  videoHeight?: number;
 }
 
 const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   selectedRecord,
   selectedRecordIndex,
   updateRecord,
+  videoWidth,
+  videoHeight,
 }) => {
+  // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）
+  const uiWidth = videoWidth && videoWidth > 0 ? videoWidth : CANVAS_WIDTH;
+  const uiHeight = videoHeight && videoHeight > 0 ? videoHeight : CANVAS_HEIGHT;
+
+  /** 设计画布像素 → 当前视频像素（只用于显示） */
+  const toUiX = (designX: number) =>
+    Math.round((designX * uiWidth) / CANVAS_WIDTH);
+  const toUiY = (designY: number) =>
+    Math.round((designY * uiHeight) / CANVAS_HEIGHT);
+
+  /** 当前视频像素 → 设计画布像素（用于写回记录，保证与输出分辨率无关） */
+  const toDesignX = (uiX: number) =>
+    Math.round((uiX * CANVAS_WIDTH) / uiWidth);
+  const toDesignY = (uiY: number) =>
+    Math.round((uiY * CANVAS_HEIGHT) / uiHeight);
+
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
-  const [videoWidth] = useState(1280);
   const [newChara, setNewChara] = useState<any | null>(null);
   const [newPortrait, setNewPortrait] = useState<Portrait | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -104,7 +155,8 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
         colorText: charaRef.colorText,
       },
       portrait: newPortrait,
-      posX: videoWidth / 2,
+      // 后端会用 adjX 重新计算 posX（CharacterVisual.updatePos），这里给同一套设计坐标下的初值：居中
+      posX: CANVAS_WIDTH / 2,
       posY: 0,
       adjX: 0,
       adjY: 0,
@@ -316,59 +368,76 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                 <input
                   type="number"
                   className="char-input-fixed"
-                  value={char.adjX}
+                  value={toUiX(char.adjX)}
                   onChange={(e) =>
-                    updateCharacter(index, "adjX", parseInt(e.target.value) || 0)
+                    updateCharacter(
+                      index,
+                      "adjX",
+                      toDesignX(parseInt(e.target.value) || 0),
+                    )
                   }
                 />
                 <div className="char-slider-auto">
                   <div className="adjX-quick-positions">
-                    {[-3, -2, -1, 0, 1, 2, 3].map((n) => (
+                    {QUICK_POSITION_STEPS.map((n) => (
                       <button
                         key={n}
                         onClick={() =>
                           updateCharacter(
                             index,
                             "adjX",
-                            Math.floor((videoWidth * n) / 6),
+                            toDesignX(stepToUiAdjX(n, uiWidth)),
                           )
                         }
                         className="adjX-quick-btn"
-                        title={`${Math.floor((videoWidth * n) / 6)}`}
+                        title={`${stepToPercent(n)}% （adjX=${Math.round(stepToUiAdjX(n, uiWidth))}）`}
                       />
                     ))}
                   </div>
                   <input
                     type="range"
-                    min={-Math.floor(videoWidth / 2)}
-                    max={Math.floor(videoWidth / 2)}
-                    value={char.adjX}
+                    min={-Math.round(uiWidth / 2)}
+                    max={Math.round(uiWidth / 2)}
+                    value={toUiX(char.adjX)}
                     onChange={(e) =>
-                      updateCharacter(index, "adjX", parseInt(e.target.value))
+                      updateCharacter(
+                        index,
+                        "adjX",
+                        toDesignX(parseInt(e.target.value)),
+                      )
                     }
                     className="adjX-slider"
                   />
                 </div>
               </div>
 
-              {/* 第三行：Y坐标偏移 — 标签 | 数值框 | 滑块 */}
+              {/* 第三行：Y坐标偏移 — 标签 | 数值框 | 滑块
+                  Y 方向用一个视频高度为界：足以把立绘完全移出画面上下边缘 */}
               <div className="char-row">
                 <span className="char-label-fixed">Y坐标调整</span>
                 <input
                   type="number"
                   className="char-input-fixed"
-                  value={char.adjY}
+                  value={toUiY(char.adjY)}
                   onChange={(e) =>
-                    updateCharacter(index, "adjY", parseInt(e.target.value) || 0)
+                    updateCharacter(
+                      index,
+                      "adjY",
+                      toDesignY(parseInt(e.target.value) || 0),
+                    )
                   }
                 />
                 <input
                   type="range"
-                  min={-videoWidth}
-                  max={videoWidth}
-                  value={char.adjY}
+                  min={-uiHeight}
+                  max={uiHeight}
+                  value={toUiY(char.adjY)}
                   onChange={(e) =>
-                    updateCharacter(index, "adjY", parseInt(e.target.value))
+                    updateCharacter(
+                      index,
+                      "adjY",
+                      toDesignY(parseInt(e.target.value)),
+                    )
                   }
                   className="char-slider-auto"
                 />
@@ -601,65 +670,81 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                 </div>
               </div>
 
-              {/* 第二行：X坐标调整（同角色立绘格式） */}
+              {/* 第二行：X坐标调整（同角色立绘格式：0..视频宽度） */}
               <div className="char-row">
                 <span className="char-label-fixed">X坐标调整</span>
                 <input
                   type="number"
                   className="char-input-fixed"
-                  value={temp.posX}
+                  value={toUiX(temp.posX)}
                   onChange={(e) =>
-                    updateTempImage(index, "posX", parseInt(e.target.value) || 0)
+                    updateTempImage(
+                      index,
+                      "posX",
+                      toDesignX(parseInt(e.target.value) || 0),
+                    )
                   }
                 />
                 <div className="char-slider-auto">
                   <div className="adjX-quick-positions">
-                    {[-3, -2, -1, 0, 1, 2, 3].map((n) => (
+                    {QUICK_POSITION_STEPS.map((n) => (
                       <button
                         key={n}
                         onClick={() =>
                           updateTempImage(
                             index,
                             "posX",
-                            videoWidth / 2 + Math.floor((videoWidth * n) / 6),
+                            toDesignX(stepToUiTempPosX(n, uiWidth)),
                           )
                         }
                         className="adjX-quick-btn"
-                        title={`${videoWidth / 2 + Math.floor((videoWidth * n) / 6)}`}
+                        title={`${stepToPercent(n)}% （posX=${Math.round(stepToUiTempPosX(n, uiWidth))}）`}
                       />
                     ))}
                   </div>
                   <input
                     type="range"
                     min={0}
-                    max={videoWidth}
-                    value={temp.posX}
+                    max={uiWidth}
+                    value={toUiX(temp.posX)}
                     onChange={(e) =>
-                      updateTempImage(index, "posX", parseInt(e.target.value))
+                      updateTempImage(
+                        index,
+                        "posX",
+                        toDesignX(parseInt(e.target.value)),
+                      )
                     }
                     className="adjX-slider"
                   />
                 </div>
               </div>
 
-              {/* 第三行：Y坐标调整（同角色立绘格式） */}
+              {/* 第三行：Y坐标调整（同角色立绘格式，Y 方向用一个视频高度为界） */}
               <div className="char-row">
                 <span className="char-label-fixed">Y坐标调整</span>
                 <input
                   type="number"
                   className="char-input-fixed"
-                  value={temp.posY}
+                  value={toUiY(temp.posY)}
                   onChange={(e) =>
-                    updateTempImage(index, "posY", parseInt(e.target.value) || 0)
+                    updateTempImage(
+                      index,
+                      "posY",
+                      toDesignY(parseInt(e.target.value) || 0),
+                    )
                   }
                 />
                 <input
                   type="range"
-                  min={-videoWidth}
-                  max={videoWidth}
-                  value={temp.posY}
+                  min={-uiHeight}
+                  max={uiHeight}
+                  value={toUiY(temp.posY)}
                   onChange={(e) =>
-                    updateTempImage(index, "posY", parseInt(e.target.value))
+                    updateTempImage(
+                      index,
+                      "posY",
+                      toDesignY(parseInt(e.target.value)),
+                    )
                   }
                   className="char-slider-auto"
                 />

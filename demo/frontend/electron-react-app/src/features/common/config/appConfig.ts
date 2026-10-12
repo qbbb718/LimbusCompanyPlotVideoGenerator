@@ -26,6 +26,19 @@ export const AppConfig = {
     baseUrl: computeBaseUrl(),
   },
 
+  /**
+   * 渲染「设计画布」尺寸 —— 必须与后端 ProjectConfig.VIDEO_WIDTH / VIDEO_HEIGHT 保持一致。
+   *
+   * 所有素材坐标都存在这个 1080p 空间里：立绘的 posX/posY/adjX/adjY、临时图片的 posX/posY、
+   * 后端 ProjectConfig 的字号与锚点。设置页选的「视频尺寸」只是最终输出分辨率，
+   * 渲染时整幅画面等比缩放，**不改变坐标系**，所以编辑器里任何按画布换算的逻辑
+   * （例如立绘位置滑杆）都必须用这里的设计画布尺寸，而不是用户选的输出分辨率。
+   */
+  designCanvas: {
+    width: 1920,
+    height: 1080,
+  },
+
   // 其他配置可以在这里添加
 };
 
