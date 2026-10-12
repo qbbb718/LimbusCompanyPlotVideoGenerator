@@ -1,0 +1,78 @@
+server:
+  port: 8081
+
+# 后端自身版本号：用于启动日志与 /api/health。
+# 不要手改这一行——它由 node scripts/version.mjs 与 package.json / pom.xml 一起同步。
+# 这里刻意不用 Maven 资源过滤（@project.version@），这样"源码里写的是什么版本"与
+# "跑起来报的是什么版本"永远一致，排障时不会看到构建残留的旧值。
+app.version: 0.2.3
+
+spring:
+  application:
+    name: limbus-company-plot-video-generator
+  web:
+    resources:
+      # 不再包含 file:./assets/ —— 素材目录由 RuntimePaths 解析为用户数据目录下的绝对路径，
+      # 并通过 WebMvcConfig 的 /assets/** 映射对外提供。
+      static-locations: classpath:/static/,classpath:/public/,classpath:/resources/,classpath:/assets/
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+  datasource:
+    # SQLite 用绝对路径，由 DatabaseConfig 从 RuntimePaths 计算后作为该占位符的默认值提供，
+    # 避免不同 JVM 工作目录打开不同的库（旧配置为 ./data/project.db）。
+    url: ${lbc.datasource.url}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  data:
+    jdbc:
+      dialect: sqlite
+
+# 素材路径不再在此配置。
+# 统一由 com.lbc_plot.common.util.RuntimePaths 解析到用户数据目录：
+#   Windows: %APPDATA%\limbus-company-plot-video-generator\assets
+#   其它平台: ~/.limbus-company-plot-video-generator/assets
+# 需要临时切换数据根目录（开发/测试）时，用 -Dlbc.data.dir=<目录> 或环境变量 LBC_DATA_DIR，
+# 不要通过 app.assets.* 指定相对路径。
+#
+# app.assets 下的子目录配置项已移除：AppConfig 直接从 RuntimePaths 推导，
+# 因为一旦在 yml 里写相对路径，解析结果就会重新依赖 JVM 工作目录。
+
+# 自定义配置
+# 文件存储配置（绑定到 com.lbc_plot.config.StorageConfig）
+# 注意：storage.backgrounds.dir / storage.thumbnails.dir 虽然可以在这里绑定，
+# 但 StorageConfig.afterPropertiesSet() 会用 AppConfig（即 RuntimePaths 推导出的绝对路径）
+# 覆盖它们，因此不在此写出无效的相对路径，避免"改了 yml 不生效"的误判。
+storage:
+  enable:
+    versioning: true
+  max:
+    file:
+      size: 10
+  # 允许上传的图片格式（逗号分隔）。webp 由 WebpImageDecoder 用 FFmpeg 兜底解码（保留 alpha）
+  supported:
+    formats: "jpg,jpeg,png,gif,bmp,webp"
+  generate:
+    thumbnails: true
+  thumbnail:
+    width: 200
+    height: 200
+
+audio:
+  bgm:
+    volume: 0.7
+    gain: 1.2
+  voice:
+    volume: 1.0
+    gain: 1.0
+  sfx:
+    volume: 0.8
+    gain: 1.5
+
+# 日志配置已移至 logback-spring.xml 和 logback.properties 文件中

@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Automatic-Module-Name: spring.boot.maven.plugin
+Build-Jdk-Spec: 17
+Built-By: Spring
+Implementation-Title: Spring Boot Maven Plugin
+Implementation-Version: 3.2.0
+

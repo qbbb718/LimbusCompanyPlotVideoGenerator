@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Automatic-Module-Name: spring.boot.loader.tools
+Build-Jdk-Spec: 17
+Built-By: Spring
+Implementation-Title: Spring Boot Loader Tools
+Implementation-Version: 3.2.0
+

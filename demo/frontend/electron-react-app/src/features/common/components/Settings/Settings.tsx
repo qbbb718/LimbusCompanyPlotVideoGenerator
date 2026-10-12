@@ -10,6 +10,7 @@ import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
 import AssetMaintenanceSection from "./sections/AssetMaintenanceSection";
 import LogExportSection from "./sections/LogExportSection";
+import VersionInfo from "./sections/VersionInfo";
 import ApiService from "@services/ApiService";
 
 interface SettingsProps {
@@ -95,6 +96,7 @@ const Settings: React.FC<SettingsProps> = ({
       <div className="settings-section settings-about">
         <h3>关于</h3>
         <div className="settings-section-content">
+          <VersionInfo />
           <div className="about-links">
             <a
               href="https://github.com/qbbb718/LimbusCompanyPlotVideoGenerator"

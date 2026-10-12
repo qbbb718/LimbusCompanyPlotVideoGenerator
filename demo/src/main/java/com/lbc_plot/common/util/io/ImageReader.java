@@ -38,20 +38,27 @@ public class ImageReader {
     /**
      * 统一的文件读图入口：优先 ImageIO，读不出来（如 WebP）时用 FFmpeg 兜底。
      *
+     * <p>两种解码路径都失败时<b>抛出</b> {@link IOException} 并带上具体原因，而不是返回
+     * {@code null}：返回 null 只会让调用方在上层留下一句“读不出来”，
+     * 真正的根因（例如 FFmpeg 原生库不可用）就此丢失，用户只能看到红色“加载失败”占位图。
+     *
      * @param file 图片文件
-     * @return BufferedImage，ImageIO 与 FFmpeg 都失败时返回 null
+     * @return BufferedImage
+     * @throws IOException 文件不存在，或 ImageIO 与 FFmpeg 都无法解码
      */
     public static BufferedImage readImageFile(File file) throws IOException {
         if (file == null || !file.exists() || !file.isFile()) {
             throw new IOException("文件不存在: " + (file == null ? "null" : file.getAbsolutePath()));
         }
+        boolean webp = WebpImageDecoder.isWebp(file);
         // WebP 先做魔数判断并直接交给 FFmpeg：Java 21 的 ImageIO 对它会返回 null，
         // 走一遍 ImageIO 只是白读一次文件。
-        if (WebpImageDecoder.isWebp(file)) {
+        if (webp) {
             BufferedImage viaFfmpeg = WebpImageDecoder.decodeWithFfmpeg(file);
             if (viaFfmpeg != null) {
                 return viaFfmpeg;
             }
+            throw new IOException(webpFailureMessage(file));
         }
         // 1) JDK 自带解码（png/jpg/gif/bmp/tif）
         try {
@@ -62,8 +69,27 @@ public class ImageReader {
         } catch (IOException e) {
             // 某些格式可能让 ImageIO 直接抛错，转到 FFmpeg 兜底
         }
-        // 2) FFmpeg 兜底（WebP，保留 alpha）
-        return WebpImageDecoder.decodeWithFfmpeg(file);
+        // 2) FFmpeg 兜底（保留 alpha）
+        BufferedImage fallback = WebpImageDecoder.decodeWithFfmpeg(file);
+        if (fallback != null) {
+            return fallback;
+        }
+        throw new IOException("无法解码图片（ImageIO 与 FFmpeg 均失败）: " + file.getAbsolutePath()
+                + "；ImageIO 支持格式: " + String.join(",", ImageIO.getReaderFormatNames()));
+    }
+
+    /**
+     * WebP 解码失败的报错文案。
+     *
+     * <p>WebP 在 Java 21 上只能由 FFmpeg 解码，所以这里的失败几乎总是原生库问题。
+     * 文案里直接给出可执行的下一步，避免用户只看到“图片读不出来”。
+     */
+    private static String webpFailureMessage(File file) {
+        String reason = WebpImageDecoder.getLastFailure();
+        return "WebP 图片解码失败: " + file.getAbsolutePath()
+                + "（Java 21 的 ImageIO 不支持 WebP，只能由 FFmpeg 解码；"
+                + (reason != null ? "失败原因: " + reason : "FFmpeg 未返回图像")
+                + "）。请查看启动日志里的“FFmpeg 原生库”相关记录。";
     }
 
     /**
@@ -117,6 +143,11 @@ public class ImageReader {
             if (viaFfmpeg != null) {
                 return viaFfmpeg;
             }
+            // 资源确实存在，只是解不出来：必须把原因说出来，
+            // 否则调用方只能得到一句含糊的“资源文件不存在”。
+            String reason = WebpImageDecoder.getLastFailure();
+            throw new IOException("类路径资源无法解码: " + resourcePath
+                    + (reason != null ? "（失败原因: " + reason + "）" : ""));
         }
 
         // 3) classpath 找不到时，回退到文件系统相对路径（相对于 JVM 工作目录，

@@ -1,6 +1,5 @@
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
@@ -46,11 +45,22 @@ public class PortraitTest {
         ImageExporter.exportImage(image2, "target/test-logs/portrait_test2.png");
     }
 
+    /**
+     * 无效路径不能把调用方拖垮。
+     *
+     * <p>这里断言的行为在历史上改过一次：{@code Portrait} 现在是<b>懒加载</b>的，
+     * {@code builder(...).build()} 只存路径不读盘，所以旧写法
+     * {@code assertThrows(builder("invalid/path.png").build())} 什么也断言不到
+     * （没有异常可抛，测试变成永远失败）。真正读盘发生在 {@code getImage()}，
+     * 而它对读不出来的图片返回红色“加载失败”占位图，不抛异常 —— 这正是渲染管线
+     * 在缺图时还能继续出片的原因。
+     */
     @Test
-    void testInvalidImagePath() {
-        // 测试无效路径
-        assertThrows(Exception.class, () -> {
-            Portrait.builder("invalid/path.png").build();
-        });
+    void testInvalidImagePathFallsBackToPlaceholderImage() throws IOException {
+        Portrait portrait = Portrait.builder("invalid/path.png").build();
+
+        BufferedImage image = portrait.getImage();
+        assertNotNull(image, "无效路径必须退化成占位图，而不是返回 null");
+        assertTrue(image.getWidth() > 0 && image.getHeight() > 0, "占位图也要有有效尺寸");
     }
 }

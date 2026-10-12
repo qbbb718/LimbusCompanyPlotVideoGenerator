@@ -105,6 +105,9 @@ function initLogFile() {
   try {
     // 初始化electron-log
     log.info("Electron日志系统初始化开始");
+    // 版本号来自 package.json 的 version（app.getVersion()），与安装包文件名、
+    // 「设置 → 关于」显示的版本、后端日志里的版本同源，排障时先看这一行。
+    log.info("应用版本:", app.getVersion(), "| 运行模式:", isDev ? "开发" : "安装版");
     log.info("日志文件路径:", logFilePath);
     log.info("后端日志文件:", latestBackendLog || "未找到");
     log.info("前端日志文件名:", logFileName);

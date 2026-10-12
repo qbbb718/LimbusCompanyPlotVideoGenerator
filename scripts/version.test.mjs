@@ -19,6 +19,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const REAL_PKG = path.join(ROOT, "demo/frontend/electron-react-app/package.json");
 const REAL_LOCK = path.join(ROOT, "demo/frontend/electron-react-app/package-lock.json");
 const REAL_POM = path.join(ROOT, "demo/pom.xml");
+const REAL_YML = path.join(ROOT, "demo/src/main/resources/application.yml");
 
 let passed = 0;
 const test = (name, fn) => {
@@ -169,6 +170,66 @@ test("the project version is the only text replaced", () => {
   assert.equal(again, "9.9.9-SNAPSHOT");
   assert.ok(patched.includes("<version>3.2.0</version>"), "the Spring Boot parent version is untouched");
   assert.equal(patched.split("9.9.9-SNAPSHOT").length - 1, 1);
+});
+
+console.log("application.yml");
+
+/** Mirror of the app.version handling in scripts/version.mjs. */
+const YML_KEY = /^([ \t]*app\.version[ \t]*:[ \t]*)("[^"]*"|'[^']*'|[^\s#]+)(.*)$/;
+
+function ymlKeyMatches(text) {
+  return text.split(/\r?\n/).map((line, index) => ({ line, index })).filter(({ line }) => YML_KEY.test(line));
+}
+
+function patchYmlVersion(text, replaceWith) {
+  const matches = ymlKeyMatches(text);
+  assert.equal(matches.length, 1, 'expected exactly one "app.version:" line');
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  return text
+    .split(/\r?\n/)
+    .map((line, index) => {
+      if (index !== matches[0].index) return line;
+      const m = line.match(YML_KEY);
+      const quote = m[2].startsWith('"') ? '"' : m[2].startsWith("'") ? "'" : "";
+      return `${m[1]}${quote}${replaceWith}${quote}${m[3]}`;
+    })
+    .join(eol);
+}
+
+test("the backend version is patched and nothing else moves", () => {
+  const original = crlf(fs.readFileSync(REAL_YML, "utf8"));
+  const current = ymlKeyMatches(original)[0].line.match(YML_KEY)[2];
+  const patched = patchYmlVersion(original, "9.9.9");
+  assert.equal(ymlKeyMatches(patched)[0].line.match(YML_KEY)[2], "9.9.9", "app.version moved");
+  assert.equal(ymlKeyMatches(patched).length, 1, "no extra app.version line appeared");
+  assert.equal(patched, original.replace(`app.version: ${current}`, "app.version: 9.9.9"));
+  assert.equal(patched.split("\r\n").length, original.split("\r\n").length, "line count kept");
+});
+
+test("storage.enable.versioning is not mistaken for app.version", () => {
+  const fixture = [
+    "app:",
+    "  version: 1.0.0",
+    "storage:",
+    "  enable:",
+    "    versioning: true",
+    "app.version: 0.1.0",
+    "",
+  ].join("\n");
+  const patched = patchYmlVersion(fixture, "0.2.0");
+  assert.ok(patched.includes("app.version: 0.2.0"), "the real key moved");
+  assert.ok(patched.includes("versioning: true"), "versioning untouched");
+  assert.ok(patched.includes("  version: 1.0.0"), "a nested bare version key untouched");
+});
+
+test("quoted and commented app.version lines keep their shape", () => {
+  const fixture = 'app.version: "0.1.0" # keep me\nother: 1\n';
+  const patched = patchYmlVersion(fixture, "0.2.0");
+  assert.equal(patched, 'app.version: "0.2.0" # keep me\nother: 1\n');
+});
+
+test("a missing app.version line is an error, not a silent skip", () => {
+  assert.throws(() => patchYmlVersion("server:\n  port: 8081\n", "0.2.0"), /app\.version/);
 });
 
 console.log(`\n${passed} test(s) passed${process.exitCode ? " with failures" : ""}`);

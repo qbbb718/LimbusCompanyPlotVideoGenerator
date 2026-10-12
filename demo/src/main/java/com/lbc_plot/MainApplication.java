@@ -2,6 +2,9 @@ package com.lbc_plot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Bean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +13,8 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import com.lbc_plot.common.util.RuntimePaths;
+import com.lbc_plot.common.util.io.NativeLibraryBootstrap;
+import com.lbc_plot.common.util.io.WebpSelfCheck;
 import com.lbc_plot.config.DatabaseConfig;
 
 /**
@@ -21,15 +26,73 @@ public class MainApplication {
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) {
+        // 安装包自检入口：不进 Spring、不碰用户数据，只验证「打包后的 jar 能不能解码 WebP 立绘」。
+        // 必须用 `java -jar` 跑（扁平 classpath 永远看不出问题），说明见 WebpSelfCheck。
+        String selfCheck = selfCheckTarget(args);
+        if (selfCheck != null) {
+            System.exit(WebpSelfCheck.run(selfCheck));
+        }
+
         // 清理历史遗留的数据库文件（见方法说明）
         cleanupLegacyDatabase();
         // 数据目录固定在 RuntimePaths 解析出的数据根目录下，不再依赖 JVM 工作目录
         ensureDataDirectoryExists();
 
         logResolvedPaths();
+        // FFmpeg 原生库（JavaCV/JavaCPP）必须在渲染之前确认可用：
+        // 失败时 JVM 会缓存“类初始化失败”，之后所有 WebP 立绘读取都只会报
+        // NoClassDefFoundError，根因被掩盖。这里主动预热，把原因写进启动日志。
+        NativeLibraryBootstrap.warmUp();
         // 数据库等路径由 RuntimePathsEnvironmentPostProcessor 注入 Spring 环境，
         // 因此这里不需要（也不应该）再依赖某个入口方法去设置属性。
         SpringApplication.run(MainApplication.class, args);
+    }
+
+    /**
+     * 取出 {@code --self-check=<目标>} 参数。
+     *
+     * <p>支持两种写法：{@code --self-check=webp} 与 {@code --self-check webp}。
+     * 参数不存在或值不是 {@code webp} 时返回 {@code null}（正常启动流程）。
+     *
+     * <p>包级可见（不是 private）是为了让单元测试直接验参数解析，不需要真的起一个进程。
+     *
+     * @param args 命令行参数
+     * @return 自检目标；没有自检请求时为 {@code null}
+     */
+    static String selfCheckTarget(String[] args) {
+        if (args == null) {
+            return null;
+        }
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if (arg == null) {
+                continue;
+            }
+            if (arg.startsWith("--self-check=")) {
+                String value = arg.substring("--self-check=".length()).trim();
+                return value.isEmpty() ? null : value;
+            }
+            if ("--self-check".equals(arg) && i + 1 < args.length) {
+                String value = args[i + 1] == null ? "" : args[i + 1].trim();
+                return value.isEmpty() ? null : value;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 启动完成后打印版本号。
+     *
+     * <p>版本号来自 {@code application.yml} 的 {@code app.version}，该值由
+     * {@code scripts/version.mjs} 与 package.json / pom.xml 一起同步（单一真源），
+     * 所以日志里的版本号就是本次运行的真实版本，而不是某个构建残留值。
+     *
+     * <p>写成 {@code @Bean ApplicationRunner} 而不是自定义组件：版本号在配置类里注入，
+     * 与 {@code /api/health} 读的是同一个属性，改一处即可，不需要额外注册扫描路径。
+     */
+    @Bean
+    ApplicationRunner versionLogger(@Value("${app.version:unknown}") String appVersion) {
+        return args -> logger.info("LimbusCompany Plot Video Generator 后端版本: {}", appVersion);
     }
 
     /**

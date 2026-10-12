@@ -42,6 +42,9 @@ public final class WebpImageDecoder {
 
     private static final Logger logger = LoggerFactory.getLogger(WebpImageDecoder.class);
 
+    /** 最近一次 WebP 解码失败的原因（供调用方拼进报错信息），成功时为 null */
+    private static volatile String lastFailure;
+
     private WebpImageDecoder() {
     }
 
@@ -115,16 +118,17 @@ public final class WebpImageDecoder {
             try {
                 Frame frame = grabber.grabImage();
                 if (frame == null) {
-                    logger.warn("FFmpeg 未能抓取到图像帧: {}", source);
+                    recordFailure(source, "FFmpeg 未能抓取到图像帧");
                     return null;
                 }
                 BufferedImage image = toBufferedImage(frame);
                 if (image == null) {
-                    logger.warn("FFmpeg 解码结果无法转换为 BufferedImage: {}", source);
+                    recordFailure(source, "FFmpeg 解码结果无法转换为 BufferedImage");
                     return null;
                 }
                 logger.info("已用 FFmpeg 解码 WebP: {} => {}x{}",
                         source, image.getWidth(), image.getHeight());
+                lastFailure = null;
                 return image;
             } finally {
                 try {
@@ -134,10 +138,72 @@ public final class WebpImageDecoder {
                 }
             }
         } catch (Throwable t) {
-            // UnsatisfiedLinkError 等原生库问题也要兜住：不能因为一张图拖垮启动/渲染
-            logger.warn("FFmpeg 解码图片失败: {} ({})", source, t.toString());
+            // UnsatisfiedLinkError / NoClassDefFoundError（原生库加载失败）也要兜住：
+            // 不能因为一张图拖垮启动/渲染。注意这里把完整的 cause 链写出来，
+            // 否则只会看到“Could not initialize class ...”，看不出真正的原因。
+            recordFailure(source, describeThrowable(t));
+            for (Throwable cause = t.getCause(); cause != null; cause = cause.getCause()) {
+                logger.warn("  caused by: {}", cause);
+            }
             return null;
         }
+    }
+
+    /**
+     * 记录失败原因。
+     *
+     * <p>原生库不可用是这条链路上最常见、也最难自查的故障：JVM 会把类初始化失败
+     * 缓存下来，后续调用只报 {@code NoClassDefFoundError}。这里额外把启动预热的
+     * 结论带进日志，让一条 WARN 就能定位到“不是图片坏了，是 FFmpeg 原生库没起来”。
+     */
+    private static void recordFailure(Object source, String reason) {
+        lastFailure = reason;
+        String nativeHint = NativeLibraryBootstrap.getLastFailure();
+        if (nativeHint != null && looksLikeNativeFailure(reason)) {
+            logger.warn("图片解码失败（FFmpeg 原生库不可用）: {} ({})，启动时预热的失败原因: {}",
+                    source, reason, nativeHint);
+        } else {
+            logger.warn("图片解码失败: {} ({})", source, reason);
+        }
+    }
+
+    /** 判断异常链上的描述是否指向原生库加载失败 */
+    private static boolean looksLikeNativeFailure(String reason) {
+        return reason.contains("NoClassDefFoundError")
+                || reason.contains("UnsatisfiedLinkError")
+                || reason.contains("Could not initialize class");
+    }
+
+    /** 异常类型 + 消息 + 最内层 cause，拼成一行便于 grep */
+    private static String describeThrowable(Throwable t) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(t.getClass().getName());
+        if (t.getMessage() != null) {
+            sb.append(": ").append(t.getMessage());
+        }
+        Throwable root = t;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        if (root != t && !sb.toString().contains(String.valueOf(root.getMessage()))) {
+            sb.append(" <- ").append(root.getClass().getName());
+            if (root.getMessage() != null) {
+                sb.append(": ").append(root.getMessage());
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 最近一次 WebP 解码失败的原因。
+     *
+     * <p>调用方（{@link ImageReader}、Portrait/Background）拿它来拼出可读的报错，
+     * 而不是只留一句“读不出来”。
+     *
+     * @return 失败描述；没有失败过（或最近一次成功了）时为 {@code null}
+     */
+    public static String getLastFailure() {
+        return lastFailure;
     }
 
     /** 图片流是否为 WebP（按魔数判断） */

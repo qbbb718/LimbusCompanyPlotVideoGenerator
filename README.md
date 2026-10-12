@@ -123,15 +123,32 @@ LimbusCompanyPlotVideoGenerator/
 
 ```powershell
 node scripts\version.mjs                 # 查看各处版本号是否一致
-node scripts\version.mjs 0.2.4 --write   # 一次性同步 package.json / pom.xml / package-lock.json
+node scripts\version.mjs 0.2.4 --write   # 一次性同步 package.json / pom.xml / application.yml / package-lock.json
 node scripts\version.mjs --check         # 校验一致性（CI 用）
 node scripts\version.mjs --check-tag v0.2.4   # 额外校验 git tag（发版前/CI 用）
 ```
 
-- 安装包文件名、"关于"弹窗里的版本、自动更新源（`latest.yml`）都来自 `package.json`
+- 安装包文件名、"关于"弹窗、设置页「关于 → 版本」、自动更新源（`latest.yml`）都来自 `package.json`（经 `app.getVersion()`）
 - 后端 jar 版本来自 `demo/pom.xml` 的 `<project><version>`（`demo-0.<版本>-SNAPSHOT.jar`）
+- 后端日志「后端版本: x.y.z」与 `GET /api/health` 的 `version` 来自 `demo/src/main/resources/application.yml` 的 `app.version`
+- 前端日志（`logs\log-*.log`）启动时会打印 `应用版本: x.y.z | 运行模式: ...`，排障先看这一行
 - 改完记得在 [版本更新笔记](docs/版本更新笔记.md) 顶部加一节，提交后打 tag（`git tag v0.2.4`）触发 CI 发版
 - 详细说明与坑：[本地打包说明](docs/本地打包说明.md) 的「改版本号」
+
+## 排障：立绘显示成红色「加载失败」方块
+
+WebP 立绘在 Java 21 上没有 ImageIO 解码器，只能靠 JavaCV/FFmpeg 的原生库解码；
+原生库起不来时渲染管线拿不到像素，就会画出红色占位图。最快的判断方式是直接在**打包好的 jar** 上自检：
+
+```powershell
+java -jar demo\target\demo-0.2.3-SNAPSHOT.jar --self-check=webp
+```
+
+`[SELF-CHECK] PASS webp 8x4 ...` 并返回 0 = 解码链路正常；返回 1 时日志里会有完整的原因链。
+
+注意这类问题**本地开发环境复现不了**：`mvn spring-boot:run` / IDE / `mvn test` 用的是扁平 classpath，
+原生 jar 是磁盘上的真实文件；只有 `java -jar`（Spring Boot 可执行 jar）才会暴露。
+详见 [本地打包说明](docs/本地打包说明.md) 的「先跑一次后端自检」。
 
 ## 文档
 

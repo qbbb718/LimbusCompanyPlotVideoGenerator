@@ -2,23 +2,31 @@
 /**
  * Single source of truth for the application version number.
  *
- * The version lives in exactly two build inputs:
+ * The version lives in exactly one place and is copied into every build input:
  *   1. demo/frontend/electron-react-app/package.json   "version"      -> electron-builder
  *      (installer file name, app.getVersion() shown in the About dialog, latest.yml/auto-update)
  *   2. demo/pom.xml                                    <project><version>  -> backend jar
  *      (demo/target/demo-<version>.jar; electron.js picks the jar by the "demo-*.jar" pattern,
  *       electron-builder.yml copies it with the filter "demo-*-SNAPSHOT.jar")
- *   package-lock.json only mirrors package.json, so it is synced too.
+ *   3. demo/src/main/resources/application.yml         app.version  -> backend startup log and
+ *      GET /api/health, so the log line and the About dialog always report the same number
+ *      (a plain value rather than a Maven @project.version@ filter, so the number in the source
+ *       is exactly the number the running app prints)
+ *   4. demo/frontend/electron-react-app/package-lock.json  "version" (root + packages[""]) mirror
+ *
+ * Nothing else needs editing: electron.js and the Settings page read app.getVersion() over IPC,
+ * the backend reads app.version from its own config, build-package.bat / start_all.bat never
+ * mention a version, and electron-builder.yml has no pinned version and no extraMetadata.
  *
  * Usage (from the repository root or from anywhere):
  *   node scripts/version.mjs                  report: show every version spot + consistency
- *   node scripts/version.mjs --check          CI: exit 1 when the spots disagree or a tag is missing
- *   node scripts/version.mjs --check 0.2.3    CI on a tag: exit 1 unless every spot is at 0.2.3
- *   node scripts/version.mjs 0.2.3            set 0.2.3 everywhere (dry run: prints the changes)
- *   node scripts/version.mjs 0.2.3 --write    actually write the files
+ *   node scripts/version.mjs --check          CI: exit 1 when the spots disagree
+ *   node scripts/version.mjs --check-tag v0.2.3   also require that git tag to exist
+ *   node scripts/version.mjs 0.2.4            set 0.2.4 everywhere (dry run: prints the changes)
+ *   node scripts/version.mjs 0.2.4 --write    actually write the files
  *
- * Do not hand-edit only one of the two sources: the installer name would then disagree with
- * the backend jar name, which is exactly what happened between v0.1.0 and v0.2.2 — package.json
+ * Do not hand-edit only one of the sources: the installer name would then disagree with the
+ * backend jar name, which is exactly what happened between v0.1.0 and v0.2.2 — package.json
  * stayed at 0.1.0 while the release notes went up to 0.2.2.
  *
  * Keep this file ASCII-only: it may run in a cmd.exe window with a non-UTF-8 code page.
@@ -35,10 +43,12 @@ const ROOT = path.resolve(SCRIPT_DIR, "..");
 const PKG_REL = "demo/frontend/electron-react-app/package.json";
 const LOCK_REL = "demo/frontend/electron-react-app/package-lock.json";
 const POM_REL = "demo/pom.xml";
+const YML_REL = "demo/src/main/resources/application.yml";
 
 const PKG = path.join(ROOT, PKG_REL);
 const LOCK = path.join(ROOT, LOCK_REL);
 const POM = path.join(ROOT, POM_REL);
+const YML = path.join(ROOT, YML_REL);
 
 /** Directories never scanned for stale version strings (build output, deps, reports). */
 const SCAN_SKIP_DIRS = new Set([
@@ -101,7 +111,8 @@ const USAGE = `LimbusCompany Plot Video Generator - version helper
   node scripts/version.mjs --check            exit 1 when the version spots disagree
   node scripts/version.mjs --check-tag v0.2.3 exit 1 unless every spot is at 0.2.3 and git has that tag
   node scripts/version.mjs <x.y.z>            dry run: show what setting <x.y.z> would change
-  node scripts/version.mjs <x.y.z> --write    apply it to package.json, package-lock.json, pom.xml
+  node scripts/version.mjs <x.y.z> --write    apply it to package.json, package-lock.json, pom.xml,
+                                              application.yml (app.version)
 `;
 
 /* ------------------------------------------------------------------ readers */
@@ -126,7 +137,60 @@ function readLockVersions() {
   return { root: lock.version, packageEntry: lock.packages?.[""]?.version };
 }
 
+/** Value of the backend's own `app.version` property; null when the key is absent. */
+function readYmlVersion() {
+  try {
+    return readYmlKey(YML);
+  } catch {
+    return null;
+  }
+}
+
 /* ------------------------------------------------------------------ writers */
+
+/** Anchored on `app.version:` so `storage.enable.versioning` and other properties can't match. */
+const YML_KEY = /^([ \t]*app\.version[ \t]*:[ \t]*)("[^"]*"|'[^']*'|[^\s#]+)(.*)$/;
+
+function ymlKeyMatches(text) {
+  return text.split(/\r?\n/).map((line, index) => ({ line, index })).filter(({ line }) => YML_KEY.test(line));
+}
+
+/**
+ * Read the backend version out of application.yml.
+ *
+ * @throws when the key is missing or duplicated, so `--check` fails loudly instead of silently
+ *         skipping the backend log line.
+ */
+function readYmlKey(file) {
+  const matches = ymlKeyMatches(read(file));
+  if (matches.length !== 1) {
+    throw new Error(`${rel(file)}: expected exactly one "app.version:" line, found ${matches.length}`);
+  }
+  const m = matches[0].line.match(YML_KEY);
+  // Strip optional YAML quotes from both ends.
+  return m[2].replace(/^['"]|['"]$/g, "");
+}
+
+/** Set `app.version:` while keeping the surrounding comments, indentation and line endings. */
+function patchYmlVersion(file, replaceWith) {
+  const text = read(file);
+  const matches = ymlKeyMatches(text);
+  if (matches.length !== 1) {
+    throw new Error(
+      `${rel(file)}: expected exactly one "app.version:" line, found ${matches.length}; ` +
+        "restore it (it feeds the backend startup log and GET /api/health)",
+    );
+  }
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const patched = text.split(/\r?\n/).map((line, index) => {
+    if (index !== matches[0].index) return line;
+    const m = line.match(YML_KEY);
+    // Keep the key's own quoting style so the diff stays a one-token change.
+    const quote = m[2].startsWith('"') ? '"' : m[2].startsWith("'") ? "'" : "";
+    return `${m[1]}${quote}${replaceWith}${quote}${m[3]}`;
+  });
+  return { absPath: YML, text: patched.join(eol), patches: 1, replaced: [readYmlKey(file)] };
+}
 
 /**
  * Scan JSON text for `"<key>": "<value>"` string fields, recording the object depth of each key.
@@ -248,6 +312,9 @@ function stageVersionChanges(current, next) {
   }
   staged.push({ absPath: POM, text: pomText.split(current.pom).join(pomNext), patches: 1, replaced: [current.pom] });
 
+  // Backend's own version: the startup log line and GET /api/health read this value.
+  staged.push(patchYmlVersion(YML, next));
+
   if (current.lock !== null) {
     staged.push(patchJsonVersionFields(LOCK, next));
   }
@@ -296,11 +363,18 @@ function findStaleReferences(oldVersion, alreadyStaged) {
 function collectState() {
   const pkg = readPackageVersion();
   const pom = readPomVersion();
+  const yml = readYmlVersion();
   const lock = readLockVersions();
   const release = baseOf(pkg.value);
   const rows = [
     { spot: `${PKG_REL}  "version"`, value: pkg.value, expected: release, ok: true },
     { spot: `${POM_REL}  <project><version>`, value: pom, expected: release, ok: baseOf(pom) === release },
+    {
+      spot: `${YML_REL}  app.version`,
+      value: yml ?? "(missing)",
+      expected: release,
+      ok: baseOf(yml) === release,
+    },
   ];
   if (lock) {
     rows.push({
@@ -318,15 +392,21 @@ function collectState() {
       });
     }
   }
-  return { pkg, pom, lock, release, rows };
+  return { pkg, pom, yml, lock, release, rows };
 }
 
 function report(state) {
   console.log(`Release version (source of truth: ${PKG_REL}): ${state.release}\n`);
-  console.log("Version spots:");
+  console.log("Version spots (all must be equal):");
   for (const row of state.rows) {
     console.log(`  ${row.ok ? "OK  " : "DIFF"}  ${row.spot}\n          = ${row.value}`);
   }
+  console.log("\nWhat each spot drives:");
+  console.log("  package.json      -> installer file name, app.getVersion() = the About dialog in Settings,");
+  console.log("                       latest.yml / auto-update feed, and the Electron log's 应用版本 line");
+  console.log(`  pom.xml           -> backend jar name (demo-${state.pom}.jar)`);
+  console.log('  app.version       -> backend startup log line and GET /api/health "version"');
+  console.log("  package-lock.json -> npm mirror only, never shipped");
   console.log("\nDerived artifacts (regenerate with the normal build; never hand-edit):");
   console.log(`  release/LimbusCompany Plot Video Generator Setup ${state.release}.exe`);
   console.log(`  release/win-unpacked/resources/demo-${state.pom}.jar`);
@@ -411,8 +491,9 @@ function main() {
   }
 
   const next = opts.version;
-  const current = { pkg: state.pkg.value, pom: state.pom, lock: state.lock };
-  const sourcesMatch = next === baseOf(current.pkg) && next === baseOf(current.pom);
+  const current = { pkg: state.pkg.value, pom: state.pom, yml: state.yml, lock: state.lock };
+  const sourcesMatch =
+    next === baseOf(current.pkg) && next === baseOf(current.pom) && next === baseOf(current.yml);
   const mirrorsMatch = state.rows.every((row) => row.ok);
 
   if (sourcesMatch && mirrorsMatch) {
@@ -430,12 +511,13 @@ function main() {
 
   if (sourcesMatch) {
     // Only the package-lock.json mirror had drifted, for example because it was committed
-    // separately. Re-writing the two sources with their own value keeps the diff empty.
+    // separately. Re-writing the sources with their own value keeps the diff empty.
     console.log(`Version sources are already at ${next}; resyncing the lock file mirror only.`);
   } else {
     console.log(`Version ${current.pkg} -> ${next}`);
     console.log(`  ${PKG_REL}  "version": "${current.pkg}" -> "${next}"`);
     console.log(`  ${POM_REL}  <version>${current.pom}</version> -> <version>${pomNext}</version>`);
+    console.log(`  ${YML_REL}  app.version: ${current.yml ?? "(missing)"} -> ${next}`);
   }
   if (current.lock !== null) console.log(`  ${LOCK_REL}  "version" / packages[""].version -> "${next}" (mirrors)`);
 
