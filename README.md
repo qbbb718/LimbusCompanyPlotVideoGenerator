@@ -180,6 +180,6 @@ java -jar demo\target\demo-0.2.3-SNAPSHOT.jar --self-check=webp
 ## 致谢
 
 - 感谢月海伦娜和边狱公司中文wiki提供的游戏素材
-- 感谢所有开源项目的贡献者
+- DSH老师几乎写了所有代码
 - 感谢陪我测试软件的网友们：户用様，黄土様，南平苍様
 

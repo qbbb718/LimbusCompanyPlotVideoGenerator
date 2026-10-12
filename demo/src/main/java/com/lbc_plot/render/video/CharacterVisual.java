@@ -56,27 +56,50 @@ public class CharacterVisual extends VisualElement {
     private static final boolean DEFAULT_DIM = true;
 
     /**
+     * 计算立绘缩放比例（与 RenderOfImage.renderSingleCharacter 保持一致）
+     */
+    private float portraitScale() {
+        if (portrait == null || portrait.getLength() <= 0) {
+            return 1.0f;
+        }
+        return (float) ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH / portrait.getLength();
+    }
+
+    /**
      * 从角色读取立绘坐标, 角色身高与单张立绘偏差值
-     * 
-     * @param chara 角色对象
-     * @return 包含x和y坐标的数组
+     *
+     * 定位以「缩略图裁剪方框」为基准：该方框是 (faceX, faceY, length, length) 的正方形。
+     * 身高决定的是该方框「上边缘」应落的纵向位置（由 1080p 实测标定，见 ProjectConfig），
+     * 而 posX / posY 是缩放后立绘的左上角，因此必须把方框上边缘在缩放后图中的偏移减掉，
+     * 而不能把图片上边缘直接对齐过去：
+     * 立绘中高于裁剪方框的部分（帽子、举起的武器、飘发等，即 faceY > 0）会让图片上边缘
+     * 与方框上边缘不一致，直接对齐图片上边缘就会整体偏移。
      */
     public void updatePos() {
-        if (chara == null) {
+        if (chara == null || portrait == null) {
             posX = 0;
             posY = 0;
             return;
         }
 
-        // 从角色获取身高, 从立绘获取头顶
-        posX = ProjectConfig.VIDEO_WIDTH / 2 - (146 * (ProjectConfig.VIDEO_WIDTH / ProjectConfig.VIDEO_WIDTH) / 2)
-                - portrait.getFaceX() + portrait.getAdjX() + adjX;
-        posY = (int) ((ProjectConfig.DEFAULT_CHARACTER_HEIGHT - chara.getHeight())
-                * ProjectConfig.Pixels_per_centimeter)
-                + ProjectConfig.DEFAULT_CHARACTER_HEIGHT_Pixels + portrait.getAdjY() + adjY;
+        final float scale = portraitScale();
 
-        logger.debug("{}的身高为{},渲染距离为{}",
-                chara.getCharacterName(), chara.getHeight(), posY);
+        // 裁剪方框上边缘在缩放后图像中的偏移
+        final float boxTopOffsetX = portrait.getFaceX() * scale;
+        final float boxTopOffsetY = portrait.getFaceY() * scale;
+
+        // 方框上边缘在视频中的目标位置：X 为画面中心，Y 由角色身高决定
+        final int anchorX = ProjectConfig.VIDEO_WIDTH / 2;
+        final int anchorY = ProjectConfig.DEFAULT_CHARACTER_HEIGHT_Pixels
+                + (int) ((ProjectConfig.DEFAULT_CHARACTER_HEIGHT - chara.getHeight())
+                        * ProjectConfig.Pixels_per_centimeter);
+
+        // 缩放后图像左上角 = 方框上边缘目标位置 - 该边缘在缩放后图中的偏移
+        posX = anchorX - Math.round(boxTopOffsetX) + portrait.getAdjX() + adjX;
+        posY = anchorY - Math.round(boxTopOffsetY) + portrait.getAdjY() + adjY;
+
+        logger.debug("{}的身高为{},裁剪方框上边缘为({},{}),缩放为{},渲染位置为({},{})",
+                chara.getCharacterName(), chara.getHeight(), anchorX, anchorY, scale, posX, posY);
     }
 
     /**
@@ -250,10 +273,10 @@ public class CharacterVisual extends VisualElement {
          * @throws IOException
          */
         public Builder(MyCharacter character, Portrait portrait) throws IOException {
-            CharacterRef ref = CharacterRef.from(character);
-            this.chara = ref;
+            this.chara = character == null ? null : CharacterRef.from(character);
             this.portrait = portrait;
-            image = portrait.getImage();
+            // 立绘可能缺失（如资源被删除），此时 posX/posY 由 updatePos 归零，不阻塞构建
+            image = portrait == null ? null : portrait.getImage();
         }
 
         // 链式设置方法
