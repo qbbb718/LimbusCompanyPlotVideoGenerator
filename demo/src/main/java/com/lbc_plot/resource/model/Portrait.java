@@ -228,23 +228,24 @@ public class Portrait {
      * 带懒加载的getter方法
      * 如果image为null，会根据imagePath自动加载图像
      *
-     * thumbnailPath 现在存的是 URL 路径，形如 "/assets/characters/{拼音}/thumbnails/xxx.png"
-     * （前端通过 /assets/** 静态映射访问）。后端加载 BufferedImage 时需要去掉前导 /，
-     * 相对于 JVM 工作目录（demo/）解析为磁盘文件。
+     * thumbnailPath 存的是 URL 路径，形如
+     * {@code /assets/characters/{目录名}/thumbnails/xxx.png}（前端通过 /assets/** 静态映射访问）。
+     * 后端要读成磁盘文件，所以统一交给 {@link ImageReader#resolveAssetFile} 解析 ——
+     * 它会把 {@code /assets/} 前缀剥掉再锚定到配置的素材目录，不依赖 JVM 工作目录。
+     * 这里刻意与删除逻辑（PortraitController.deletePortrait）用同一个解析入口：
+     * 过去读取靠"相对工作目录存在"、删除靠 {@code new File(url)}，两边规则不一致，
+     * 结果是读得到却删不掉，磁盘上留了一堆孤儿缩略图。
      */
     public BufferedImage getThumbnail() {
         if (this.thumbnail == null && this.thumbnailPath != null && !this.thumbnailPath.trim().isEmpty()) {
             try {
-                // 去掉前导 /，把 URL 路径转为相对工作目录的文件系统路径
-                String fsPath = this.thumbnailPath.startsWith("/")
-                        ? this.thumbnailPath.substring(1)
-                        : this.thumbnailPath;
-                java.io.File f = new java.io.File(fsPath);
-                if (f.exists() && f.isFile()) {
+                File resolved = ImageReader.resolveAssetFile(this.thumbnailPath,
+                        ProjectConfig.CHARACTERS_PATH, "characters");
+                if (resolved.isFile()) {
                     // 走统一读图入口：WebP 缩略图 ImageIO 读不出来时由 FFmpeg 兜底
-                    this.thumbnail = ImageReader.readImageFile(f);
+                    this.thumbnail = ImageReader.readImageFile(resolved);
                 } else {
-                    // 回退：用 ImageReader 按资源路径查找（兼容旧值或相对路径）
+                    // 回退：按资源路径查找（兼容打进 classpath 的旧值）
                     this.thumbnail = ImageReader.readCharacters(this.thumbnailPath);
                 }
                 if (this.thumbnail == null) {

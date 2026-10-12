@@ -150,6 +150,10 @@ java -jar demo\target\demo-0.2.3-SNAPSHOT.jar --self-check=webp
 原生 jar 是磁盘上的真实文件；只有 `java -jar`（Spring Boot 可执行 jar）才会暴露。
 详见 [本地打包说明](docs/本地打包说明.md) 的「先跑一次后端自检」。
 
+另外，立绘上传时如果文件是 WebP 会自动转成 PNG 存盘、原图备份到角色目录下的 `originals/`，
+所以**新上传的立绘不会再因为原生库问题变红**（上传时解不出来会直接报错、不落库）；
+老素材里的 `.webp` 仍由 FFmpeg 兜底读取。详见 [本地打包说明](docs/本地打包说明.md) 的「立绘的 WebP → PNG 入库转换」。
+
 ## 文档
 
 - [项目文档](docs/项目文档.md) - 模块结构与总体设计

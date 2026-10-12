@@ -1,6 +1,7 @@
 package com.lbc_plot.resource.service;
 
 import com.lbc_plot.common.util.RuntimePaths;
+import com.lbc_plot.common.util.io.WebpImageDecoder;
 import com.lbc_plot.config.AppConfig;
 import com.lbc_plot.config.StorageConfig;
 import org.slf4j.Logger;
@@ -268,18 +269,140 @@ public class StorageService implements ResourceService<org.springframework.core.
             characterDir.mkdirs();
         }
 
-        // 3. 生成文件名：{portraitId}.{ext}
-        String ext = getFileExtension(file.getOriginalFilename());
-        String filename = portraitId + ext;
-        File dest = new File(characterDir, filename);
+        // 3. WebP 在入库时统一转成 PNG 存盘，原图另存作备份。
+        //    为什么不等渲染时再解：WebP 在 Java 21 上没有 ImageIO 解码器，只能靠 FFmpeg
+        //    原生库兜底；一旦原生库不可用，旧流程会"上传成功、渲染时才失败"，用户看到的
+        //    就是满屏红色"加载失败"方块，而且文件已经落库、无从判断是哪一张坏了。
+        //    改成入库时转换之后，读取路径只剩 JDK 自带解码器（PNG），故障点也从"遍布全库、
+        //    静默发生"收敛成"单次上传、当场报错"。
+        //    FFmpeg 本来就是视频导出的硬依赖（见 VideoExporter 的 FFmpegFrameRecorder），
+        //    所以这里用它做一次转换不引入任何新的运行时依赖。
+        DecodedPortrait decoded = readAndNormalizePortrait(file, portraitId);
 
-        // 4. 保存文件
-        Files.copy(file.getInputStream(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        logger.info("立绘文件已保存: {}", dest.getAbsolutePath());
+        // 4. 生成文件名：{portraitId}.{ext}；WebP 转换后扩展名是 .png
+        String filename;
+        if (decoded == null) {
+            filename = portraitId + getFileExtension(file.getOriginalFilename());
+            File dest = new File(characterDir, filename);
+            Files.copy(file.getInputStream(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            logger.info("立绘文件已保存: {}", dest.getAbsolutePath());
+        } else {
+            filename = portraitId + ".png";
+            File dest = new File(characterDir, filename);
+            writePngAtomically(decoded.image, dest);
+            backupOriginalPortrait(characterDir, portraitId, decoded.originalBytes, decoded.originalExtension);
+            logger.info("立绘已由 WebP 转为 PNG 保存: {}（原图已备份，渲染路径不再依赖 FFmpeg 解码）",
+                    dest.getAbsolutePath());
+        }
 
         // 5. 返回相对路径（供前端 URL 拼接和 DB 存储）
         String relativePath = folderName + "/" + filename;
         return new PortraitUploadResult(relativePath, null);
+    }
+
+    /**
+     * 原图备份目录名（角色目录下的子目录）。
+     *
+     * <p>放在角色目录内部，这样删除角色目录时会连同备份一起清掉，不会留孤儿；
+     * 删除单个立绘时由 {@code PortraitController.deleteOriginalBackup} 按 portraitId 清理。
+     * 对外可见是为了让删除逻辑与写入逻辑共用同一个目录名，避免两处字面量漂移。
+     */
+    public static final String ORIGINAL_BACKUP_DIR = "originals";
+
+    /**
+     * 读取上传的立绘；如果是 WebP 就解码成 {@link BufferedImage} 交给调用方写 PNG。
+     *
+     * <p>返回 {@code null} 表示"不需要转换，按原字节存盘即可"（非 WebP，或样本太短不可能是图像）。
+     * WebP 但解不出来时<b>抛异常</b>，绝不放行：宁可让用户当场看到"这张图读不出来"，
+     * 也不要让它在渲染时变成红色占位图。
+     */
+    private DecodedPortrait readAndNormalizePortrait(MultipartFile file, String portraitId) throws IOException {
+        byte[] bytes;
+        try (InputStream in = file.getInputStream()) {
+            bytes = in.readAllBytes();
+        }
+        if (!WebpImageDecoder.isWebpBytes(bytes)) {
+            return null;
+        }
+
+        // FFmpeg 需要可寻址的输入，所以落到临时文件再解（同 ImageReader.readResourceImage 的做法）
+        File temp = File.createTempFile("lbc-portrait-import-", ".webp");
+        try {
+            Files.write(temp.toPath(), bytes);
+            BufferedImage image = WebpImageDecoder.decodeWithFfmpeg(temp);
+            if (image == null) {
+                String reason = WebpImageDecoder.getLastFailure();
+                logger.warn("立绘 {} 是 WebP 但无法解码，已拒绝本次上传: {}", portraitId, reason);
+                throw new IOException("这张 WebP 立绘无法解码，已取消上传（原文件未被改动）。"
+                        + "原因: " + (reason == null ? "FFmpeg 未返回图像" : reason)
+                        + "。若原因是 FFmpeg 原生库不可用，请查看启动日志里的“FFmpeg 原生库”记录，"
+                        + "或用 java -jar <jar> --self-check=webp 自检。");
+            }
+            String originalExtension = getFileExtension(file.getOriginalFilename());
+            return new DecodedPortrait(image, bytes, originalExtension);
+        } finally {
+            if (!temp.delete()) {
+                temp.deleteOnExit();
+            }
+        }
+    }
+
+    /** WebP 转换结果：解码后的图像 + 原图字节（用于备份） */
+    private static final class DecodedPortrait {
+        private final BufferedImage image;
+        private final byte[] originalBytes;
+        private final String originalExtension;
+
+        private DecodedPortrait(BufferedImage image, byte[] originalBytes, String originalExtension) {
+            this.image = image;
+            this.originalBytes = originalBytes;
+            this.originalExtension = originalExtension;
+        }
+    }
+
+    /**
+     * 把转换后的 PNG 写进目标文件。
+     *
+     * <p>先写临时文件再原子替换：避免写到一半失败时，磁盘上留下一个"看起来存在、其实损坏"的
+     * 立绘文件 —— 那种文件的症状又回到了红方块，且更难查。
+     */
+    private void writePngAtomically(BufferedImage image, File dest) throws IOException {
+        File temp = new File(dest.getParentFile(), dest.getName() + ".importing");
+        try {
+            if (!ImageIO.write(image, "png", temp)) {
+                throw new IOException("当前运行环境没有 PNG 编码器，无法保存立绘");
+            }
+            try {
+                Files.move(temp.toPath(), dest.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                Files.move(temp.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temp.toPath());
+        }
+    }
+
+    /**
+     * 把用户上传的原始 WebP 另存一份到角色目录下的 {@code originals/}。
+     *
+     * <p>刻意保留原图：转换是一条有损链路（WebP 解码 → PNG 重编码），万一以后发现转换有问题、
+     * 或需要换解码器重转，原图是唯一能回退的依据；而它只有一百多 KB，相对转换后约 11 倍的
+     * PNG 体积可以忽略。备份失败<b>不影响本次上传</b>（PNG 已经写好了），只记日志。
+     */
+    private void backupOriginalPortrait(File characterDir, String portraitId, byte[] bytes, String extension) {
+        try {
+            File backupDir = new File(characterDir, ORIGINAL_BACKUP_DIR);
+            if (!backupDir.exists() && !backupDir.mkdirs() && !backupDir.isDirectory()) {
+                logger.warn("原图备份目录创建失败，跳过备份: {}", backupDir.getAbsolutePath());
+                return;
+            }
+            File backup = new File(backupDir, portraitId + extension);
+            Files.write(backup.toPath(), bytes);
+            logger.info("立绘原图已备份: {}", backup.getAbsolutePath());
+        } catch (IOException e) {
+            logger.warn("立绘原图备份失败（不影响本次上传）: {}", e.toString());
+        }
     }
 
     /**

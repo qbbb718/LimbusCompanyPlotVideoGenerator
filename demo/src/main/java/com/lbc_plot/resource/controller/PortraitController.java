@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.lbc_plot.common.util.io.ImageReader;
+import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.resource.character.CharacterCardImageCache;
 import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.dao.PortraitDAO;
@@ -216,18 +218,35 @@ public class PortraitController {
             // 如果需要删除文件
             if (deleteFiles && portrait != null) {
                 // 删除立绘文件
+                //
+                // 注意：DB 里存的是**相对路径**（{folderName}/{portraitId}.png），
+                // 直接 new File(imagePath) 会拿 JVM 工作目录去拼，文件根本找不到 ——
+                // 结果是"记录删了、文件留在盘上"的静默泄漏。所以统一走
+                // ImageReader.resolveCharacterFile，与读取路径同一套解析规则。
                 if (portrait.getImagePath() != null && !portrait.getImagePath().isEmpty()) {
-                    File portraitFile = new File(portrait.getImagePath());
+                    File portraitFile = ImageReader.resolveCharacterFile(portrait.getImagePath());
                     if (portraitFile.exists() && portraitFile.delete()) {
                         logger.info("已删除立绘文件: " + portraitFile.getAbsolutePath());
+                    } else {
+                        logger.info("立绘文件不存在或删除失败（可能已被清理）: "
+                                + portraitFile.getAbsolutePath());
                     }
+                    // 顺带清掉 WebP 导入时留下的原图备份，避免孤儿文件
+                    deleteOriginalBackup(portraitFile);
                 }
 
                 // 删除缩略图
+                // 与读取路径（Portrait.getThumbnail）用同一套解析：缩略图存的是
+                // /assets/characters/... 形式的 URL，直接 new File(url) 会拼出
+                // "...\<盘符>\assets\characters\..."，在 Windows 上永远删不掉。
                 if (portrait.getThumbnailPath() != null && !portrait.getThumbnailPath().isEmpty()) {
-                    File thumbnailFile = new File(portrait.getThumbnailPath());
+                    File thumbnailFile = ImageReader.resolveAssetFile(portrait.getThumbnailPath(),
+                            ProjectConfig.CHARACTERS_PATH, "characters");
                     if (thumbnailFile.exists() && thumbnailFile.delete()) {
                         logger.info("已删除缩略图文件: " + thumbnailFile.getAbsolutePath());
+                    } else {
+                        logger.info("缩略图不存在或删除失败（可能已被清理）: "
+                                + thumbnailFile.getAbsolutePath());
                     }
                 }
             }
@@ -237,6 +256,42 @@ public class PortraitController {
             logger.severe("删除立绘失败: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("删除立绘失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除 WebP 立绘导入时留下的原图备份（{@code {角色目录}/originals/{portraitId}.webp}）。
+     *
+     * <p>备份是"转换可回退"的保险，不是主文件；主文件被删掉之后它就没有意义了，
+     * 留着只会变成孤儿文件。失败不影响删除流程本身。
+     *
+     * @param portraitFile 已解析到磁盘的立绘主文件
+     */
+    private void deleteOriginalBackup(File portraitFile) {
+        try {
+            File characterDir = portraitFile.getParentFile();
+            if (characterDir == null) {
+                return;
+            }
+            File backupDir = new File(characterDir, StorageService.ORIGINAL_BACKUP_DIR);
+            if (!backupDir.isDirectory()) {
+                return;
+            }
+            // 主文件叫 {portraitId}.png，备份叫 {portraitId}.webp（原扩展名），所以按前缀匹配
+            String baseName = portraitFile.getName();
+            int dot = baseName.lastIndexOf('.');
+            String portraitId = dot > 0 ? baseName.substring(0, dot) : baseName;
+            File[] backups = backupDir.listFiles((dir, name) -> name.startsWith(portraitId + "."));
+            if (backups == null) {
+                return;
+            }
+            for (File backup : backups) {
+                if (backup.delete()) {
+                    logger.info("已删除立绘原图备份: " + backup.getAbsolutePath());
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("清理立绘原图备份失败（不影响删除结果）: " + e.getMessage());
         }
     }
 
