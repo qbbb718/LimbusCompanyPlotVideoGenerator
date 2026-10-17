@@ -142,11 +142,14 @@ public class VideoExporter implements AutoCloseable {
             ffmpegProcess = pb.start();
             ffmpegInput = ffmpegProcess.getOutputStream();
 
-            // 后台线程消费 stderr，防止 FFmpeg 管道阻塞，同时记录错误
+            // 后台线程消费 stderr，防止 FFmpeg 管道阻塞，同时记录错误。
+            // 显式用 UTF-8 解码：FFmpeg 输出里的中文路径按 UTF-8 编码，用平台默认字符集
+            //（zh-CN 上常是 GBK）会打成乱码，日志里全是「�½�һ ��һĻ」这种没法排查的内容。
             final Process proc = ffmpegProcess;
             Thread stderrReader = new Thread(() -> {
                 try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                        new java.io.InputStreamReader(proc.getErrorStream()))) {
+                        new java.io.InputStreamReader(proc.getErrorStream(),
+                                java.nio.charset.StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         logger.warn("FFmpeg({}): {}", codec.getDisplayName(), line);

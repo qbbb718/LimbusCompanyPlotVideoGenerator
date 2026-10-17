@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -209,10 +210,10 @@ public class FFmpegAudioProcessor {
         try {
             Process process = Runtime.getRuntime().exec(command);
 
-            // 读取输出流
+            // 读取输出流（显式 UTF-8：FFmpeg 输出含中文路径时，用平台默认字符集会乱码）
             Thread outputThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream()))) {
+                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         logger.debug("FFmpeg stdout: {}", line);
@@ -225,7 +226,7 @@ public class FFmpegAudioProcessor {
             // 读取错误流（FFmpeg主要输出到这里）
             Thread errorThread = new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getErrorStream()))) {
+                        new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         logger.info("FFmpeg: {}", line);

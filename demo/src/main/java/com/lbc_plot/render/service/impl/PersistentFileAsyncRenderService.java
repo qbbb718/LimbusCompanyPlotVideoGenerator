@@ -1,6 +1,7 @@
 package com.lbc_plot.render.service.impl;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -121,7 +122,7 @@ public class PersistentFileAsyncRenderService
         Path jobFile = queueDir.resolve(id + ".json");
         try {
             String json = mapper.writeValueAsString(job);
-            Files.writeString(jobFile, json, StandardOpenOption.CREATE_NEW);
+            Files.writeString(jobFile, json, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
         } catch (IOException e) {
             CompletableFuture<RenderResult> failed = new CompletableFuture<>();
             failed.completeExceptionally(e);
@@ -205,7 +206,7 @@ public class PersistentFileAsyncRenderService
         String fileName = jobFile.getFileName().toString();
         String id = fileName.replaceAll("\\.json$", "");
         try {
-            String content = Files.readString(jobFile);
+            String content = Files.readString(jobFile, StandardCharsets.UTF_8);
             RenderJob job = mapper.readValue(content, RenderJob.class);
             long now = System.currentTimeMillis();
             // 如果设置了下一次尝试时间并且尚未到达，则重新调度
@@ -238,7 +239,7 @@ public class PersistentFileAsyncRenderService
             failCounts.put(id, cnt);
             // 读取 job，更新尝试计数与 nextAttemptTime
             try {
-                String content = Files.readString(jobFile);
+                String content = Files.readString(jobFile, StandardCharsets.UTF_8);
                 RenderJob job = mapper.readValue(content, RenderJob.class);
                 int attemptsNow = job.getAttempts() + 1;
                 job.setAttempts(attemptsNow);
@@ -257,7 +258,7 @@ public class PersistentFileAsyncRenderService
                 // 持久化 job 元数据
                 try {
                     String newJson = mapper.writeValueAsString(job);
-                    Files.writeString(jobFile, newJson, StandardOpenOption.TRUNCATE_EXISTING);
+                    Files.writeString(jobFile, newJson, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
                 } catch (IOException ex) {
                     logger.warn("无法更新 job 文件元数据: {}", jobFile, ex);
                 }
@@ -308,10 +309,10 @@ public class PersistentFileAsyncRenderService
         try {
             Path q = queueDir.resolve(id + ".json");
             if (Files.exists(q))
-                return mapper.readValue(Files.readString(q), RenderJob.class);
+                return mapper.readValue(Files.readString(q, StandardCharsets.UTF_8), RenderJob.class);
             Path f = failedDir.resolve(id + ".json");
             if (Files.exists(f))
-                return mapper.readValue(Files.readString(f), RenderJob.class);
+                return mapper.readValue(Files.readString(f, StandardCharsets.UTF_8), RenderJob.class);
         } catch (Exception ex) {
             // ignore and fallthrough
         }
@@ -325,7 +326,7 @@ public class PersistentFileAsyncRenderService
             if (Files.exists(failedDir)) {
                 Files.list(failedDir).filter(p -> p.toString().endsWith(".json")).limit(limit).forEach(p -> {
                     try {
-                        out.add(mapper.readValue(Files.readString(p), RenderJob.class));
+                        out.add(mapper.readValue(Files.readString(p, StandardCharsets.UTF_8), RenderJob.class));
                     } catch (Exception ex) {
                         // ignore
                     }
@@ -344,7 +345,7 @@ public class PersistentFileAsyncRenderService
             if (Files.exists(queueDir)) {
                 Files.list(queueDir).filter(p -> p.toString().endsWith(".json")).limit(limit).forEach(p -> {
                     try {
-                        out.add(mapper.readValue(Files.readString(p), RenderJob.class));
+                        out.add(mapper.readValue(Files.readString(p, StandardCharsets.UTF_8), RenderJob.class));
                     } catch (Exception ex) {
                         // ignore
                     }
@@ -361,8 +362,8 @@ public class PersistentFileAsyncRenderService
             java.io.StringWriter sw = new java.io.StringWriter();
             e.printStackTrace(new java.io.PrintWriter(sw));
             String err = sw.toString();
-            Files.writeString(jobFile.resolveSibling(id + ".error"), err, StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING);
+            Files.writeString(jobFile.resolveSibling(id + ".error"), err, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (Exception ex) {
             logger.warn("无法写入失败原因文件: {}", jobFile, ex);
         }

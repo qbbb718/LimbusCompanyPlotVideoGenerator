@@ -1,6 +1,7 @@
 package com.lbc_plot.render.audio;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -81,9 +82,9 @@ public class AudioDurationHelper {
         try {
             Process process = Runtime.getRuntime().exec(command);
 
-            // 读取输出
+            // 读取输出（显式 UTF-8：FFprobe 输出含中文路径时，平台默认字符集会乱码）
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
 
                 String output = reader.readLine();
                 if (output != null && !output.trim().isEmpty()) {
@@ -94,7 +95,7 @@ public class AudioDurationHelper {
             // 读取错误流
             StringBuilder error = new StringBuilder();
             try (BufferedReader errorReader = new BufferedReader(
-                    new InputStreamReader(process.getErrorStream()))) {
+                    new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
 
                 String line;
                 while ((line = errorReader.readLine()) != null) {
