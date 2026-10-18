@@ -96,6 +96,8 @@ export const normalizeTextSpeed = (
   value: unknown,
   fallback: number = DEFAULT_TEXT_SPEED,
 ): number => {
+  // 空值不算 0（Number(null) === 0）：旧工程/旧 localStorage 里没有这个字段时要用默认档位
+  if (value === null || value === undefined || value === "") return fallback;
   const numeric = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   const stepped =
@@ -119,6 +121,8 @@ export const withGlobalTextSpeed = (records: Record[], speed: number): Record[] 
   return (records || []).map((record) => ({
     ...record,
     dialogue: { ...record.dialogue, speed: normalized },
+    // 记录内容被改过，标脏（与在"文本"页里单条改速度的效果一致）
+    isDirty: true,
   }));
 };
 

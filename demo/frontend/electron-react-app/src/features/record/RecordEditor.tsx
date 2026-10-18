@@ -10,7 +10,11 @@ import CharactersProperties from "./properties/CharactersProperties";
 import BackgroundProperties from "./properties/BackgroundProperties";
 import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
-import { plotOf } from "@features/common/utils/projectSettings";
+import {
+  normalizeTextSpeed,
+  plotOf,
+  withGlobalTextSpeed,
+} from "@features/common/utils/projectSettings";
 import { generateUUID } from "./utils";
 import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
@@ -75,6 +79,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   recordsRef.current = records || [];
   const selectedIndexRef = useRef(selectedRecordIndex);
   selectedIndexRef.current = selectedRecordIndex;
+  // 新记录的初始"显示速度"取全局设置（不做成依赖，避免改设置就重建回调）
+  const projectSettingsRef = useRef(projectSettings);
+  projectSettingsRef.current = projectSettings;
   // 空工程只自动补一条记录，避免 StrictMode 下 effect 重跑出两条
   const autoCreatedRef = useRef(false);
 
@@ -109,7 +116,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         speakerName: inherit?.dialogue?.speakerName || "",
         faction: inherit?.dialogue?.faction || "",
         align: inherit?.dialogue?.align || DialogueAlign.LEFT,
-        speed: 1,
+        // 新记录沿用"全局设置 → 文字显示速度（全局）"，保证"全局"对新建记录同样生效
+        speed: normalizeTextSpeed(projectSettingsRef.current?.textSpeed),
         emotion: Emotion.NORMAL,
         // 自由文本（说话人类型）与样式：新建记录沿用上一条的选择，避免每条都要重设
         freeText: inherit?.dialogue?.freeText === true,
@@ -169,6 +177,31 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       setProjectSettings((prev) => ({ ...prev, [field]: value }));
     },
     [setProjectSettings],
+  );
+
+  // "文本"tab 的"全局设置"链接点进来时，高亮一下全局速度滑块（1.6s 后自动清掉）
+  const [focusGlobalTextSpeed, setFocusGlobalTextSpeed] = useState(false);
+  const clearGlobalTextSpeedFocus = useCallback(
+    () => setFocusGlobalTextSpeed(false),
+    [],
+  );
+  const openGlobalTextSpeed = useCallback(() => {
+    setActivePropertyTab("global");
+    setFocusGlobalTextSpeed(true);
+  }, [setActivePropertyTab]);
+
+  /**
+   * @function 修改"文字显示速度（全局）"
+   * 除了写进 projectSettings（之后新增的记录用它），还要把这一档速度统一覆盖到
+   * 所有已有记录上 —— 这就是"全局"：单条记录在"文本"tab 里调过的速度会被覆盖。
+   */
+  const handleGlobalTextSpeedChange = useCallback(
+    (speed: number) => {
+      const normalized = normalizeTextSpeed(speed);
+      setProjectSettings((prev) => ({ ...prev, textSpeed: normalized }));
+      setRecords((prev) => withGlobalTextSpeed(prev || [], normalized));
+    },
+    [setProjectSettings, setRecords],
   );
 
   const deleteRecord = (index: number) => {
@@ -364,6 +397,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             updateRecord={updateRecord}
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
+            onOpenGlobalSpeed={openGlobalTextSpeed}
           />
         );
       case "characters":
@@ -404,6 +438,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           <GlobalProperties
             projectSettings={projectSettings}
             onChange={handleProjectSettingsChange}
+            onTextSpeedChange={handleGlobalTextSpeedChange}
+            highlightTextSpeed={focusGlobalTextSpeed}
+            onHighlightEnd={clearGlobalTextSpeedFocus}
           />
         );
       default:

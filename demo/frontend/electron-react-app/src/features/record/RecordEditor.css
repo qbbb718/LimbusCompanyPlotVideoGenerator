@@ -331,22 +331,73 @@
   overflow: hidden;
 }
 
+/* 属性页签：一行铺满、每个页签等宽（flex: 1 1 0 → 6 个页签各占 1/6）。
+   面板拖窄到 ≤ 460px 时由下面的容器查询把 emoji 叠到文字上方，
+   保证"全局设置"这种长名字不会被截断。 */
 .property-tabs {
   display: flex;
+  align-items: stretch;
+  width: 100%;
   border-bottom: 1px solid #ddd;
+  /* 供下面的容器查询使用：按"页签栏自身宽度"（不是窗口宽度）决定要不要把 emoji 叠到文字上方 */
+  container-type: inline-size;
 }
 
 .property-tabs button {
-  padding: 10px 15px;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 4px;
+  padding: 9px 4px;
   border: none;
   background: none;
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  font-size: 13px;
+  line-height: 1.25;
+  color: #555;
+}
+
+.property-tabs button:hover {
+  background: #f5f9ff;
+  color: #1890ff;
 }
 
 .property-tabs button.active {
   border-bottom-color: #1890ff;
   color: #1890ff;
+  font-weight: 600;
+  background: #f0f7ff;
+}
+
+/* emoji 与文字各自不拆行：宽度不够时整体换行（emoji 仍在文字前） */
+.property-tab-emoji,
+.property-tab-label {
+  white-space: nowrap;
+}
+
+.property-tab-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* 属性面板被拖得很窄时（≤ 460px，6 个页签每个不到 77px）：
+   emoji 叠到文字上方、字号收小，六等分仍然是一行且不互相挤压。 */
+@container (max-width: 460px) {
+  .property-tabs button {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding: 7px 2px;
+    font-size: 12px;
+  }
+
+  .property-tab-emoji {
+    font-size: 15px;
+  }
 }
 
 .property-content {
@@ -407,14 +458,16 @@
   border-color: #40a9ff;
 }
 
-/* 音量：滑块占满剩余宽度，右侧百分比定宽，避免拖动时数字跳动导致滑块抖动 */
-.global-properties .volume-slider {
+/* 音量 / 文字显示速度：滑块占满剩余宽度，右侧数值定宽，避免拖动时数字跳动导致滑块抖动 */
+.global-properties .volume-slider,
+.global-properties .speed-slider {
   display: flex;
   align-items: center;
   width: 100%;
 }
 
-.global-properties .volume-slider input[type="range"] {
+.global-properties .volume-slider input[type="range"],
+.global-properties .speed-slider input[type="range"] {
   flex: 1;
   min-width: 0;
   margin-right: 10px;
@@ -422,10 +475,41 @@
   cursor: pointer;
 }
 
-.global-properties .volume-slider span {
+.global-properties .volume-slider span,
+.global-properties .speed-slider span {
   flex: 0 0 auto;
   width: 42px;
   text-align: right;
+}
+
+/* 文字显示速度（全局）：说明文字 + 从"文本"页签跳过来时的高亮提示 */
+.global-properties .text-speed-group {
+  padding: 6px 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+  border-radius: 6px;
+}
+
+.global-properties .global-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #888;
+}
+
+.global-properties .text-speed-group.highlight {
+  animation: text-speed-flash 1.6s ease-out;
+}
+
+@keyframes text-speed-flash {
+  0% {
+    background-color: #e6f4ff;
+    box-shadow: inset 0 0 0 2px #1890ff;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px rgba(24, 144, 255, 0);
+  }
 }
 
 .loading {

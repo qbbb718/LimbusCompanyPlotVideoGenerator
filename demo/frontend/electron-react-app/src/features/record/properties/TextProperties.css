@@ -51,6 +51,44 @@
   color: #1890ff;
 }
 
+/* ===== "显示速度"标签行：左侧标签，右侧跳转到"全局设置"的链接 ===== */
+.form-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.form-label-row label {
+  margin-bottom: 0;
+}
+
+/* 文字链接样式的按钮：不占额外高度，紧挨在标签右侧 */
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1890ff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-button:hover {
+  color: #40a9ff;
+}
+
+.link-button:focus-visible {
+  outline: 2px solid #91d5ff;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 /* 自由文本模式下替代"阵营"的三个勾选项 */
 .free-text-options {
   display: flex;

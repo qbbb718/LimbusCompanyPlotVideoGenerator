@@ -9,6 +9,12 @@ import {
 } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@features/common/config/appConfig";
+import {
+  TEXT_SPEED_MAX,
+  TEXT_SPEED_MIN,
+  TEXT_SPEED_STEP,
+  normalizeTextSpeed,
+} from "@features/common/utils/projectSettings";
 import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
@@ -23,6 +29,11 @@ interface TextPropertiesProps {
   videoWidth?: number;
   /** 设置页选的输出视频高度 */
   videoHeight?: number;
+  /**
+   * "显示速度"旁的"全局设置"链接：切到"全局设置"tab 并定位到
+   * "文字显示速度（全局）"滑块（不传时不渲染该链接）。
+   */
+  onOpenGlobalSpeed?: () => void;
 }
 
 /**
@@ -56,6 +67,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   updateRecord,
   videoWidth,
   videoHeight,
+  onOpenGlobalSpeed,
 }) => {
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -531,16 +543,29 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
         />
       </div>
       <div className="form-group">
-        <label>显示速度</label>
+        <div className="form-label-row">
+          <label>显示速度</label>
+        </div>
         <input
           type="range"
-          min="1"
-          max="6"
-          step="1"
-          value={dialogue.speed}
-          onChange={(e) => updateDialogue("speed", parseInt(e.target.value))}
+          min={TEXT_SPEED_MIN}
+          max={TEXT_SPEED_MAX}
+          step={TEXT_SPEED_STEP}
+          value={normalizeTextSpeed(dialogue.speed)}
+          onChange={(e) => updateDialogue("speed", normalizeTextSpeed(e.target.value))}
         />
-        <div className="speed-indicator">{dialogue.speed}</div>
+        
+        <div className="speed-indicator">{normalizeTextSpeed(dialogue.speed)}</div>
+        {onOpenGlobalSpeed && (
+            <button
+              type="button"
+              className="link-button"
+              onClick={onOpenGlobalSpeed}
+              title="前往“全局设置”统一修改所有文本的显示速度"
+            >
+              ⚙️ 全局显示速度设置
+            </button>
+          )}
       </div>
     </div>
   );

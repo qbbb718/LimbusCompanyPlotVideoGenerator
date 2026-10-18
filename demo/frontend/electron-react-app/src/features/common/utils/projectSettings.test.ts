@@ -1,12 +1,16 @@
 import {
   STORY_TYPE_PERSONALITY,
   STORY_TYPE_STORY,
+  TEXT_SPEED_MAX,
+  TEXT_SPEED_MIN,
   VIDEO_SIZE_OPTIONS,
   isPlotMode,
+  normalizeTextSpeed,
   parseVideoSizeKey,
   pickOutputDirectory,
   plotOf,
   videoSizeKey,
+  withGlobalTextSpeed,
 } from "./projectSettings";
 
 /**
@@ -59,6 +63,45 @@ describe("projectSettings 共用逻辑", () => {
       expect(parseVideoSizeKey("")).toBeNull();
       expect(parseVideoSizeKey("abc")).toBeNull();
       expect(parseVideoSizeKey("0x0")).toBeNull();
+    });
+  });
+
+  describe("文字显示速度（全局）", () => {
+    test("归一化：字符串 / 越界 / 小数都收敛到 1~6 的整数档位", () => {
+      expect(normalizeTextSpeed(3)).toBe(3);
+      expect(normalizeTextSpeed("5")).toBe(5);
+      expect(normalizeTextSpeed(0)).toBe(TEXT_SPEED_MIN);
+      expect(normalizeTextSpeed(99)).toBe(TEXT_SPEED_MAX);
+      expect(normalizeTextSpeed(3.7)).toBe(4);
+    });
+
+    test("缺失或非法取值回退到默认档位（旧工程没有全局速度字段）", () => {
+      expect(normalizeTextSpeed(undefined)).toBe(3);
+      expect(normalizeTextSpeed(null)).toBe(3);
+      expect(normalizeTextSpeed("abc")).toBe(3);
+      expect(normalizeTextSpeed(undefined, 5)).toBe(5);
+    });
+
+    test("全局速度统一覆盖所有记录的 dialogue.speed，其余字段不动", () => {
+      const records: any[] = [
+        { uuid: "a", dialogue: { text: "一", speed: 1 }, bg: [] },
+        { uuid: "b", dialogue: { text: "二", speed: 6 }, bg: [] },
+      ];
+
+      const next = withGlobalTextSpeed(records, 4);
+
+      expect(next.map((r) => r.dialogue.speed)).toEqual([4, 4]);
+      expect(next.map((r) => r.dialogue.text)).toEqual(["一", "二"]);
+      // 改过速度的记录要标脏，工程才会被视为有未保存改动
+      expect(next.every((r) => r.isDirty === true)).toBe(true);
+      // 不原地修改：原记录数组里的速度保持不变
+      expect(records.map((r) => r.dialogue.speed)).toEqual([1, 6]);
+      expect(next).not.toBe(records);
+    });
+
+    test("记录为空时返回空数组（工程刚建、还没有记录）", () => {
+      expect(withGlobalTextSpeed([], 2)).toEqual([]);
+      expect(withGlobalTextSpeed(undefined as any, 2)).toEqual([]);
     });
   });
 
