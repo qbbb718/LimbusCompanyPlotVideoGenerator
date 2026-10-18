@@ -2,6 +2,8 @@
  * @module 工程文件读写
  * 负责"保存工程 / 导入工程"用到的纯逻辑：
  * 1. 记录数组的序列化与解析（工程文件格式与后端 RecordsIO 导出的格式一致：顶层就是记录数组）；
+ *    剧情列表的分组（图层文件夹）名称与折叠状态以 group 快照附在带分组的记录上
+ *    （见 recordGroups.stampGroups），所以文件仍然是一个纯记录数组；
  * 2. 导入文件的归一化，兼容旧版"导出项目"（后端 RecordsIO 写出）的文件；
  * 3. 借助 Electron 主进程读写磁盘文件（浏览器环境退化为下载）。
  *
@@ -9,6 +11,12 @@
  */
 import { AudioCommand, AudioType, DialogueAlign, Emotion, Record } from "@types";
 import { generateUUID } from "./utils";
+import {
+  keepKnownGroups,
+  readGroups,
+  RecordGroup,
+  stampGroups,
+} from "./recordGroups";
 
 /** 工程文件扩展名（保存对话框过滤器与默认文件名使用） */
 export const PROJECT_FILE_EXTENSION = ".json";
@@ -69,11 +77,16 @@ export const defaultProjectFileName = (projectName?: string): string => {
 /**
  * @function 序列化工程记录
  * 保持与后端 RecordsIO 一致的缩进格式，方便用文本工具查看/比对工程文件。
+ * 工程文件顶层仍然是记录数组：分组信息作为 group 快照附在每条带分组的记录上
+ * （见 recordGroups.stampGroups），因此后端导入、老版本打开都不受影响。
  * @param records 当前工程的全部记录
+ * @param groups 分组定义（名称与折叠状态）
  * @return 可直接写入文件的 JSON 文本
  */
-export const serializeProject = (records: Record[]): string =>
-  JSON.stringify(records, null, 2);
+export const serializeProject = (
+  records: Record[],
+  groups: RecordGroup[] = [],
+): string => JSON.stringify(stampGroups(records, groups), null, 2);
 
 /** 数值兜底：非数字（含 NaN）时取默认值 */
 const asNumber = (value: unknown, fallback: number): number =>
@@ -137,9 +150,20 @@ const normalizeAudioCommand = (raw: any): AudioCommand => {
 export const normalizeRecord = (raw: any): Record => {
   const source = raw && typeof raw === "object" ? raw : {};
   const dialogue = source.dialogue && typeof source.dialogue === "object" ? source.dialogue : {};
+  const stamp = source.group && typeof source.group === "object" ? source.group : null;
+  // 分组：旧工程只有 groupId，当前工程两种都写；运行时统一只认 groupId
+  const groupId =
+    typeof source.groupId === "string" && source.groupId
+      ? source.groupId
+      : stamp && typeof stamp.id === "string" && stamp.id
+        ? stamp.id
+        : undefined;
 
   return {
     ...source,
+    // group 只是文件里的快照，运行时由 workspace 的 groups 保存，避免两处数据打架
+    group: undefined,
+    groupId,
     uuid: typeof source.uuid === "string" && source.uuid ? source.uuid : generateUUID(),
     durationFrames: asNumber(source.durationFrames, 30),
     dialogue: {
@@ -179,14 +203,21 @@ export const normalizeRecord = (raw: any): Record => {
 export const normalizeRecords = (raw: unknown): Record[] =>
   Array.isArray(raw) ? raw.map(normalizeRecord) : [];
 
+/** 工程文件解析结果：记录 + 从记录快照里还原出来的分组 */
+export interface ParsedProject {
+  records: Record[];
+  groups: RecordGroup[];
+}
+
 /**
  * @function 解析工程文件文本
  * 兼容两种写法：顶层直接是记录数组（后端 RecordsIO 格式），或包了一层 { records: [...] }。
+ * 分组定义从记录上的 group 快照还原；找不到分组定义的 groupId 会被丢掉（记录变回未分组）。
  * @param text 工程文件内容
- * @return 归一化后的记录数组
+ * @return 归一化后的记录与分组
  * @throws 内容不是合法 JSON 或不含记录数组时抛出错误（调用方负责提示用户）
  */
-export const parseProjectText = (text: string): Record[] => {
+export const parseProjectText = (text: string): ParsedProject => {
   let data: any;
   try {
     data = JSON.parse(text);
@@ -203,7 +234,12 @@ export const parseProjectText = (text: string): Record[] => {
   if (!list) {
     throw new Error("文件里没有找到记录数组");
   }
-  return normalizeRecords(list);
+
+  const groups = readGroups(list);
+  return {
+    groups,
+    records: keepKnownGroups(normalizeRecords(list), groups),
+  };
 };
 
 /**

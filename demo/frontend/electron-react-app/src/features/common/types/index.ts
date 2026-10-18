@@ -200,6 +200,20 @@ export interface AudioCommand {
   duration: number;
 }
 
+/**
+ * 工程文件里记录附带的分组快照。
+ * 分组（剧情列表里的"图层文件夹"）在运行时由 workspace 的 groups 数组持有，
+ * 记录本身只记 groupId；保存工程时把分组名称/折叠状态作为快照写到每条记录上，
+ * 这样工程文件仍是后端认识的"记录数组"，导入时也能还原分组（详见 recordGroups.ts）。
+ */
+export interface RecordGroupStamp {
+  id: string;
+  /** 分组名称（保存时的快照；导入时以第一条记录上的名称为准） */
+  name?: string;
+  /** 是否折叠（保存时的快照） */
+  collapsed?: boolean;
+}
+
 // 记录
 export interface Record {
   uuid: string;
@@ -211,6 +225,14 @@ export interface Record {
   effects: EffectVisual[];
   audioCommands: AudioCommand[];
   isDirty?: boolean;
+  /**
+   * 所属分组 id；undefined 表示未分组。
+   * 分组成员在记录数组中总是连续的一段（见 recordGroups.moveRecords），
+   * 因此拖动记录/分组内记录的播放顺序与列表显示顺序一致。
+   */
+  groupId?: string;
+  /** 仅在读写工程文件时出现：分组名称与折叠状态的快照；运行时请用 groupId */
+  group?: RecordGroupStamp;
 }
 
 // 角色

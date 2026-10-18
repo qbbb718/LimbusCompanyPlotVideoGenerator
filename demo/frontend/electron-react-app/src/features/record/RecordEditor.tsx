@@ -16,6 +16,17 @@ import {
   withGlobalTextSpeed,
 } from "@features/common/utils/projectSettings";
 import { generateUUID } from "./utils";
+import {
+  createRecordGroup,
+  GroupDropTarget,
+  MoveTarget,
+  moveGroup,
+  moveRecords,
+  neighborMoveTarget,
+  newRecordInsertIndex,
+  RecordGroup,
+  syncGroupAnchors,
+} from "./recordGroups";
 import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
 import { ProjectWorkspace } from "./useProjectWorkspace";
@@ -40,6 +51,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   const {
     records,
     setRecords,
+    groups,
+    setGroups,
     selectedRecordIndex,
     setSelectedRecordIndex,
     activePropertyTab,
@@ -79,11 +92,47 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   recordsRef.current = records || [];
   const selectedIndexRef = useRef(selectedRecordIndex);
   selectedIndexRef.current = selectedRecordIndex;
+  // 分组定义（名称/折叠）也镜像到 ref：创建分组、解散分组等回调要保持稳定引用
+  const groupsRef = useRef<RecordGroup[]>(groups);
+  groupsRef.current = groups;
   // 新记录的初始"显示速度"取全局设置（不做成依赖，避免改设置就重建回调）
   const projectSettingsRef = useRef(projectSettings);
   projectSettingsRef.current = projectSettings;
   // 空工程只自动补一条记录，避免 StrictMode 下 effect 重跑出两条
   const autoCreatedRef = useRef(false);
+
+  /**
+   * @function 应用一次记录数组变更
+   * 选中项改用 uuid 追踪：拖动记录、分组重排后下标都会变，
+   * 按 uuid 找回新下标，预览图与属性面板就不会跳到别的记录上。
+   * 同时同步空分组位置：分组变空时留在原地，填入记录后清掉空分组锚点。
+   * @param nextRecords 新的记录数组
+   * @param nextGroups 可选：分组定义也被这次操作改过时直接传入（如拖动分组）
+   */
+  const applyRecords = useCallback(
+    (nextRecords: Record[], nextGroups?: RecordGroup[]) => {
+      const previousRecords = recordsRef.current;
+      const selectedUuid = previousRecords[selectedIndexRef.current]?.uuid;
+
+      setRecords(nextRecords);
+      if (nextGroups) {
+        setGroups(nextGroups);
+      } else {
+        setGroups((prevGroups) =>
+          syncGroupAnchors(previousRecords, nextRecords, prevGroups),
+        );
+      }
+
+      if (!selectedUuid) return;
+      const nextIndex = nextRecords.findIndex(
+        (record) => record.uuid === selectedUuid,
+      );
+      if (nextIndex >= 0 && nextIndex !== selectedIndexRef.current) {
+        setSelectedRecordIndex(nextIndex);
+      }
+    },
+    [setRecords, setSelectedRecordIndex, setGroups],
+  );
 
   const createNewRecord = useCallback(() => {
     console.log("[RecordEditor] createNewRecord 开始执行");
@@ -106,9 +155,17 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       ? JSON.parse(JSON.stringify(inherit.tempImages))
       : [];
 
+    // 在分组里按"+"新增 → 新记录留在同一分组；分组已被解散则按未分组处理
+    const inheritGroupId =
+      inherit?.groupId &&
+      groupsRef.current.some((group) => group.id === inherit.groupId)
+        ? inherit.groupId
+        : undefined;
+
     const newRecord: Record = {
       uuid: generateUUID(),
       durationFrames: inherit?.durationFrames ?? 30,
+      groupId: inheritGroupId,
       dialogue: {
         text: "",
         location: inherit?.dialogue?.location || "default",
@@ -141,12 +198,33 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       "| bg:", inheritedBg.length,
       "| audioCommands:", inheritedAudioCommands.length);
 
-    const newRecords = [...currentRecords, newRecord];
-    setRecords(newRecords);
-    // 更新选中索引为最后一条
-    setSelectedRecordIndex(newRecords.length - 1);
+    // 分组内新增：插到组内最后一条之后（分组成员在数组里必须连续）；
+    // 未分组时沿用原行为，追加到列表末尾
+    const insertIndex = newRecordInsertIndex(
+      currentRecords,
+      inheritGroupId,
+      groupsRef.current,
+    );
+    const newRecords = [
+      ...currentRecords.slice(0, insertIndex),
+      newRecord,
+      ...currentRecords.slice(insertIndex),
+    ];
+
+    applyRecords(newRecords);
+    setSelectedRecordIndex(insertIndex);
+    // 当前记录在折叠的分组里时，展开这个分组，保证新增的记录立刻可见
+    if (inheritGroupId) {
+      setGroups((prev) =>
+        prev.map((group) =>
+          group.id === inheritGroupId && group.collapsed
+            ? { ...group, collapsed: false }
+            : group,
+        ),
+      );
+    }
     console.log(`[RecordEditor] 新记录已添加，当前记录总数: ${newRecords.length}`);
-  }, [setRecords, setSelectedRecordIndex]);
+  }, [applyRecords, setSelectedRecordIndex, setGroups]);
 
   // 工程记录由 App 层持有（useProjectWorkspace 负责首次从后端加载）。
   // 加载完成且确实没有任何记录时补一条空记录，让用户可以直接开始编辑。
@@ -211,41 +289,43 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       return;
     }
 
+    // 删除后选中项可能前移：按 uuid 找回；删的就是当前记录时落到相邻的一条
+    const selectedUuid = currentRecords[selectedIndexRef.current]?.uuid;
+    const deletingSelected = currentRecords[index]?.uuid === selectedUuid;
     const newRecords = currentRecords.filter((_, i) => i !== index);
-    setRecords(newRecords);
 
-    if (selectedRecordIndex >= newRecords.length) {
-      setSelectedRecordIndex(newRecords.length - 1);
+    applyRecords(newRecords);
+    if (deletingSelected) {
+      setSelectedRecordIndex(Math.min(index, newRecords.length - 1));
     }
   };
 
+  /**
+   * @function 上移 / 下移一条记录
+   * 等同把它拖到相邻记录的前面/后面：跨过分组边界时会加入相邻记录所在的分组
+   * （相邻记录未分组则一起移出分组），保证分组成员始终在数组里连续。
+   */
   const moveRecord = (index: number, direction: "up" | "down") => {
     const currentRecords = recordsRef.current;
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === currentRecords.length - 1)
-    ) {
-      return;
-    }
+    const record = currentRecords[index];
+    const target = neighborMoveTarget(currentRecords, index, direction);
+    if (!record || !target) return;
 
-    const newRecords = [...currentRecords];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    [newRecords[index], newRecords[targetIndex]] = [
-      newRecords[targetIndex],
-      newRecords[index],
-    ];
-    setRecords(newRecords);
-
-    if (selectedRecordIndex === index) {
-      setSelectedRecordIndex(targetIndex);
-    } else if (selectedRecordIndex === targetIndex) {
-      setSelectedRecordIndex(index);
-    }
+    const nextRecords = moveRecords(
+      currentRecords,
+      [record.uuid],
+      target,
+      groupsRef.current,
+    );
+    if (nextRecords === currentRecords) return;
+    applyRecords(nextRecords);
   };
 
   const duplicateRecord = (index: number) => {
     const currentRecords = recordsRef.current;
     const recordToDuplicate = currentRecords[index];
+    if (!recordToDuplicate) return;
+    // 复制出来的记录保留分组（插在原记录后面，仍在同一分组块内）
     const newRecord = {
       ...recordToDuplicate,
       uuid: generateUUID(),
@@ -254,9 +334,132 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
 
     const newRecords = [...currentRecords];
     newRecords.splice(index + 1, 0, newRecord);
-    setRecords(newRecords);
+    applyRecords(newRecords);
     setSelectedRecordIndex(index + 1);
   };
+
+  /**
+   * @function 新建分组
+   * 名称先按"分组 N"自动生成；返回新分组对象，列表拿到后立刻进入重命名状态。
+   */
+  const createGroup = useCallback((): RecordGroup => {
+    const group = createRecordGroup(groupsRef.current);
+    setGroups((prev) => [...prev, group]);
+    return group;
+  }, [setGroups]);
+
+  const renameGroup = useCallback(
+    (groupId: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      setGroups((prev) =>
+        prev.map((group) =>
+          group.id === groupId ? { ...group, name: trimmed } : group,
+        ),
+      );
+    },
+    [setGroups],
+  );
+
+  const toggleGroup = useCallback(
+    (groupId: string) => {
+      setGroups((prev) =>
+        prev.map((group) =>
+          group.id === groupId
+            ? { ...group, collapsed: !group.collapsed }
+            : group,
+        ),
+      );
+    },
+    [setGroups],
+  );
+
+  /**
+   * @function 解散分组
+   * 组内记录保留，只是变成未分组（位置不变，播放顺序也不变）。
+   */
+  const dissolveGroup = useCallback(
+    (groupId: string) => {
+      const group = groupsRef.current.find((item) => item.id === groupId);
+      if (!group) return;
+      const count = recordsRef.current.filter(
+        (record) => record.groupId === groupId,
+      ).length;
+
+      if (
+        count > 0 &&
+        !window.confirm(
+          `解散分组「${group.name}」？组内 ${count} 条记录会保留并变为未分组。`,
+        )
+      ) {
+        return;
+      }
+
+      const nextGroups = groupsRef.current.filter(
+        (item) => item.id !== groupId,
+      );
+      const nextRecords = recordsRef.current.map((record) =>
+        record.groupId === groupId
+          ? { ...record, groupId: undefined }
+          : record,
+      );
+      applyRecords(nextRecords, nextGroups);
+    },
+    [applyRecords],
+  );
+
+  /**
+   * @function 拖动记录（支持多选后一起拖）
+   * 目标可以是某条记录的前/后、某个分组、或列表末尾（移出分组）；
+   * 移动时一并处理分组归属，见 recordGroups.moveRecords。
+   */
+  const handleMoveRecords = useCallback(
+    (uuids: string[], target: MoveTarget) => {
+      const currentRecords = recordsRef.current;
+      const nextRecords = moveRecords(
+        currentRecords,
+        uuids,
+        target,
+        groupsRef.current,
+      );
+      if (nextRecords === currentRecords) return;
+      applyRecords(nextRecords);
+
+      // 拖进折叠的分组时自动展开，方便确认结果
+      if (target.kind === "group") {
+        setGroups((prev) =>
+          prev.map((group) =>
+            group.id === target.groupId
+              ? { ...group, collapsed: false }
+              : group,
+          ),
+        );
+      }
+    },
+    [applyRecords, setGroups],
+  );
+
+  /**
+   * @function 拖动整个分组（含空分组）
+   * 有记录的分组会连记录一起移动；空分组只改显示位置，
+   * 具体规则见 recordGroups.moveGroup。
+   */
+  const handleMoveGroup = useCallback(
+    (groupId: string, target: GroupDropTarget) => {
+      const currentRecords = recordsRef.current;
+      const currentGroups = groupsRef.current;
+      const result = moveGroup(currentRecords, currentGroups, groupId, target);
+      if (
+        result.records === currentRecords &&
+        result.groups === currentGroups
+      ) {
+        return;
+      }
+      // 记录顺序与分组定义可能同时变化，直接应用 mover 的结果
+      applyRecords(result.records, result.groups);
+    },
+    [applyRecords],
+  );
 
   const generateVideo = async (layerTypes: string[] = ["FULL"], keepTempFiles: boolean = false) => {
     const currentRecords = recordsRef.current;
@@ -527,9 +730,16 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         <div className="editor-bottom">
           <RecordList
             records={currentRecords}
+            groups={groups}
             selectedRecordIndex={selectedRecordIndex}
             setSelectedRecordIndex={setSelectedRecordIndex}
             createNewRecord={createNewRecord}
+            onCreateGroup={createGroup}
+            onRenameGroup={renameGroup}
+            onToggleGroup={toggleGroup}
+            onDissolveGroup={dissolveGroup}
+            onMoveRecords={handleMoveRecords}
+            onMoveGroup={handleMoveGroup}
             generateVideo={generateVideo}
             moveRecord={moveRecord}
             duplicateRecord={duplicateRecord}

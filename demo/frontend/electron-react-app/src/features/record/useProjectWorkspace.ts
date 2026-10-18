@@ -6,6 +6,8 @@
  * 2. Ctrl+S：工程已关联文件时直接更新该文件并给出文字提示；尚未关联文件时先弹保存对话框，
  *    之后的 Ctrl+S 都更新同一个文件；
  * 3. "保存工程 / 导入工程"按钮与菜单里的"打开项目 / 保存项目"共用同一套逻辑。
+ * 4. 剧情列表的分组（图层文件夹）也由本 Hook 持有：切换页面不丢分组，保存/导入工程时
+ *    名称与折叠状态随记录一起往返（见 recordGroups.ts）。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import log from "electron-log";
@@ -25,6 +27,7 @@ import {
   serializeProject,
   writeProjectFile,
 } from "./projectFile";
+import { readGroups, RecordGroup } from "./recordGroups";
 
 /** 属性页签类型（编辑器右侧的属性面板） */
 export type PropertyTab =
@@ -50,6 +53,9 @@ export interface ProjectWorkspace {
   /** 当前工程记录；undefined 表示还在首次加载 */
   records: Record[] | undefined;
   setRecords: React.Dispatch<React.SetStateAction<Record[] | undefined>>;
+  /** 剧情列表的分组（图层文件夹）；成员关系记在记录的 groupId 上 */
+  groups: RecordGroup[];
+  setGroups: React.Dispatch<React.SetStateAction<RecordGroup[]>>;
   selectedRecordIndex: number;
   setSelectedRecordIndex: (index: number) => void;
   activePropertyTab: PropertyTab;
@@ -89,6 +95,7 @@ const errorText = (error: unknown): string =>
  */
 export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
   const [records, setRecords] = useState<Record[] | undefined>(undefined);
+  const [groups, setGroups] = useState<RecordGroup[]>([]);
   const [selectedRecordIndex, setSelectedRecordIndex] = useState(0);
   const [activePropertyTab, setActivePropertyTab] = useState<PropertyTab>("text");
   const [filePath, setFilePath] = useState<string | null>(null);
@@ -99,6 +106,8 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
   // （Ctrl+S 的监听只注册一次，不会因为状态变化被反复解绑重绑）。
   const recordsRef = useRef<Record[] | undefined>(records);
   recordsRef.current = records;
+  const groupsRef = useRef<RecordGroup[]>(groups);
+  groupsRef.current = groups;
   const filePathRef = useRef<string | null>(filePath);
   filePathRef.current = filePath;
   const projectNameRef = useRef<string | undefined>(projectName);
@@ -130,15 +139,24 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
     let cancelled = false;
     const load = async () => {
       let loaded: Record[] = [];
+      let loadedGroups: RecordGroup[] = [];
       try {
         const data = await ApiService.getRecords();
         loaded = normalizeRecords(data);
+        // 后端 data/records.json 一般不带分组（后端模型没有该字段）；
+        // 若文件里恰好还有 group 快照（比如手工放的工程文件），仍然还原出来。
+        loadedGroups = readGroups(Array.isArray(data) ? data : []);
         log.info("[工程] 从后端加载记录数:", loaded.length);
       } catch (error) {
         log.warn("[工程] 后端记录加载失败，使用空工程:", error);
       }
       if (cancelled) return;
-      setRecords((current) => (current === undefined ? loaded : current));
+      // 加载期间用户可能已经导入工程或采用了"文本转记录"的结果：
+      // 只有在还没有任何记录时才采用后端数据，避免把用户刚拿到手的内容冲掉。
+      if (recordsRef.current === undefined) {
+        setRecords(loaded);
+        setGroups(loadedGroups);
+      }
       setIsLoadingProject(false);
     };
     load();
@@ -167,7 +185,7 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
 
     savingRef.current = true;
     try {
-      const text = serializeProject(currentRecords);
+      const text = serializeProject(currentRecords, groupsRef.current);
       const defaultName = defaultProjectFileName(projectNameRef.current);
       const api: any = (window as any).electronAPI;
 
@@ -266,13 +284,15 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
           text = await readTextFile(picked.filePath);
         }
 
-        const imported = parseProjectText(text);
+        const importedProject = parseProjectText(text);
+        const imported = importedProject.records;
         if (imported.length === 0) {
           showToast("error", "工程文件里没有找到有效记录");
           return;
         }
 
         setRecords(imported);
+        setGroups(importedProject.groups);
         setSelectedRecordIndex(0);
         setActivePropertyTab("text");
         setFilePath(path);
@@ -301,6 +321,8 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
     (parsed: Record[]) => {
       const normalized = normalizeRecords(parsed);
       setRecords(normalized);
+      // 文本转记录的结果没有分组信息，从零开始
+      setGroups([]);
       setSelectedRecordIndex(0);
       setActivePropertyTab("text");
       setFilePath(null);
@@ -332,6 +354,8 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
   return {
     records,
     setRecords,
+    groups,
+    setGroups,
     selectedRecordIndex,
     setSelectedRecordIndex,
     activePropertyTab,
