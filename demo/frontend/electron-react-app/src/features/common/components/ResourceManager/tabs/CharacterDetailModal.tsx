@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MyCharacter, Portrait } from "@types";
+import { MyCharacter, Portrait, Emotion } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@root/features/common/config/appConfig";
 import "./CharacterModal.css";
@@ -145,7 +145,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       characterID: currentCharacter.characterID,
       imagePath: "",
       portName: "",
-      emotion: "NORMAL" as any,
+      emotion: Emotion.NORMAL,
       faceX: defaultCropState.faceX,
       faceY: defaultCropState.faceY,
       length: defaultCropState.length,

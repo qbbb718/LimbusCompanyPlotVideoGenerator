@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Portrait } from "@types";
-import { mapEmotion } from "../../../utils/emotionMapper";
+import {
+  detectEmotionFromFileName,
+  mapEmotion,
+} from "../../../utils/emotionMapper";
 import { createCroppedImage } from "../../../utils/imageUtils";
 import ApiService from "@features/common/ApiService";
 import {
@@ -47,11 +50,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     setEditingPortrait,
     portraitPreview,
     setPortraitPreview,
-    emotionInput,
-    setEmotionInput,
     currentPortrait,
     createNewPortrait,
-    updateEmotion,
   } = usePortraitState({ characterId, portrait, isNewPortrait });
 
   const {
@@ -102,9 +102,24 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
       setPendingFile(file);
       // 获取角色的默认立绘裁剪状态
       const defaultCropState = getDefaultCropState();
-      setEditingPortrait(
-        createNewPortrait(imagePath, baseName, defaultCropState),
+      const nextPortrait = createNewPortrait(
+        imagePath,
+        baseName,
+        defaultCropState,
       );
+
+      // 读取上传图片的文件名自动设置情绪：中文、英文关键词都支持
+      // 例：罗佳-face_happy_L.png → 开心；罗佳-悲伤.png → 悲伤
+      const fileName = file.name || baseName;
+      const detectedEmotion = detectEmotionFromFileName(fileName);
+      // 文件名里没有情绪关键词时，保留用户当前已选的情绪，不要退回“正常”
+      const emotion = detectedEmotion ?? mapEmotion(currentPortrait.emotion);
+      nextPortrait.emotion = emotion as unknown as Portrait["emotion"];
+      if (detectedEmotion) {
+        log("根据文件名自动设置情绪", { fileName, emotion: detectedEmotion });
+      }
+
+      setEditingPortrait(nextPortrait);
     },
     onPreviewSet: setPortraitPreview,
     onCropReset: resetCropParameters,
@@ -201,8 +216,6 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
           {/* 右侧：设置面板 */}
           <PortraitSettings
             currentPortrait={currentPortrait}
-            emotionInput={emotionInput}
-            setEmotionInput={setEmotionInput}
             setEditingPortrait={setEditingPortrait}
           />
         </div>
@@ -216,13 +229,11 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             className="save-button"
             onClick={async () => {
               if (editingPortrait) {
-                // 确保情绪已映射到标准情绪
-                let emotionCode = "normal";
-                if (emotionInput) {
-                  const standardEmotion = mapEmotion(emotionInput);
-                  editingPortrait.emotion = standardEmotion as unknown as any;
-                  emotionCode = String(standardEmotion).toLowerCase();
-                }
+                // 情绪由中文下拉框直接写入 editingPortrait.emotion，
+                // 这里再归一化一次，兼容后端返回的 code 和历史数据里的大写枚举名
+                const standardEmotion = mapEmotion(editingPortrait.emotion);
+                editingPortrait.emotion = standardEmotion as unknown as any;
+                const emotionCode = String(standardEmotion).toLowerCase();
 
                 // 如果是新立绘且有待上传的文件，先上传到后端
                 if (isNewPortrait && pendingFile && characterId) {

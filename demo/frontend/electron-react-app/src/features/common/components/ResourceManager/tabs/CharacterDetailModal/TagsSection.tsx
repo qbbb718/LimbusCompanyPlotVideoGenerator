@@ -59,6 +59,9 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         />
         <button onClick={handleAddTag}>添加</button>
       </div>
+      <p className="crop-hint-text">
+          搜索角色时，标签可作筛选条件使用
+        </p>
     </div>
   );
 };

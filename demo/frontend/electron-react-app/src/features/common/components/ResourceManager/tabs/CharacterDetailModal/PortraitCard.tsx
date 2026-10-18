@@ -1,6 +1,7 @@
 import React from "react";
 import { Portrait } from "@types";
 import PortraitThumbnail from "./PortraitThumbnail";
+import { getEmotionLabel } from "../../../../utils/emotionMapper";
 
 interface PortraitCardProps {
   portrait: Portrait;
@@ -45,7 +46,8 @@ const PortraitCard: React.FC<PortraitCardProps> = ({
       </div>
       <div className="portrait-info">
         <h4>{portrait.portName}</h4>
-        <p>情绪: {portrait.emotion}</p>
+        {/* 情绪统一显示中文关键词，后端返回的 happy / 旧数据的 HAPPY 都归一化 */}
+        <p>情绪: {getEmotionLabel(portrait.emotion)}</p>
         {isDefault && <p className="default-portrait-indicator">默认立绘</p>}
         <div className="portrait-actions">
           <button className="btn-primary" onClick={() => onEdit(portrait)}>

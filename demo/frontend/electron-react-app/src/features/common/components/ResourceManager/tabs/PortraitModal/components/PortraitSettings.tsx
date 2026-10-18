@@ -1,31 +1,26 @@
-import React, { useState } from "react";
+import React from "react";
 import { Portrait } from "@types";
 import { BASE_URL } from "@services/ApiService";
 import {
+  StandardEmotion,
+  getEmotionOptions,
   mapEmotion,
-  getStandardEmotions,
 } from "../../../../../utils/emotionMapper";
-import createLogger from "../utils/logger";
-
-const log = createLogger("PortraitSettings");
 
 interface PortraitSettingsProps {
   currentPortrait: Portrait;
-  emotionInput: string;
-  setEmotionInput: (value: string) => void;
   setEditingPortrait: (portrait: Portrait) => void;
 }
 
 const PortraitSettings: React.FC<PortraitSettingsProps> = ({
   currentPortrait,
-  emotionInput,
-  setEmotionInput,
   setEditingPortrait,
 }) => {
-  const [showEmotionSuggestions, setShowEmotionSuggestions] = useState(false);
-
-  // 获取标准情绪列表
-  const standardEmotions = getStandardEmotions();
+  // 下拉框选项全部是中文关键词（正常 / 开心 / 悲伤 …），value 仍是标准情绪
+  const emotionOptions = getEmotionOptions();
+  // 后端返回的是小写 code，历史数据里可能有 "NORMAL" 这种大写枚举名，
+  // 统一归一化后再绑定到下拉框，避免框里露出英文。
+  const selectedEmotion = mapEmotion(currentPortrait.emotion);
 
   return (
     <div className="portrait-settings">
@@ -41,46 +36,31 @@ const PortraitSettings: React.FC<PortraitSettingsProps> = ({
       </div>
 
       <div className="form-group emotion-input-group">
-        <label>情绪</label>
-        <div className="emotion-input-container">
-          <input
-            type="text"
-            value={emotionInput}
-            onChange={(e) => {
-              const value = e.target.value;
-              setEmotionInput(value);
-              setShowEmotionSuggestions(value.length > 0);
-            }}
-            onFocus={() => setShowEmotionSuggestions(true)}
-            placeholder="输入情绪，如：开心、悲伤、惊讶等"
-          />
-          {showEmotionSuggestions && (
-            <div className="emotion-suggestions">
-              {Object.entries(standardEmotions).map(([value, label]) => (
-                <div
-                  key={value}
-                  className="emotion-suggestion"
-                  onClick={() => {
-                    setEmotionInput(label);
-                    setShowEmotionSuggestions(false);
-
-                    // 映射到标准情绪
-                    const standardEmotion = mapEmotion(label);
-
-                    // 更新立绘的情绪
-                    setEditingPortrait({
-                      ...currentPortrait,
-                      emotion: standardEmotion as unknown as any,
-                    });
-                  }}
-                >
-                  {label}
-                </div>
-              ))}
-            </div>
-          )}
+        <label htmlFor="portrait-emotion-select">情绪</label>
+        <select
+          id="portrait-emotion-select"
+          className="emotion-select"
+          value={selectedEmotion}
+          onChange={(e) => {
+            const emotion = e.target.value as StandardEmotion;
+            setEditingPortrait({
+              ...currentPortrait,
+              emotion: emotion as unknown as Portrait["emotion"],
+            });
+          }}
+        >
+          {emotionOptions.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <div className="emotion-info">
+          <div>下拉框显示中文关键词；选择立绘文件时会按文件名自动识别情绪。</div>
+          <div>
+            中文/英文关键词均可，如：罗佳-face_happy_L.png → 开心、罗佳-悲伤.png → 悲伤
+          </div>
         </div>
-        <div className="emotion-info">系统将自动匹配最接近的标准情绪</div>
       </div>
 
       <div className="form-group">

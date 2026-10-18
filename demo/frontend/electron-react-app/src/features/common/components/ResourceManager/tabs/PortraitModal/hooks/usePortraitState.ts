@@ -1,8 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { Portrait, Emotion } from '@types';
-import { mapEmotion, getStandardEmotions } from '../../../../../utils/emotionMapper';
-import { loadImageAsBase64 } from '../utils/imageUtils';
 import createLogger from '../utils/logger';
 import { AppConfig } from '@root/features/common/config/appConfig';
 
@@ -17,17 +15,12 @@ interface UsePortraitStateProps {
 export const usePortraitState = ({ characterId, portrait, isNewPortrait }: UsePortraitStateProps) => {
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(portrait);
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
-  const [emotionInput, setEmotionInput] = useState<string>('');
 
   // 当portrait变化时，更新状态
   useEffect(() => {
     if (portrait) {
       log('加载立绘', portrait.portName);
       setEditingPortrait({ ...portrait });
-
-      // 设置情绪输入框的值为标准情绪对应的显示名称
-      const emotionNames = getStandardEmotions();
-      setEmotionInput(emotionNames[portrait.emotion] || portrait.emotion);
 
       // 如果有图片路径，加载图片预览
       if (portrait.imagePath) {
@@ -74,17 +67,6 @@ export const usePortraitState = ({ characterId, portrait, isNewPortrait }: UsePo
     };
   };
 
-  // 更新情绪
-  const updateEmotion = (emotionInput: string) => {
-    if (!editingPortrait) return;
-
-    const standardEmotion = mapEmotion(emotionInput);
-    setEditingPortrait({
-      ...editingPortrait,
-      emotion: standardEmotion as unknown as Emotion
-    });
-  };
-
   // 如果是添加新立绘且 editingPortrait 为 null，创建一个默认的空对象
   const currentPortrait = editingPortrait || {
     portraitID: '',
@@ -105,11 +87,8 @@ export const usePortraitState = ({ characterId, portrait, isNewPortrait }: UsePo
     setEditingPortrait,
     portraitPreview,
     setPortraitPreview,
-    emotionInput,
-    setEmotionInput,
     currentPortrait,
     createNewPortrait,
-    updateEmotion,
     loadPortraitImage
   };
 };
