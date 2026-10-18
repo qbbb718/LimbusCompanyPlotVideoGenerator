@@ -89,6 +89,67 @@
   object-fit: cover;
 }
 
+/* ===== 属性面板里的背景列表（不是选择弹窗的格子） ===== */
+
+/* 列表项只用于查看/删除，不可点选：去掉手型，也不做悬浮上浮 */
+.backgrounds-list .background-item {
+  padding: 8px 10px;
+  cursor: default;
+}
+
+.backgrounds-list .background-item:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.background-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 左侧「缩略图 + 名称」：名称过长时省略，别把删除按钮挤出去 */
+.background-item-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.background-item-info h5 {
+  margin: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 缩略图：16:9 小图，和立绘/临时图片条目的缩略图同一观感 */
+.background-item-thumb {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 36px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  overflow: hidden;
+}
+
+.background-item-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.backgrounds-list .background-header button {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .background-name {
   padding: 8px;
   font-weight: bold;

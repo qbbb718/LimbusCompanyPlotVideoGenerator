@@ -45,6 +45,38 @@ const stepToUiAdjX = (n: number, uiWidth: number) => (uiWidth * n) / 6;
 const stepToUiTempPosX = (n: number, uiWidth: number) =>
   uiWidth / 2 + (uiWidth * n) / 6;
 
+/**
+ * 临时图片缩略图（48×48，属性面板"临时图片（路人/道具）"列表项用）。
+ *
+ * 记录里的 imagePath 既可能是 ./projects/temp/images/... 这样的相对路径，也可能是后端
+ * RuntimePaths 存下来的 C:/Users/.../projects/temp/images/... 绝对路径，统一交给
+ * ApiService.getTempImageUrl 解析（绝对路径直接拼 URL 会 404，图片根本显示不出来）。
+ * 图片加载失败时把 <img> 藏起来，露出 CSS ::before 的 "?" 占位，不留破图。
+ *
+ * @param imagePath 记录里 TempImageVisual.imagePath
+ * @param label 图片的无障碍名称（"临时图片 N"）
+ */
+const TempImageThumb: React.FC<{ imagePath: string; label: string }> = ({
+  imagePath,
+  label,
+}) => {
+  const url = ApiService.getTempImageUrl(imagePath);
+  return (
+    <span className="temp-image-thumb">
+      {url && (
+        <img
+          src={url}
+          alt={label}
+          title={imagePath}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+    </span>
+  );
+};
+
 interface CharactersPropertiesProps {
   selectedRecord: Record;
   selectedRecordIndex: number;
@@ -113,14 +145,6 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
     if (thumbnailPath.startsWith("http")) return thumbnailPath;
     if (thumbnailPath.startsWith("/")) return BASE_URL + thumbnailPath;
     return `${BASE_URL}/assets/characters/${encodeURIComponent(thumbnailPath)}`;
-  };
-
-  /** 拼接临时图片完整 URL */
-  const getTempImageUrl = (imagePath: string): string => {
-    if (!imagePath) return "";
-    if (imagePath.startsWith("http")) return imagePath;
-    const clean = imagePath.replace(/^\.?\//, "");
-    return `${BASE_URL}/${clean}`;
   };
 
   const updateCharacter = (index: number, field: string, value: any) => {
@@ -629,17 +653,16 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
         {currentTempImages.map((temp, index) => (
           <div key={temp.uuid || index} className="temp-image-item">
             <div className="temp-image-header">
-              <span>临时图片 {index + 1}</span>
+              {/* 缩略图 + 名称：不看图片也能确认是哪一张路人/道具 */}
+              <div className="temp-image-title">
+                <TempImageThumb
+                  imagePath={temp.imagePath}
+                  label={`临时图片 ${index + 1}`}
+                />
+                <span>临时图片 {index + 1}</span>
+              </div>
               <button onClick={() => deleteTempImage(index)}>删除</button>
             </div>
-            <img
-              className="temp-image-preview"
-              src={getTempImageUrl(temp.imagePath)}
-              alt={`临时图片 ${index + 1}`}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
             <div className="temp-image-controls">
               {/* 第一行：缩放文本框+滑块(3/4) | 是否压暗(1/4) */}
               <div className="char-row">

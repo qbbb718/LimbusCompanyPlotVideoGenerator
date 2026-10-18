@@ -129,10 +129,13 @@ export const DEFAULT_FREE_TEXT_FONT_SIZE = 36;
 
 // 背景视觉元素
 export interface BackgroundVisual {
+  /** 记录里内嵌的背景快照（后端只回这几个字段，没有 tags） */
   background: {
     uuid: string;
     path: string;
     name: string;
+    /** 缩略图路径；资源管理里生成缩略图后由后端写入，老数据可能没有 */
+    thumbnailPath?: string;
   };
   posX: number;
   posY: number;

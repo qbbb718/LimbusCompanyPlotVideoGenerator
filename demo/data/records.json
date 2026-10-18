@@ -29,6 +29,7 @@
     "italic" : false,
     "hideUI" : true,
     "freeTextColor" : "",
+    "freeTextFontSize" : 28,
     "freeTextX" : 0,
     "freeTextY" : 0
   },
@@ -133,6 +134,7 @@
     "italic" : false,
     "hideUI" : true,
     "freeTextColor" : "",
+    "freeTextFontSize" : 28,
     "freeTextX" : 0,
     "freeTextY" : 0
   },
@@ -199,13 +201,21 @@
     "emotion" : "NORMAL",
     "freeText" : true,
     "bold" : false,
-    "italic" : false,
+    "italic" : true,
     "hideUI" : true,
     "freeTextColor" : "#FBDBB3",
+    "freeTextFontSize" : 36,
     "freeTextX" : 0,
     "freeTextY" : 0
   },
-  "tempImages" : [ ],
+  "tempImages" : [ {
+    "uuid" : "825a397f-d9c8-4f33-87dc-d5b27d108a6f",
+    "imagePath" : "C:/Users/26899/AppData/Roaming/limbus-company-plot-video-generator/projects/temp/images/825a397f-d9c8-4f33-87dc-d5b27d108a6f.png",
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.25,
+    "dim" : false
+  } ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
     "audioId" : "办公室BGM",

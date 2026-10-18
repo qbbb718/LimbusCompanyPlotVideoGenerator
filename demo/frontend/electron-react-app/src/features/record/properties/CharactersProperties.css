@@ -403,13 +403,53 @@
   font-size: 12px;
 }
 
-.temp-image-preview {
-  width: 100%;
-  max-height: 120px;
-  object-fit: contain;
-  border-radius: 4px;
+/* 标题行左侧：「缩略图 + 临时图片 N」 */
+.temp-image-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.temp-image-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 缩略图：48×48 灰底方块，图片按 contain 完整放进框里（路人/道具多是透明 PNG，裁切会切掉轮廓）。
+ * 加载失败时的占位问号由 ::before 提供：<img> 的 onError 把图片 display:none，露出来的就是问号。
+ * 绝对定位让图片浮在问号上，成功加载时自然盖住占位符。
+ */
+.temp-image-thumb {
+  position: relative;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #eee;
-  margin-bottom: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.temp-image-thumb::before {
+  content: "?";
+  color: #bbb;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.temp-image-thumb img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .temp-image-controls {

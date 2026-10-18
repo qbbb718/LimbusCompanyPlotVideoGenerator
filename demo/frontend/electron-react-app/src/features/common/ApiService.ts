@@ -856,6 +856,42 @@ class ApiService {
   }
 
   /**
+   * 构建临时图片（路人/道具）URL
+   *
+   * 临时图片存在 {数据目录}/projects/temp/images 下，由后端静态映射 /projects/** 对外提供。
+   * 记录里 TempImageVisual.imagePath 有两种历史格式：
+   *   - 相对路径：./projects/temp/images/{uuid}.png、projects/temp/images/{uuid}.png
+   *   - 绝对路径：C:/Users/<用户>/AppData/Roaming/.../projects/temp/images/{uuid}.png
+   *     （后端 RuntimePaths 解析出来的就是绝对路径，现存记录基本都是这一种）
+   * 绝对路径直接拼到 BASE_URL 后面会得到 http://localhost:8081/C:/...
+   * 静态资源映射匹配不上，图片一直 404 —— 属性面板里的临时图片预览因此一直没显示出来。
+   * 两种格式统一截到 "projects/" 这一段再拼，都能落到 /projects/temp/images/{uuid}.png。
+   *
+   * @param pathOrFilename 记录里保存的 imagePath
+   * @returns 可直接用于 <img src> 的绝对 URL；空路径返回 ''
+   */
+  getTempImageUrl(pathOrFilename: string): string {
+    if (!pathOrFilename || !pathOrFilename.trim()) return '';
+    const raw = pathOrFilename.trim();
+    // 已是完整 URL（或 data:/blob:）直接可用
+    if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
+
+    const normalized = raw.replace(/\\/g, '/');
+    // 只有 projects/ 之后的部分是静态映射认得的；前缀统一写成小写的 projects（映射区分大小写）
+    const projectsMatch = /projects\//i.exec(normalized);
+    if (projectsMatch) {
+      const rest = normalized.substring(projectsMatch.index + projectsMatch[0].length);
+      return `${BASE_URL}/projects/${encodeURI(rest)}`;
+    }
+    // 其它 URL 路径（如 /projects/xxx 不经过上面的分支时）
+    if (normalized.startsWith('/')) return BASE_URL + encodeURI(normalized);
+    // 纯文件名 / 其它相对路径：按临时图片目录处理
+    return `${BASE_URL}/projects/temp/images/${encodeURIComponent(
+      this.extractFilename(normalized),
+    )}`;
+  }
+
+  /**
    * 构建角色名片图片URL
    * @param characterId 角色ID (如 "char_1762360609515")
    */

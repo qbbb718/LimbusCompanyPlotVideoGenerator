@@ -10,6 +10,35 @@ interface BackgroundPropertiesProps {
   updateRecord: (index: number, updatedRecord: Record) => void;
 }
 
+/**
+ * 解析背景缩略图只需要 path / thumbnailPath 两个字段：
+ * 资源管理里的 Background 和记录里内嵌的背景快照都满足（记录快照没有 tags）。
+ */
+type BackgroundSource = Pick<Background, "path" | "thumbnailPath">;
+
+/**
+ * 背景缩略图地址：优先用后端裁剪好的缩略图，没有（老数据）就退回原图。
+ * @param background 背景资源（或记录里的背景快照）
+ */
+const thumbnailSrc = (background: BackgroundSource): string =>
+  ApiService.getBackgroundThumbnailUrl(background.thumbnailPath || background.path);
+
+/**
+ * 缩略图加载失败 → 退回原图。
+ * 老数据的 thumbnailPath 可能指向已删掉的文件、或干脆只有文件名（拼出来的缩略图地址是猜的），
+ * 这一层兜底保证列表里不会出现破图；原图也失败时保留灰底空框，不会反复触发。
+ * @param event 图片的 error 事件
+ * @param background 该缩略图对应的背景资源
+ */
+const handleThumbnailError = (
+  event: React.SyntheticEvent<HTMLImageElement>,
+  background: BackgroundSource,
+): void => {
+  const img = event.currentTarget;
+  const fallbackSrc = ApiService.getBackgroundUrl(background.path);
+  if (img.src !== fallbackSrc) img.src = fallbackSrc;
+};
+
 const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   selectedRecord,
   selectedRecordIndex,
@@ -98,7 +127,17 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
           {currentBackgrounds.map((bg, index) => (
             <div key={index} className="background-item">
               <div className="background-header">
-                <h5>{bg.background.name}</h5>
+                {/* 缩略图 + 名称：不看名字也能一眼认出是哪张背景 */}
+                <div className="background-item-info">
+                  <div className="background-item-thumb">
+                    <img
+                      src={thumbnailSrc(bg.background)}
+                      alt={bg.background.name}
+                      onError={(e) => handleThumbnailError(e, bg.background)}
+                    />
+                  </div>
+                  <h5 title={bg.background.name}>{bg.background.name}</h5>
+                </div>
                 <button onClick={() => deleteBackground(index)}>删除</button>
               </div>
             </div>
@@ -143,18 +182,9 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                   >
                     <div className="background-thumbnail">
                       <img
-                        src={ApiService.getBackgroundThumbnailUrl(
-                          bg.thumbnailPath || bg.path
-                        )}
+                        src={thumbnailSrc(bg)}
                         alt={bg.name}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          // 缩略图加载失败时，尝试用原图
-                          const fallbackSrc = ApiService.getBackgroundUrl(bg.path);
-                          if (target.src !== fallbackSrc) {
-                            target.src = fallbackSrc;
-                          }
-                        }}
+                        onError={(e) => handleThumbnailError(e, bg)}
                       />
                     </div>
                     <div className="background-name">{bg.name}</div>
