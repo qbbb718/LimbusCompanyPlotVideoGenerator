@@ -1,0 +1,127 @@
+/*
+ * 立绘场景预览（PortraitScenePreview）样式。
+ * 仅被「资源管理 → 角色 → 编辑立绘 → 预览」使用，颜色沿用应用现有浅色弹窗风格。
+ * 裁剪区下方「预览」按钮行的样式在 CharacterModal.css（该按钮在预览弹窗打开前就存在）。
+ */
+
+/* 预览弹窗：覆盖整个应用（父级角色弹窗的 z-index 是 1000） */
+.portrait-scene-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+.portrait-scene-preview-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 94vw);
+  max-height: 92vh;
+  padding: 16px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.portrait-scene-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.portrait-scene-preview-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+/* 舞台：黑色底，和视频画面一致；图片按比例完整显示 */
+.portrait-scene-preview-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  background-color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.portrait-scene-preview-stage img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+/* 加载 / 错误提示 */
+.portrait-scene-preview-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: #ddd;
+  font-size: 14px;
+  text-align: center;
+}
+
+.portrait-scene-preview-status.is-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.portrait-scene-preview-status.is-error {
+  color: #ffb4b4;
+}
+
+.portrait-scene-preview-spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: portrait-scene-preview-spin 0.8s linear infinite;
+}
+
+@keyframes portrait-scene-preview-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 底部：背景选择 + 说明 */
+.portrait-scene-preview-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: #555;
+  font-size: 14px;
+}
+
+.portrait-scene-preview-footer select {
+  min-width: 200px;
+  max-width: 340px;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.portrait-scene-preview-hint {
+  color: #999;
+  font-size: 12px;
+}

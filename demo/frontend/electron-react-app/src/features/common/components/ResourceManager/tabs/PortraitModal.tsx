@@ -9,6 +9,7 @@ import {
   useFileSelector,
   PortraitPreview,
   PortraitSettings,
+  PortraitScenePreview,
   createLogger,
 } from "./PortraitModal/index";
 import "./CharacterModal.css";
@@ -23,6 +24,8 @@ interface PortraitModalProps {
   onSave: (portrait: Portrait) => void;
   isNewPortrait: boolean;
   defaultPortrait?: Portrait | null; // 角色的默认立绘
+  /** 角色身高（cm）：预览时决定立绘在画面里的纵向位置，缺省 171（与后端默认一致） */
+  characterHeight?: number;
 }
 
 const PortraitModal: React.FC<PortraitModalProps> = ({
@@ -32,9 +35,12 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   onSave,
   isNewPortrait,
   defaultPortrait,
+  characterHeight = 171,
 }) => {
   // 保存用户选择的文件对象，供上传到后端使用
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // 立绘场景预览弹窗是否打开
+  const [showScenePreview, setShowScenePreview] = useState(false);
   // 使用自定义hooks管理状态
   const {
     editingPortrait,
@@ -107,6 +113,25 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   // 在添加新立绘时，editingPortrait 可能为 null，但组件仍应显示
   if (!editingPortrait && !isNewPortrait) return null;
 
+  /**
+   * 当前裁剪参数。
+   *
+   * 优先用裁剪器实时回调的 croppedAreaPixels（用户刚拖动过、还没保存的裁剪框）；
+   * 裁剪器尚未回调时（例如刚打开弹窗就点预览）退回立绘里已保存的裁剪值，
+   * 保证「预览」永远预览的是用户眼前看到的裁剪框。
+   */
+  const previewCrop = croppedAreaPixels
+    ? {
+        faceX: Math.round(croppedAreaPixels.x),
+        faceY: Math.round(croppedAreaPixels.y),
+        length: Math.round(croppedAreaPixels.width),
+      }
+    : {
+        faceX: Math.round(currentPortrait.faceX || 0),
+        faceY: Math.round(currentPortrait.faceY || 0),
+        length: Math.round(currentPortrait.length || 0),
+      };
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -155,6 +180,22 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               handleImageLoad={handleImageLoad}
               defaultCropState={getDefaultCropState()}
             />
+
+            {/* 裁剪区域下方右侧：预览立绘在完整画面中的效果 */}
+            <div className="portrait-preview-actions">
+              <button
+                className="btn-secondary"
+                onClick={() => setShowScenePreview(true)}
+                disabled={!portraitPreview}
+                title={
+                  portraitPreview
+                    ? "按当前裁剪参数渲染立绘在画面中的效果"
+                    : "请先选择立绘文件"
+                }
+              >
+                预览
+              </button>
+            </div>
           </div>
 
           {/* 右侧：设置面板 */}
@@ -260,6 +301,20 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             保存
           </button>
         </div>
+
+        {showScenePreview && portraitPreview && (
+          <PortraitScenePreview
+            imagePath={currentPortrait.imagePath}
+            imageFile={pendingFile}
+            faceX={previewCrop.faceX}
+            faceY={previewCrop.faceY}
+            length={previewCrop.length}
+            adjX={currentPortrait.adjX || 0}
+            adjY={currentPortrait.adjY || 0}
+            characterHeight={characterHeight}
+            onClose={() => setShowScenePreview(false)}
+          />
+        )}
       </div>
     </div>
   );

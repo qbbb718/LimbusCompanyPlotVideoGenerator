@@ -1,21 +1,34 @@
+/*
+ * 角色立绘裁剪画布样式（仅 PortraitModal / PortraitPreview 使用）
+ * 库自带的是暗色主题（黑底 + 白色裁剪框），这里统一改为浅灰底 + 深色裁剪框。
+ * 颜色都走 CSS 变量并带默认值，父级容器可以按需覆盖。
+ */
 .advanced-cropper {
   width: 100%;
   height: 100%;
+  /* 库里 .advanced-cropper 默认 background: black，改成浅灰 */
+  background: var(--cropper-canvas-bg, #e8e8e8);
+  /* 拖拽手柄（.advanced-cropper-simple-handler）用 currentColor 作背景，
+     库默认 color: white，浅灰底上会看不见，这里改成深灰 */
+  color: var(--cropper-line, rgba(0, 0, 0, 0.35));
 }
 
-.advanced-cropper__canvas {
-  max-width: 100%;
-  max-height: 100%;
+/* 裁剪框外的遮罩：库默认 rgba(0, 0, 0, 0.5) 的黑色压暗，
+   改成与画布底色一致的浅灰半透明，裁剪页面整体保持浅灰 */
+.advanced-cropper .advanced-cropper-stencil-overlay {
+  color: var(--cropper-veil, rgba(232, 232, 232, 0.78));
 }
 
-.advanced-cropper__stencil {
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 0 9999px rgba(255, 255, 255, 0.88);
+/* 裁剪框边线：库默认白色（浅灰底上看不清），改成深灰细线 */
+.advanced-cropper .advanced-cropper-simple-line {
+  border-color: var(--cropper-line, rgba(0, 0, 0, 0.35));
 }
 
-/* 提高图片渲染质量 */
-.advanced-cropper__image {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
+.advanced-cropper .advanced-cropper-simple-line--hover {
+  border-color: rgba(0, 0, 0, 0.65);
+}
+
+/* 九宫格辅助线：库默认白色（0.4），改成浅灰底上可见的深灰 */
+.advanced-cropper .advanced-cropper-stencil-grid {
+  color: rgba(0, 0, 0, 0.2);
 }

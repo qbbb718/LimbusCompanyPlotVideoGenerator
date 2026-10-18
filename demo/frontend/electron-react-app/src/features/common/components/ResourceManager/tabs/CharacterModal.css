@@ -619,4 +619,24 @@
   background: #fff;
 }
 
+/* 立绘裁剪区域下方右侧的「预览」按钮行 */
+.portrait-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.portrait-preview-actions .btn-secondary {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.portrait-preview-actions .btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 

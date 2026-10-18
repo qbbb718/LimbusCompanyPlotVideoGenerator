@@ -22,6 +22,7 @@
     - [更新立绘](#更新立绘)
     - [删除立绘](#删除立绘)
     - [设置默认立绘](#设置默认立绘)
+    - [渲染立绘预览图](#渲染立绘预览图)
   - [5. 背景 (Backgrounds)](#5-背景-backgrounds)
     - [获取所有背景](#获取所有背景)
     - [获取单个背景](#获取单个背景)
@@ -255,6 +256,21 @@
 - **路径参数**:
   - `characterId` - 角色ID
   - `portraitId` - 立绘ID
+
+### 渲染立绘预览图
+- **URL**: `POST /portraits/preview`
+- **说明**: 按当前裁剪参数渲染「立绘在画面中的效果」——背景 + 立绘 + 边框 + 界面 UI，
+  不渲染台词和角色名片。供「资源管理 → 角色 → 编辑立绘」里的「预览」按钮使用；
+  渲染逻辑与视频静态帧一致（复用 `RenderOfImage.renderPreExceptDialogue`）。
+- **请求体**: `multipart/form-data`
+  - `file`（可选）- 新立绘原图；与 `imagePath` 二选一。新立绘还没上传时直接传文件，
+    预览不会往 `assets/characters` 写任何文件（临时文件渲染完即删）
+  - `imagePath`（可选）- 已有立绘的相对路径（如 `char_xxx/portrait_xxx.png`）
+  - `faceX` / `faceY` / `length` - 当前裁剪框左上角与边长（原图像素）
+  - `adjX` / `adjY` - 立绘手动偏移（设计画布像素）
+  - `height` - 角色身高（cm），决定立绘纵向落点
+  - `backgroundId`（可选）- 预览背景 ID；为空时取背景库第一张
+- **响应**: PNG 图片字节流（1920×1080）
 
 ---
 

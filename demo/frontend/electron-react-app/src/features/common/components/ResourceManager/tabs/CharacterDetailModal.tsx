@@ -374,6 +374,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           portrait={editingPortrait}
           defaultPortrait={getDefaultPortrait(editingCharacter.portraits)}
           isNewPortrait={isAddingNewPortrait}
+          characterHeight={editingCharacter.height}
           onClose={() => {
             setShowPortraitModal(false);
             setEditingPortrait(null);

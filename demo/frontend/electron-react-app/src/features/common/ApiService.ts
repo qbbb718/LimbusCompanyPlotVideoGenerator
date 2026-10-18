@@ -525,6 +525,29 @@ class ApiService {
     }
   }
 
+  /**
+   * 渲染"立绘在画面中的效果"预览图（资源管理 → 角色 → 编辑立绘 → 预览）。
+   *
+   * <p>后端只渲染背景 + 立绘 + 边框 + 界面 UI，不画台词和角色名片。
+   * 新立绘还未上传时把 File 放进 formData 的 `file` 字段；已有立绘只传 `imagePath`，
+   * 避免预览动作在磁盘上留下多余文件。
+   *
+   * @param formData 字段：file? / imagePath? / faceX / faceY / length / adjX / adjY / height / backgroundId
+   * @returns blob URL，可直接用于 <img src>。调用方需在关闭预览时 URL.revokeObjectURL()
+   */
+  async getPortraitPreview(formData: FormData): Promise<string> {
+    try {
+      const response = await apiClient.post('/portraits/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        responseType: 'blob',
+      });
+      return URL.createObjectURL(response.data);
+    } catch (error) {
+      console.error('获取立绘预览图失败:', error);
+      throw error;
+    }
+  }
+
   // 添加立绘
   async addPortrait(characterId: string, portraitData: any) {
     try {
