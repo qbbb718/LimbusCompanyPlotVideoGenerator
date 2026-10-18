@@ -238,11 +238,11 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button onClick={() => openResourceFolder("audios")}>
-          打开音频文件夹
-        </button>
         <button className="btn-primary" onClick={handleAddAudio}>
-          添加音频
+          ➕ 添加音频
+        </button>
+        <button onClick={() => openResourceFolder("audios")}>
+         📂  打开音频文件夹
         </button>
       </div>
 

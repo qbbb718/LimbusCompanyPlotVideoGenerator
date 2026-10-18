@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.lbc_plot.config.AppConfig;
+import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.RenderOfImage;
 import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.resource.model.MyCharacter;
@@ -29,6 +30,9 @@ import com.lbc_plot.resource.model.MyCharacter;
 @Component
 public class CharacterCardImageCache {
     private static final Logger logger = Logger.getLogger(CharacterCardImageCache.class.getName());
+
+    /** 阵营为空时的兜底文案，与 {@code MyCharacter.DEFAULT_FACTION} 保持一致。 */
+    private static final String DEFAULT_FACTION = "无阵营";
 
     // 内存缓存（与磁盘路径解耦，按 characterId 索引，保留 static）
     private static final ConcurrentHashMap<String, BufferedImage> imageCache = new ConcurrentHashMap<>();
@@ -97,23 +101,55 @@ public class CharacterCardImageCache {
     }
 
     /**
-     * 生成角色名片图片
+     * 用传入的参数渲染一张名片图片，<b>不读也不写任何缓存</b>。
+     *
+     * <p>供「名片预览」的刷新按钮使用：用户在弹窗里改了名称/阵营/颜色但还没保存时，
+     * 也能立刻拿到用当前参数渲染的名片。因为完全不碰内存/磁盘缓存，
+     * 预览不会污染数据库里已保存角色的名片缓存。
+     *
+     * @param character 角色参数（颜色/阵营/身高缺失时用默认值补齐，名称不能为空）
+     * @return 名片图片；名称为空或渲染失败时返回 null
      */
-    private BufferedImage generateCharacterCardImage(MyCharacter character) {
+    public BufferedImage renderCardImage(MyCharacter character) {
+        if (character == null) {
+            logger.warning("角色对象为null，无法渲染名片图片");
+            return null;
+        }
+
+        String characterName = character.getCharacterName();
+        if (characterName == null || characterName.trim().isEmpty()) {
+            logger.warning("角色名称为空，无法渲染名片图片，角色ID: " + character.getCharacterID());
+            return null;
+        }
+
         try {
+            // 前端颜色输入框是自由文本，解析失败会得到 null；阵营也可能为空。
+            // 这里统一补默认值，否则渲染层会在 stringWidth(null) 处抛异常。
+            String faction = character.getFaction();
+            if (faction == null || faction.trim().isEmpty()) {
+                faction = DEFAULT_FACTION;
+            }
+
             CharacterRef characterRef = new CharacterRef(
                     character.getCharacterID(),
-                    character.getCharacterName(),
+                    characterName,
                     character.getHeight(),
-                    character.getFaction(),
-                    character.getColorBg(),
-                    character.getColorText());
+                    faction,
+                    character.getColorBg() != null ? character.getColorBg() : ProjectConfig.DEFAULT_BG_COLOR,
+                    character.getColorText() != null ? character.getColorText() : ProjectConfig.DEFAULT_TEXT_COLOR);
 
             return RenderOfImage.renderCharaNameUI(characterRef);
         } catch (Exception e) {
-            logger.severe("生成名片图片失败: " + e.getMessage());
+            logger.severe("渲染名片图片失败: " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * 生成角色名片图片（缓存未命中时调用）
+     */
+    private BufferedImage generateCharacterCardImage(MyCharacter character) {
+        return renderCardImage(character);
     }
 
     /**

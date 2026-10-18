@@ -22,11 +22,12 @@ const BackgroundActions: React.FC<BackgroundActionsProps> = ({
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <button onClick={() => openResourceFolder("backgrounds")}>
-        打开背景文件夹
-      </button>
+      
       <button className="btn-primary" onClick={onAddBackground}>
-        添加背景
+        ➕ 添加背景
+      </button>
+      <button onClick={() => openResourceFolder("backgrounds")}>
+        📂 打开背景文件夹
       </button>
     </div>
   );

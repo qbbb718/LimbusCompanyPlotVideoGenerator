@@ -231,21 +231,23 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
             全选
           </label>
         )}
-        <button onClick={() => openResourceFolder("characters")}>
-          打开角色文件夹
-        </button>
+
+        
+
         <button className="btn-primary" onClick={handleAddCharacter}>
-          添加角色
+          ➕ 添加角色
         </button>
+        <button onClick={() => importFileRef.current?.click()}>📥 导入角色</button>
+
         {selectionMode ? (
           <>
             <button onClick={handleExportCharacters}>
-              确认导出 ({selectedExportIds.size})
+              ✅ 确认导出 ({selectedExportIds.size})
             </button>
-            <button onClick={exitSelectionMode}>取消</button>
+            <button onClick={exitSelectionMode}>❌ 取消</button>
           </>
         ) : (
-          <button onClick={() => setSelectionMode(true)}>选择导出</button>
+          <button onClick={() => setSelectionMode(true)}>📤 选择导出</button>
         )}
         <input
           type="file"
@@ -254,7 +256,10 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
           accept=".zip"
           onChange={handleImportCharacters}
         />
-        <button onClick={() => importFileRef.current?.click()}>导入角色</button>
+
+        <button onClick={() => openResourceFolder("characters")}>
+          📂 打开角色文件夹
+        </button>
       </div>
 
       <div className="characters-grid">

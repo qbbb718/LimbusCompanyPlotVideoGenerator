@@ -164,17 +164,91 @@
   font-style: italic;
 }
 
-.character-card-image-preview {
-  width: 100%;
-  display: flex;
-  justify-content: center;
+.preview-note--error {
+  color: #ff9b9b;
+  font-style: normal;
 }
 
-.character-card-image-preview img {
-  max-width: 100%;
-  max-height: 200px;
+/* 名片图片容器：宽度收缩到图片本身，作为右上角刷新按钮的定位基准，
+   这样按钮贴的是"图片右上角"，而不是外层容器的右上角。 */
+.character-card-image-frame {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  align-self: center;
+}
+
+.character-card-image-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 名片右上角的刷新按钮 */
+.card-refresh-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.card-refresh-button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.card-refresh-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.card-refresh-button:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.card-refresh-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: currentColor;
+}
+
+.card-refresh-button.is-loading .card-refresh-icon {
+  animation: card-refresh-spin 0.9s linear infinite;
+}
+
+/* 还没有名片图片时（新角色未保存 / 图片加载失败），按钮改为普通按钮放在文字预览下方 */
+.card-refresh-button--inline {
+  position: static;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.card-refresh-button--inline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+@keyframes card-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .tags-section {

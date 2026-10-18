@@ -1,5 +1,6 @@
 import axios from 'axios';
 import log from 'electron-log';
+import { MyCharacter } from '@types';
 
 // API基础URL
 // 后端地址和 API 前缀
@@ -861,6 +862,37 @@ class ApiService {
   getCharacterCardUrl(characterId: string): string {
     if (!characterId) return '';
     return `${CHARACTER_CARDS_BASE_URL}/${encodeURIComponent(characterId)}`;
+  }
+
+  /**
+   * 用"当前参数"重新渲染一张角色名片图片（资源管理 → 角色 → 名片预览右上角的刷新按钮）。
+   *
+   * <p>与 {@link getCharacterCardUrl} 的区别：那个地址走后端缓存、并且只能用数据库里
+   * 已保存的角色参数；这里把弹窗里正在编辑、可能还没保存的参数直接发给后端即时渲染，
+   * 后端不读也不写名片缓存，所以既能立刻看到新名片，也不会污染已保存的名片。
+   *
+   * @param character 当前编辑中的角色（颜色可以是十六进制字符串；名称为空时后端返回 400）
+   * @returns blob URL，可直接用于 <img src>。调用方需在替换/卸载时 URL.revokeObjectURL()
+   */
+  async renderCharacterCardPreview(character: MyCharacter): Promise<string> {
+    // 名片只用到这几项，按白名单传参：立绘、标签等与名片无关的数据不必来回序列化
+    const payload = {
+      characterID: character.characterID,
+      characterName: character.characterName,
+      faction: character.faction,
+      colorBg: character.colorBg,
+      colorText: character.colorText,
+      height: character.height,
+    };
+    try {
+      const response = await apiClient.post('/character-card/preview', payload, {
+        responseType: 'blob',
+      });
+      return URL.createObjectURL(response.data);
+    } catch (error) {
+      console.error('渲染角色名片预览失败:', error);
+      throw error;
+    }
   }
 
   /**

@@ -2,15 +2,19 @@ package com.lbc_plot.resource.character;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -81,9 +85,66 @@ public class CharacterCardController {
                     ", 处理时间: " + (endTime - startTime) + "ms");
             return ResponseEntity.ok()
                     .contentType(MediaType.IMAGE_PNG)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache")
                     .body(new ByteArrayResource(imageBytes));
         } catch (Exception e) {
             logger.severe("获取角色名片图片失败: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 用"当前参数"重新渲染一张角色名片图片，不读也不写任何缓存。
+     *
+     * <p>「资源管理 → 角色 → 名片预览」右上角的刷新按钮调用它：把弹窗里正在编辑、
+     * 可能还没保存的名称/阵营/颜色直接发给后端重新渲染，这样改完参数就能立刻看到新名片，
+     * 不必先保存、更不必重启应用。
+     *
+     * <p>与 {@link #getCharacterCard(String)} 的区别：那个接口走缓存且从数据库取角色，
+     * 这里只用请求体里的参数渲染，页面上的实时预览不会影响已保存角色的名片缓存；
+     * 真正的保存仍然走 {@code PUT /api/characters/{id}}，由它负责刷新缓存。
+     *
+     * @param character 角色参数（名称、阵营、颜色等）
+     * @return PNG 图片字节流；名称为空返回 400，渲染失败返回 500
+     */
+    @PostMapping(value = "/character-card/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<byte[]> previewCharacterCard(@RequestBody MyCharacter character) {
+        if (character == null) {
+            logger.warning("名片预览请求体为空");
+            return ResponseEntity.badRequest().build();
+        }
+
+        String characterName = character.getCharacterName();
+        if (characterName == null || characterName.trim().isEmpty()) {
+            logger.warning("名片预览失败：角色名称为空");
+            return ResponseEntity.badRequest().build();
+        }
+
+        long startTime = System.currentTimeMillis();
+        try {
+            BufferedImage cardImage = characterCardImageCache.renderCardImage(character);
+            if (cardImage == null) {
+                logger.warning("名片预览渲染失败，角色名: " + characterName);
+                return ResponseEntity.internalServerError().build();
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(cardImage, "PNG", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            logger.info("名片预览渲染完成，角色名: " + characterName +
+                    ", 阵营: " + character.getFaction() +
+                    ", 尺寸: " + cardImage.getWidth() + "x" + cardImage.getHeight() +
+                    ", 大小: " + imageBytes.length + " 字节" +
+                    ", 耗时: " + (System.currentTimeMillis() - startTime) + "ms");
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .body(imageBytes);
+        } catch (IOException e) {
+            logger.severe("名片预览图片编码失败: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }

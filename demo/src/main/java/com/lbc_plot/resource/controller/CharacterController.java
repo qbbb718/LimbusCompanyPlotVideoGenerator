@@ -189,10 +189,8 @@ public class CharacterController {
                     });
 
                     logger.info("名片图片生成成功: " + cardImagePath);
-
-                    // 清除名片缓存，确保前端获取最新图片
-                    characterCardImageCache.clearCache(character.getCharacterID());
-                    logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
+                    // 上面 getCharacterCardImage() 生成时已经把新图写进内存+磁盘缓存，
+                    // 这里不要再 clearCache：那会把刚生成的名片删掉，导致首次请求还要重新渲染。
                 } else {
                     logger.warning("名片图片生成失败");
                 }
@@ -217,39 +215,6 @@ public class CharacterController {
         try {
             logger.info("开始更新角色，ID: " + id);
 
-            // 获取更新前的角色信息，用于比较
-            MyCharacter oldCharacter = jdbi.withHandle(handle -> {
-                CharacterDAO dao = handle.attach(CharacterDAO.class);
-                return dao.findById(id).orElse(null);
-            });
-
-            // 检查是否需要清除名片缓存
-            boolean needClearCache = false;
-            if (oldCharacter != null) {
-                // 检查角色名称是否改变
-                if (!oldCharacter.getCharacterName().equals(character.getCharacterName())) {
-                    logger.info("角色名称已改变，需要清除名片缓存");
-                    needClearCache = true;
-                }
-
-                // 检查阵营是否改变
-                if (!oldCharacter.getFaction().equals(character.getFaction())) {
-                    logger.info("阵营已改变，需要清除名片缓存");
-                    needClearCache = true;
-                }
-
-                // 检查背景颜色是否改变
-                if (!oldCharacter.getColorBg().equals(character.getColorBg())) {
-                    logger.info("背景颜色已改变，需要清除名片缓存");
-                    needClearCache = true;
-                }
-
-                // 检查文字颜色是否改变
-                if (!oldCharacter.getColorText().equals(character.getColorText())) {
-                    logger.info("文字颜色已改变，需要清除名片缓存");
-                    needClearCache = true;
-                }
-            }
             logger.info("角色名称: " + character.getCharacterName());
             logger.info("角色阵营: " + character.getFaction());
             logger.info("角色身高: " + character.getHeight());
@@ -312,9 +277,6 @@ public class CharacterController {
 
             logger.info("准备执行数据库更新操作");
 
-            // 将needClearCache声明为final，以便在lambda中使用
-            final boolean finalNeedClearCache = needClearCache;
-
             // 使用事务更新角色和立绘
             jdbi.inTransaction(handle -> {
                 CharacterDAO characterDao = handle.attach(CharacterDAO.class);
@@ -326,8 +288,6 @@ public class CharacterController {
                     // 如果更新失败，可能是角色不存在，尝试添加
                     logger.warning("角色更新失败，可能是角色不存在，尝试添加新角色");
                     characterDao.addCharacter(character);
-                    // 新角色需要生成名片，在lambda外部设置标志
-                    // finalNeedClearCache已在事务外设置
                 }
 
                 // 更新立绘信息
@@ -377,6 +337,12 @@ public class CharacterController {
             logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() +
                     ", 角色名称: " + character.getCharacterName());
             try {
+                // 必须先清缓存再生成。顺序反过来的话 getCharacterCardImage() 会直接命中
+                // 旧缓存、把旧图返回给前端，紧接着 clearCache() 又把这张旧图删掉，
+                // 结果就是「改完角色得重启应用才能看到新名片」。
+                characterCardImageCache.clearCache(character.getCharacterID());
+                logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
+
                 BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
                 if (cardImage != null) {
                     // 设置名片图片路径
@@ -401,12 +367,6 @@ public class CharacterController {
                     });
 
                     logger.info("名片图片生成成功: " + cardImagePath);
-
-                    // 只有在需要时才清除名片缓存
-                    if (finalNeedClearCache) {
-                        characterCardImageCache.clearCache(character.getCharacterID());
-                        logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
-                    }
                 } else {
                     logger.warning("名片图片生成失败");
                 }
