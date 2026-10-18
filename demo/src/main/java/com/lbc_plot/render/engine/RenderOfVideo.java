@@ -1,14 +1,17 @@
 package com.lbc_plot.render.engine;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import java.awt.font.LineBreakMeasurer;
 import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.text.AttributedCharacterIterator;
@@ -115,7 +118,7 @@ public class RenderOfVideo {
 
                     // 动态渲染当前帧
                     frame = renderSingleFrame(staticBackground, currentText,
-                            record.getDialogue().isNarrator(), width, height);
+                            record.getDialogue(), width, height);
                 } else {
                     // 无文本动画：直接使用静态背景
                     frame = copyImage(staticBackground);
@@ -331,9 +334,12 @@ public class RenderOfVideo {
      * {@code staticBackground} 已经按输出分辨率缩放过了，因此这里用同一个比例
      * {@code 帧宽 / 设计画布宽} 换算文字参数——否则低分辨率导出时文字会跑到画面外
      * （例如 640×360 下左对齐文字仍画在 x=376, y=912）。
+     *
+     * <p>"自由文本"说话人：字体/字号与旁白一致，整段文字块锚定在画面水平与垂直中心，
+     * 并按 {@link Dialogue#isBold()} / {@link Dialogue#isItalic()} 应用加粗与斜体。
      */
     private static BufferedImage renderSingleFrame(BufferedImage staticBackground, String text,
-            boolean isNarrator, int width, int height) {
+            Dialogue dialogue, int width, int height) {
         // 复制静态背景
         BufferedImage frame = copyImage(staticBackground);
         Graphics2D g2d = frame.createGraphics();
@@ -346,13 +352,25 @@ public class RenderOfVideo {
                     ? (float) frame.getWidth() / ProjectConfig.VIDEO_WIDTH
                     : 1f;
 
+            final boolean freeText = dialogue != null && dialogue.isFreeText();
+            final boolean isNarrator = dialogue != null && dialogue.isNarrator();
+
             // 根据模式选择配置参数（按 designToFrame 从设计坐标换算到实际帧坐标）
             int x, y, maxWidth;
             float fontSize;
             TextAlignment alignment;
             Color textColor = ProjectConfig.DEFAULT_TEXT_COLOR;
 
-            if (isNarrator) {
+            if (freeText) {
+                // 自由文本：与旁白同字体字号，锚点 = 画面中心 + 用户设置的 X/Y 偏移（再按输出分辨率缩放）
+                x = Math.round((ProjectConfig.FREE_TEXT_CENTER_X + dialogue.getFreeTextX()) * designToFrame);
+                y = Math.round((ProjectConfig.FREE_TEXT_CENTER_Y + dialogue.getFreeTextY()) * designToFrame);
+                maxWidth = Math.round(ProjectConfig.DIALOGUE_MAX_WIDTH * designToFrame);
+                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE * designToFrame;
+                alignment = TextAlignment.CENTER;
+                textColor = ProjectConfig.parseColor(
+                        dialogue.getFreeTextColor(), ProjectConfig.DEFAULT_TEXT_COLOR);
+            } else if (isNarrator) {
                 x = Math.round(ProjectConfig.DIALOGUE_CENTER_X * designToFrame);
                 y = Math.round(ProjectConfig.DIALOGUE_CENTER_Y * designToFrame);
                 maxWidth = Math.round(ProjectConfig.DIALOGUE_MAX_WIDTH * designToFrame);
@@ -366,9 +384,18 @@ public class RenderOfVideo {
                 alignment = TextAlignment.LEFT;
             }
 
+            // 自由文本的加粗/斜体（其它模式的这两个字段不参与渲染）
+            int fontStyle = Font.PLAIN;
+            if (freeText && dialogue.isBold()) {
+                fontStyle |= Font.BOLD;
+            }
+            if (freeText && dialogue.isItalic()) {
+                fontStyle |= Font.ITALIC;
+            }
+
             // 绘制文字
             drawTextWithAdvancedFeatures(g2d, text, x, y, fontSize, textColor,
-                    alignment, maxWidth, false, null, 0, 0);
+                    alignment, maxWidth, false, null, 0, 0, fontStyle);
 
         } finally {
             g2d.dispose();
@@ -423,45 +450,52 @@ public class RenderOfVideo {
     /**
      * 绘制带有高级功能的文字（换行、对齐、锚点等）
      *
-     * @param fontSize 字号；为浮点数以便按输出分辨率等比换算设计字号
+     * @param fontSize  字号；为浮点数以便按输出分辨率等比换算设计字号
+     * @param fontStyle 字体样式（{@link Font#PLAIN} / {@link Font#BOLD} / {@link Font#ITALIC} 组合）
      */
     private static void drawTextWithAdvancedFeatures(Graphics2D g2d, String text, int x, int y,
             float fontSize, Color color, TextAlignment alignment,
             int maxWidth, boolean hasShadow, Color shadowColor,
-            int shadowOffsetX, int shadowOffsetY) {
+            int shadowOffsetX, int shadowOffsetY, int fontStyle) {
         if (text == null || text.isEmpty()) {
             return;
         }
 
         // 设置字体
-        Font font = FontLoader.getChineseFont(fontSize);
+        Font font = FontLoader.getChineseFont(fontStyle, fontSize);
         g2d.setFont(font);
         g2d.setColor(color);
 
-        // 绘制阴影（如果需要）
+        // 当前中文字体没有独立 Bold 字重，deriveFont(Font.BOLD) 不改变字形，
+        // 因此用"填充 + 轮廓描边"模拟加粗；由于字号已按输出分辨率换算，线宽要跟着字号缩放。
+        boolean bold = (fontStyle & Font.BOLD) != 0;
+
+        // 绘制阴影（如果需要；阴影不重复加粗）
         if (hasShadow && shadowColor != null) {
             drawTextWithOffset(g2d, text, x, y, alignment, maxWidth,
-                    shadowOffsetX, shadowOffsetY, shadowColor);
+                    shadowOffsetX, shadowOffsetY, shadowColor, false, fontSize);
         }
 
         // 绘制主文字
-        drawTextWithOffset(g2d, text, x, y, alignment, maxWidth, 0, 0, color);
+        drawTextWithOffset(g2d, text, x, y, alignment, maxWidth, 0, 0, color, bold, fontSize);
     }
 
     /**
      * 绘制带偏移的文字（支持换行和对齐）
+     *
+     * @param bold 是否模拟加粗
      */
     private static void drawTextWithOffset(Graphics2D g2d, String text, int x, int y,
             TextAlignment alignment, int maxWidth,
-            int offsetX, int offsetY, Color drawColor) {
+            int offsetX, int offsetY, Color drawColor, boolean bold, float fontSize) {
         if (maxWidth > 0) {
             // 需要换行的文本
             drawWrappedTextWithOffset(g2d, text, x + offsetX, y + offsetY,
-                    alignment, maxWidth, drawColor);
+                    alignment, maxWidth, drawColor, bold, fontSize);
         } else {
             // 单行文本
             drawSingleLineWithOffset(g2d, text, x + offsetX, y + offsetY,
-                    alignment, drawColor);
+                    alignment, drawColor, bold, fontSize);
         }
     }
 
@@ -469,7 +503,7 @@ public class RenderOfVideo {
      * 绘制带偏移的单行文本（修正居中对齐）
      */
     private static void drawSingleLineWithOffset(Graphics2D g2d, String text, int x, int y,
-            TextAlignment alignment, Color color) {
+            TextAlignment alignment, Color color, boolean bold, float fontSize) {
         FontMetrics metrics = g2d.getFontMetrics();
         int textWidth = metrics.stringWidth(text);
         int textHeight = metrics.getHeight(); // 总高度
@@ -491,14 +525,26 @@ public class RenderOfVideo {
         }
 
         g2d.setColor(color);
-        g2d.drawString(text, drawX, drawY);
+
+        if (!bold) {
+            g2d.drawString(text, drawX, drawY);
+            return;
+        }
+
+        TextLayout layout = new TextLayout(text, g2d.getFont(), g2d.getFontRenderContext());
+        Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, drawY));
+        g2d.setStroke(boldStroke(fontSize));
+        g2d.fill(outline);
+        g2d.draw(outline);
     }
 
     /**
      * 绘制带偏移的换行文本（修正居中对齐）
+     *
+     * @param bold 是否模拟加粗
      */
     private static void drawWrappedTextWithOffset(Graphics2D g2d, String text, int x, int y,
-            TextAlignment alignment, int maxWidth, Color color) {
+            TextAlignment alignment, int maxWidth, Color color, boolean bold, float fontSize) {
         // 创建属性字符串
         AttributedString attributedString = new AttributedString(text);
         attributedString.addAttribute(TextAttribute.FONT, g2d.getFont());
@@ -547,9 +593,26 @@ public class RenderOfVideo {
 
             // 绘制当前行
             currentY += layout.getAscent();
-            layout.draw(g2d, drawX, currentY);
+            if (!bold) {
+                layout.draw(g2d, drawX, currentY);
+            } else {
+                // 与单行文字一致：填充 + 轮廓描边模拟加粗
+                Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, currentY));
+                g2d.setStroke(boldStroke(fontSize));
+                g2d.fill(outline);
+                g2d.draw(outline);
+            }
             currentY += layout.getDescent() + layout.getLeading();
         }
+    }
+
+    /**
+     * 模拟加粗时的描边宽度：随字号线性缩放（28px 设计字号约 1.4px），
+     * 与预览页保持同一套观感。
+     */
+    private static BasicStroke boldStroke(float fontSize) {
+        float width = Math.max(0.6f, fontSize * 0.05f);
+        return new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
     // ==================== 工具方法 ====================

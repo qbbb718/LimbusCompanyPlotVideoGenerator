@@ -145,6 +145,15 @@ public class ProjectConfig {
     public static int DIALOGUE_FONT_SIZE = 28;
     public static int DIALOGUE_MAX_WIDTH = 1120;
 
+    /**
+     * 自由文本（说话人类型 = 自由文本）的居中锚点：画面水平与垂直中心。
+     *
+     * <p>字体与字号沿用旁白的 {@link #DIALOGUE_FONT_SIZE}，区别只在于整段文字块锚定在画面正中
+     * （旁白是底部居中 {@link #DIALOGUE_CENTER_Y}）。
+     */
+    public static int FREE_TEXT_CENTER_X = VIDEO_WIDTH / 2;
+    public static int FREE_TEXT_CENTER_Y = VIDEO_HEIGHT / 2;
+
     public static String NARRATION_ID = "NARRATION";
 
     // 实例字段（支持配置绑定）
@@ -595,7 +604,15 @@ public class ProjectConfig {
     }
 
     // ----- Color helpers -----
-    private static Color parseColor(String hex, Color fallback) {
+
+    /**
+     * 解析十六进制颜色字符串（支持 {@code #RGB} / {@code #RRGGBB} / {@code #AARRGGBB}，
+     * 带不带 {@code #} 均可）。解析失败或为 null 时返回 {@code fallback}。
+     *
+     * <p>公开给渲染层使用：例如"自由文本"说话人的自定义文字颜色
+     * （{@link com.lbc_plot.plot.model.Dialogue#getFreeTextColor()}）也要走同一套解析规则。
+     */
+    public static Color parseColor(String hex, Color fallback) {
         if (hex == null)
             return fallback;
         String s = hex.trim();

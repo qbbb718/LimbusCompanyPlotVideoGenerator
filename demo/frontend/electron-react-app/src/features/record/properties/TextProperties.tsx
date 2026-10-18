@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Record, MyCharacter, CharacterRef } from "@types";
+import React, { useState, useEffect, useRef } from "react";
+import { HexColorPicker } from "react-colorful";
+import {
+  Record,
+  MyCharacter,
+  CharacterRef,
+  Dialogue,
+  DEFAULT_FREE_TEXT_COLOR,
+} from "@types";
 import ApiService from "@services/ApiService";
+import { AppConfig } from "@features/common/config/appConfig";
+import CharacterSelect, {
+  CharacterSelectOption,
+} from "./CharacterSelect";
 import "../RecordEditor.css";
 import "./TextProperties.css";
 
@@ -8,20 +19,119 @@ interface TextPropertiesProps {
   selectedRecord: Record;
   selectedRecordIndex: number;
   updateRecord: (index: number, updatedRecord: Record) => void;
+  /** 设置页选的输出视频宽度（文字位置滑杆的显示基准）；缺省时回退到设计画布宽度 */
+  videoWidth?: number;
+  /** 设置页选的输出视频高度 */
+  videoHeight?: number;
 }
+
+/**
+ * 说话人下拉框里"自由文本"类型的哨兵值。
+ * 角色 ID 都是后端生成的 UUID，不会与这个值冲突。
+ */
+const FREE_TEXT_SPEAKER = "__FREE_TEXT__";
+
+/**
+ * "手动输入"说话人（输入框里的自定义名字）的哨兵值：
+ * 只用于让下拉框显示 fallback 文本，不会出现在选项列表里。
+ */
+const MANUAL_SPEAKER = "__MANUAL__";
+
+/** 自由文本模式下显示在记录列表里的说话人名字（说话人本身不上屏） */
+const FREE_TEXT_LABEL = "自由文本";
+
+/** 旁白说话人的名字（与后端 Dialogue.DEFAULT_NARRATOR 保持一致） */
+const NARRATOR_NAME = "旁白";
+
+/** 颜色选择器只接受 #RGB / #RRGGBB，其它格式（如 8 位带透明度）回退到默认色显示 */
+const PICKER_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/** 设计画布尺寸（与后端 ProjectConfig.VIDEO_WIDTH / VIDEO_HEIGHT 一致） */
+const CANVAS_WIDTH = AppConfig.designCanvas.width;
+const CANVAS_HEIGHT = AppConfig.designCanvas.height;
 
 const TextProperties: React.FC<TextPropertiesProps> = ({
   selectedRecord,
   selectedRecordIndex,
   updateRecord,
+  videoWidth,
+  videoHeight,
 }) => {
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  // 取色器里正在挑的颜色：拖动时只更新本地草稿，点"完成"/点面板外部才写回记录，
+  // 避免拖动过程中不断触发预览图重新渲染。
+  const [colorDraft, setColorDraft] = useState<string | null>(null);
+  // 位置数值框的输入草稿：允许输入 "-" 这类中间状态，避免受控输入把负号吞掉
+  const [freeTextXInput, setFreeTextXInput] = useState<string | null>(null);
+  const [freeTextYInput, setFreeTextYInput] = useState<string | null>(null);
+
+  const colorControlRef = useRef<HTMLDivElement | null>(null);
+  const commitColorRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     ApiService.getCharacters()
       .then(setCharacters)
       .catch(() => setCharacters([]));
   }, []);
+
+  const dialogue = selectedRecord.dialogue;
+  const isFreeText = dialogue.freeText === true;
+  const currentSpeaker = dialogue.speakerC?.[0];
+
+  // 旁白：说话人不上屏（即使 speakerC 里残留角色），也不显示阵营与说话人名字输入框。
+  // 判断必须与后端 Dialogue.isNarrator() 一致（按 speakerName），不能只看 speakerC。
+  const isNarrator =
+    !isFreeText &&
+    (dialogue.speakerName === NARRATOR_NAME ||
+      (!dialogue.speakerName && !currentSpeaker));
+
+  // ===== 文字位置：记录里存设计画布像素，界面按当前输出分辨率显示 =====
+  const uiWidth = videoWidth && videoWidth > 0 ? videoWidth : CANVAS_WIDTH;
+  const uiHeight = videoHeight && videoHeight > 0 ? videoHeight : CANVAS_HEIGHT;
+  const toUiX = (designX: number) =>
+    Math.round((designX * uiWidth) / CANVAS_WIDTH);
+  const toUiY = (designY: number) =>
+    Math.round((designY * uiHeight) / CANVAS_HEIGHT);
+  const toDesignX = (uiX: number) =>
+    Math.round((uiX * CANVAS_WIDTH) / uiWidth);
+  const toDesignY = (uiY: number) =>
+    Math.round((uiY * CANVAS_HEIGHT) / uiHeight);
+
+  const freeTextX = dialogue.freeTextX ?? 0;
+  const freeTextY = dialogue.freeTextY ?? 0;
+  const freeTextUiX = toUiX(freeTextX);
+  const freeTextUiY = toUiY(freeTextY);
+
+  // 切换记录 / 退出自由文本时关闭取色器、清空位置输入草稿
+  useEffect(() => {
+    setShowColorPicker(false);
+    setColorDraft(null);
+    setFreeTextXInput(null);
+    setFreeTextYInput(null);
+  }, [selectedRecordIndex, isFreeText]);
+
+  // 点击取色器面板以外的区域：提交颜色更改并自动关闭
+  useEffect(() => {
+    if (!showColorPicker) return;
+    const handleMouseDown = (event: MouseEvent) => {
+      if (
+        colorControlRef.current &&
+        !colorControlRef.current.contains(event.target as Node)
+      ) {
+        commitColorRef.current();
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [showColorPicker]);
+
+  // 自由文本的实际文字颜色：空/非法时用默认色（与旁白一致）
+  const freeTextColor = PICKER_COLOR_PATTERN.test(dialogue.freeTextColor || "")
+    ? (dialogue.freeTextColor as string)
+    : DEFAULT_FREE_TEXT_COLOR;
+  // 取色器显示的颜色（拖动中的草稿优先）
+  const displayColor = colorDraft || freeTextColor;
 
   const updateDialogue = (
     field: keyof typeof selectedRecord.dialogue,
@@ -42,10 +152,38 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
     };
     console.log(
       `[TextProperties] updateDialogue: ${field}=${value}`,
-      `speakerC.length=${updatedDialogue.speakerC.length}`,
+      `speakerC.length=${updatedDialogue.speakerC?.length ?? 0}`,
     );
     updateRecord(selectedRecordIndex, updatedRecord);
   };
+
+  /** 一次性修改多个 Dialogue 字段（切换说话人类型 / 文本样式时用） */
+  const updateDialogueFields = (updates: Partial<Dialogue>) => {
+    const updatedRecord = {
+      ...selectedRecord,
+      dialogue: { ...selectedRecord.dialogue, ...updates },
+    };
+    console.log("[TextProperties] updateDialogueFields:", updates);
+    updateRecord(selectedRecordIndex, updatedRecord);
+  };
+
+  /** 关闭取色器并丢弃未提交的颜色草稿 */
+  const closeColorPicker = () => {
+    setShowColorPicker(false);
+    setColorDraft(null);
+  };
+
+  /** 把取色器里挑好的颜色写回记录 */
+  const commitColorPicker = () => {
+    if (colorDraft && colorDraft !== dialogue.freeTextColor) {
+      updateDialogue("freeTextColor", colorDraft);
+    }
+    closeColorPicker();
+  };
+  // 供"点击面板外部"的 document 监听器调用，保证拿到最新的 commit 逻辑
+  useEffect(() => {
+    commitColorRef.current = commitColorPicker;
+  });
 
   const handleCharacterSelect = (characterID: string) => {
     if (!characterID) return;
@@ -70,6 +208,8 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
       ...selectedRecord,
       dialogue: {
         ...selectedRecord.dialogue,
+        // 选回角色时退出自由文本模式
+        freeText: false,
         speakerName: chara.characterName,
         faction: chara.faction,
         speakerC: [ref],
@@ -78,45 +218,306 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
     updateRecord(selectedRecordIndex, updatedRecord);
   };
 
-  const currentSpeaker = selectedRecord.dialogue.speakerC?.[0];
+  /**
+   * 说话人下拉框切换：
+   * - 旁白：说话人不上屏（不渲染角色名/阵营名片），也不显示阵营与说话人名字输入框
+   * - 自由文本：说话人不上屏，对话内容以旁白字体/字号显示；可调样式、颜色与位置
+   * - 具体角色：回到原有"角色名片"逻辑
+   */
+  const handleSpeakerSelect = (value: string) => {
+    if (value === FREE_TEXT_SPEAKER) {
+      console.log("[TextProperties] 说话人类型切换为自由文本");
+      updateDialogueFields({
+        freeText: true,
+        // 自由文本没有角色名片，清掉说话人引用
+        speakerC: [],
+        speakerName: FREE_TEXT_LABEL,
+        // 隐藏UI默认勾选；加粗/斜体/颜色/位置保留用户之前的选择
+        bold: dialogue.bold === true,
+        italic: dialogue.italic === true,
+        hideUI: dialogue.hideUI !== false,
+        freeTextColor: dialogue.freeTextColor || DEFAULT_FREE_TEXT_COLOR,
+        freeTextX: dialogue.freeTextX ?? 0,
+        freeTextY: dialogue.freeTextY ?? 0,
+      });
+      return;
+    }
+
+    if (value) {
+      handleCharacterSelect(value);
+      return;
+    }
+
+    // 旁白：说话人固定为旁白，清掉角色引用（后端据此不渲染说话人名片）
+    updateDialogueFields({
+      freeText: false,
+      speakerC: [],
+      speakerName: NARRATOR_NAME,
+    });
+  };
+
+  // 说话人下拉选项：旁白 / 自由文本 / 角色（角色项带默认立绘小头像）
+  const speakerOptions: CharacterSelectOption[] = [
+    { value: "", label: "旁白", badge: "旁" },
+    { value: FREE_TEXT_SPEAKER, label: "自由文本", badge: "文" },
+    ...characters.map((chara, index) => ({
+      value: chara.characterID,
+      label: chara.characterName,
+      avatarCharacter: chara,
+      dividerBefore: index === 0,
+    })),
+  ];
+
+  // 当前值：自由文本 / 旁白 / 角色 ID；手动输入的自定义名字用 fallback 显示
+  const speakerValue = isFreeText
+    ? FREE_TEXT_SPEAKER
+    : isNarrator
+      ? ""
+      : currentSpeaker?.characterID ||
+        (dialogue.speakerName ? MANUAL_SPEAKER : "");
+  const speakerFallbackLabel = dialogue.speakerName || "未命名";
+
+  /** 位置复位：把偏移改回 0（画面中心） */
+  const resetFreeTextPosition = (axis: "x" | "y") => {
+    if (axis === "x") {
+      setFreeTextXInput(null);
+    } else {
+      setFreeTextYInput(null);
+    }
+    updateDialogue(axis === "x" ? "freeTextX" : "freeTextY", 0);
+  };
+
+  /** 位置输入框：允许负号等中间输入，能解析成数字时立即写回 */
+  const handlePositionInput = (axis: "x" | "y", raw: string) => {
+    if (axis === "x") {
+      setFreeTextXInput(raw);
+    } else {
+      setFreeTextYInput(raw);
+    }
+    const parsed = parseInt(raw, 10);
+    if (Number.isFinite(parsed)) {
+      updateDialogue(
+        axis === "x" ? "freeTextX" : "freeTextY",
+        axis === "x" ? toDesignX(parsed) : toDesignY(parsed),
+      );
+    }
+  };
+
+  const handlePositionSlider = (axis: "x" | "y", raw: string) => {
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+    if (axis === "x") {
+      setFreeTextXInput(null);
+    } else {
+      setFreeTextYInput(null);
+    }
+    updateDialogue(
+      axis === "x" ? "freeTextX" : "freeTextY",
+      axis === "x" ? toDesignX(parsed) : toDesignY(parsed),
+    );
+  };
 
   return (
     <div className="text-properties">
       <div className="form-row">
-        <div className="form-group half-width">
+        <div
+          className={
+            isNarrator ? "form-group full-width" : "form-group half-width"
+          }
+        >
           <label>说话人</label>
-          <select
-            value={currentSpeaker?.characterID || ""}
-            onChange={(e) => handleCharacterSelect(e.target.value)}
-          >
-            <option value="">-- 选择或手动输入 --</option>
-            {characters.map((c) => (
-              <option key={c.characterID} value={c.characterID}>
-                {c.characterName}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={selectedRecord.dialogue.speakerName}
-            onChange={(e) => updateDialogue("speakerName", e.target.value)}
-            placeholder="或手动输入说话人名称"
-            style={{ marginTop: 4 }}
+          <CharacterSelect
+            value={speakerValue}
+            options={speakerOptions}
+            onChange={handleSpeakerSelect}
+            fallbackLabel={speakerFallbackLabel}
+            ariaLabel="说话人"
           />
+          {!isFreeText && !isNarrator && (
+            <input
+              type="text"
+              value={dialogue.speakerName}
+              onChange={(e) => updateDialogue("speakerName", e.target.value)}
+              placeholder="或手动输入说话人名称"
+              style={{ marginTop: 4 }}
+            />
+          )}
+          {isFreeText && (
+            <div className="free-text-hint">
+              对话内容以旁白字体/字号显示在画面正中央
+            </div>
+          )}
         </div>
-        <div className="form-group half-width">
-          <label>阵营</label>
-          <input
-            type="text"
-            value={selectedRecord.dialogue.faction}
-            onChange={(e) => updateDialogue("faction", e.target.value)}
-          />
-        </div>
+        {!isNarrator && (
+          <div className="form-group half-width">
+            {isFreeText ? (
+              <>
+                <label>文本样式</label>
+                <div className="free-text-options">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={dialogue.bold === true}
+                      onChange={(e) => updateDialogue("bold", e.target.checked)}
+                    />
+                    加粗
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={dialogue.italic === true}
+                      onChange={(e) =>
+                        updateDialogue("italic", e.target.checked)
+                      }
+                    />
+                    斜体
+                  </label>
+                  <label title="勾选后不渲染对话框、说话人名片与地点牌">
+                    <input
+                      type="checkbox"
+                      checked={dialogue.hideUI !== false}
+                      onChange={(e) =>
+                        updateDialogue("hideUI", e.target.checked)
+                      }
+                    />
+                    隐藏UI
+                  </label>
+                </div>
+                <div className="free-text-color" ref={colorControlRef}>
+                  <span className="free-text-color-label">文字颜色</span>
+                  <div className="free-text-color-control">
+                    <button
+                      type="button"
+                      className="free-text-color-swatch"
+                      style={{ backgroundColor: displayColor }}
+                      title="选择文字颜色"
+                      aria-label="选择文字颜色"
+                      onClick={() => {
+                        if (showColorPicker) {
+                          commitColorPicker();
+                        } else {
+                          setShowColorPicker(true);
+                        }
+                      }}
+                    />
+                    <span className="free-text-color-hex">
+                      {displayColor.toUpperCase()}
+                    </span>
+                  </div>
+                  {showColorPicker && (
+                    <div className="free-text-color-popover">
+                      <HexColorPicker
+                        color={displayColor}
+                        onChange={(color) => setColorDraft(color)}
+                      />
+                      <div className="free-text-color-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateDialogue(
+                              "freeTextColor",
+                              DEFAULT_FREE_TEXT_COLOR,
+                            );
+                            closeColorPicker();
+                          }}
+                        >
+                          恢复默认
+                        </button>
+                        <button type="button" onClick={commitColorPicker}>
+                          完成
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <label>阵营</label>
+                <input
+                  type="text"
+                  value={dialogue.faction}
+                  onChange={(e) => updateDialogue("faction", e.target.value)}
+                />
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {!isFreeText && !isNarrator && (
+        <div className="character-edit-hint">
+          可输入文字临时修改角色名与阵营
+        </div>
+      )}
+
+      {isFreeText && (
+        <div className="form-group free-text-position">
+          <label>文字位置</label>
+          <div className="free-text-axis-row">
+            <span className="free-text-axis-label">X</span>
+            <input
+              type="number"
+              className="free-text-axis-input"
+              value={freeTextXInput ?? String(freeTextUiX)}
+              onChange={(e) => handlePositionInput("x", e.target.value)}
+              onBlur={() => setFreeTextXInput(null)}
+            />
+            <input
+              type="range"
+              className="free-text-axis-slider"
+              min={-Math.round(uiWidth / 2)}
+              max={Math.round(uiWidth / 2)}
+              value={freeTextUiX}
+              onChange={(e) => handlePositionSlider("x", e.target.value)}
+            />
+            <button
+              type="button"
+              className="free-text-axis-reset"
+              title="X 坐标归零（回到画面水平中心）"
+              aria-label="X 坐标归零"
+              onClick={() => resetFreeTextPosition("x")}
+            >
+              ↺
+            </button>
+          </div>
+          <div className="free-text-axis-row">
+            <span className="free-text-axis-label">Y</span>
+            <input
+              type="number"
+              className="free-text-axis-input"
+              value={freeTextYInput ?? String(freeTextUiY)}
+              onChange={(e) => handlePositionInput("y", e.target.value)}
+              onBlur={() => setFreeTextYInput(null)}
+            />
+            <input
+              type="range"
+              className="free-text-axis-slider"
+              min={-Math.round(uiHeight / 2)}
+              max={Math.round(uiHeight / 2)}
+              value={freeTextUiY}
+              onChange={(e) => handlePositionSlider("y", e.target.value)}
+            />
+            <button
+              type="button"
+              className="free-text-axis-reset"
+              title="Y 坐标归零（回到画面垂直中心）"
+              aria-label="Y 坐标归零"
+              onClick={() => resetFreeTextPosition("y")}
+            >
+              ↺
+            </button>
+          </div>
+          <div className="free-text-position-hint">
+            以画面中心为原点，单位：当前输出分辨率像素
+          </div>
+        </div>
+      )}
+
       <div className="form-group">
         <label>对话内容</label>
         <textarea
-          value={selectedRecord.dialogue.text}
+          value={dialogue.text}
           onChange={(e) => updateDialogue("text", e.target.value)}
           rows={5}
         />
@@ -125,7 +526,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
         <label>场景</label>
         <input
           type="text"
-          value={selectedRecord.dialogue.location}
+          value={dialogue.location}
           onChange={(e) => updateDialogue("location", e.target.value)}
         />
       </div>
@@ -136,10 +537,10 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
           min="1"
           max="6"
           step="1"
-          value={selectedRecord.dialogue.speed}
+          value={dialogue.speed}
           onChange={(e) => updateDialogue("speed", parseInt(e.target.value))}
         />
-        <div className="speed-indicator">{selectedRecord.dialogue.speed}</div>
+        <div className="speed-indicator">{dialogue.speed}</div>
       </div>
     </div>
   );

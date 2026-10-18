@@ -54,6 +54,15 @@ public class Dialogue {
     private int speed; // 文字显示速度的修改值
     private Emotion emotion; // 情绪
 
+    // 自由文本（说话人类型）
+    private boolean freeText; // true: 说话人不上屏，对话内容以旁白字体/字号居中显示
+    private boolean bold; // 自由文本：加粗
+    private boolean italic; // 自由文本：斜体
+    private boolean hideUI = true; // 自由文本：隐藏UI（默认勾选，跳过对话框/名片/地点等UI层）
+    private String freeTextColor; // 自由文本：文字颜色（#RRGGBB / #AARRGGBB；为空时用默认文字颜色）
+    private int freeTextX; // 自由文本：文字中心相对画面中心的 X 偏移（设计画布像素）
+    private int freeTextY; // 自由文本：文字中心相对画面中心的 Y 偏移（设计画布像素）
+
     // TODO
     //
 
@@ -145,6 +154,92 @@ public class Dialogue {
 
     public void setEmotion(Emotion emotion) {
         this.emotion = (emotion == null) ? Emotion.NORMAL : emotion;
+    }
+
+    /**
+     * 是否为"自由文本"说话人类型。
+     *
+     * <p>自由文本不带角色名片：说话人不上屏，对话内容改为以旁白字体/字号在画面水平与垂直中心显示。
+     */
+    public boolean isFreeText() {
+        return freeText;
+    }
+
+    public void setFreeText(boolean freeText) {
+        this.freeText = freeText;
+    }
+
+    /** 自由文本：是否加粗。非自由文本模式下不参与渲染。 */
+    public boolean isBold() {
+        return bold;
+    }
+
+    public void setBold(boolean bold) {
+        this.bold = bold;
+    }
+
+    /** 自由文本：是否斜体。非自由文本模式下不参与渲染。 */
+    public boolean isItalic() {
+        return italic;
+    }
+
+    public void setItalic(boolean italic) {
+        this.italic = italic;
+    }
+
+    /**
+     * 自由文本：是否隐藏UI（默认 true）。
+     *
+     * <p>勾选后整层UI（对话框 / 说话人名片 / 地点牌）都不渲染，画面只保留背景、立绘与居中文本。
+     * 仅在 {@link #isFreeText()} 为 true 时生效。
+     */
+    public boolean isHideUI() {
+        return hideUI;
+    }
+
+    public void setHideUI(boolean hideUI) {
+        this.hideUI = hideUI;
+    }
+
+    /**
+     * 自由文本：文字颜色（十六进制字符串，如 {@code #FBDBB3}）。
+     *
+     * <p>为空或非法时渲染使用 {@link ProjectConfig#DEFAULT_TEXT_COLOR}，所以旧工程/未设置颜色的记录
+     * 仍与旁白颜色一致。未设置时 JSON 里不写出该字段，避免普通对话的工程文件变啰嗦。
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getFreeTextColor() {
+        return freeTextColor;
+    }
+
+    public void setFreeTextColor(String freeTextColor) {
+        this.freeTextColor = freeTextColor;
+    }
+
+    /**
+     * 自由文本：文字中心相对画面中心的 X 偏移（设计画布像素，正数向右）。
+     *
+     * <p>0 表示水平居中；渲染时锚点 = {@link ProjectConfig#FREE_TEXT_CENTER_X} + 本值。
+     */
+    public int getFreeTextX() {
+        return freeTextX;
+    }
+
+    public void setFreeTextX(int freeTextX) {
+        this.freeTextX = freeTextX;
+    }
+
+    /**
+     * 自由文本：文字中心相对画面中心的 Y 偏移（设计画布像素，正数向下）。
+     *
+     * <p>0 表示垂直居中；渲染时锚点 = {@link ProjectConfig#FREE_TEXT_CENTER_Y} + 本值。
+     */
+    public int getFreeTextY() {
+        return freeTextY;
+    }
+
+    public void setFreeTextY(int freeTextY) {
+        this.freeTextY = freeTextY;
     }
 
     /**
@@ -293,8 +388,8 @@ public class Dialogue {
 
     @Override
     public String toString() {
-        return String.format("Dialogue{location='%s', speaker='%s', text='%s', emotion=%s}",
-                location, speakerName, text, emotion);
+        return String.format("Dialogue{location='%s', speaker='%s', text='%s', emotion=%s, freeText=%s}",
+                location, speakerName, text, emotion, freeText);
     }
 
     /**
@@ -310,6 +405,13 @@ public class Dialogue {
         this.align = builder.align;
         this.speed = builder.speed;
         this.emotion = builder.emotion;
+        this.freeText = builder.freeText;
+        this.bold = builder.bold;
+        this.italic = builder.italic;
+        this.hideUI = builder.hideUI;
+        this.freeTextColor = builder.freeTextColor;
+        this.freeTextX = builder.freeTextX;
+        this.freeTextY = builder.freeTextY;
 
         // 应用智能默认值逻辑
         applySmartDefaults();
@@ -378,6 +480,22 @@ public class Dialogue {
         @JsonProperty
         private Emotion emotion;
 
+        // 自由文本（说话人类型）相关字段。hideUI 默认勾选，旧工程 JSON 里没有该字段时也按"隐藏UI"处理。
+        @JsonProperty
+        private boolean freeText;
+        @JsonProperty
+        private boolean bold;
+        @JsonProperty
+        private boolean italic;
+        @JsonProperty
+        private boolean hideUI = true;
+        @JsonProperty
+        private String freeTextColor;
+        @JsonProperty
+        private int freeTextX;
+        @JsonProperty
+        private int freeTextY;
+
         /**
          * Builder构造函数
          */
@@ -439,6 +557,48 @@ public class Dialogue {
 
         public Builder emotion(Emotion emotion) {
             this.emotion = emotion;
+            return this;
+        }
+
+        /** 说话人类型：自由文本（说话人不上屏，对话内容居中显示） */
+        public Builder freeText(boolean freeText) {
+            this.freeText = freeText;
+            return this;
+        }
+
+        /** 自由文本：加粗 */
+        public Builder bold(boolean bold) {
+            this.bold = bold;
+            return this;
+        }
+
+        /** 自由文本：斜体 */
+        public Builder italic(boolean italic) {
+            this.italic = italic;
+            return this;
+        }
+
+        /** 自由文本：隐藏UI（默认勾选） */
+        public Builder hideUI(boolean hideUI) {
+            this.hideUI = hideUI;
+            return this;
+        }
+
+        /** 自由文本：文字颜色（#RRGGBB / #AARRGGBB；null 表示用默认文字颜色） */
+        public Builder freeTextColor(String freeTextColor) {
+            this.freeTextColor = freeTextColor;
+            return this;
+        }
+
+        /** 自由文本：文字中心相对画面中心的 X 偏移（设计画布像素） */
+        public Builder freeTextX(int freeTextX) {
+            this.freeTextX = freeTextX;
+            return this;
+        }
+
+        /** 自由文本：文字中心相对画面中心的 Y 偏移（设计画布像素） */
+        public Builder freeTextY(int freeTextY) {
+            this.freeTextY = freeTextY;
             return this;
         }
 

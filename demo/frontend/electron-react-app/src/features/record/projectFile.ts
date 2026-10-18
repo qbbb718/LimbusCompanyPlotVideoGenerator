@@ -91,6 +91,19 @@ const normalizeEmotion = (value: unknown): Emotion => {
 };
 
 /**
+ * @function 归一化十六进制颜色
+ * 只接受 #RGB / #RRGGBB / #AARRGGBB；非法值回退为空字符串（渲染时用默认文字颜色）。
+ * 后端 ProjectConfig.parseColor 也支持不带 # 的写法，但前端统一带 # 便于颜色选择器显示。
+ */
+const normalizeHexColor = (value: unknown): string => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed)
+    ? trimmed
+    : "";
+};
+
+/**
  * @function 把文件里的音频指令归一化为前端结构
  * 后端 RecordsIO 写出的字段是 audioId，前端用 path；fadeDuration 是后端字段，
  * 归一化时原样保留（前端不展示，但保存回文件时不至于丢掉）。
@@ -139,6 +152,14 @@ export const normalizeRecord = (raw: any): Record => {
       align: dialogue.align === DialogueAlign.CENTER ? DialogueAlign.CENTER : DialogueAlign.LEFT,
       speed: asNumber(dialogue.speed, 1),
       emotion: normalizeEmotion(dialogue.emotion),
+      // 自由文本（说话人类型）：旧工程没有这些字段时按"非自由文本 + 隐藏UI默认勾选"处理
+      freeText: dialogue.freeText === true,
+      bold: dialogue.bold === true,
+      italic: dialogue.italic === true,
+      hideUI: dialogue.hideUI !== false,
+      freeTextColor: normalizeHexColor(dialogue.freeTextColor),
+      freeTextX: asNumber(dialogue.freeTextX, 0),
+      freeTextY: asNumber(dialogue.freeTextY, 0),
     },
     bg: Array.isArray(source.bg) ? source.bg : [],
     chars: Array.isArray(source.chars) ? source.chars : [],

@@ -51,6 +51,14 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         align: r.dialogue?.align,
         emotion: r.dialogue?.emotion,
         location: r.dialogue?.location,
+        // 自由文本样式：任一开关变化都必须重渲染，否则后端会返回旧的缓存图
+        freeText: r.dialogue?.freeText,
+        bold: r.dialogue?.bold,
+        italic: r.dialogue?.italic,
+        hideUI: r.dialogue?.hideUI,
+        freeTextColor: r.dialogue?.freeTextColor,
+        freeTextX: r.dialogue?.freeTextX,
+        freeTextY: r.dialogue?.freeTextY,
       },
     });
 
@@ -160,7 +168,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
             <div
               key={record.uuid}
               className={`timeline-block ${index === selectedRecordIndex ? "active" : ""}`}
-              title={`#${index + 1} ${record.dialogue.speakerName || "旁白"}: ${record.dialogue.text.substring(0, 20)}`}
+              title={`#${index + 1} ${record.dialogue.freeText ? "自由文本" : record.dialogue.speakerName || "旁白"}: ${record.dialogue.text.substring(0, 20)}`}
               onClick={() => setSelectedRecordIndex(index)}
               style={{ width: `${100 / records.length}%` }}
             >

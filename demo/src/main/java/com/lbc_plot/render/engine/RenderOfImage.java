@@ -184,7 +184,11 @@ public class RenderOfImage {
             composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
             // }原本plot大括号在这里
 
-            renderUIBackground(composer, plot, record.getDialogue());
+            if (shouldRenderUI(record.getDialogue())) {
+                renderUIBackground(composer, plot, record.getDialogue());
+            } else {
+                logger.info("自由文本 + 隐藏UI：视频静态背景跳过UI层");
+            }
 
             // 除了对话都渲染了,虽然上面是静态的
 
@@ -658,8 +662,24 @@ public class RenderOfImage {
             throw new IOException("对话信息为空");
         }
 
-        renderUIBackground(composer, plot, dialogue);
+        if (shouldRenderUI(dialogue)) {
+            renderUIBackground(composer, plot, dialogue);
+        } else {
+            logger.info("自由文本 + 隐藏UI：跳过UI背景层（对话框/说话人名片/地点牌均不渲染）");
+        }
         renderDialogueText(composer, dialogue);
+    }
+
+    /**
+     * 判断是否需要渲染UI背景层。
+     *
+     * <p>"自由文本"说话人 + 勾选"隐藏UI"时，整层UI（对话框 / 说话人名片 / 地点牌）都不渲染，
+     * 画面只保留背景、立绘与居中的自由文本。预览、视频静态帧与 UI_ONLY 分层都走这一个判断。
+     *
+     * @param dialogue 对话信息；为 null 时按"需要渲染"处理（由调用方自行报错）
+     */
+    public static boolean shouldRenderUI(Dialogue dialogue) {
+        return dialogue == null || !dialogue.isFreeText() || !dialogue.isHideUI();
     }
 
     /**
@@ -686,7 +706,19 @@ public class RenderOfImage {
      */
     private static void renderDialogueText(FrameComposerService composer, Dialogue dialogue) throws IOException {
         try {
-            if (dialogue.isNarrator()) {
+            if (dialogue.isFreeText()) {
+                // 自由文本：字体/字号与旁白一致，文字块中心可由 freeTextX/freeTextY 相对画面中心偏移，
+                // 支持自定义颜色/加粗/斜体
+                Color freeTextColor = ProjectConfig.parseColor(
+                        dialogue.getFreeTextColor(), ProjectConfig.DEFAULT_TEXT_COLOR);
+                int centerX = ProjectConfig.FREE_TEXT_CENTER_X + dialogue.getFreeTextX();
+                int centerY = ProjectConfig.FREE_TEXT_CENTER_Y + dialogue.getFreeTextY();
+                composer.addDialogueTextFreeText(dialogue.getText(), dialogue.isBold(), dialogue.isItalic(),
+                        freeTextColor, centerX, centerY);
+                logger.debug("添加自由文本（中心=({},{}), 颜色={}, 加粗={}, 斜体={}）: {}",
+                        centerX, centerY, dialogue.getFreeTextColor(), dialogue.isBold(),
+                        dialogue.isItalic(), abbreviateText(dialogue.getText()));
+            } else if (dialogue.isNarrator()) {
                 composer.addDialogueTextCenter(dialogue.getText());
                 logger.debug("添加居中旁白文本: {}", abbreviateText(dialogue.getText()));
             } else {
@@ -811,6 +843,12 @@ public class RenderOfImage {
             throw new IOException("对话信息为空");
         }
 
+        // 自由文本 + 隐藏UI：返回一张全透明图层，保证任何调用方（预览/视频/UI_ONLY）都拿不到UI元素
+        if (!shouldRenderUI(dialogue)) {
+            logger.info("自由文本 + 隐藏UI：返回透明UI图层");
+            return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        }
+
         FrameComposerService composer = newDesignComposer();
 
         try {
@@ -823,7 +861,17 @@ public class RenderOfImage {
             }
 
             CharacterRef speaker = dialogue.getSpeakerCharacter();
-            if (speaker == null) {
+            if (dialogue.isFreeText()) {
+                // 自由文本模式：说话人不上屏，不生成角色名片（自由文本本身就是屏幕上的文字）
+                logger.debug("自由文本模式：跳过说话人名片");
+                speaker = null;
+            } else if (dialogue.isNarrator()) {
+                // 旁白模式：说话人不上屏。这里必须按 Dialogue.speakerName 判断，
+                // 不能只看 speakerC 里的 CharacterRef——新建记录会继承上一条的 speakerC，
+                // 旁白记录里可能残留某个角色引用，只看 speaker.isNarrator() 会把名牌画出来。
+                logger.debug("旁白模式：跳过说话人名片（不渲染角色名/阵营 UI）");
+                speaker = null;
+            } else if (speaker == null) {
                 // speakerC 为空，尝试从 Dialogue 的 speakerName/faction 构造临时 CharacterRef
                 String name = dialogue.getSpeakerName();
                 if (name != null && !name.trim().isEmpty() && !"旁白".equals(name.trim())) {

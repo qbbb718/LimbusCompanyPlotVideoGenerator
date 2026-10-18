@@ -1,11 +1,13 @@
 package com.lbc_plot.render.engine.manager;
 
+import java.awt.BasicStroke;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import java.awt.font.LineBreakMeasurer;
 import java.awt.font.TextAttribute;
@@ -119,18 +121,63 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
     }
 
     /**
+     * 添加"自由文本"对话文字图层。
+     *
+     * <p>与旁白一致：同一套中文字体、同一 {@link ProjectConfig#DIALOGUE_FONT_SIZE} 字号，
+     * 文字块锚定在传入的中心点（默认是画面水平与垂直中心，可由用户通过 X/Y 偏移调整），
+     * 并支持自定义文字颜色、加粗 / 斜体。
+     */
+    public void addDialogueTextFreeText(String text, boolean bold, boolean italic, Color color,
+            int centerX, int centerY) {
+        int fontStyle = Font.PLAIN;
+        if (bold) {
+            fontStyle |= Font.BOLD;
+        }
+        if (italic) {
+            fontStyle |= Font.ITALIC;
+        }
+
+        addTextLayer(text,
+                centerX,
+                centerY,
+                ProjectConfig.DIALOGUE_FONT_SIZE,
+                (color != null) ? color : ProjectConfig.DEFAULT_TEXT_COLOR,
+                0,
+                TextAlignment.CENTER,
+                ProjectConfig.DIALOGUE_MAX_WIDTH,
+                false,
+                null,
+                0,
+                0,
+                fontStyle);
+    }
+
+    /**
      * 核心文字添加方法 - 根据对齐方式采用不同的锚点逻辑
      */
     private void addTextLayer(String text, int x, int y, int fontSize, Color color,
             float rotation, TextAlignment alignment, int maxWidth,
             boolean hasShadow, Color shadowColor, int shadowOffsetX, int shadowOffsetY) {
+        addTextLayer(text, x, y, fontSize, color, rotation, alignment, maxWidth,
+                hasShadow, shadowColor, shadowOffsetX, shadowOffsetY, Font.PLAIN);
+    }
+
+    /**
+     * 核心文字添加方法（带字体样式：加粗 / 斜体）
+     *
+     * @param fontStyle {@link Font#PLAIN} / {@link Font#BOLD} / {@link Font#ITALIC} 的组合
+     */
+    private void addTextLayer(String text, int x, int y, int fontSize, Color color,
+            float rotation, TextAlignment alignment, int maxWidth,
+            boolean hasShadow, Color shadowColor, int shadowOffsetX, int shadowOffsetY,
+            int fontStyle) {
         TextLayerInfo textLayer = new TextLayerInfo(text, x, y, fontSize, color, rotation,
                 alignment, maxWidth, hasShadow,
-                shadowColor, shadowOffsetX, shadowOffsetY);
+                shadowColor, shadowOffsetX, shadowOffsetY, fontStyle);
         textLayers.add(textLayer);
 
-        // 使用中文字体进行尺寸计算
-        Font chineseFont = FontLoader.getChineseFont(fontSize);
+        // 使用中文字体进行尺寸计算（加粗/斜体要使用同一套样式字体，否则测量与绘制不一致）
+        Font chineseFont = FontLoader.getChineseFont(fontStyle, fontSize);
 
         // 创建临时Graphics获取FontMetrics
         BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
@@ -265,8 +312,8 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
             g2d.setTransform(transform);
         }
 
-        // 设置中文字体和抗锯齿
-        Font chineseFont = FontLoader.getChineseFont(textLayer.fontSize);
+        // 设置中文字体和抗锯齿（加粗/斜体使用同一套样式字体）
+        Font chineseFont = FontLoader.getChineseFont(textLayer.fontStyle, textLayer.fontSize);
         g2d.setFont(chineseFont);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -274,12 +321,12 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
         if (textLayer.hasShadow) {
             // 先绘制投影
             g2d.setColor(textLayer.shadowColor);
-            drawTextContent(g2d, textLayer, textLayer.shadowOffsetX, textLayer.shadowOffsetY);
+            drawTextContent(g2d, textLayer, textLayer.shadowOffsetX, textLayer.shadowOffsetY, textLayer.bold);
         }
 
         // 再绘制主文字
         g2d.setColor(textLayer.color);
-        drawTextContent(g2d, textLayer, 0, 0);
+        drawTextContent(g2d, textLayer, 0, 0, textLayer.bold);
 
         // 恢复原始变换
         g2d.setTransform(originalTransform);
@@ -293,21 +340,24 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
 
     /**
      * 绘制文字内容（支持偏移）
+     *
+     * @param bold 是否用轮廓描边模拟加粗（当前字体没有独立 Bold 字重）
      */
-    private void drawTextContent(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY) {
+    private void drawTextContent(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY, boolean bold) {
         if (textLayer.maxWidth > 0) {
             // 需要换行的文本
-            drawWrappedTextWithOffset(g2d, textLayer, offsetX, offsetY);
+            drawWrappedTextWithOffset(g2d, textLayer, offsetX, offsetY, bold);
         } else {
             // 单行文本
-            drawSingleLineWithOffset(g2d, textLayer, offsetX, offsetY);
+            drawSingleLineWithOffset(g2d, textLayer, offsetX, offsetY, bold);
         }
     }
 
     /**
      * 绘制带偏移的单行文本
      */
-    private void drawSingleLineWithOffset(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY) {
+    private void drawSingleLineWithOffset(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY,
+            boolean bold) {
         int textWidth = g2d.getFontMetrics().stringWidth(textLayer.text);
         int drawX = textLayer.x + offsetX;
         int drawY = textLayer.y + offsetY + getTextBaseline(g2d);
@@ -318,13 +368,27 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
             drawX = textLayer.x - textWidth + offsetX;
         }
 
-        g2d.drawString(textLayer.text, drawX, drawY);
+        if (!bold) {
+            g2d.drawString(textLayer.text, drawX, drawY);
+            return;
+        }
+
+        // 当前中文字体没有独立的 Bold 字重（deriveFont(Font.BOLD) 不改变字形），
+        // 因此用"填充 + 轮廓描边"模拟加粗；线宽随字号缩放，低分辨率导出时也保持一致观感。
+        TextLayout layout = new TextLayout(textLayer.text, g2d.getFont(), g2d.getFontRenderContext());
+        Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, drawY));
+        g2d.setStroke(boldStroke(textLayer.fontSize));
+        g2d.fill(outline);
+        g2d.draw(outline);
     }
 
     /**
      * 绘制带偏移的换行文本
+     *
+     * @param bold 是否用轮廓描边模拟加粗
      */
-    private void drawWrappedTextWithOffset(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY) {
+    private void drawWrappedTextWithOffset(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY,
+            boolean bold) {
         AttributedString attributedString = new AttributedString(textLayer.text);
         attributedString.addAttribute(TextAttribute.FONT, g2d.getFont());
         attributedString.addAttribute(TextAttribute.FOREGROUND, g2d.getColor());
@@ -370,9 +434,26 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
             }
 
             currentY += layout.getAscent();
-            layout.draw(g2d, drawX, currentY);
+            if (!bold) {
+                layout.draw(g2d, drawX, currentY);
+            } else {
+                // 与单行文字一致：填充 + 轮廓描边模拟加粗
+                Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, currentY));
+                g2d.setStroke(boldStroke(textLayer.fontSize));
+                g2d.fill(outline);
+                g2d.draw(outline);
+            }
             currentY += layout.getDescent() + layout.getLeading();
         }
+    }
+
+    /**
+     * 模拟加粗时的描边宽度：随字号线性缩放（28px 设计字号约 1.4px），
+     * 这样预览（1080p 设计画布）与低分辨率视频导出的观感一致。
+     */
+    private static BasicStroke boldStroke(int fontSize) {
+        float width = Math.max(0.6f, fontSize * 0.05f);
+        return new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
     /**
@@ -517,10 +598,13 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
         final Color shadowColor; // 投影颜色
         final int shadowOffsetX; // 投影X偏移
         final int shadowOffsetY; // 投影Y偏移
+        final int fontStyle; // 字体样式（Font.PLAIN / BOLD / ITALIC 组合）
+        final boolean bold; // 是否需要模拟加粗（由 fontStyle 推导）
 
         TextLayerInfo(String text, int x, int y, int fontSize, Color color,
                 float rotation, TextAlignment alignment, int maxWidth,
-                boolean hasShadow, Color shadowColor, int shadowOffsetX, int shadowOffsetY) {
+                boolean hasShadow, Color shadowColor, int shadowOffsetX, int shadowOffsetY,
+                int fontStyle) {
             this.text = text;
             this.x = x;
             this.y = y;
@@ -533,13 +617,15 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
             this.shadowColor = shadowColor;
             this.shadowOffsetX = shadowOffsetX;
             this.shadowOffsetY = shadowOffsetY;
+            this.fontStyle = fontStyle;
+            this.bold = (fontStyle & Font.BOLD) != 0;
         }
 
         // 简化构造函数（向后兼容）
         TextLayerInfo(String text, int x, int y, int fontSize, Color color,
                 float rotation, TextAlignment alignment, int maxWidth) {
             this(text, x, y, fontSize, color, rotation, alignment, maxWidth,
-                    false, Color.BLACK, 1, 1);
+                    false, Color.BLACK, 1, 1, Font.PLAIN);
         }
     }
 

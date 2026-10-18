@@ -95,12 +95,8 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="tab-navigation">
-          <button
-            className={activeTab === "textToRecords" ? "active" : ""}
-            onClick={() => setActiveTab("textToRecords")}
-          >
-            文本转记录
-          </button>
+
+
 
           <button
             className={activeTab === "editor" ? "active" : ""}
@@ -114,6 +110,13 @@ function App() {
             onClick={() => setActiveTab("resources")}
           >
             资源管理
+          </button>
+
+                    <button
+            className={activeTab === "textToRecords" ? "active" : ""}
+            onClick={() => setActiveTab("textToRecords")}
+          >
+            文本转记录
           </button>
 
           <button

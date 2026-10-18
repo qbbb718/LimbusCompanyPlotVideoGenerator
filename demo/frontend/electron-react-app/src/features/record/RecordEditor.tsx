@@ -111,6 +111,14 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         align: inherit?.dialogue?.align || DialogueAlign.LEFT,
         speed: 1,
         emotion: Emotion.NORMAL,
+        // 自由文本（说话人类型）与样式：新建记录沿用上一条的选择，避免每条都要重设
+        freeText: inherit?.dialogue?.freeText === true,
+        bold: inherit?.dialogue?.bold === true,
+        italic: inherit?.dialogue?.italic === true,
+        hideUI: inherit?.dialogue?.hideUI !== false,
+        freeTextColor: inherit?.dialogue?.freeTextColor || "",
+        freeTextX: inherit?.dialogue?.freeTextX ?? 0,
+        freeTextY: inherit?.dialogue?.freeTextY ?? 0,
       },
       bg: inheritedBg,
       chars: inheritedChars,
@@ -354,6 +362,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             selectedRecord={selectedRecord}
             selectedRecordIndex={selectedRecordIndex}
             updateRecord={updateRecord}
+            videoWidth={projectSettings.videoWidth}
+            videoHeight={projectSettings.videoHeight}
           />
         );
       case "characters":

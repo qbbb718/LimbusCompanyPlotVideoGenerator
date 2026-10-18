@@ -2,22 +2,27 @@
 REM -----------------------------------------
 REM 一键启动后端(Spring Boot)和前端(Electron React)
 REM 使用说明: 双击运行或在命令行执行本脚本
+REM 脚本需放在项目根目录（与 pom.xml 同级）
 REM -----------------------------------------
 
 REM 设置控制台为 UTF-8 以支持中文输出
 chcp 65001 >nul
 
-REM 项目根路径（可根据需要调整）
-set PROJECT_ROOT=e:\LimbusCompanyPlotVideoGenerator\demo
-set BACKEND_DIR=%PROJECT_ROOT%
-set FRONTEND_DIR=%PROJECT_ROOT%\frontend\electron-react-app
-set BACKEND_HEALTH_URL=http://localhost:8081/api/health
-set MAX_WAIT=120
+REM 脚本所在目录即为项目根路径（末尾自带反斜杠）
+set "PROJECT_ROOT=%~dp0"
+REM 去掉末尾反斜杠，避免拼接时出现双反斜杠
+if "%PROJECT_ROOT:~-1%"=="\" set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
+
+set "BACKEND_DIR=%PROJECT_ROOT%"
+set "FRONTEND_DIR=%PROJECT_ROOT%\frontend\electron-react-app"
+set "BACKEND_HEALTH_URL=http://localhost:8081/api/health"
+set "MAX_WAIT=120"
 
 echo ========================================
 echo   LimbusCompany Plot Video Generator
 echo   一键启动脚本
 echo ========================================
+echo   项目根目录: %PROJECT_ROOT%
 echo.
 
 REM -----------------------------------------
@@ -25,6 +30,7 @@ REM 1. 检查前端目录
 REM -----------------------------------------
 if not exist "%FRONTEND_DIR%" (
     echo [错误] 未找到前端目录 %FRONTEND_DIR%
+    echo        请确认脚本位于项目根目录，且前端位于 frontend\electron-react-app
     pause
     exit /b 1
 )
@@ -33,13 +39,13 @@ REM -----------------------------------------
 REM 2. 启动后端服务器
 REM -----------------------------------------
 echo [1/3] 启动后端服务器 (Spring Boot)...
-start "backend" cmd /k "cd /d %BACKEND_DIR% && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai && mvn spring-boot:run -Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8"
+start "backend" cmd /k "cd /d "%BACKEND_DIR%" && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Duser.timezone=Asia/Shanghai && mvn spring-boot:run -Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8"
 
 REM -----------------------------------------
 REM 3. 轮询等待后端健康检查通过
 REM -----------------------------------------
 echo [2/3] 等待后端启动完成 (健康检查 %BACKEND_HEALTH_URL%)...
-set WAIT_COUNT=0
+set "WAIT_COUNT=0"
 
 :wait_backend
 powershell -Command "try { $r = Invoke-WebRequest -Uri '%BACKEND_HEALTH_URL%' -UseBasicParsing -TimeoutSec 3; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
@@ -89,7 +95,7 @@ REM 避免写成 "set BROWSER=none && ..." ——那样值会带尾随空格变�
 REM 导致 CRA 的 openBrowser 中 === 'none' 严格判断失效，反而尝试用名为 "none " 的程序打开浏览器。
 REM Electron 窗口通过 wait-on 等待开发服务器就绪后自动加载。
 set "BROWSER=none"
-start "frontend" cmd /k "cd /d %FRONTEND_DIR% && npm run electron-dev"
+start "frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run electron-dev"
 
 echo.
 echo ========================================

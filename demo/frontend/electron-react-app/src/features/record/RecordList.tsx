@@ -197,7 +197,11 @@ const RecordList: React.FC<RecordListProps> = ({
                 onClick={() => setSelectedRecordIndex(index)}
               >
                 <td>{index + 1}</td>
-                <td>{record.dialogue.speakerName || "旁白"}</td>
+                <td>
+                  {record.dialogue.freeText
+                    ? "自由文本"
+                    : record.dialogue.speakerName || "旁白"}
+                </td>
                 <td>
                   {record.dialogue.text.substring(0, 30) +
                     (record.dialogue.text.length > 30 ? "..." : "")}

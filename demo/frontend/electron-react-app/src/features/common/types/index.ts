@@ -102,7 +102,27 @@ export interface Dialogue {
   align: DialogueAlign;
   speed: number;
   emotion: Emotion;
+  /**
+   * 说话人类型：true = 自由文本。
+   * 自由文本不带角色名片，说话人不上屏，对话内容以旁白字体/字号显示在画面水平+垂直中心。
+   */
+  freeText?: boolean;
+  /** 自由文本：加粗 */
+  bold?: boolean;
+  /** 自由文本：斜体 */
+  italic?: boolean;
+  /** 自由文本：隐藏UI（自由文本模式下默认勾选；勾选后不渲染对话框/名片/地点牌） */
+  hideUI?: boolean;
+  /** 自由文本：文字颜色（#RRGGBB；为空时使用默认文字颜色，与旁白一致） */
+  freeTextColor?: string;
+  /** 自由文本：文字中心相对画面中心的 X 偏移（设计画布像素，正数向右） */
+  freeTextX?: number;
+  /** 自由文本：文字中心相对画面中心的 Y 偏移（设计画布像素，正数向下） */
+  freeTextY?: number;
 }
+
+/** 自由文本默认文字颜色（与后端 ProjectConfig.DEFAULT_TEXT_COLOR 一致） */
+export const DEFAULT_FREE_TEXT_COLOR = "#FBDBB3";
 
 // 背景视觉元素
 export interface BackgroundVisual {

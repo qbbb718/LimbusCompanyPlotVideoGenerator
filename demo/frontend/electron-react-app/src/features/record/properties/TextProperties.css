@@ -21,6 +21,10 @@
   width: 50%;
 }
 
+.form-group.full-width {
+  width: 100%;
+}
+
 .form-group label {
   margin-bottom: 5px;
   font-weight: 500;
@@ -45,4 +49,197 @@
   margin-top: 5px;
   font-weight: bold;
   color: #1890ff;
+}
+
+/* 自由文本模式下替代"阵营"的三个勾选项 */
+.free-text-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  min-height: 34px;
+  padding: 0 2px;
+}
+
+.free-text-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0;
+  font-weight: 400;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.free-text-options input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  accent-color: #1890ff;
+  cursor: pointer;
+}
+
+/* 自由文本说明：说话人不上屏，对话内容居中显示 */
+.free-text-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #888;
+}
+
+/* 自由文本：文字颜色选择 */
+.free-text-color {
+  margin-top: 8px;
+}
+
+.free-text-color-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.free-text-color-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.free-text-color-swatch {
+  width: 30px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.free-text-color-swatch:hover {
+  border-color: #1890ff;
+}
+
+.free-text-color-hex {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.free-text-color-popover {
+  width: 100%;
+  max-width: 220px;
+  margin-top: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.free-text-color-popover .react-colorful {
+  width: 100%;
+  height: 160px;
+}
+
+.free-text-color-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.free-text-color-actions button {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.free-text-color-actions button:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+/* ===== 角色选项：说话人/阵营下方的提示文字 ===== */
+.character-edit-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  margin-top: -6px;
+}
+
+/* ===== 自由文本：文字位置（滑块 + 数值框 + 归零按钮） ===== */
+.free-text-axis-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.free-text-axis-label {
+  width: 14px;
+  flex: 0 0 14px;
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.free-text-axis-input {
+  width: 64px;
+  flex: 0 0 64px;
+  padding: 6px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.free-text-axis-slider {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: #1890ff;
+}
+
+.free-text-axis-reset {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.free-text-axis-reset:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.free-text-position-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #888;
 }

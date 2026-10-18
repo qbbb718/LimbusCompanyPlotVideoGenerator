@@ -121,6 +121,12 @@ public class FrameComposerService extends BaseLayerManager
     }
 
     @Override
+    public void addDialogueTextFreeText(String text, boolean bold, boolean italic, Color color,
+            int centerX, int centerY) {
+        textManager.addDialogueTextFreeText(text, bold, italic, color, centerX, centerY);
+    }
+
+    @Override
     public void addLayerResized(String resourcePath, int x, int y, int targetWidth, int targetHeight)
             throws IOException {
         imageManager.addLayerResized(resourcePath, x, y, targetWidth, targetHeight);

@@ -10,6 +10,9 @@ import {
 import ApiService, { BASE_URL } from "@services/ApiService";
 import { AppConfig } from "@features/common/config/appConfig";
 import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
+import CharacterSelect, {
+  CharacterSelectOption,
+} from "./CharacterSelect";
 import "../RecordEditor.css";
 import "./CharactersProperties.css";
 
@@ -96,6 +99,13 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
 
   const currentCharacters = selectedRecord.chars || [];
   const currentTempImages = selectedRecord.tempImages || [];
+
+  // 角色下拉选项（带默认立绘小头像），与"说话人"下拉框使用同一个组件
+  const characterOptions: CharacterSelectOption[] = characters.map((chara) => ({
+    value: chara.characterID,
+    label: chara.characterName,
+    avatarCharacter: chara,
+  }));
 
   /** 拼接缩略图完整 URL */
   const getThumbnailUrl = (thumbnailPath: string | undefined): string => {
@@ -305,11 +315,14 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
               <div className="char-row char-row-top">
                 <div className="char-col char-col-1-4">
                   <label>角色</label>
-                  <select
+                  <CharacterSelect
                     value={char.chara.characterID}
-                    onChange={(e) => {
+                    options={characterOptions}
+                    fallbackLabel={char.chara.characterName}
+                    ariaLabel="角色"
+                    onChange={(characterID) => {
                       const selectedChara = characters.find(
-                        (c) => c.characterID === e.target.value,
+                        (c) => c.characterID === characterID,
                       );
                       if (selectedChara) {
                         updateCharacter(index, "chara", {
@@ -322,13 +335,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                         });
                       }
                     }}
-                  >
-                    {characters.map((chara) => (
-                      <option key={chara.characterID} value={chara.characterID}>
-                        {chara.characterName}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 <div className="char-col char-col-1-2">
                   <label>立绘</label>
@@ -457,11 +464,21 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
               <div className="char-row char-row-top">
                 <div className="char-col char-col-1-4">
                   <label>角色</label>
-                  <select
+                  <CharacterSelect
                     value={newChara?.characterID || ""}
-                    onChange={(e) => {
+                    options={[
+                      { value: "", label: "请选择角色", badge: "?" },
+                      ...characterOptions,
+                    ]}
+                    ariaLabel="角色"
+                    onChange={(characterID) => {
+                      if (!characterID) {
+                        setNewChara(null);
+                        setNewPortrait(null);
+                        return;
+                      }
                       const selectedChara = characters.find(
-                        (c) => c.characterID === e.target.value,
+                        (c) => c.characterID === characterID,
                       );
                       if (selectedChara) {
                         setNewChara({
@@ -472,19 +489,13 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                           colorBg: selectedChara.colorBg,
                           colorText: selectedChara.colorText,
                         });
-                        const defaultPortrait =
-                          getDefaultPortrait(selectedChara.portraits);
+                        const defaultPortrait = getDefaultPortrait(
+                          selectedChara.portraits,
+                        );
                         setNewPortrait(defaultPortrait);
                       }
                     }}
-                  >
-                    <option value="">请选择角色</option>
-                    {characters.map((chara) => (
-                      <option key={chara.characterID} value={chara.characterID}>
-                        {chara.characterName}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 <div className="char-col char-col-1-2">
                   <label>立绘</label>
