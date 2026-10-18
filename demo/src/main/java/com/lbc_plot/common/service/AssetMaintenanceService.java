@@ -86,15 +86,23 @@ public class AssetMaintenanceService {
     }
 
     /**
-     * 素材自检：返回素材目录、关键素材是否存在、缺失清单。
+     * 素材自检：返回数据根目录、素材目录、关键素材是否存在、缺失清单。
+     *
+     * <p>{@code dataRoot} 与 {@code dataRootOverride} 是给设置页显示的：安装版默认把数据根目录
+     * 放在用户数据目录（C 盘），但主进程可以用设置页写入的定位文件把它改到别的盘，
+     * 也可以由环境变量 {@code LBC_DATA_DIR} 或 JVM 参数 {@code -Dlbc.data.dir} 覆盖。
+     * 排查"素材到底在哪"时，先看这两个字段即可，不必再翻启动日志。
      */
     public Map<String, Object> diagnostics() {
         Map<String, Object> result = new LinkedHashMap<>();
 
+        Map<String, String> resolvedPaths = RuntimePaths.describe();
         Path assetsDir = resolveAssetsDir();
         File assetsFile = assetsDir.toFile();
         Path bundledDir = resolveBundledAssetsDir();
 
+        result.put("dataRoot", resolvedPaths.get("dataRoot"));
+        result.put("dataRootOverride", resolvedPaths.getOrDefault("override", ""));
         result.put("assetsDir", assetsDir.toAbsolutePath().toString());
         result.put("assetsDirExists", assetsFile.isDirectory());
         result.put("workingDir", Paths.get(".").toAbsolutePath().normalize().toString());

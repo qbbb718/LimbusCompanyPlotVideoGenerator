@@ -65,6 +65,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 导出日志：把最新若干条日志打成 zip，由主进程弹保存窗口
   exportLogs: () => ipcRenderer.invoke("logs:export"),
 
+  // ---- 资源存储位置（数据根目录）----
+  // 默认在 %APPDATA%\limbus-company-plot-video-generator（C 盘），设置页可以整体换到别的盘。
+  // 换位置会牵动"后端用哪个目录启动 + 素材在哪 + 日志在哪"，所以全部由主进程负责，
+  // 渲染进程只拿结果；换完必须重启应用才生效（主进程会弹窗问要不要现在重启）。
+  getDataLocation: () => ipcRenderer.invoke("data-location:get"),
+  chooseDataLocation: () => ipcRenderer.invoke("data-location:choose"),
+  applyDataLocation: (targetPath, options) =>
+    ipcRenderer.invoke("data-location:apply", targetPath, options),
+  resetDataLocation: (options) =>
+    ipcRenderer.invoke("data-location:reset", options),
+  openDataLocation: () => ipcRenderer.invoke("data-location:open"),
+  relaunchApp: () => ipcRenderer.invoke("data-location:relaunch"),
+  // 迁移进度：主进程一边复制一边推 { entry, index, total }，复制完推 null。
+  // 取消订阅沿用现有的 removeAllListeners('data-location:progress')。
+  onDataLocationProgress: (callback) => {
+    ipcRenderer.on("data-location:progress", (event, payload) => callback(payload));
+  },
+
   // 开发者工具
   openDevTools: () => ipcRenderer.invoke("window:openDevTools"),
 

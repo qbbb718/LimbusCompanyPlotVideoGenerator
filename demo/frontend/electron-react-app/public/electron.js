@@ -30,14 +30,194 @@ if (!isDev) {
   }
 }
 
+// ============================================================================
+// 数据根目录（资源存储位置）——"素材、数据库、临时工程、日志到底放在哪"的唯一决策点
+// ============================================================================
+//
+// 默认位置是 Electron 的用户数据目录（Windows 为
+// %APPDATA%\limbus-company-plot-video-generator），也就是 C 盘。素材、工程、临时图片与日志
+// 会越攒越大，C 盘吃紧的用户需要能把它整体搬到别的盘，因此这里支持四种来源，
+// 优先级从高到低：
+//
+//   1. 命令行参数 --data-dir=<目录>     （临时指定，例如同时维护几套数据）
+//   2. 环境变量 LBC_DATA_DIR            （后端 RuntimePaths 也认它，两边天然一致）
+//   3. 定位文件 <默认用户数据目录>\data-location.json 里的 dataRoot
+//      （设置页「资源存储位置」写入，普通用户走的就是这条）
+//   4. 默认：app.getPath("userData")
+//
+// 为什么"主进程说了算"：后端（Spring Boot）的数据根目录由 RuntimePaths 从
+// -Dlbc.data.dir / LBC_DATA_DIR / 默认值 解析，而"启动后端"这件事只发生在主进程里。
+// 主进程先把最终值算出来，再用 -Dlbc.data.dir=<最终值> 传给后端（见 spawnOwnBackend），
+// 两边不可能再指向不同目录。改位置后必须重启：运行期的 DATA_ROOT 是常量，
+// 换目录等于换一个后端进程的工作目录与数据库，热切换只会让两边不一致。
+//
+// 定位文件为什么留在默认目录里：它必须待在一个"不随设置变化"的位置，否则把数据搬到 D 盘后
+// 就再也找不到"当前数据在哪"这条记录了。它只有一百多字节，留在 C 盘不影响磁盘占用。
+
+/** 定位文件名（固定放在默认用户数据目录，不随数据根目录移动） */
+const DATA_LOCATION_FILE_NAME = "data-location.json";
+/** 命令行参数前缀：--data-dir=D:\LBC-Data */
+const DATA_DIR_CLI_PREFIX = "--data-dir=";
+/** 数据根目录下会被"搬家"带走的子目录，与后端 RuntimePaths 推导出的目录一一对应 */
+const DATA_SUBDIRS = ["assets", "data", "projects", "resources", "logs"];
+/** 统计目录大小时最多扫描多少个文件（素材特别多时不能让设置页一直转圈） */
+const DATA_SCAN_FILE_LIMIT = 200000;
+
+/** 各来源在界面上的说法 */
+const DATA_SOURCE_LABELS = {
+  cli: "命令行参数 --data-dir",
+  env: "环境变量 LBC_DATA_DIR",
+  config: "设置页自定义",
+  default: "默认位置",
+};
+
+/** 默认数据根目录（Electron 用户数据目录） */
+function getDefaultDataRoot() {
+  return app.getPath("userData");
+}
+
+/** 定位文件的完整路径 */
+function getDataLocationFile() {
+  return path.join(getDefaultDataRoot(), DATA_LOCATION_FILE_NAME);
+}
+
+/** 去掉引号与空白并转成绝对路径；空值返回 null */
+function normalizeDataPath(raw) {
+  if (typeof raw !== "string") return null;
+  const cleaned = raw.trim().replace(/^"(.*)"$/, "$1").trim();
+  if (!cleaned) return null;
+  try {
+    return path.resolve(cleaned);
+  } catch (err) {
+    return null;
+  }
+}
+
+/** child 是否就是 parent 本身或位于 parent 里（Windows 下大小写不敏感） */
+function isSameOrInside(parent, child) {
+  if (!parent || !child) return false;
+  const rel = path.relative(parent, child);
+  return rel === "" || (!!rel && !rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+/** 读定位文件；没有这个文件不算错误（表示用默认位置） */
+function readDataLocationConfig() {
+  const file = getDataLocationFile();
+  try {
+    if (!fs.existsSync(file)) return { dataRoot: null, file };
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    return {
+      dataRoot: normalizeDataPath(parsed && parsed.dataRoot),
+      previousDataRoot: normalizeDataPath(parsed && parsed.previousDataRoot),
+      file,
+    };
+  } catch (err) {
+    // 定位文件被手改坏了也不能让应用起不来：按"没有定位文件"处理，并在启动日志里说明
+    return { dataRoot: null, file, error: err.message };
+  }
+}
+
+/**
+ * 原子写定位文件（先写 .tmp 再 rename，写一半掉电也不会留下坏文件）。
+ *
+ * @param dataRoot 新的数据根目录
+ * @param previousDataRoot 迁移前的位置。记下来是为了在设置页提醒用户
+ *        "原位置还留着一整份数据，确认新位置没问题后可以手动删掉腾空间"——
+ *        换位置的目的往往就是给 C 盘腾空间，删旧目录这一步不能靠用户自己想起来。
+ */
+function writeDataLocationConfig(dataRoot, previousDataRoot) {
+  const file = getDataLocationFile();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const payload = {
+    dataRoot,
+    previousDataRoot: previousDataRoot || "",
+    savedAt: new Date().toISOString(),
+    note: "资源存储位置定位文件：dataRoot 就是素材/数据库/临时工程/日志所在的目录。删除本文件即恢复默认位置；一般由设置页维护，不建议手改。",
+  };
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  fs.renameSync(tmp, file);
+  return file;
+}
+
+/** 删除定位文件，回到默认位置 */
+function clearDataLocationConfig() {
+  const file = getDataLocationFile();
+  if (fs.existsSync(file)) fs.unlinkSync(file);
+  return file;
+}
+
+/** 从命令行里取 --data-dir=<目录> */
+function parseDataDirCli(argv) {
+  const list = Array.isArray(argv) ? argv : [];
+  for (const arg of list) {
+    if (typeof arg !== "string") continue;
+    if (!arg.toLowerCase().startsWith(DATA_DIR_CLI_PREFIX)) continue;
+    const value = arg.slice(DATA_DIR_CLI_PREFIX.length);
+    if (value && value.trim()) return value;
+  }
+  return null;
+}
+
+/** 解析本次运行的数据根目录（优先级见本节开头的注释） */
+function resolveDataRootInfo() {
+  const defaultRoot = getDefaultDataRoot();
+  const base = { defaultRoot, configFile: getDataLocationFile() };
+
+  const fromCli = normalizeDataPath(parseDataDirCli(process.argv));
+  if (fromCli) {
+    return { ...base, dataRoot: fromCli, source: "cli", configError: "" };
+  }
+
+  const fromEnv = normalizeDataPath(process.env.LBC_DATA_DIR);
+  if (fromEnv) {
+    return { ...base, dataRoot: fromEnv, source: "env", configError: "" };
+  }
+
+  const config = readDataLocationConfig();
+  if (config.dataRoot) {
+    return {
+      ...base,
+      dataRoot: config.dataRoot,
+      previousDataRoot: config.previousDataRoot || null,
+      source: "config",
+      configError: config.error || "",
+    };
+  }
+
+  return { ...base, dataRoot: defaultRoot, source: "default", configError: config.error || "" };
+}
+
+const DATA_ROOT_INFO = resolveDataRootInfo();
+/** 本次运行实际使用的数据根目录。切换位置要重启，所以运行期它是常量。 */
+const DATA_ROOT = DATA_ROOT_INFO.dataRoot;
+/** 已写进定位文件、但还没重启生效的新位置（用于界面上的"重启后生效"） */
+let pendingDataRoot = null;
+
+/** 本次运行的数据根目录 */
+function getDataRoot() {
+  return DATA_ROOT;
+}
+
 // 配置electron-log: 运行期间写入带时间戳的日志文件
 let logDir;
+/** 数据根目录不可写时退回默认目录的说明，启动日志里会打出来 */
+let logDirFallback = "";
 if (isDev) {
   // 开发模式：__dirname 指向 demo/frontend/electron-react-app/public，向上三级到 demo/logs/
   logDir = path.join(__dirname, "..", "..", "..", "logs");
 } else {
-  // 生产模式：写入用户数据目录，避免写入只读 asar
-  logDir = path.join(app.getPath("userData"), "logs");
+  // 生产模式：写入数据根目录（可被设置页改到别的盘），避免写入只读 asar。
+  // 数据根目录不可写（外接盘拔了、权限被改、目录被删）时退回默认目录：
+  // 日志必须还能落盘，否则用户报错时连日志都拿不到。
+  const preferred = path.join(DATA_ROOT, "logs");
+  try {
+    fs.mkdirSync(preferred, { recursive: true });
+    logDir = preferred;
+  } catch (err) {
+    logDir = path.join(getDefaultDataRoot(), "logs");
+    logDirFallback = `无法使用日志目录 ${preferred}（${err.message}），已退回 ${logDir}`;
+  }
 }
 
 // 查找最新的后端日志文件，以匹配其时间戳
@@ -111,6 +291,21 @@ function initLogFile() {
     log.info("日志文件路径:", logFilePath);
     log.info("后端日志文件:", latestBackendLog || "未找到");
     log.info("前端日志文件名:", logFileName);
+    // 数据根目录是排障时最需要确认的一条：素材/数据库/日志到底在哪个盘、由谁指定
+    log.info(
+      "数据根目录:",
+      DATA_ROOT,
+      "| 来源:",
+      DATA_SOURCE_LABELS[DATA_ROOT_INFO.source] || DATA_ROOT_INFO.source,
+      "| 定位文件:",
+      DATA_ROOT_INFO.configFile,
+    );
+    if (DATA_ROOT_INFO.configError) {
+      log.warn("定位文件解析失败，已按默认位置处理:", DATA_ROOT_INFO.configError);
+    }
+    if (logDirFallback) {
+      log.warn(logDirFallback);
+    }
 
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
@@ -215,7 +410,13 @@ function findBackendJar() {
   throw new Error("找不到 backend.jar");
 }
 
-/** 首次启动时将 data/、assets/、resources/ 从安装目录复制到用户数据目录 */
+/**
+ * 首次启动时把 data/、assets/、resources/ 从安装目录复制到数据根目录。
+ *
+ * <p>数据根目录可以被设置页改到别的盘（见本文件顶部「数据根目录」一节），
+ * 所以这里一律用调用方传进来的 dataRoot，不再自己取 app.getPath("userData")：
+ * 换到新位置后同样要从安装包补齐一份素材与初始库。
+ */
 function ensureUserDataFiles(userDataPath) {
   const resourcesPath = process.resourcesPath;
   const dirsToCopy = ["data", "assets", "resources"];
@@ -346,16 +547,21 @@ function spawnOwnBackend(userDataPath) {
   return new Promise((resolve) => {
     const javaPath = findJava();
     const jarPath = findBackendJar();
-    // 随安装包发布的素材目录：后端据此把缺失的素材补齐到用户数据目录（ui/effects 是硬依赖）
+    // 随安装包发布的素材目录：后端据此把缺失的素材补齐到数据根目录（ui/effects 是硬依赖）
     const bundledAssets = path.join(process.resourcesPath, "assets");
+    // 数据根目录显式传给后端：RuntimePaths 的优先级里 -Dlbc.data.dir 最高，
+    // 因此后端、后端的工作目录以及主进程解析出的素材目录必定指向同一个位置。
+    const dataDirArg = `-Dlbc.data.dir=${userDataPath.replace(/\\/g, "/")}`;
     log.info("启动后端:", javaPath, "-jar", jarPath);
     log.info("后端工作目录:", userDataPath);
+    log.info("后端数据根目录参数:", dataDirArg);
     log.info("安装包素材目录:", bundledAssets);
 
     const child = spawn(
       javaPath,
       [
         `-Dapp.assets.bundled=${bundledAssets}`,
+        dataDirArg,
         "-jar",
         jarPath,
         `--server.port=${BACKEND_PORT}`,
@@ -709,16 +915,19 @@ app.whenReady().then(async () => {
   initLogFile();
 
   if (!isDev) {
-    // 生产模式：准备用户数据目录、启动后端、等待就绪
+    // 生产模式：准备数据根目录（素材/数据库/日志都在这）、启动后端、等待就绪
     try {
-      const userDataPath = app.getPath("userData");
-      log.info("用户数据目录:", userDataPath);
-      ensureUserDataFiles(userDataPath);
+      // 不是 app.getPath("userData")：用户可以在设置页把资源位置改到别的盘，
+      // 这里必须用解析后的数据根目录（默认值就是 userData，行为不变）
+      const dataRoot = getDataRoot();
+      log.info("用户数据目录:", getDefaultDataRoot());
+      log.info("本次使用的数据根目录:", dataRoot);
+      ensureUserDataFiles(dataRoot);
 
       // 显示一个加载提示（可选：splash窗口）
       log.info("等待后端启动...");
       // startBackend 内部完成启动 + 健康检查（并按 PID 确认是本实例的后端）
-      const backend = await startBackend(userDataPath);
+      const backend = await startBackend(dataRoot);
       if (!backend.ok) {
         const reason = backend.reason || "后端未就绪";
         log.error("启动后端失败:", reason);
@@ -974,22 +1183,20 @@ ipcMain.handle("dialog:selectDirectory", async () => {
 /**
  * 素材根目录（{dataRoot}/assets）。
  *
- * 素材不在项目目录里：后端（com.lbc_plot.common.util.RuntimePaths）把数据根目录固定在用户
- * 数据目录，所有素材都放在其下的 assets/，安装版首次启动时由 ensureUserDataFiles 从安装包
- * 复制过去。因此这里必须用 app.getPath("userData") 解析，而不是 __dirname 往上找项目根目录
- * ——旧实现按 demoRoot 拼路径，"打开xx文件夹"打开的是仓库里那个几乎空的 assets/。
+ * 素材不在项目目录里：后端（com.lbc_plot.common.util.RuntimePaths）把数据根目录固定成
+ * 单一来源，所有素材都放在其下的 assets/，安装版首次启动时由 ensureUserDataFiles 从安装包
+ * 复制过去。数据根目录可以被设置页改到别的盘，因此这里跟主进程的后端启动参数用同一个值
+ * （getDataRoot()），不再自己拼 app.getPath("userData")——否则"打开角色文件夹"会打开旧位置。
  *
- *   Windows: %APPDATA%\limbus-company-plot-video-generator\assets
- *   其它平台: ~/.limbus-company-plot-video-generator/assets
+ *   默认: %APPDATA%\limbus-company-plot-video-generator\assets
+ *         （Windows；其它平台 ~/.limbus-company-plot-video-generator/assets）
+ *   自定义: <设置页选定的目录>\assets
  *
- * 后端还支持用环境变量 LBC_DATA_DIR 覆盖数据根目录（RuntimePaths 的第 2 优先级），而本进程的
- * 环境变量会被 spawn 的后端继承，所以这里按同样的优先级解析，避免两边指向不同目录。
- * （第 1 优先级的 -Dlbc.data.dir 是后端 JVM 的系统属性，主进程看不到，故不处理。）
+ * 优先级与后端 RuntimePaths 一致：--data-dir= > LBC_DATA_DIR > 定位文件 > 默认值，
+ * 解析统一在 resolveDataRootInfo() 里完成。
  */
 function getAssetsDir() {
-  const override = (process.env.LBC_DATA_DIR || "").trim();
-  const dataRoot = override ? path.resolve(override) : app.getPath("userData");
-  return path.join(dataRoot, "assets");
+  return path.join(getDataRoot(), "assets");
 }
 
 // 打开资源目录（"资源管理"页各 tab 的"打开角色/背景/音频文件夹"按钮）
@@ -1069,22 +1276,592 @@ ipcMain.handle("folder:openPath", async (event, folderPath) => {
   }
 });
 
+// ============================================================================
+// 资源存储位置（设置页「资源存储位置」）：查看 / 更改 / 恢复默认
+// ============================================================================
+//
+// 目录解析规则在文件顶部「数据根目录」一节，这里只负责"给界面看"和"换位置"两件事。
+// 换位置的流程刻意做成三步，任何一步失败都不会让原位置的数据消失：
+//   1. 校验目标目录（不能是当前目录、不能互相包含、必须可写）；
+//   2. 需要时把现有数据整份复制过去（先停后端，避免复制到写了一半的 SQLite 库）；
+//   3. 写定位文件，然后提示重启。原位置的数据一律不删，用户可以自己确认后清理。
+
+/** 往渲染进程发消息（窗口可能已经关了，失败不影响主流程） */
+function sendToRenderer(channel, payload) {
+  try {
+    if (
+      mainWindow &&
+      !mainWindow.isDestroyed() &&
+      mainWindow.webContents &&
+      !mainWindow.webContents.isDestroyed()
+    ) {
+      mainWindow.webContents.send(channel, payload);
+    }
+  } catch (err) {
+    log.warn("向渲染进程发送消息失败:", err.message);
+  }
+}
+
+/** 递归统计目录里的文件数与字节数；目录不存在时返回全 0 */
+async function measureTree(root) {
+  const result = { exists: false, files: 0, bytes: 0, truncated: false };
+  try {
+    const stat = await fs.promises.stat(root);
+    if (!stat.isDirectory()) return result;
+    result.exists = true;
+  } catch (err) {
+    return result;
+  }
+
+  const stack = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    let entries;
+    try {
+      entries = await fs.promises.readdir(current, { withFileTypes: true });
+    } catch (err) {
+      continue; // 没权限的子目录直接跳过：这里只是给用户看个大概数字
+    }
+    for (const entry of entries) {
+      if (result.files >= DATA_SCAN_FILE_LIMIT) {
+        result.truncated = true;
+        return result;
+      }
+      const abs = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(abs);
+        continue;
+      }
+      try {
+        const stat = await fs.promises.stat(abs);
+        result.files += 1;
+        result.bytes += stat.size;
+      } catch (err) {
+        // 读不到大小就当它不存在
+      }
+    }
+  }
+  return result;
+}
+
+/** 汇总数据根目录下各子目录的占用（设置页用来显示"素材 1.2 GB / 数据库 8 MB…"） */
+async function summarizeDataRoot(root) {
+  const entries = [];
+  let totalFiles = 0;
+  let totalBytes = 0;
+  for (const name of DATA_SUBDIRS) {
+    const abs = path.join(root, name);
+    const measure = await measureTree(abs);
+    entries.push({ name, path: abs, ...measure });
+    totalFiles += measure.files;
+    totalBytes += measure.bytes;
+  }
+  return { entries, totalFiles, totalBytes };
+}
+
+/** 目标目录里是不是已经有一份工程数据（有 SQLite 库就算） */
+function hasExistingLibrary(dir) {
+  try {
+    return fs.existsSync(path.join(dir, "data", "project.db"));
+  } catch (err) {
+    return false;
+  }
+}
+
+/** 目标目录能不能写：建目录 + 写一个探针文件再删掉 */
+function probeWritable(dir) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const probe = path.join(dir, `.lbc-write-test-${process.pid}.tmp`);
+    fs.writeFileSync(probe, "ok");
+    fs.unlinkSync(probe);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * 校验目标位置是否可用。
+ *
+ * @param target 目标目录（绝对路径）
+ * @param options.skipNestingCheck 跳过"不能互相包含"的检查。"恢复默认位置"要跳过：
+ *        默认目录是当前自定义目录的上级/下级时（用户手改过定位文件才会出现），
+ *        回到默认位置仍然必须允许，否则用户就再也回不去了。
+ * @returns {{ok: true, warnings: string[]} | {ok: false, error: string}}
+ *          ok=false 时 error 是可以直接显示给用户的中文原因
+ */
+function validateDataTarget(target, { skipNestingCheck = false } = {}) {
+  if (!target) return { ok: false, error: "没有选择文件夹" };
+
+  if (path.parse(target).root === target) {
+    return { ok: false, error: `不能直接把磁盘根目录当资源目录：${target}` };
+  }
+  // 大小写不敏感比较：Windows 路径大小写无所谓，macOS 默认也不区分
+  if (target.toLowerCase() === DATA_ROOT.toLowerCase()) {
+    return { ok: false, error: "新位置与当前资源位置相同" };
+  }
+  // 互相包含的两个目录之间复制会无限递归，也会把素材复制进素材里
+  if (!skipNestingCheck && isSameOrInside(DATA_ROOT, target)) {
+    return { ok: false, error: `新位置不能放在当前资源目录里面：${DATA_ROOT}` };
+  }
+  if (!skipNestingCheck && isSameOrInside(target, DATA_ROOT)) {
+    return { ok: false, error: `新位置不能是当前资源目录的上级目录：${DATA_ROOT}` };
+  }
+
+  try {
+    if (fs.existsSync(target) && !fs.statSync(target).isDirectory()) {
+      return { ok: false, error: `这不是文件夹：${target}` };
+    }
+  } catch (err) {
+    return { ok: false, error: `无法访问 ${target}：${err.message}` };
+  }
+
+  const writable = probeWritable(target);
+  if (!writable.ok) {
+    return { ok: false, error: `这个文件夹不可写：${writable.error}` };
+  }
+
+  const warnings = [];
+  if (/\s/.test(target)) {
+    warnings.push(
+      "路径里带空格：个别外部程序（视频编码、FFmpeg 滤镜）对带空格的路径支持不好，建议换成不含空格的目录，例如 D:\\LBC-Data。",
+    );
+  }
+  if (isSameOrInside(getDefaultDataRoot(), target)) {
+    warnings.push("新位置在默认的用户数据目录里面：卸载应用时可能被一起删掉。");
+  }
+  return { ok: true, warnings };
+}
+
+/** 等后端端口彻底释放（迁移前必须先确认没有进程还握着 SQLite 库） */
+function waitForBackendDown(timeoutMs = 20000) {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const tick = () => {
+      probeExistingBackend(800).then((probe) => {
+        if (!probe.alive) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() >= deadline) {
+          resolve(false);
+          return;
+        }
+        setTimeout(tick, 300);
+      });
+    };
+    tick();
+  });
+}
+
+/**
+ * 迁移前停掉本实例启动的后端（它正在写数据库）。
+ *
+ * <p>停不掉就放弃切换：宁可让用户重开一次应用，也不能复制一份写了一半的工程库。
+ */
+async function stopBackendForMigration() {
+  const owned = isOwnedBackendAlive();
+  if (owned) {
+    log.info("切换资源位置前先停止后端，避免复制到正在写入的数据库");
+    stopBackend();
+  }
+  const down = await waitForBackendDown(owned ? 20000 : 1500);
+  if (!down) {
+    return {
+      ok: false,
+      stoppedOwned: false,
+      error:
+        `端口 ${BACKEND_PORT} 上还有后端在运行（可能是另一个还没关掉的应用窗口）。` +
+        "请先把它们关掉再切换位置，否则会复制到写了一半的数据。",
+    };
+  }
+  return { ok: true, stoppedOwned: owned };
+}
+
+/**
+ * 把数据根目录下的各子目录复制到新位置。
+ *
+ * @param overwrite true=覆盖同名文件（"用当前数据覆盖目标"），false=只补目标缺少的文件
+ */
+async function copyDataTree(fromRoot, toRoot, { overwrite = false } = {}) {
+  const copied = [];
+  const skipped = [];
+  const failed = [];
+  const warnings = [];
+
+  for (let i = 0; i < DATA_SUBDIRS.length; i += 1) {
+    const name = DATA_SUBDIRS[i];
+    const src = path.join(fromRoot, name);
+    const dest = path.join(toRoot, name);
+    sendToRenderer("data-location:progress", {
+      entry: name,
+      index: i + 1,
+      total: DATA_SUBDIRS.length,
+    });
+
+    let isDirectory = false;
+    try {
+      isDirectory = (await fs.promises.stat(src)).isDirectory();
+    } catch (err) {
+      isDirectory = false;
+    }
+    if (!isDirectory) {
+      skipped.push(name);
+      continue;
+    }
+
+    try {
+      await fs.promises.cp(src, dest, {
+        recursive: true,
+        force: overwrite,
+        errorOnExist: false,
+        preserveTimestamps: true,
+      });
+      copied.push(name);
+    } catch (err) {
+      // 日志是排障用的附属品，复制不过去不值得整体失败；素材/数据库/工程目录则必须完整
+      if (name === "logs") {
+        warnings.push(`日志没能一起复制（${err.message}），新位置会从这次重启开始记日志。`);
+      } else {
+        failed.push(`${name}（${err.message}）`);
+      }
+    }
+  }
+
+  sendToRenderer("data-location:progress", null);
+  return { copied, skipped, failed, warnings };
+}
+
+/**
+ * 位置变更的收尾：提示重启；用户选择"稍后"时把后端按原位置拉起来，界面不至于不能用。
+ */
+async function finishDataLocationChange(target, { stoppedOwned }) {
+  const messageBoxOptions = {
+    type: "info",
+    title: "资源位置已更改",
+    message: `资源存储位置已改为：\n${target}`,
+    detail: "重启应用后生效。现在就重启吗？",
+    buttons: ["立即重启", "稍后"],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  };
+  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+  const { response } = parent
+    ? await dialog.showMessageBox(parent, messageBoxOptions)
+    : await dialog.showMessageBox(messageBoxOptions);
+
+  if (response === 0) {
+    // 先把后端停干净再重启：新实例启动时"探测到已有后端就复用"，
+    // 旧后端要是还活着就会被当成现成的后端复用，于是新实例仍然连着旧目录的数据。
+    if (isOwnedBackendAlive()) {
+      stopBackend();
+      const down = await waitForBackendDown(8000);
+      if (!down) {
+        log.warn("后端进程没有在预期时间内退出，重启后可能仍连着旧位置的数据");
+      }
+    }
+    log.info("用户选择立即重启，重新启动应用...");
+    app.relaunch();
+    app.quit();
+    return { restarting: true };
+  }
+
+  if (stoppedOwned) {
+    // 数据一个字节都没动，按原位置把后端拉起来是安全的，只是这次运行仍然用旧位置
+    log.info("用户选择稍后重启，按原位置重新启动后端:", DATA_ROOT);
+    const backend = await startBackend(DATA_ROOT);
+    if (!backend.ok) {
+      log.error("按原位置重启后端失败:", backend.reason || "未知原因");
+    }
+  }
+  return { restarting: false };
+}
+
+/** 位置被环境变量/命令行参数锁定时统一用的提示 */
+function lockedBySourceMessage() {
+  const label = DATA_SOURCE_LABELS[DATA_ROOT_INFO.source] || DATA_ROOT_INFO.source;
+  return (
+    `当前资源位置由${label}指定（${DATA_ROOT}），它的优先级高于设置页，` +
+    "在这里改了也不会生效。改回去需要去掉那个参数/环境变量。"
+  );
+}
+
+/** 设置页要显示的全部信息 */
+async function describeDataLocation() {
+  const summary = await summarizeDataRoot(DATA_ROOT);
+  return {
+    ok: true,
+    dataRoot: DATA_ROOT,
+    defaultDataRoot: DATA_ROOT_INFO.defaultRoot,
+    configFile: DATA_ROOT_INFO.configFile,
+    source: DATA_ROOT_INFO.source,
+    sourceLabel: DATA_SOURCE_LABELS[DATA_ROOT_INFO.source] || DATA_ROOT_INFO.source,
+    isCustom: DATA_ROOT_INFO.source === "config",
+    // 环境变量 / 命令行参数的优先级高于设置页，此时界面上的按钮要禁用并说明原因
+    locked: DATA_ROOT_INFO.source === "env" || DATA_ROOT_INFO.source === "cli",
+    configError: DATA_ROOT_INFO.configError || "",
+    logDirFallback: logDirFallback || "",
+    assetsDir: path.join(DATA_ROOT, "assets"),
+    logsDir: logDir,
+    pendingDataRoot: pendingDataRoot || "",
+    needsRestart: !!pendingDataRoot,
+    // 上一次迁移之前的位置（只在"设置页自定义"时存在）：原位置还留着一整份数据，
+    // 界面要提醒用户可以手动删掉它来腾空间
+    previousDataRoot: DATA_ROOT_INFO.previousDataRoot || "",
+    ...summary,
+  };
+}
+
+// 查看当前资源存储位置（设置页打开时调用）
+ipcMain.handle("data-location:get", async () => {
+  try {
+    return await describeDataLocation();
+  } catch (err) {
+    log.error("读取资源存储位置失败:", err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+// 选择新的资源存储位置：只选+校验，真正的切换要用户再确认一次（apply）
+ipcMain.handle("data-location:choose", async () => {
+  try {
+    if (DATA_ROOT_INFO.source === "env" || DATA_ROOT_INFO.source === "cli") {
+      return { ok: false, error: lockedBySourceMessage() };
+    }
+    if (pendingDataRoot) {
+      return {
+        ok: false,
+        error: `已经切换为 ${pendingDataRoot}，重启应用后才会生效。`,
+      };
+    }
+
+    const openDialogOptions = {
+      title: "选择资源存储位置（素材、工程数据、日志都会放在这里）",
+      buttonLabel: "选择此文件夹",
+      defaultPath: DATA_ROOT,
+      properties: ["openDirectory", "createDirectory"],
+    };
+    const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+    const { canceled, filePaths } = parent
+      ? await dialog.showOpenDialog(parent, openDialogOptions)
+      : await dialog.showOpenDialog(openDialogOptions);
+    if (canceled || !filePaths || filePaths.length === 0) {
+      return { canceled: true };
+    }
+
+    const target = normalizeDataPath(filePaths[0]);
+    const validation = validateDataTarget(target);
+    return {
+      canceled: false,
+      ok: true,
+      target,
+      validation,
+      hasExistingLibrary: validation.ok && hasExistingLibrary(target),
+    };
+  } catch (err) {
+    log.error("选择资源存储位置失败:", err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+// 应用新位置（可选先把现有数据复制过去），写定位文件后提示重启
+ipcMain.handle("data-location:apply", async (event, targetPath, options = {}) => {
+  const migrate = options.migrate !== false;
+  const overwrite = options.overwrite === true;
+
+  try {
+    if (DATA_ROOT_INFO.source === "env" || DATA_ROOT_INFO.source === "cli") {
+      return { ok: false, error: lockedBySourceMessage() };
+    }
+    if (pendingDataRoot) {
+      return { ok: false, error: `已经切换为 ${pendingDataRoot}，重启应用后才会生效。` };
+    }
+
+    const target = normalizeDataPath(targetPath);
+    const validation = validateDataTarget(target);
+    if (!validation.ok) {
+      return { ok: false, error: validation.error };
+    }
+
+    const targetHasLibrary = hasExistingLibrary(target);
+    if (migrate && targetHasLibrary && !overwrite) {
+      // 目标里已经有一份工程库：必须由用户明确选择"覆盖"或"直接使用它"，不能替用户决定
+      return {
+        ok: false,
+        needOverwriteConfirm: true,
+        error: `目标文件夹里已经有一份数据：${path.join(target, "data", "project.db")}`,
+      };
+    }
+
+    let migration = null;
+    let stoppedOwned = false;
+    if (migrate) {
+      const prepared = await stopBackendForMigration();
+      if (!prepared.ok) {
+        return { ok: false, error: prepared.error };
+      }
+      stoppedOwned = prepared.stoppedOwned;
+
+      const copyOverwrite = overwrite || targetHasLibrary;
+      log.info(`开始迁移资源数据: ${DATA_ROOT} -> ${target}（覆盖同名文件=${copyOverwrite}）`);
+      migration = await copyDataTree(DATA_ROOT, target, { overwrite: copyOverwrite });
+      if (migration.failed.length > 0) {
+        const message = `迁移没有完成，已取消切换（原位置的数据没有任何改动）：${migration.failed.join("；")}`;
+        log.error(message);
+        if (stoppedOwned) {
+          // 后端已经被停掉，这里按原位置拉起来，界面别变成不可用
+          await startBackend(DATA_ROOT);
+        }
+        return { ok: false, error: message, migration };
+      }
+      log.info(
+        `迁移完成: 已复制 ${migration.copied.length} 个目录` +
+          (migration.skipped.length ? `，跳过 ${migration.skipped.join("/")}（原位置没有）` : ""),
+      );
+    }
+
+    let configFile;
+    try {
+      configFile = writeDataLocationConfig(target, DATA_ROOT);
+    } catch (err) {
+      if (stoppedOwned) {
+        await startBackend(DATA_ROOT);
+      }
+      return {
+        ok: false,
+        error: `无法写入定位文件 ${DATA_ROOT_INFO.configFile}：${err.message}`,
+      };
+    }
+
+    pendingDataRoot = target;
+    log.info(`资源存储位置已切换: ${DATA_ROOT} -> ${target}（重启后生效），定位文件: ${configFile}`);
+
+    const finished = await finishDataLocationChange(target, { stoppedOwned });
+    return {
+      ok: true,
+      target,
+      dataRoot: DATA_ROOT,
+      pendingDataRoot: target,
+      needsRestart: true,
+      restarting: finished.restarting,
+      migration,
+      configFile,
+      warnings: (validation.warnings || []).concat(migration ? migration.warnings : []),
+    };
+  } catch (err) {
+    log.error("切换资源存储位置失败:", err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+// 恢复默认位置（删除定位文件）。可选把当前数据复制回默认位置
+ipcMain.handle("data-location:reset", async (event, options = {}) => {
+  const migrate = options.migrate === true;
+
+  try {
+    if (DATA_ROOT_INFO.source !== "config") {
+      return { ok: false, error: "当前不在自定义位置，无需恢复默认。" };
+    }
+    if (pendingDataRoot) {
+      return { ok: false, error: `已经切换为 ${pendingDataRoot}，重启应用后才会生效。` };
+    }
+
+    const defaultRoot = getDefaultDataRoot();
+    // 恢复默认位置一律允许（跳过"不能互相包含"检查）：否则用户手改过定位文件后可能再也回不去
+    const validation = validateDataTarget(defaultRoot, { skipNestingCheck: true });
+    if (!validation.ok) {
+      return { ok: false, error: validation.error };
+    }
+
+    let migration = null;
+    let stoppedOwned = false;
+    if (migrate) {
+      const prepared = await stopBackendForMigration();
+      if (!prepared.ok) {
+        return { ok: false, error: prepared.error };
+      }
+      stoppedOwned = prepared.stoppedOwned;
+
+      // 默认位置往往还留着切换之前的旧库，不覆盖就等于"没搬回来"，所以这里强制覆盖
+      log.info(`开始把资源数据搬回默认位置: ${DATA_ROOT} -> ${defaultRoot}`);
+      migration = await copyDataTree(DATA_ROOT, defaultRoot, { overwrite: true });
+      if (migration.failed.length > 0) {
+        const message = `复制没有完成，已取消恢复（原位置的数据没有任何改动）：${migration.failed.join("；")}`;
+        log.error(message);
+        if (stoppedOwned) {
+          await startBackend(DATA_ROOT);
+        }
+        return { ok: false, error: message, migration };
+      }
+    }
+
+    try {
+      clearDataLocationConfig();
+    } catch (err) {
+      if (stoppedOwned) {
+        await startBackend(DATA_ROOT);
+      }
+      return { ok: false, error: `无法删除定位文件：${err.message}` };
+    }
+
+    pendingDataRoot = defaultRoot;
+    log.info(`资源存储位置已恢复默认: ${DATA_ROOT} -> ${defaultRoot}（重启后生效）`);
+
+    const finished = await finishDataLocationChange(defaultRoot, { stoppedOwned });
+    return {
+      ok: true,
+      target: defaultRoot,
+      dataRoot: DATA_ROOT,
+      pendingDataRoot: defaultRoot,
+      needsRestart: true,
+      restarting: finished.restarting,
+      migration,
+      warnings: migration ? migration.warnings : [],
+    };
+  } catch (err) {
+    log.error("恢复默认资源位置失败:", err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+// 用资源管理器打开当前数据根目录
+ipcMain.handle("data-location:open", async () => {
+  try {
+    const dir = getDataRoot();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const result = await shell.openPath(dir);
+    if (result) {
+      return { success: false, error: result };
+    }
+    log.info("已打开资源目录:", dir);
+    return { success: true, path: dir };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// 立即重启（设置页"重启后生效"旁边那个按钮）
+ipcMain.handle("data-location:relaunch", () => {
+  log.info("用户请求重启应用...");
+  app.relaunch();
+  app.quit();
+});
+
 // ---- 日志导出（设置页"获取日志"）----
 
 /** 导出时最多打包几个日志文件（安装版日志目录会一直累积，全量打包没有意义） */
 const LOG_EXPORT_MAX_FILES = 10;
 
 /**
- * 日志目录。与文件顶部 logDir 的分支条件（isDev）保持一致，这样"导出"拿到的就是
- * 本次运行正在写的那个目录：安装版 `%APPDATA%\limbus-company-plot-video-generator\logs`，
- * 开发模式 `demo/logs`。
+ * 日志目录。与文件顶部 logDir 完全一致，这样"导出日志"拿到的就是本次运行正在写的那个目录：
+ * 安装版 `<数据根目录>/logs`（设置页可以把数据根目录改到别的盘），开发模式 `demo/logs`。
  */
 function getLogDir() {
-  if (isDev) {
-    // 开发模式：__dirname 是 .../electron-react-app/public，向上三级到 demo/logs/
-    return path.join(__dirname, "..", "..", "..", "logs");
-  }
-  return path.join(app.getPath("userData"), "logs");
+  return logDir;
 }
 
 /**

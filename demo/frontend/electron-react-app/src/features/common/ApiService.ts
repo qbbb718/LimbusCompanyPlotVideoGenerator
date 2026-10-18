@@ -266,6 +266,10 @@ class ApiService {
 
   // 素材自检：素材目录在哪、必需素材（ui/effects/字体）是否齐全
   async getAssetDiagnostics(): Promise<{
+    /** 数据根目录（素材、数据库、临时工程、日志的父目录），设置页据此显示"资源存储位置" */
+    dataRoot?: string;
+    /** 数据根目录被覆盖时是什么覆盖的（环境变量 / JVM 参数），未覆盖时为空串 */
+    dataRootOverride?: string;
     assetsDir: string;
     assetsDirExists: boolean;
     workingDir: string;

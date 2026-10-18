@@ -8,6 +8,7 @@ import {
 import BasicInfoSection from "./sections/BasicInfoSection";
 import AudioSection from "./sections/AudioSection";
 import OutputSection from "./sections/OutputSection";
+import StorageLocationSection from "./sections/StorageLocationSection";
 import AssetMaintenanceSection from "./sections/AssetMaintenanceSection";
 import LogExportSection from "./sections/LogExportSection";
 import VersionInfo from "./sections/VersionInfo";
@@ -88,6 +89,8 @@ const Settings: React.FC<SettingsProps> = ({
         projectSettings={projectSettings}
         handleChange={handleChange}
       />
+
+      <StorageLocationSection />
 
       <AssetMaintenanceSection />
 

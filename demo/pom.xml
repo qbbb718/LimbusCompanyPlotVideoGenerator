@@ -13,7 +13,7 @@
 
     <groupId>com.lbc_plot</groupId>
     <artifactId>demo</artifactId>
-    <version>0.3.2-SNAPSHOT</version>
+    <version>0.3.3-SNAPSHOT</version>
     <name>LimbusCompany Plot Video Generator</name>
     <description>LimbusCompany Plot Video Generator</description>
 

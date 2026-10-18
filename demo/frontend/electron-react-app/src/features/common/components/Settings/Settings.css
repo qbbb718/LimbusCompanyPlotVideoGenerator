@@ -243,8 +243,73 @@
   word-break: break-all;
 }
 
+/* 资源存储位置：路径本身要能一眼看清，又要能自动折行（D:\ 长路径在窄窗口里不撑宽面板） */
+.storage-path {
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  background-color: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  color: #333;
+  word-break: break-all;
+}
+
+.storage-entry-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.7;
+}
+
+.storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* 待确认的切换面板：和普通说明文字区分开，避免用户没注意就点了确认 */
+.storage-pending {
+  margin-top: 12px;
+  padding: 10px;
+  background-color: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 4px;
+}
+
+.storage-mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.storage-mode-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #333;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.storage-mode-item input[type="radio"] {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
 .settings-section-content .save-button:disabled {
   background-color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+.settings-section-content .reset-button:disabled {
+  color: #999;
+  background-color: #fafafa;
   cursor: not-allowed;
 }
 
