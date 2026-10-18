@@ -185,9 +185,43 @@ export interface TempImageVisual {
   dim: boolean;
 }
 
-// 特效视觉元素
+/**
+ * 起始转场的淡出帧数（三种转场共用，与后端 StartTransition.FRAMES 一致）：
+ * 视频开头这 20 帧里叠加层不透明度从 100% 线性降到 0%。
+ */
+export const START_TRANSITION_FRAMES = 20;
+
+/**
+ * 特效类型：交叉溶解。
+ * 勾选后渲染视频时，本条记录开头会叠加上一条记录的最后一帧，
+ * 不透明度从 100% 线性降到 0%（共 START_TRANSITION_FRAMES 帧）。需要上一条记录。
+ * 取值与后端 EffectVisual.TYPE_CROSS_DISSOLVE 一致。
+ */
+export const EFFECT_TYPE_CROSS_DISSOLVE = "CROSS_DISSOLVE";
+
+/**
+ * 特效类型：黑屏转场。
+ * 勾选后视频开头整屏叠一层纯黑再淡出，即从黑屏淡入（共 START_TRANSITION_FRAMES 帧）。
+ * 取值与后端 EffectVisual.TYPE_FADE_FROM_BLACK 一致。
+ */
+export const EFFECT_TYPE_FADE_FROM_BLACK = "FADE_FROM_BLACK";
+
+/**
+ * 特效类型：白屏转场。
+ * 勾选后视频开头整屏叠一层纯白再淡出，即从白屏淡入（共 START_TRANSITION_FRAMES 帧）。
+ * 取值与后端 EffectVisual.TYPE_FADE_FROM_WHITE 一致。
+ */
+export const EFFECT_TYPE_FADE_FROM_WHITE = "FADE_FROM_WHITE";
+
+// 特效视觉元素（记录级特效条目）
 export interface EffectVisual {
-  // 特效属性，根据需要扩展
+  /** 特效类型，取值见 EFFECT_TYPE_* 常量（三种起始转场互斥） */
+  type: string;
+  /**
+   * 是否启用。缺省视为启用；面板里取消勾选时会直接把这条特效从数组里删掉，
+   * 所以 effects 里存在的条目就是"已勾选"的。
+   */
+  enabled?: boolean;
 }
 
 // 音频类型枚举

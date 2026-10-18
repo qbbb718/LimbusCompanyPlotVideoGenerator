@@ -14,6 +14,7 @@ import PropertyTabs from "./PropertyTabs";
 import TextProperties from "./properties/TextProperties";
 import CharactersProperties from "./properties/CharactersProperties";
 import BackgroundProperties from "./properties/BackgroundProperties";
+import EffectsProperties from "./properties/EffectsProperties";
 import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
 import {
@@ -631,10 +632,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         );
       case "effects":
         return (
-          <div className="effects-properties">
-            <h4>特效设置</h4>
-            <p>特效功能待实现</p>
-          </div>
+          <EffectsProperties
+            selectedRecord={selectedRecord}
+            selectedRecordIndex={selectedRecordIndex}
+            updateRecord={updateRecord}
+          />
         );
       case "audio":
         return (

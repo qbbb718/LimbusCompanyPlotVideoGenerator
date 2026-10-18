@@ -27,8 +27,7 @@ public class Record {
     private List<BackgroundVisual> bg; // 背景视觉元素
     private List<CharacterVisual> chars; // 角色立绘列表
     private List<TempImageVisual> tempImages; // 临时图片（NPC、道具等）
-    @JsonIgnore
-    private List<EffectVisual> effects; // 特效列表
+    private List<EffectVisual> effects; // 特效列表（交叉溶解等，渲染视频时要读，所以随记录一起序列化）
     private List<AudioCommand> audioCommands; // 音频操作列表
     private boolean isDirty; // 在上次导出后是否进行过修改
     @JsonIgnore
@@ -136,6 +135,13 @@ public class Record {
         this.isDirty = true;
     }
 
+    /**
+     * @function 获取特效列表
+     *
+     *           <p>不能像 {@code camera}/{@code preImage} 那样 {@code @JsonIgnore}：导出视频时
+     *           记录要作为请求体发给后端，JSON 里没有特效的话渲染端就不知道要叠交叉溶解。
+     */
+    @JsonProperty("effects")
     public List<EffectVisual> getEffects() {
         return effects;
     }

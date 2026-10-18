@@ -56,4 +56,33 @@ class GenerateVideoRequestBindingTest {
 
         assertTrue(request.isPlot(), "选「剧情」时 plot 必须是 true");
     }
+
+    /**
+     * 导出请求里的记录必须带上 effects：前端"特效"页勾选的起始转场（交叉溶解/黑屏/白屏）
+     * 就是靠这个字段传到渲染端的，字段一旦被忽略，UI 勾了也没用，而且不会有任何报错。
+     */
+    @Test
+    void recordEffectsAreBoundFromExportRequest() throws Exception {
+        String json = """
+                {
+                  "records": [
+                    {
+                      "uuid": "r2",
+                      "durationFrames": 30,
+                      "effects": [ { "type": "FADE_FROM_BLACK", "enabled": true } ]
+                    }
+                  ],
+                  "outputPath": "E:\\\\导出"
+                }
+                """;
+
+        GenerateVideoRequest request = objectMapper.readValue(json, GenerateVideoRequest.class);
+
+        assertEquals(1, request.getRecords().size(), "记录应被绑定");
+        assertEquals(1, request.getRecords().get(0).getEffects().size(),
+                "记录的特效列表应随请求体一起绑定（effects 不能被忽略）");
+        assertEquals(com.lbc_plot.render.video.StartTransition.Kind.BLACK,
+                com.lbc_plot.render.video.StartTransition.kindOf(request.getRecords().get(0)),
+                "解析出来的记录应被判定为启用黑屏转场");
+    }
 }

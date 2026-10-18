@@ -1,0 +1,74 @@
+/* ===== 特效 tab（"剧情编辑 → 特效"）===== */
+
+.effects-properties h4 {
+  margin: 0 0 8px;
+}
+
+/* 面板级说明：只影响导出视频，预览图/时长不变 */
+.effects-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.6;
+}
+
+.effects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.effect-item {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* 已勾选：和背景/音频列表的选中态用同一个蓝色强调 */
+.effect-item.active {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+}
+
+.effect-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.effect-item-head input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #1890ff;
+  cursor: pointer;
+}
+
+.effect-item-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.effect-item-desc {
+  margin: 6px 0 0 24px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 第一条记录勾选也不会有叠化：提示别让用户以为是渲染失败 */
+.effects-warning {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b26a00;
+  background: #fff7e6;
+  border: 1px solid #ffe0b2;
+  border-radius: 4px;
+}

@@ -30,6 +30,7 @@ import com.lbc_plot.render.engine.model.TextAlignment;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
 import com.lbc_plot.render.engine.BatchVideoProcessor.RenderResult;
+import com.lbc_plot.render.video.StartTransition;
 import com.lbc_plot.render.video.VideoExporter;
 
 /**
@@ -56,7 +57,7 @@ public class RenderOfVideo {
             int height,
             String outputPath,
             int frameRate) throws Exception {
-        return exportRecordVideoStreaming(record, plot, width, height, outputPath, frameRate, LAYER_FULL);
+        return exportRecordVideoStreaming(record, plot, width, height, outputPath, frameRate, LAYER_FULL, null);
     }
 
     /**
@@ -72,6 +73,29 @@ public class RenderOfVideo {
             String outputPath,
             int frameRate,
             String layerType) throws Exception {
+        return exportRecordVideoStreaming(record, plot, width, height, outputPath, frameRate, layerType, null);
+    }
+
+    /**
+     * 高质量流式视频导出（支持分层导出 + 记录级特效）
+     *
+     * <p>记录勾选了"起始转场"（{@link StartTransition}）时，开头 {@link StartTransition#FRAMES} 帧会在
+     * 本条记录自己的画面<strong>之上</strong>再叠一层图像，不透明度 100% → 0%：交叉溶解叠的是上一条
+     * 记录的最后一帧，黑屏/白屏转场叠的是纯黑/纯白。叠加层不改变记录时长，也不会影响后面的帧。
+     *
+     * @param layerType      分层类型: FULL / UI_ONLY / BG_CHARACTERS / BACKGROUND_ONLY / CHARACTERS_ONLY
+     * @param previousRecord 渲染列表里的上一条记录（第一条记录传 null）。只有交叉溶解需要它：
+     *                       用它的"最后一帧"生成淡出叠加层；黑屏/白屏转场不依赖上一条记录。
+     */
+    public static RenderResult exportRecordVideoStreaming(
+            Record record,
+            boolean plot,
+            int width,
+            int height,
+            String outputPath,
+            int frameRate,
+            String layerType,
+            Record previousRecord) throws Exception {
 
         logger.info("开始高质量流式视频导出: {} (layerType={}, transparent={})", outputPath, layerType,
                 isTransparentLayer(layerType));
@@ -82,9 +106,39 @@ public class RenderOfVideo {
         long initialMemory = runtime.totalMemory() - runtime.freeMemory();
 
         // 确定是否需要文本动画
-        boolean needsTextAnimation = LAYER_FULL.equals(layerType) || LAYER_UI_ONLY.equals(layerType);
+        boolean needsTextAnimation = usesTextAnimation(layerType);
         // 确定是否需要透明通道
         boolean transparent = isTransparentLayer(layerType);
+
+        // 起始转场的叠加层：黑屏/白屏是纯色，交叉溶解是上一条记录的最后一帧。
+        // 必须在开始编码前算好——出错要尽早抛出，不要让用户等编码完才发现渲染失败。
+        StartTransition.Kind transition = StartTransition.kindOf(record);
+        BufferedImage transitionOverlay = null;
+        switch (transition) {
+            case PREVIOUS_FRAME:
+                if (previousRecord != null) {
+                    transitionOverlay = renderLastFrame(previousRecord, plot, width, height, layerType);
+                    logger.info("记录 {} 启用交叉溶解：叠加记录 {} 的最后一帧，前 {} 帧不透明度 100%→0%",
+                            record.getUuid(), previousRecord.getUuid(), StartTransition.FRAMES);
+                } else {
+                    logger.info("记录 {} 启用交叉溶解，但它是渲染列表的第一条，没有可叠加的上一帧，跳过",
+                            record.getUuid());
+                }
+                break;
+            case BLACK:
+                transitionOverlay = StartTransition.solidOverlay(Color.BLACK, width, height);
+                logger.info("记录 {} 启用黑屏转场：前 {} 帧整屏黑色 100%→0%（从黑屏淡入）",
+                        record.getUuid(), StartTransition.FRAMES);
+                break;
+            case WHITE:
+                transitionOverlay = StartTransition.solidOverlay(Color.WHITE, width, height);
+                logger.info("记录 {} 启用白屏转场：前 {} 帧整屏白色 100%→0%（从白屏淡入）",
+                        record.getUuid(), StartTransition.FRAMES);
+                break;
+            case NONE:
+            default:
+                break;
+        }
 
         try (VideoExporter exporter = new VideoExporter(outputPath, width, height, frameRate, transparent)) {
 
@@ -107,6 +161,7 @@ public class RenderOfVideo {
             }
 
             int framesRendered = 0;
+            int overlayFrames = 0;
 
             // 4. 流式渲染所有帧
             for (int frameIndex = 0; frameIndex < requiredFrames; frameIndex++) {
@@ -122,6 +177,12 @@ public class RenderOfVideo {
                 } else {
                     // 无文本动画：直接使用静态背景
                     frame = copyImage(staticBackground);
+                }
+
+                // 起始转场：记录自己的画面已经画好，再把叠加层按当前帧的不透明度盖在上面淡出
+                if (transitionOverlay != null && StartTransition.opacityAt(frameIndex) > 0f) {
+                    StartTransition.apply(frame, transitionOverlay, frameIndex);
+                    overlayFrames++;
                 }
 
                 // 立即写入视频文件
@@ -149,6 +210,10 @@ public class RenderOfVideo {
             logger.info("高质量流式视频导出完成: layerType={}, 共渲染 {} 帧, 耗时: {}ms, 总内存使用: {} MB",
                     layerType, framesRendered, duration,
                     String.format("%.1f", totalMemoryUsed / (1024.0 * 1024.0)));
+            if (overlayFrames > 0) {
+                logger.info("起始转场（{}）叠加完成: 共 {} 帧（{} 帧淡出范围）",
+                        transition, overlayFrames, StartTransition.FRAMES);
+            }
 
             return new RenderResult(framesRendered, startTime, duration);
 
@@ -156,6 +221,42 @@ public class RenderOfVideo {
             logger.error("高质量流式视频导出失败 (layerType={})", layerType, e);
             throw e;
         }
+    }
+
+    /**
+     * 该分层是否包含随帧变化的对话文本。
+     *
+     * <p>只有完整视频（FULL）与仅 UI（UI_ONLY）需要逐帧画文字；背景/角色/背景+角色这些分层
+     * 是纯静态贴图，直接复用静态层即可。
+     */
+    private static boolean usesTextAnimation(String layerType) {
+        return LAYER_FULL.equals(layerType) || LAYER_UI_ONLY.equals(layerType);
+    }
+
+    /**
+     * @function 渲染记录在视频里"最后一帧"的样子（交叉溶解的叠加层）
+     *
+     *           <p>视频里每一帧 = 静态层 + 当前文本，文本动画结束后显示整段文字，所以最后一帧就是
+     *           "静态层 + 完整文本"。这里刻意复用逐帧渲染用的 {@link #renderStaticLayer} 与
+     *           {@link #renderSingleFrame}，而不是另走 {@code RenderOfImage.renderPre}：
+     *           两条渲染路径的字体度量/换行细节并不完全一致，混用会让淡出结束的瞬间文字轻微跳一下。
+     *
+     * @param record    要渲染的记录
+     * @param plot      是否剧情模式
+     * @param width     输出宽度
+     * @param height    输出高度
+     * @param layerType 分层类型（与导出视频时的分层一致，保证叠加的是同一层的最后一帧）
+     * @return 该记录在这个分层下的最后一帧画面
+     */
+    public static BufferedImage renderLastFrame(Record record, boolean plot, int width, int height, String layerType)
+            throws IOException {
+        BufferedImage staticLayer = renderStaticLayer(record, plot, width, height, layerType);
+        if (!usesTextAnimation(layerType)) {
+            return staticLayer;
+        }
+        Dialogue dialogue = record.getDialogue();
+        String fullText = (dialogue != null && dialogue.getText() != null) ? dialogue.getText() : "";
+        return renderSingleFrame(staticLayer, fullText, dialogue, width, height);
     }
 
     /**

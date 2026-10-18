@@ -23,6 +23,7 @@ import com.lbc_plot.render.audio.AudioTimelineBuilder;
 import com.lbc_plot.render.audio.FFmpegAudioProcessor;
 import com.lbc_plot.render.audio.FrameInfo;
 import com.lbc_plot.render.audio.TimelineToFFmpegConverter;
+import com.lbc_plot.render.video.StartTransition;
 import com.lbc_plot.render.video.VideoConcatenator;
 
 /**
@@ -142,6 +143,8 @@ public class BatchVideoProcessor {
             if (progress != null) progress.onProgress(1, 0, records.size(), "开始渲染Record视频...");
             for (int i = 0; i < records.size(); i++) {
                 Record record = records.get(i);
+                // 交叉溶解需要"上一条记录"的最后一帧；第一条记录没有上一条，传 null
+                Record previousRecord = i > 0 ? records.get(i - 1) : null;
                 String videoExt = getVideoExtension(layerType);
                 String videoFileName = generateVideoFileName(record, videoExt);
                 String videoPath = tempDir + File.separator + videoFileName;
@@ -150,7 +153,12 @@ public class BatchVideoProcessor {
                 videoPaths.add(videoPath);
 
                 File tempVideoFile = new File(videoPath);
-                if (!record.isDirty() && tempVideoFile.exists()) {
+                // 勾了交叉溶解的记录不从缓存复用：它开头叠的是"上一条记录的最后一帧"，
+                // 上一条被修改、或者记录被拖动换了位置，缓存里的叠化画面就过期了，
+                // 而缓存文件名只认自己的 uuid，分辨不出这些变化。这类记录重渲一次即可保证正确。
+                // 黑屏/白屏转场只叠纯色、不依赖别的记录，未修改时照常复用缓存。
+                boolean reuseCachedClip = canReuseRenderedClip(record, tempVideoFile.exists());
+                if (reuseCachedClip) {
                     // Record 未修改且临时视频已存在 → 跳过渲染
                     int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
                     logger.info("跳过未修改的Record {}/{}, uuid={}, 帧数={} (复用已有视频)",
@@ -164,12 +172,16 @@ public class BatchVideoProcessor {
                             String.format("跳过Record %d/%d (未修改)", i + 1, records.size()));
                 } else {
                     // Record 已修改或文件不存在 → 正常渲染
+                    if (StartTransition.isCrossDissolve(record) && tempVideoFile.exists() && !record.isDirty()) {
+                        logger.info("Record {} 启用了交叉溶解，不复用缓存片段（叠的是上一条记录的画面）",
+                                record.getUuid());
+                    }
                     logger.info("处理第 {}/{} 个Record: {}", i + 1, records.size(), videoFileName);
 
                     long recordStartTime = System.currentTimeMillis();
 
                     RenderResult recordResult = RenderOfVideo.exportRecordVideoStreaming(
-                            record, plot, width, height, videoPath, frameRate, layerType);
+                            record, plot, width, height, videoPath, frameRate, layerType, previousRecord);
 
                     long recordDuration = System.currentTimeMillis() - recordStartTime;
 
@@ -292,6 +304,32 @@ public class BatchVideoProcessor {
     }
 
     /**
+     * @function 判断是否可以复用上次渲染好的片段（"保留中间文件"时的缓存判断）
+     *
+     *           <p>三个条件都满足才复用：
+     *           <ol>
+     *           <li>片段文件还在；</li>
+     *           <li>记录上次导出后没被改过（{@code isDirty == false}）；</li>
+     *           <li>记录没有勾选交叉溶解——它开头叠的是<b>上一条记录</b>的最后一帧，而上一条被修改、
+     *           或者记录被拖动换了位置，都会让已渲染片段里的叠化画面过期，缓存文件名又只认自己的 uuid，
+     *           从文件名上分辨不出这些变化。这类记录直接重渲，代价是每条记录多渲一次。</li>
+     *           </ol>
+     *
+     *           <p>黑屏/白屏转场没有这个顾虑：它们叠的是纯色，只取决于自己的记录，
+     *           记录没改过就可以正常复用缓存。
+     *
+     * @param record     要渲染的记录
+     * @param clipExists 该记录上次渲染出的片段文件是否存在
+     * @return 可以跳过渲染、直接复用旧片段时返回 true
+     */
+    static boolean canReuseRenderedClip(Record record, boolean clipExists) {
+        if (!clipExists || record.isDirty()) {
+            return false;
+        }
+        return !StartTransition.isCrossDissolve(record);
+    }
+
+    /**
      * 判断是否为BGM片段
      * 用于音频分析和调试
      */
@@ -407,14 +445,15 @@ public class BatchVideoProcessor {
 
         logger.info("更新第 {} 个Record: {}", recordIndex + 1, videoFileName);
 
-        // 重新导出单个Record视频
+        // 重新导出单个Record视频（带上前一条记录，交叉溶解才能取到它的最后一帧）
         RenderOfVideo.exportRecordVideoStreaming(record,
                 true, // 通常使用剧情模式
                 ProjectConfig.VIDEO_WIDTH,
                 ProjectConfig.VIDEO_HEIGHT,
                 videoPath,
                 ProjectConfig.FRAME_RATE,
-                RenderOfVideo.LAYER_FULL);
+                RenderOfVideo.LAYER_FULL,
+                recordIndex > 0 ? records.get(recordIndex - 1) : null);
 
         // 获取所有视频文件路径（按顺序）
         // 注意：这里会使用之前生成的所有视频文件，只更新其中一个
@@ -485,6 +524,15 @@ public class BatchVideoProcessor {
 
         if (asyncService == null) {
             // 回退到同步方式
+            processRecordList(records, outputPath, tempDir, plot, width, height, frameRate);
+            return;
+        }
+
+        // 交叉溶解要读"上一条记录的最后一帧"，而异步渲染任务只携带单条记录（见 AsyncRenderService），
+        // 拆开提交会静默丢掉特效；含交叉溶解时直接走同步流程，保证画面正确。
+        // （黑屏/白屏转场不依赖其它记录，异步流程也能正常处理。）
+        if (records.stream().anyMatch(StartTransition::isCrossDissolve)) {
+            logger.info("检测到交叉溶解特效：异步渲染无法携带上一条记录的画面，回退到同步流程");
             processRecordList(records, outputPath, tempDir, plot, width, height, frameRate);
             return;
         }
