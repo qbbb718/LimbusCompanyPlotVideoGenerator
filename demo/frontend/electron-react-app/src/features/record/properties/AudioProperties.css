@@ -146,7 +146,14 @@
   border-top: 1px solid #eee;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 10px;
+}
+
+.audio-selector-hint {
+  margin-right: auto;
+  font-size: 12px;
+  color: #888;
 }
 
 .add-audio-btn {

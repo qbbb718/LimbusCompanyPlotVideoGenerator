@@ -47,14 +47,15 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
     }
   };
 
-  const addAudio = () => {
-    if (!selectedAudio) {
+  const addAudio = (audio?: Audio) => {
+    const target = audio || selectedAudio;
+    if (!target) {
       alert("请选择音频");
       return;
     }
     const newAudio: AudioCommand = {
       type: audioType,
-      path: selectedAudio.path,
+      path: target.path,
       volume: 1.0,
       startTime: 0,
       duration: 5.0,
@@ -66,6 +67,12 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
     setSelectedAudio(null);
     setShowSelector(false);
     setAudioType(AudioType.BGM);
+  };
+
+  // 双击直接添加音频（同时选中并关闭选择弹窗），无需再点“确认添加”
+  const handleAudioDoubleClick = (audio: Audio) => {
+    setSelectedAudio(audio);
+    addAudio(audio);
   };
 
   const deleteAudio = (index: number) => {
@@ -120,6 +127,8 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
                       key={a.uuid}
                       className={`audio-item ${selectedAudio?.uuid === a.uuid ? "selected" : ""}`}
                       onClick={() => setSelectedAudio(a)}
+                      onDoubleClick={() => handleAudioDoubleClick(a)}
+                      title="双击直接添加该音频"
                     >
                       <div className="audio-icon">🎵</div>
                       <div className="audio-info">
@@ -143,7 +152,8 @@ const AudioProperties: React.FC<AudioPropertiesProps> = ({
               </div>
             </div>
             <div className="audio-selector-footer">
-              <button onClick={addAudio} disabled={!selectedAudio}>
+              <span className="audio-selector-hint">双击列表项可直接添加</span>
+              <button onClick={() => addAudio()} disabled={!selectedAudio}>
                 确认添加
               </button>
             </div>
