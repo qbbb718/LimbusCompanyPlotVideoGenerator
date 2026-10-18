@@ -255,6 +255,12 @@ export interface ProjectSettings {
   bgmVolume: number;
   voiceVolume: number;
   sfxVolume: number;
+  /**
+   * 文字显示速度（全局）：1 = 极慢 … 6 = 极快，档位与后端
+   * RenderOfVideo.getUnifiedSpeed 一致。改动会统一写到所有记录上，
+   * 新增记录也用它作为初始值（见 RecordEditor.createNewRecord）。
+   */
+  textSpeed?: number;
   bgmGain: number;
   voiceGain: number;
   sfxGain: number;
@@ -290,6 +296,8 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   bgmVolume: 0.7,
   voiceVolume: 0.8,
   sfxVolume: 0.7,
+  // 与后端 ProjectConfig.DEFAULT_DIALOGUE_SPEED 一致（3 = 标准速度）
+  textSpeed: 3,
   bgmGain: 1.0,
   voiceGain: 1.0,
   sfxGain: 1.0,

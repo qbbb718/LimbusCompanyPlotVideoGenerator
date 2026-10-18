@@ -102,28 +102,28 @@ function App() {
             className={activeTab === "editor" ? "active" : ""}
             onClick={() => setActiveTab("editor")}
           >
-            剧情编辑
+            🎬 剧情编辑
           </button>
 
           <button
             className={activeTab === "resources" ? "active" : ""}
             onClick={() => setActiveTab("resources")}
           >
-            资源管理
+            📦 资源管理
           </button>
 
                     <button
             className={activeTab === "textToRecords" ? "active" : ""}
             onClick={() => setActiveTab("textToRecords")}
           >
-            文本转记录
+            📝 文本转记录
           </button>
 
           <button
             className={activeTab === "settings" ? "active" : ""}
             onClick={() => setActiveTab("settings")}
           >
-            设置
+            ⚙️ 设置
           </button>
         </div>
       </header>
