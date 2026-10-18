@@ -6,6 +6,7 @@ import {
   CharacterRef,
   Dialogue,
   DEFAULT_FREE_TEXT_COLOR,
+  DEFAULT_FREE_TEXT_FONT_SIZE,
 } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@features/common/config/appConfig";
@@ -61,6 +62,10 @@ const PICKER_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const CANVAS_WIDTH = AppConfig.designCanvas.width;
 const CANVAS_HEIGHT = AppConfig.designCanvas.height;
 
+/** 自由文本字号范围（设计画布像素） */
+const FREE_TEXT_FONT_SIZE_MIN = 8;
+const FREE_TEXT_FONT_SIZE_MAX = 200;
+
 const TextProperties: React.FC<TextPropertiesProps> = ({
   selectedRecord,
   selectedRecordIndex,
@@ -77,6 +82,10 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   // 位置数值框的输入草稿：允许输入 "-" 这类中间状态，避免受控输入把负号吞掉
   const [freeTextXInput, setFreeTextXInput] = useState<string | null>(null);
   const [freeTextYInput, setFreeTextYInput] = useState<string | null>(null);
+  // 字号数值框的输入草稿（允许暂时为空，避免输入过程被强制回填）
+  const [freeTextFontSizeInput, setFreeTextFontSizeInput] = useState<
+    string | null
+  >(null);
 
   const colorControlRef = useRef<HTMLDivElement | null>(null);
   const commitColorRef = useRef<() => void>(() => {});
@@ -114,13 +123,19 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   const freeTextY = dialogue.freeTextY ?? 0;
   const freeTextUiX = toUiX(freeTextX);
   const freeTextUiY = toUiY(freeTextY);
+  // 自由文本字号：记录里存设计画布像素；<=0/未填时用默认字号（与旁白一致）
+  const freeTextFontSize =
+    dialogue.freeTextFontSize && dialogue.freeTextFontSize > 0
+      ? dialogue.freeTextFontSize
+      : DEFAULT_FREE_TEXT_FONT_SIZE;
 
-  // 切换记录 / 退出自由文本时关闭取色器、清空位置输入草稿
+  // 切换记录 / 退出自由文本时关闭取色器、清空位置与字号输入草稿
   useEffect(() => {
     setShowColorPicker(false);
     setColorDraft(null);
     setFreeTextXInput(null);
     setFreeTextYInput(null);
+    setFreeTextFontSizeInput(null);
   }, [selectedRecordIndex, isFreeText]);
 
   // 点击取色器面板以外的区域：提交颜色更改并自动关闭
@@ -249,6 +264,8 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
         italic: dialogue.italic === true,
         hideUI: dialogue.hideUI !== false,
         freeTextColor: dialogue.freeTextColor || DEFAULT_FREE_TEXT_COLOR,
+        freeTextFontSize:
+          dialogue.freeTextFontSize || DEFAULT_FREE_TEXT_FONT_SIZE,
         freeTextX: dialogue.freeTextX ?? 0,
         freeTextY: dialogue.freeTextY ?? 0,
       });
@@ -329,6 +346,22 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
     );
   };
 
+  /** 字号输入框：允许暂时为空/中间状态，能解析成正数时立即写回 */
+  const handleFontSizeInput = (raw: string) => {
+    setFreeTextFontSizeInput(raw);
+    const parsed = parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      updateDialogue("freeTextFontSize", parsed);
+    }
+  };
+
+  const handleFontSizeSlider = (raw: string) => {
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+    setFreeTextFontSizeInput(null);
+    updateDialogue("freeTextFontSize", parsed);
+  };
+
   return (
     <div className="text-properties">
       <div className="form-row">
@@ -356,7 +389,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
           )}
           {isFreeText && (
             <div className="free-text-hint">
-              对话内容以旁白字体/字号显示在画面正中央
+              对话内容以旁白字体显示，可在下方调整字号、颜色与位置
             </div>
           )}
         </div>
@@ -463,69 +496,6 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
         </div>
       )}
 
-      {isFreeText && (
-        <div className="form-group free-text-position">
-          <label>文字位置</label>
-          <div className="free-text-axis-row">
-            <span className="free-text-axis-label">X</span>
-            <input
-              type="number"
-              className="free-text-axis-input"
-              value={freeTextXInput ?? String(freeTextUiX)}
-              onChange={(e) => handlePositionInput("x", e.target.value)}
-              onBlur={() => setFreeTextXInput(null)}
-            />
-            <input
-              type="range"
-              className="free-text-axis-slider"
-              min={-Math.round(uiWidth / 2)}
-              max={Math.round(uiWidth / 2)}
-              value={freeTextUiX}
-              onChange={(e) => handlePositionSlider("x", e.target.value)}
-            />
-            <button
-              type="button"
-              className="free-text-axis-reset"
-              title="X 坐标归零（回到画面水平中心）"
-              aria-label="X 坐标归零"
-              onClick={() => resetFreeTextPosition("x")}
-            >
-              ↺
-            </button>
-          </div>
-          <div className="free-text-axis-row">
-            <span className="free-text-axis-label">Y</span>
-            <input
-              type="number"
-              className="free-text-axis-input"
-              value={freeTextYInput ?? String(freeTextUiY)}
-              onChange={(e) => handlePositionInput("y", e.target.value)}
-              onBlur={() => setFreeTextYInput(null)}
-            />
-            <input
-              type="range"
-              className="free-text-axis-slider"
-              min={-Math.round(uiHeight / 2)}
-              max={Math.round(uiHeight / 2)}
-              value={freeTextUiY}
-              onChange={(e) => handlePositionSlider("y", e.target.value)}
-            />
-            <button
-              type="button"
-              className="free-text-axis-reset"
-              title="Y 坐标归零（回到画面垂直中心）"
-              aria-label="Y 坐标归零"
-              onClick={() => resetFreeTextPosition("y")}
-            >
-              ↺
-            </button>
-          </div>
-          <div className="free-text-position-hint">
-            以画面中心为原点，单位：当前输出分辨率像素
-          </div>
-        </div>
-      )}
-
       <div className="form-group">
         <label>对话内容</label>
         <textarea
@@ -534,6 +504,104 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
           rows={5}
         />
       </div>
+
+      {isFreeText && (
+        <div className="free-text-controls-row">
+          {/* 字号 */}
+          <div className="form-group free-text-font-size">
+            <label>文字字号</label>
+            <div className="free-text-axis-row">
+              <input
+                type="number"
+                className="free-text-axis-input"
+                min={FREE_TEXT_FONT_SIZE_MIN}
+                max={FREE_TEXT_FONT_SIZE_MAX}
+                value={freeTextFontSizeInput ?? String(freeTextFontSize)}
+                onChange={(e) => handleFontSizeInput(e.target.value)}
+                onBlur={() => setFreeTextFontSizeInput(null)}
+              />
+              <input
+                type="range"
+                className="free-text-axis-slider"
+                min={FREE_TEXT_FONT_SIZE_MIN}
+                max={FREE_TEXT_FONT_SIZE_MAX}
+                step={1}
+                value={freeTextFontSize}
+                onChange={(e) => handleFontSizeSlider(e.target.value)}
+              />
+            </div>
+            <div className="free-text-position-hint">
+              设计画布像素（1080p），默认 {DEFAULT_FREE_TEXT_FONT_SIZE}
+            </div>
+          </div>
+
+          {/* 位置 */}
+          <div className="form-group free-text-position">
+            <label>文字位置</label>
+            <div className="free-text-axis-row">
+              <span className="free-text-axis-label">X</span>
+              <input
+                type="number"
+                className="free-text-axis-input"
+                value={freeTextXInput ?? String(freeTextUiX)}
+                onChange={(e) => handlePositionInput("x", e.target.value)}
+                onBlur={() => setFreeTextXInput(null)}
+              />
+              <input
+                type="range"
+                className="free-text-axis-slider"
+                min={-Math.round(uiWidth / 2)}
+                max={Math.round(uiWidth / 2)}
+                value={freeTextUiX}
+                onChange={(e) => handlePositionSlider("x", e.target.value)}
+              />
+              <button
+                type="button"
+                className="free-text-axis-reset"
+                title="X 坐标归零（回到画面水平中心）"
+                aria-label="X 坐标归零"
+                onClick={() => resetFreeTextPosition("x")}
+              >
+                ↺
+              </button>
+            </div>
+            <div className="free-text-axis-row">
+              <span className="free-text-axis-label">Y</span>
+              <input
+                type="number"
+                className="free-text-axis-input"
+                value={freeTextYInput ?? String(freeTextUiY)}
+                onChange={(e) => handlePositionInput("y", e.target.value)}
+                onBlur={() => setFreeTextYInput(null)}
+              />
+              <input
+                type="range"
+                className="free-text-axis-slider"
+                min={-Math.round(uiHeight / 2)}
+                max={Math.round(uiHeight / 2)}
+                value={freeTextUiY}
+                onChange={(e) => handlePositionSlider("y", e.target.value)}
+              />
+              <button
+                type="button"
+                className="free-text-axis-reset"
+                title="Y 坐标归零（回到画面垂直中心）"
+                aria-label="Y 坐标归零"
+                onClick={() => resetFreeTextPosition("y")}
+              >
+                ↺
+              </button>
+            </div>
+            <div className="free-text-position-hint">
+              以画面中心为原点，单位：当前输出分辨率像素
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+
+
       <div className="form-group">
         <label>场景</label>
         <input

@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./RecordEditor.css";
 import ApiService from "@services/ApiService";
-import { Record, ProjectSettings, Emotion, DialogueAlign } from "@types";
+import {
+  Record,
+  ProjectSettings,
+  Emotion,
+  DialogueAlign,
+  DEFAULT_FREE_TEXT_FONT_SIZE,
+} from "@types";
 import RecordList from "./RecordList";
 import RecordPreview from "./RecordPreview";
 import PropertyTabs from "./PropertyTabs";
@@ -182,6 +188,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         italic: inherit?.dialogue?.italic === true,
         hideUI: inherit?.dialogue?.hideUI !== false,
         freeTextColor: inherit?.dialogue?.freeTextColor || "",
+        freeTextFontSize:
+          inherit?.dialogue?.freeTextFontSize || DEFAULT_FREE_TEXT_FONT_SIZE,
         freeTextX: inherit?.dialogue?.freeTextX ?? 0,
         freeTextY: inherit?.dialogue?.freeTextY ?? 0,
       },

@@ -79,7 +79,7 @@ public class RecordController {
      *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v6";
+    private static final String PREVIEW_CACHE_VERSION = "v7";
 
     /**
      * 文件名里不允许出现的字符（Windows 限制最严，跨平台按这一套过滤即可）：

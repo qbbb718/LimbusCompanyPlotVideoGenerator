@@ -23,15 +23,30 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "ANGRY"
+    "emotion" : "ANGRY",
+    "freeText" : false,
+    "bold" : false,
+    "italic" : false,
+    "hideUI" : true,
+    "freeTextColor" : "",
+    "freeTextX" : 0,
+    "freeTextY" : 0
   },
-  "tempImages" : [ ],
+  "tempImages" : [ {
+    "uuid" : "93a9d801-b807-457e-8aca-0a021a941e4b",
+    "imagePath" : "C:/Users/26899/AppData/Roaming/limbus-company-plot-video-generator/projects/temp/images/93a9d801-b807-457e-8aca-0a021a941e4b.png",
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "dim" : false
+  } ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
     "audioId" : "办公室BGM",
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -89,13 +104,12 @@
     "adjY" : 0,
     "dim" : false
   } ],
-  "isDirty" : false,
   "bg" : [ {
     "background" : {
-      "uuid" : "bg_1786455477902",
-      "path" : "http://localhost:8081/assets/backgrounds/不xx_1786455491887.png",
+      "uuid" : "bg_1792301526450",
+      "path" : "/assets/backgrounds/办公室_1792301537868.png",
       "name" : "办公室",
-      "thumbnailPath" : "http://localhost:8081/assets/backgrounds/thumbnails/thumb_bg_1786455477902_1786455492375.png"
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1792301526450_1792301538082.png"
     },
     "posX" : 0,
     "posY" : 0,
@@ -113,7 +127,14 @@
     "faction" : "中立",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "SURPRISED"
+    "emotion" : "SURPRISED",
+    "freeText" : false,
+    "bold" : false,
+    "italic" : false,
+    "hideUI" : true,
+    "freeTextColor" : "",
+    "freeTextX" : 0,
+    "freeTextY" : 0
   },
   "tempImages" : [ ],
   "audioCommands" : [ {
@@ -122,6 +143,7 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
+  "isDirty" : false,
   "chars" : [ {
     "chara" : {
       "characterID" : "char_1785997936961",
@@ -151,13 +173,53 @@
     "adjY" : 0,
     "dim" : true
   } ],
-  "isDirty" : false,
   "bg" : [ {
     "background" : {
       "uuid" : "bg_1791465440079",
       "path" : "/assets/backgrounds/办公室_1791465458644.png",
       "name" : "办公室",
       "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1791465440079_1791465458953.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "b7254978-73be-4e82-8211-5b2afa2539e1",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "这所以，一段文字。",
+    "location" : "办公室",
+    "speakerC" : [ ],
+    "speakerName" : "自由文本",
+    "faction" : "中立",
+    "align" : "LEFT",
+    "speed" : 6,
+    "emotion" : "NORMAL",
+    "freeText" : true,
+    "bold" : false,
+    "italic" : false,
+    "hideUI" : true,
+    "freeTextColor" : "#FBDBB3",
+    "freeTextX" : 0,
+    "freeTextY" : 0
+  },
+  "tempImages" : [ ],
+  "audioCommands" : [ {
+    "type" : "BGM_ACTIVE",
+    "audioId" : "办公室BGM",
+    "volume" : 1.0,
+    "fadeDuration" : null
+  } ],
+  "isDirty" : false,
+  "chars" : [ ],
+  "bg" : [ {
+    "background" : {
+      "uuid" : "bg_1786455477902",
+      "path" : "http://localhost:8081/assets/backgrounds/不xx_1786455491887.png",
+      "name" : "办公室",
+      "thumbnailPath" : "http://localhost:8081/assets/backgrounds/thumbnails/thumb_bg_1786455477902_1786455492375.png"
     },
     "posX" : 0,
     "posY" : 0,

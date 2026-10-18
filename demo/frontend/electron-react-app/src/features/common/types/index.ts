@@ -115,6 +115,8 @@ export interface Dialogue {
   hideUI?: boolean;
   /** 自由文本：文字颜色（#RRGGBB；为空时使用默认文字颜色，与旁白一致） */
   freeTextColor?: string;
+  /** 自由文本：字号（设计画布像素；<=0 时使用默认字号） */
+  freeTextFontSize?: number;
   /** 自由文本：文字中心相对画面中心的 X 偏移（设计画布像素，正数向右） */
   freeTextX?: number;
   /** 自由文本：文字中心相对画面中心的 Y 偏移（设计画布像素，正数向下） */
@@ -123,6 +125,7 @@ export interface Dialogue {
 
 /** 自由文本默认文字颜色（与后端 ProjectConfig.DEFAULT_TEXT_COLOR 一致） */
 export const DEFAULT_FREE_TEXT_COLOR = "#FBDBB3";
+export const DEFAULT_FREE_TEXT_FONT_SIZE = 36;
 
 // 背景视觉元素
 export interface BackgroundVisual {

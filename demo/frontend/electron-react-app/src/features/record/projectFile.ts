@@ -9,7 +9,14 @@
  *
  * 这里不持有任何 React 状态，方便单独测试；状态与流程见 useProjectWorkspace.ts。
  */
-import { AudioCommand, AudioType, DialogueAlign, Emotion, Record } from "@types";
+import {
+  AudioCommand,
+  AudioType,
+  DEFAULT_FREE_TEXT_FONT_SIZE,
+  DialogueAlign,
+  Emotion,
+  Record,
+} from "@types";
 import { generateUUID } from "./utils";
 import {
   keepKnownGroups,
@@ -117,6 +124,15 @@ const normalizeHexColor = (value: unknown): string => {
 };
 
 /**
+ * @function 归一化自由文本字号
+ * 记录里存的是设计画布像素；<=0 / 非数字时回退默认字号（与旁白一致）。
+ */
+const normalizeFreeTextFontSize = (value: unknown): number => {
+  const size = asNumber(value, DEFAULT_FREE_TEXT_FONT_SIZE);
+  return size > 0 ? Math.round(size) : DEFAULT_FREE_TEXT_FONT_SIZE;
+};
+
+/**
  * @function 把文件里的音频指令归一化为前端结构
  * 后端 RecordsIO 写出的字段是 audioId，前端用 path；fadeDuration 是后端字段，
  * 归一化时原样保留（前端不展示，但保存回文件时不至于丢掉）。
@@ -182,6 +198,7 @@ export const normalizeRecord = (raw: any): Record => {
       italic: dialogue.italic === true,
       hideUI: dialogue.hideUI !== false,
       freeTextColor: normalizeHexColor(dialogue.freeTextColor),
+      freeTextFontSize: normalizeFreeTextFontSize(dialogue.freeTextFontSize),
       freeTextX: asNumber(dialogue.freeTextX, 0),
       freeTextY: asNumber(dialogue.freeTextY, 0),
     },

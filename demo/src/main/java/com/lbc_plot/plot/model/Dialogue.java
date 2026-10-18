@@ -60,6 +60,7 @@ public class Dialogue {
     private boolean italic; // 自由文本：斜体
     private boolean hideUI = true; // 自由文本：隐藏UI（默认勾选，跳过对话框/名片/地点等UI层）
     private String freeTextColor; // 自由文本：文字颜色（#RRGGBB / #AARRGGBB；为空时用默认文字颜色）
+    private int freeTextFontSize = ProjectConfig.DIALOGUE_FONT_SIZE; // 自由文本：字号（设计画布像素）
     private int freeTextX; // 自由文本：文字中心相对画面中心的 X 偏移（设计画布像素）
     private int freeTextY; // 自由文本：文字中心相对画面中心的 Y 偏移（设计画布像素）
 
@@ -214,6 +215,25 @@ public class Dialogue {
 
     public void setFreeTextColor(String freeTextColor) {
         this.freeTextColor = freeTextColor;
+    }
+
+    /**
+     * 自由文本：字号（设计画布像素）。
+     *
+     * <p>默认与旁白一致（{@link ProjectConfig#DIALOGUE_FONT_SIZE}）；配置为 0/负数时渲染回退默认字号。
+     */
+    public int getFreeTextFontSize() {
+        return freeTextFontSize;
+    }
+
+    public void setFreeTextFontSize(int freeTextFontSize) {
+        this.freeTextFontSize = freeTextFontSize;
+    }
+
+    /** 实际用于渲染的字号：非法值（<=0）回退到默认字号，旧工程也能正常显示。 */
+    @JsonIgnore
+    public int getEffectiveFreeTextFontSize() {
+        return freeTextFontSize > 0 ? freeTextFontSize : ProjectConfig.DIALOGUE_FONT_SIZE;
     }
 
     /**
@@ -410,6 +430,7 @@ public class Dialogue {
         this.italic = builder.italic;
         this.hideUI = builder.hideUI;
         this.freeTextColor = builder.freeTextColor;
+        this.freeTextFontSize = builder.freeTextFontSize;
         this.freeTextX = builder.freeTextX;
         this.freeTextY = builder.freeTextY;
 
@@ -491,6 +512,8 @@ public class Dialogue {
         private boolean hideUI = true;
         @JsonProperty
         private String freeTextColor;
+        @JsonProperty
+        private int freeTextFontSize = ProjectConfig.DIALOGUE_FONT_SIZE;
         @JsonProperty
         private int freeTextX;
         @JsonProperty
@@ -587,6 +610,12 @@ public class Dialogue {
         /** 自由文本：文字颜色（#RRGGBB / #AARRGGBB；null 表示用默认文字颜色） */
         public Builder freeTextColor(String freeTextColor) {
             this.freeTextColor = freeTextColor;
+            return this;
+        }
+
+        /** 自由文本：字号（设计画布像素） */
+        public Builder freeTextFontSize(int freeTextFontSize) {
+            this.freeTextFontSize = freeTextFontSize;
             return this;
         }
 

@@ -122,8 +122,8 @@ public class FrameComposerService extends BaseLayerManager
 
     @Override
     public void addDialogueTextFreeText(String text, boolean bold, boolean italic, Color color,
-            int centerX, int centerY) {
-        textManager.addDialogueTextFreeText(text, bold, italic, color, centerX, centerY);
+            int fontSize, int centerX, int centerY) {
+        textManager.addDialogueTextFreeText(text, bold, italic, color, fontSize, centerX, centerY);
     }
 
     @Override

@@ -210,6 +210,19 @@
   color: #1890ff;
 }
 
+.free-text-controls-row {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;              /* 两个块之间的间距 */
+  align-items: flex-start;
+  flex-wrap: wrap;        /* 窄屏时可换行，避免挤压 */
+}
+
+.free-text-controls-row > .form-group {
+  flex: 1 1 0;            /* 两块等宽拉伸 */
+  min-width: 260px;       /* 太窄时自动换行 */
+}
+
 /* ===== 角色选项：说话人/阵营下方的提示文字 ===== */
 .character-edit-hint {
   text-align: center;

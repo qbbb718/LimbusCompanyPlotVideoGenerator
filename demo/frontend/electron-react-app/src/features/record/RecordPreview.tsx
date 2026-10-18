@@ -57,6 +57,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         italic: r.dialogue?.italic,
         hideUI: r.dialogue?.hideUI,
         freeTextColor: r.dialogue?.freeTextColor,
+        freeTextFontSize: r.dialogue?.freeTextFontSize,
         freeTextX: r.dialogue?.freeTextX,
         freeTextY: r.dialogue?.freeTextY,
       },

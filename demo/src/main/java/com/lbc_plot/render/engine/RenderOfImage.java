@@ -707,16 +707,17 @@ public class RenderOfImage {
     private static void renderDialogueText(FrameComposerService composer, Dialogue dialogue) throws IOException {
         try {
             if (dialogue.isFreeText()) {
-                // 自由文本：字体/字号与旁白一致，文字块中心可由 freeTextX/freeTextY 相对画面中心偏移，
-                // 支持自定义颜色/加粗/斜体
+                // 自由文本：字体与旁白一致，文字块中心可由 freeTextX/freeTextY 相对画面中心偏移，
+                // 字号、颜色、加粗/斜体均可自定义
                 Color freeTextColor = ProjectConfig.parseColor(
                         dialogue.getFreeTextColor(), ProjectConfig.DEFAULT_TEXT_COLOR);
                 int centerX = ProjectConfig.FREE_TEXT_CENTER_X + dialogue.getFreeTextX();
                 int centerY = ProjectConfig.FREE_TEXT_CENTER_Y + dialogue.getFreeTextY();
+                int fontSize = dialogue.getEffectiveFreeTextFontSize();
                 composer.addDialogueTextFreeText(dialogue.getText(), dialogue.isBold(), dialogue.isItalic(),
-                        freeTextColor, centerX, centerY);
-                logger.debug("添加自由文本（中心=({},{}), 颜色={}, 加粗={}, 斜体={}）: {}",
-                        centerX, centerY, dialogue.getFreeTextColor(), dialogue.isBold(),
+                        freeTextColor, fontSize, centerX, centerY);
+                logger.debug("添加自由文本（中心=({},{}), 字号={}, 颜色={}, 加粗={}, 斜体={}）: {}",
+                        centerX, centerY, fontSize, dialogue.getFreeTextColor(), dialogue.isBold(),
                         dialogue.isItalic(), abbreviateText(dialogue.getText()));
             } else if (dialogue.isNarrator()) {
                 composer.addDialogueTextCenter(dialogue.getText());

@@ -123,12 +123,11 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
     /**
      * 添加"自由文本"对话文字图层。
      *
-     * <p>与旁白一致：同一套中文字体、同一 {@link ProjectConfig#DIALOGUE_FONT_SIZE} 字号，
-     * 文字块锚定在传入的中心点（默认是画面水平与垂直中心，可由用户通过 X/Y 偏移调整），
-     * 并支持自定义文字颜色、加粗 / 斜体。
+     * <p>与旁白一致：同一套中文字体，文字块锚定在传入的中心点（默认是画面水平与垂直中心，
+     * 可由用户通过 X/Y 偏移调整）；字号、文字颜色、加粗 / 斜体均支持自定义。
      */
     public void addDialogueTextFreeText(String text, boolean bold, boolean italic, Color color,
-            int centerX, int centerY) {
+            int fontSize, int centerX, int centerY) {
         int fontStyle = Font.PLAIN;
         if (bold) {
             fontStyle |= Font.BOLD;
@@ -140,7 +139,7 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
         addTextLayer(text,
                 centerX,
                 centerY,
-                ProjectConfig.DIALOGUE_FONT_SIZE,
+                (fontSize > 0) ? fontSize : ProjectConfig.DIALOGUE_FONT_SIZE,
                 (color != null) ? color : ProjectConfig.DEFAULT_TEXT_COLOR,
                 0,
                 TextAlignment.CENTER,

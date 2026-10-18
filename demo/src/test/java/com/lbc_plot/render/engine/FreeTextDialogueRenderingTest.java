@@ -51,6 +51,18 @@ class FreeTextDialogueRenderingTest {
                 freeTextRecord("自由文本居中测试", bold, italic, true), true, WIDTH, HEIGHT);
     }
 
+    /** 指定字号渲染自由文本（隐藏UI） */
+    private static BufferedImage renderTextOnlyWithFontSize(int fontSize) throws Exception {
+        Dialogue dialogue = Dialogue.builder()
+                .text("字号测试")
+                .speakerName("自由文本")
+                .freeText(true)
+                .freeTextFontSize(fontSize)
+                .build();
+        Record record = new Record(null, dialogue, null, null, null, null, null, null, false, null);
+        return RenderOfImage.renderUIOnly(record, true, WIDTH, HEIGHT);
+    }
+
     @Test
     @DisplayName("hideUI 默认勾选；只有自由文本才可能隐藏UI")
     void hideUiDefaultsAndGuard() {
@@ -81,6 +93,22 @@ class FreeTextDialogueRenderingTest {
                 "自由文本应水平居中，实际中心 x=" + centerX);
         assertEquals(HEIGHT / 2.0, centerY, 8.0,
                 "自由文本应垂直居中，实际中心 y=" + centerY);
+    }
+
+    @Test
+    @DisplayName("自由文本字号可调：字号翻倍后文字块明显变高，且仍保持居中")
+    void freeTextFontSizeChangesTextSize() throws Exception {
+        int[] smallBounds = alphaBounds(renderTextOnlyWithFontSize(28));
+        int[] largeBounds = alphaBounds(renderTextOnlyWithFontSize(56));
+
+        int smallHeight = smallBounds[3] - smallBounds[1] + 1;
+        int largeHeight = largeBounds[3] - largeBounds[1] + 1;
+        assertTrue(largeHeight > smallHeight * 1.6,
+                "字号 56 的文字块应明显高于字号 28（28px=" + smallHeight + ", 56px=" + largeHeight + "）");
+
+        double largeCenterY = (largeBounds[1] + largeBounds[3]) / 2.0;
+        assertEquals(HEIGHT / 2.0, largeCenterY, 8.0,
+                "改字号不应改变文字块中心，实际 y=" + largeCenterY);
     }
 
     @Test
@@ -189,6 +217,7 @@ class FreeTextDialogueRenderingTest {
                 .italic(true)
                 .hideUI(false)
                 .freeTextColor("#12AB34")
+                .freeTextFontSize(56)
                 .freeTextX(90)
                 .freeTextY(-40)
                 .build();
@@ -200,6 +229,7 @@ class FreeTextDialogueRenderingTest {
         assertTrue(json.contains("\"italic\":true"), "JSON 应包含 italic");
         assertTrue(json.contains("\"hideUI\":false"), "JSON 应包含 hideUI");
         assertTrue(json.contains("\"freeTextColor\":\"#12AB34\""), "JSON 应包含 freeTextColor");
+        assertTrue(json.contains("\"freeTextFontSize\":56"), "JSON 应包含 freeTextFontSize");
         assertTrue(json.contains("\"freeTextX\":90"), "JSON 应包含 freeTextX");
         assertTrue(json.contains("\"freeTextY\":-40"), "JSON 应包含 freeTextY");
 
@@ -209,10 +239,12 @@ class FreeTextDialogueRenderingTest {
         assertTrue(restored.isItalic());
         assertFalse(restored.isHideUI());
         assertEquals("#12AB34", restored.getFreeTextColor());
+        assertEquals(56, restored.getFreeTextFontSize());
+        assertEquals(56, restored.getEffectiveFreeTextFontSize());
         assertEquals(90, restored.getFreeTextX());
         assertEquals(-40, restored.getFreeTextY());
 
-        // 旧工程 JSON 没有这些字段：按"非自由文本 + 隐藏UI默认勾选 + 位置居中"处理
+        // 旧工程 JSON 没有这些字段：按"非自由文本 + 隐藏UI默认勾选 + 位置居中 + 默认字号"处理
         Dialogue legacy = mapper.readValue("{\"text\":\"旧工程对话\",\"speakerName\":\"旁白\"}",
                 Dialogue.class);
         assertFalse(legacy.isFreeText(), "旧工程默认不是自由文本");
@@ -220,6 +252,8 @@ class FreeTextDialogueRenderingTest {
         assertFalse(legacy.isItalic());
         assertTrue(legacy.isHideUI(), "旧工程未写 hideUI 时默认勾选");
         assertNull(legacy.getFreeTextColor(), "旧工程未写 freeTextColor 时应为 null（渲染用默认色）");
+        assertEquals(28, legacy.getFreeTextFontSize(), "旧工程未写 freeTextFontSize 时默认 28");
+        assertEquals(28, legacy.getEffectiveFreeTextFontSize());
         assertEquals(0, legacy.getFreeTextX(), "旧工程未写 freeTextX 时默认居中");
         assertEquals(0, legacy.getFreeTextY(), "旧工程未写 freeTextY 时默认居中");
     }

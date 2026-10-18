@@ -362,11 +362,12 @@ public class RenderOfVideo {
             Color textColor = ProjectConfig.DEFAULT_TEXT_COLOR;
 
             if (freeText) {
-                // 自由文本：与旁白同字体字号，锚点 = 画面中心 + 用户设置的 X/Y 偏移（再按输出分辨率缩放）
+                // 自由文本：字体与旁白一致，锚点 = 画面中心 + 用户设置的 X/Y 偏移；
+                // 字号与偏移一样按设计画布→输出帧的比例换算
                 x = Math.round((ProjectConfig.FREE_TEXT_CENTER_X + dialogue.getFreeTextX()) * designToFrame);
                 y = Math.round((ProjectConfig.FREE_TEXT_CENTER_Y + dialogue.getFreeTextY()) * designToFrame);
                 maxWidth = Math.round(ProjectConfig.DIALOGUE_MAX_WIDTH * designToFrame);
-                fontSize = ProjectConfig.DIALOGUE_FONT_SIZE * designToFrame;
+                fontSize = dialogue.getEffectiveFreeTextFontSize() * designToFrame;
                 alignment = TextAlignment.CENTER;
                 textColor = ProjectConfig.parseColor(
                         dialogue.getFreeTextColor(), ProjectConfig.DEFAULT_TEXT_COLOR);
