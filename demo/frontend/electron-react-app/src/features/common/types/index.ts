@@ -139,8 +139,14 @@ export interface BackgroundVisual {
     /** 缩略图路径；资源管理里生成缩略图后由后端写入，老数据可能没有 */
     thumbnailPath?: string;
   };
+  /**
+   * 背景中心相对画面中心的 X 偏移（设计画布像素，0 = 居中）。
+   * 数值不设上下限：放大后可超过画布尺寸，把背景完全移出画面。
+   */
   posX: number;
+  /** 背景中心相对画面中心的 Y 偏移（设计画布像素，0 = 居中） */
   posY: number;
+  /** 以「等比铺满设计画布」为 1.0 的缩放（1 = 与默认全屏背景一致，2 = 长宽各放大一倍） */
   scale: number;
   visible: boolean;
 }
@@ -174,6 +180,13 @@ export interface CharacterVisual {
   posY: number;
   adjX: number;
   adjY: number;
+  /**
+   * 用户手动缩放（1 = 不缩放，缺省按 1 处理）。
+   *
+   * 后端会把它乘在「由立绘裁剪框推导出的缩放」之上，并按脸框中心重新计算 posX/posY，
+   * 所以同一份坐标在任何输出分辨率下都一致。旧工程没有这个字段时行为与加缩放之前完全相同。
+   */
+  scale?: number;
   dim: boolean;
 }
 

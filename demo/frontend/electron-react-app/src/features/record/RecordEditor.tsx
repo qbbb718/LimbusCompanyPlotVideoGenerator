@@ -628,6 +628,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             selectedRecord={selectedRecord}
             selectedRecordIndex={selectedRecordIndex}
             updateRecord={updateRecord}
+            videoWidth={projectSettings.videoWidth}
+            videoHeight={projectSettings.videoHeight}
           />
         );
       case "effects":

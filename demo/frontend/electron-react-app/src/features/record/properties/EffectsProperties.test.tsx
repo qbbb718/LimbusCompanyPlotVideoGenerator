@@ -62,14 +62,14 @@ const checkbox = (name: string) =>
 describe("EffectsProperties 起始转场", () => {
   it("没有特效时三个复选框都未勾选", () => {
     setupPanel(makeRecord());
-    expect(checkbox("交叉溶解")).not.toBeChecked();
+    expect(checkbox("交叉溶解转场")).not.toBeChecked();
     expect(checkbox("黑屏转场")).not.toBeChecked();
     expect(checkbox("白屏转场")).not.toBeChecked();
   });
 
   it("记录里已有的转场回显为勾选（enabled 缺省也算勾选）", () => {
     setupPanel(makeRecord([{ type: EFFECT_TYPE_CROSS_DISSOLVE }]));
-    expect(checkbox("交叉溶解")).toBeChecked();
+    expect(checkbox("交叉溶解转场")).toBeChecked();
     expect(checkbox("黑屏转场")).not.toBeChecked();
     expect(checkbox("白屏转场")).not.toBeChecked();
   });
@@ -124,7 +124,7 @@ describe("EffectsProperties 起始转场", () => {
       ]),
     );
 
-    fireEvent.click(checkbox("交叉溶解"));
+    fireEvent.click(checkbox("交叉溶解转场"));
 
     await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
     const [, updatedRecord] = updateRecord.mock.calls[0];

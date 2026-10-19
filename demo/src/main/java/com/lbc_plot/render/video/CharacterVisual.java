@@ -43,6 +43,13 @@ public class CharacterVisual extends VisualElement {
     // 用户手动调整偏差
     private int adjX;
     private int adjY;
+    /**
+     * 用户手动缩放（1.0 = 不缩放）。
+     *
+     * <p>它乘在「由裁剪框推导出的立绘缩放」之上：裁剪决定立绘的基础大小，
+     * 这个字段让用户在剧情编辑里再整体放大 / 缩小，互不改写对方的语义。
+     */
+    private float scale;
     // 是否压暗，默认true；说话人false
     private boolean dim;
     @JsonIgnore
@@ -53,16 +60,40 @@ public class CharacterVisual extends VisualElement {
     private static final int DEFAULT_POS_Y = 0;
     private static final int DEFAULT_ADJ_X = 0;
     private static final int DEFAULT_ADJ_Y = 0;
+    private static final float DEFAULT_SCALE = 1.0f;
     private static final boolean DEFAULT_DIM = true;
+    /** 用户缩放的取值范围：与前端滑杆（0.1 ~ 3.0）一致，同时防止异常 JSON 把内存撑爆 */
+    private static final float MIN_USER_SCALE = 0.1f;
+    private static final float MAX_USER_SCALE = 3.0f;
 
     /**
-     * 计算立绘缩放比例（与 RenderOfImage.renderSingleCharacter 保持一致）
+     * 计算立绘缩放比例（由裁剪框推导，与 RenderOfImage.renderSingleCharacter 保持一致）
      */
     private float portraitScale() {
         if (portrait == null || portrait.getLength() <= 0) {
             return 1.0f;
         }
         return (float) ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH / portrait.getLength();
+    }
+
+    /**
+     * 用户缩放归一化：缺省 / 非法 / 越界值都收敛到 [0.1, 3.0]。
+     * 旧记录没有 scale 字段时 Jackson 用默认值 1.0，行为与加缩放功能之前完全一致。
+     */
+    private float userScale() {
+        if (!Float.isFinite(scale) || scale <= 0) {
+            return DEFAULT_SCALE;
+        }
+        return Math.min(MAX_USER_SCALE, Math.max(MIN_USER_SCALE, scale));
+    }
+
+    /**
+     * 渲染最终使用的缩放 = 裁剪缩放 × 用户缩放。
+     * 渲染器必须用这个值，不能再用 {@link #portraitScale()}，否则预览里放大、成片里没放大。
+     */
+    @JsonIgnore
+    public float getRenderScale() {
+        return portraitScale() * userScale();
     }
 
     /**
@@ -74,6 +105,10 @@ public class CharacterVisual extends VisualElement {
      * 而不能把图片上边缘直接对齐过去：
      * 立绘中高于裁剪方框的部分（帽子、举起的武器、飘发等，即 faceY > 0）会让图片上边缘
      * 与方框上边缘不一致，直接对齐图片上边缘就会整体偏移。
+     *
+     * 用户缩放（{@link #scale}）以缩放前「裁剪方框的中心」为基准：
+     * scale = 1 时公式退化成原来的定位（旧记录构图逐像素不变），
+     * 放大 / 缩小时脸框中心停留在原处，角色围绕脸部伸缩，不会一边缩放一边往右下角跑。
      */
     public void updatePos() {
         if (chara == null || portrait == null) {
@@ -82,24 +117,28 @@ public class CharacterVisual extends VisualElement {
             return;
         }
 
-        final float scale = portraitScale();
-
-        // 裁剪方框上边缘在缩放后图像中的偏移
-        final float boxTopOffsetX = portrait.getFaceX() * scale;
-        final float boxTopOffsetY = portrait.getFaceY() * scale;
+        final float baseScale = portraitScale();
+        final float renderScale = getRenderScale();
+        final float halfLength = portrait.getLength() / 2f;
 
         // 方框上边缘在视频中的目标位置：X 为画面中心，Y 由角色身高决定
-        final int anchorX = ProjectConfig.VIDEO_WIDTH / 2;
+        final int anchorX = ProjectConfig.VIDEO_WIDTH / 2 + portrait.getAdjX() + adjX;
         final int anchorY = ProjectConfig.DEFAULT_CHARACTER_HEIGHT_Pixels
                 + (int) ((ProjectConfig.DEFAULT_CHARACTER_HEIGHT - chara.getHeight())
-                        * ProjectConfig.Pixels_per_centimeter);
+                        * ProjectConfig.Pixels_per_centimeter)
+                + portrait.getAdjY() + adjY;
 
-        // 缩放后图像左上角 = 方框上边缘目标位置 - 该边缘在缩放后图中的偏移
-        posX = anchorX - Math.round(boxTopOffsetX) + portrait.getAdjX() + adjX;
-        posY = anchorY - Math.round(boxTopOffsetY) + portrait.getAdjY() + adjY;
+        // 以「方框中心」为缩放中心：
+        // 缩放前中心在 anchor + length*baseScale/2，缩放后图像左上角 = 中心 - (faceX + length/2)*renderScale。
+        // 代入 renderScale = baseScale（用户缩放 = 1）即 anchor - faceX*baseScale，与旧公式一致。
+        posX = Math.round(anchorX + halfLength * baseScale
+                - (portrait.getFaceX() + halfLength) * renderScale);
+        posY = Math.round(anchorY + halfLength * baseScale
+                - (portrait.getFaceY() + halfLength) * renderScale);
 
-        logger.debug("{}的身高为{},裁剪方框上边缘为({},{}),缩放为{},渲染位置为({},{})",
-                chara.getCharacterName(), chara.getHeight(), anchorX, anchorY, scale, posX, posY);
+        logger.debug("{}的身高为{},裁剪方框上边缘为({},{}),裁剪缩放为{},用户缩放为{},渲染位置为({},{})",
+                chara.getCharacterName(), chara.getHeight(), anchorX, anchorY,
+                baseScale, userScale(), posX, posY);
     }
 
     /**
@@ -198,6 +237,18 @@ public class CharacterVisual extends VisualElement {
         updatePos();
     }
 
+    /**
+     * 用户手动缩放（1.0 = 不缩放）；会重新计算 posX / posY，保证脸框中心不随缩放漂移。
+     */
+    public float getScale() {
+        return scale;
+    }
+
+    public void setScale(float scale) {
+        this.scale = scale;
+        updatePos();
+    }
+
     public boolean isDim() {
         return dim;
     }
@@ -218,6 +269,7 @@ public class CharacterVisual extends VisualElement {
     public String toString() {
         return "CharacterVisual{" +
                 "character=" + (chara != null ? chara.getCharacterName() : "null") +
+                ", scale=" + userScale() +
                 ", dim=" + dim +
                 '}';
     }
@@ -232,6 +284,7 @@ public class CharacterVisual extends VisualElement {
         this.posY = builder.posY;
         this.adjX = builder.adjX;
         this.adjY = builder.adjY;
+        this.scale = builder.scale;
         this.dim = builder.dim;
         this.image = builder.image;
 
@@ -257,6 +310,9 @@ public class CharacterVisual extends VisualElement {
         private int adjX = DEFAULT_ADJ_X;
         @JsonProperty
         private int adjY = DEFAULT_ADJ_Y;
+        /** 用户手动缩放；旧工程文件没有该字段时按 1.0 处理 */
+        @JsonProperty
+        private float scale = DEFAULT_SCALE;
         @JsonProperty
         private boolean dim = DEFAULT_DIM;
 
@@ -314,6 +370,12 @@ public class CharacterVisual extends VisualElement {
         public Builder adjustment(int adjX, int adjY) {
             this.adjX = adjX;
             this.adjY = adjY;
+            return this;
+        }
+
+        /** 用户手动缩放（1.0 = 不缩放），与 JSON 字段 scale 对应 */
+        public Builder scale(float scale) {
+            this.scale = scale;
             return this;
         }
 

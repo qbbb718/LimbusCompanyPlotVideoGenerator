@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
@@ -232,7 +233,7 @@ public class RenderOfImage {
     }
 
     /**
-     * 渲染背景层（铺满 1080p 设计画布；0.8 缩放/居中与输出分辨率缩放由调用方统一处理）
+     * 渲染背景层（铺满 1080p 设计画布；缩放/位置与输出分辨率无关，统一在设计画布内换算）
      */
     private static void renderBackground(FrameComposerService composer, Record record) {
         final int designW = designWidth();
@@ -246,21 +247,21 @@ public class RenderOfImage {
             return;
         }
 
-        // 打印每个背景的原图尺寸
+        // 打印每个背景的原图尺寸与手动变换参数，排查构图问题时能直接对照编辑器里的数值
         for (int i = 0; i < bgList.size(); i++) {
             BackgroundVisual bg = bgList.get(i);
             if (bg != null && bg.getBgImage() != null) {
-                logger.info("  背景[{}]: name={}, 原图尺寸={}x{}",
+                logger.info("  背景[{}]: name={}, 原图尺寸={}x{}, scale={}, pos=({},{})",
                         i, bg.getBackground().getName(),
-                        bg.getBgImage().getWidth(), bg.getBgImage().getHeight());
+                        bg.getBgImage().getWidth(), bg.getBgImage().getHeight(),
+                        bg.getScale(), bg.getPosX(), bg.getPosY());
             }
         }
 
-        // 始终全屏拉伸背景到设计画布，0.8 缩放 + 居中由 renderPre / renderPreExceptDialogue
-        // 中的 addImageLayerScaled(coImage, designW/10, designH/10, PLOT_SCENE_SCALE)
-        // 统一完成；
-        // 输出分辨率的缩放只在最后 composeFinalImage 里做一次。
-        logger.info("  → 背景全屏拉伸至 {}x{}（0.8 缩放由上层 compose+scale 统一处理）", designW, designH);
+        // 每张背景先画进一张设计画布大小的透明图层，再交给合成器：
+        // 背景按 scale 放大后可能远超画布，直接 addImageLayer 会把合成器画布撑大
+        // （尺寸取 max(x+w, y+h)），随后 0.8 缩放/居中就会错位；画进固定大小图层则天然裁边，
+        // 也正好实现"缩放后可以把背景完全移出画面"。
         renderFullScreenBackground(composer, bgList, designW, designH);
     }
 
@@ -305,7 +306,7 @@ public class RenderOfImage {
     }
 
     /**
-     * 渲染全屏背景
+     * 渲染全屏背景：逐张按各自的 scale / posX / posY 画进设计画布。
      */
     private static void renderFullScreenBackground(FrameComposerService composer, List<BackgroundVisual> bgList,
             int width, int height) {
@@ -316,12 +317,35 @@ public class RenderOfImage {
                 continue;
 
             try {
-                composer.addImageLayerResized(bg.getBgImage(), 0, 0, width, height, true);
-                logger.debug("添加全屏背景图层: 尺寸{}x{}", width, height);
+                Rectangle bounds = bg.getDrawBounds(width, height);
+                if (bounds == null) {
+                    logger.warn("背景绘制区域为空，跳过: {}", bg);
+                    continue;
+                }
+                composer.addImageLayer(composeBackgroundLayer(bg.getBgImage(), bounds, width, height), 0, 0);
+                logger.debug("添加背景图层: name={}, scale={}, pos=({},{}), 绘制区域={}",
+                        bg.getBackground().getName(), bg.getScale(), bg.getPosX(), bg.getPosY(), bounds);
             } catch (Exception e) {
-                logger.error("添加全屏背景图层失败: {}", bg, e);
+                logger.error("添加背景图层失败: {}", bg, e);
             }
         }
+    }
+
+    /**
+     * 把背景按 {@code bounds} 等比画进一张「画布大小」的透明图层。
+     *
+     * <p>超出画布的部分由 BufferedImage 自然裁掉；返回的图层尺寸恒为 width×height，
+     * 保证合成器画布不会被放大后的背景撑大。
+     */
+    private static BufferedImage composeBackgroundLayer(BufferedImage bgImage, Rectangle bounds, int width,
+            int height) {
+        BufferedImage scaled = RenderQualityUtils.scaleImageHighQuality(bgImage, bounds.width, bounds.height);
+        BufferedImage layer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = layer.createGraphics();
+        RenderQualityUtils.setupUltraQualityRendering(g2d);
+        g2d.drawImage(scaled, bounds.x, bounds.y, null);
+        g2d.dispose();
+        return layer;
     }
 
     /**
@@ -399,24 +423,13 @@ public class RenderOfImage {
     }
 
     /**
-     * 安全地计算缩放比例
-     */
-    public static float calculateScaleSafely(int numerator, int denominator) {
-        if (denominator == 0) {
-            logger.warn("除数为0，返回默认缩放比例1.0f");
-            return 1.0f;
-        }
-        return (float) numerator / denominator;
-    }
-
-    /**
      * 渲染单个角色
      */
     private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara) {
         BufferedImage charImage = chara.getImage();
-        float scaled = calculateScaleSafely(
-                ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH,
-                chara.getPortrait().getLength());
+        // 实际缩放 = 裁剪推导的缩放 × 用户手动缩放（剧情编辑 → 立绘 → 缩放），
+        // 与 CharacterVisual.updatePos() 里计算 posX/posY 用的是同一个值。
+        float scaled = chara.getRenderScale();
         logger.debug("{}立绘渲染比例为{}", chara.getChara().getCharacterName(), scaled);
 
         if (chara.isDim()) {

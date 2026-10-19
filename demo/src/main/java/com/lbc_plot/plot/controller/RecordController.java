@@ -77,9 +77,12 @@ public class RecordController {
      * <p>v3：预览图开始区分剧情模式（plot），缓存文件名里追加了模式标记，
      * 同时让按"剧情"渲染的旧缓存（无标记）一并失效。
      *
+     * <p>v8：背景支持缩放/位置、立绘支持缩放。默认值（scale=1、pos=0）下画面与旧版一致，
+     * 但旧缓存无法反映新参数，统一作废。
+     *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v7";
+    private static final String PREVIEW_CACHE_VERSION = "v8";
 
     /**
      * 文件名里不允许出现的字符（Windows 限制最严，跨平台按这一套过滤即可）：

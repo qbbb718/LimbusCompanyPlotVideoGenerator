@@ -8,26 +8,31 @@ import {
   Emotion,
 } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
-import { AppConfig } from "@features/common/config/appConfig";
 import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
 import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
+import NumberField from "./NumberField";
+import {
+  DESIGN_CANVAS_WIDTH,
+  MAX_VISUAL_SCALE,
+  MIN_VISUAL_SCALE,
+  VISUAL_SCALE_STEP,
+  createCoordinateMapper,
+  normalizeScale,
+} from "./visualCoordinates";
 import "../RecordEditor.css";
+import "./TransformControls.css";
 import "./CharactersProperties.css";
 
-/**
- * 设计画布尺寸（后端 ProjectConfig.VIDEO_WIDTH / VIDEO_HEIGHT，固定 1920×1080）。
+/*
+ * 坐标系说明：记录里持久化的坐标（立绘 adjX/adjY、临时图片 posX/posY）都存 1080p 设计画布
+ * 空间里的像素，与设置页选的输出分辨率无关 —— 所以同一条记录换任何分辨率导出，构图都完全一致。
  *
- * 记录里持久化的坐标（立绘 adjX/adjY、临时图片 posX/posY）都是这个空间里的像素，
- * 与设置页选的输出分辨率无关 —— 所以同一条记录换任何分辨率导出，构图都完全一致。
- *
- * 但编辑器里的滑杆/数值框按**设置页选的视频大小**显示（见 toUiX/toDesignX）：
- * X 轴滑块范围是 ±视频宽度/2、Y 轴是 ±视频高度，和预览图的实际像素一一对应。
- * 过去这里硬编码 1280（还叫 videoWidth），滑杆 50% 不等于画面中心、两端也到不了画面边缘。
+ * 编辑器里的滑杆/数值框按**设置页选的视频大小**显示（见 visualCoordinates 的
+ * createCoordinateMapper）：X 轴滑块范围是 ±视频宽度/2、Y 轴是 ±视频高度，
+ * 和预览图的实际像素一一对应；写回记录前再换算回设计画布像素。
  */
-const CANVAS_WIDTH = AppConfig.designCanvas.width;
-const CANVAS_HEIGHT = AppConfig.designCanvas.height;
 
 /** 立绘位置快捷按钮的档位：-3..3 对应画面宽度的 0%、1/6 … 5/6、100% */
 const QUICK_POSITION_STEPS = [-3, -2, -1, 0, 1, 2, 3];
@@ -94,21 +99,10 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   videoWidth,
   videoHeight,
 }) => {
-  // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）
-  const uiWidth = videoWidth && videoWidth > 0 ? videoWidth : CANVAS_WIDTH;
-  const uiHeight = videoHeight && videoHeight > 0 ? videoHeight : CANVAS_HEIGHT;
-
-  /** 设计画布像素 → 当前视频像素（只用于显示） */
-  const toUiX = (designX: number) =>
-    Math.round((designX * uiWidth) / CANVAS_WIDTH);
-  const toUiY = (designY: number) =>
-    Math.round((designY * uiHeight) / CANVAS_HEIGHT);
-
-  /** 当前视频像素 → 设计画布像素（用于写回记录，保证与输出分辨率无关） */
-  const toDesignX = (uiX: number) =>
-    Math.round((uiX * CANVAS_WIDTH) / uiWidth);
-  const toDesignY = (uiY: number) =>
-    Math.round((uiY * CANVAS_HEIGHT) / uiHeight);
+  // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
+  // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
+  const { uiWidth, uiHeight, toUiX, toUiY, toDesignX, toDesignY } =
+    createCoordinateMapper(videoWidth, videoHeight);
 
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
   const [newChara, setNewChara] = useState<any | null>(null);
@@ -190,10 +184,11 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
       },
       portrait: newPortrait,
       // 后端会用 adjX 重新计算 posX（CharacterVisual.updatePos），这里给同一套设计坐标下的初值：居中
-      posX: CANVAS_WIDTH / 2,
+      posX: DESIGN_CANVAS_WIDTH / 2,
       posY: 0,
       adjX: 0,
       adjY: 0,
+      scale: 1,
       dim: false,
     };
 
@@ -393,19 +388,52 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                 </div>
               </div>
 
-              {/* 第二行：X坐标偏移 — 标签 | 数值框 | 滑块(含快速定位按钮) */}
+              {/* 第二行：缩放 — 标签 | 数值框 | 滑块
+                  缩放以脸部裁剪框中心为基准，只改大小，不动 X/Y 偏移；重置按钮在卡片标题行 */}
+              <div className="transform-row">
+                <span className="transform-label">缩放</span>
+                <NumberField
+                  className="transform-number"
+                  value={normalizeScale(char.scale)}
+                  min={MIN_VISUAL_SCALE}
+                  max={MAX_VISUAL_SCALE}
+                  ariaLabel={`立绘 ${index + 1} 缩放`}
+                  title="立绘缩放（1 = 原始大小，以脸部裁剪框中心为基准）"
+                  onChange={(value) => updateCharacter(index, "scale", value)}
+                />
+                <button
+                  type="button"
+                  className="transform-reset-btn"
+                  onClick={() => updateCharacter(index, "scale", 1)}
+                  title="复原：缩放恢复 1.0"
+                >
+                  ↺
+                </button>
+                <div className="transform-slider">
+                  <input
+                    type="range"
+                    min={MIN_VISUAL_SCALE}
+                    max={MAX_VISUAL_SCALE}
+                    step={VISUAL_SCALE_STEP}
+                    value={normalizeScale(char.scale)}
+                    aria-label={`立绘 ${index + 1} 缩放滑块`}
+                    onChange={(e) =>
+                      updateCharacter(index, "scale", Number(e.target.value))
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* 第三行：X坐标偏移 — 标签 | 数值框 | 滑块(含快速定位按钮) */}
               <div className="char-row">
                 <span className="char-label-fixed">X坐标调整</span>
-                <input
-                  type="number"
+                <NumberField
                   className="char-input-fixed"
+                  integer
                   value={toUiX(char.adjX)}
-                  onChange={(e) =>
-                    updateCharacter(
-                      index,
-                      "adjX",
-                      toDesignX(parseInt(e.target.value) || 0),
-                    )
+                  ariaLabel={`立绘 ${index + 1} X 坐标`}
+                  onChange={(value) =>
+                    updateCharacter(index, "adjX", toDesignX(value))
                   }
                 />
                 <div className="char-slider-auto">
@@ -442,20 +470,17 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                 </div>
               </div>
 
-              {/* 第三行：Y坐标偏移 — 标签 | 数值框 | 滑块
+              {/* 第四行：Y坐标偏移 — 标签 | 数值框 | 滑块
                   Y 方向用一个视频高度为界：足以把立绘完全移出画面上下边缘 */}
               <div className="char-row">
                 <span className="char-label-fixed">Y坐标调整</span>
-                <input
-                  type="number"
+                <NumberField
                   className="char-input-fixed"
+                  integer
                   value={toUiY(char.adjY)}
-                  onChange={(e) =>
-                    updateCharacter(
-                      index,
-                      "adjY",
-                      toDesignY(parseInt(e.target.value) || 0),
-                    )
+                  ariaLabel={`立绘 ${index + 1} Y 坐标`}
+                  onChange={(value) =>
+                    updateCharacter(index, "adjY", toDesignY(value))
                   }
                 />
                 <input
@@ -668,32 +693,36 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
               <div className="char-row">
                 <div className="temp-col-scale">
                   <span className="char-label-fixed">缩放</span>
-                  <input
-                    type="number"
+                  <NumberField
                     className="char-input-fixed"
-                    min="0.1"
-                    max="3.0"
-                    step="0.1"
-                    value={temp.scale}
-                    onChange={(e) =>
-                      updateTempImage(index, "scale", parseFloat(e.target.value) || 1.0)
+                    value={normalizeScale(temp.scale)}
+                    min={MIN_VISUAL_SCALE}
+                    max={MAX_VISUAL_SCALE}
+                    ariaLabel={`临时图片 ${index + 1} 缩放`}
+                    onChange={(value) =>
+                      updateTempImage(index, "scale", value)
                     }
                   />
                   <div className="char-slider-auto">
                     <input
                       type="range"
-                      min="0.1"
-                      max="3.0"
-                      step="0.1"
-                      value={temp.scale}
+                      min={MIN_VISUAL_SCALE}
+                      max={MAX_VISUAL_SCALE}
+                      step={VISUAL_SCALE_STEP}
+                      value={normalizeScale(temp.scale)}
+                      aria-label={`临时图片 ${index + 1} 缩放滑块`}
                       onChange={(e) =>
-                        updateTempImage(index, "scale", parseFloat(e.target.value))
+                        updateTempImage(
+                          index,
+                          "scale",
+                          Number(e.target.value),
+                        )
                       }
                     />
                   </div>
                 </div>
                 <div className="temp-col-dim">
-                  <label>是否压暗</label>
+                  <label>压暗</label>
                   <input
                     type="checkbox"
                     checked={temp.dim}
@@ -707,16 +736,13 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
               {/* 第二行：X坐标调整（同角色立绘格式：0..视频宽度） */}
               <div className="char-row">
                 <span className="char-label-fixed">X坐标调整</span>
-                <input
-                  type="number"
+                <NumberField
                   className="char-input-fixed"
+                  integer
                   value={toUiX(temp.posX)}
-                  onChange={(e) =>
-                    updateTempImage(
-                      index,
-                      "posX",
-                      toDesignX(parseInt(e.target.value) || 0),
-                    )
+                  ariaLabel={`临时图片 ${index + 1} X 坐标`}
+                  onChange={(value) =>
+                    updateTempImage(index, "posX", toDesignX(value))
                   }
                 />
                 <div className="char-slider-auto">
@@ -756,16 +782,13 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
               {/* 第三行：Y坐标调整（同角色立绘格式，Y 方向用一个视频高度为界） */}
               <div className="char-row">
                 <span className="char-label-fixed">Y坐标调整</span>
-                <input
-                  type="number"
+                <NumberField
                   className="char-input-fixed"
+                  integer
                   value={toUiY(temp.posY)}
-                  onChange={(e) =>
-                    updateTempImage(
-                      index,
-                      "posY",
-                      toDesignY(parseInt(e.target.value) || 0),
-                    )
+                  ariaLabel={`临时图片 ${index + 1} Y 坐标`}
+                  onChange={(value) =>
+                    updateTempImage(index, "posY", toDesignY(value))
                   }
                 />
                 <input

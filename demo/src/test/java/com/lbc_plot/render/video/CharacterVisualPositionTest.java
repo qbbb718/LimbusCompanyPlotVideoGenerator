@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
@@ -196,5 +197,98 @@ class CharacterVisualPositionTest {
 
         assertEquals(0, noPortrait.getPosX());
         assertEquals(0, noPortrait.getPosY());
+    }
+
+    // ===== 用户手动缩放（剧情编辑 → 立绘 → 缩放） =====
+
+    /** 裁剪方框中心在画面里的 X 坐标（用于验证缩放不改变脸的位置）。 */
+    private static double boxCenterX(CharacterVisual cv) {
+        Portrait p = cv.getPortrait();
+        return cv.getPosX() + (p.getFaceX() + p.getLength() / 2.0) * cv.getRenderScale();
+    }
+
+    /** 裁剪方框中心在画面里的 Y 坐标。 */
+    private static double boxCenterY(CharacterVisual cv) {
+        Portrait p = cv.getPortrait();
+        return cv.getPosY() + (p.getFaceY() + p.getLength() / 2.0) * cv.getRenderScale();
+    }
+
+    @Test
+    @DisplayName("scale 缺省为 1.0：旧记录不传 scale 时渲染缩放与旧版一致")
+    void defaultScaleKeepsLegacyRendering() throws Exception {
+        CharacterVisual cv = visual(171, 243, 60, ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH);
+
+        assertEquals(1.0f, cv.getScale(), 1e-6, "未设置时 scale 应为 1.0");
+        assertEquals(1.0f, cv.getRenderScale(), 1e-6, "裁剪缩放为 1 且未手动缩放时渲染缩放应为 1");
+        // 旧公式：posX = 960 - faceX * 裁剪缩放
+        assertEquals(ProjectConfig.VIDEO_WIDTH / 2 - 243, cv.getPosX());
+        assertEquals(BOX_TOP_ANCHOR_Y - 60, cv.getPosY());
+    }
+
+    @Test
+    @DisplayName("用户缩放以脸框中心为基准：放大后脸框中心不动，图像左上角相应左移/上移")
+    void userScaleZoomsAroundBoxCenter() throws Exception {
+        CharacterVisual base = visual(171, 243, 60, ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH);
+        CharacterVisual scaled = visual(171, 243, 60, ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH);
+        scaled.setScale(2.0f);
+
+        assertEquals(2.0f, scaled.getRenderScale(), 1e-6, "渲染缩放 = 裁剪缩放 × 用户缩放");
+        assertEquals(boxCenterX(base), boxCenterX(scaled), 1.0,
+                "放大后裁剪方框中心 X 不应漂移（否则角色会一边放大一边往右跑）");
+        assertEquals(boxCenterY(base), boxCenterY(scaled), 1.0,
+                "放大后裁剪方框中心 Y 不应漂移");
+
+        // 图像变成两倍大，左上角必须相应往左上移，而不是原地放大
+        assertTrue(scaled.getPosX() < base.getPosX(), "放大后立绘左上角应左移");
+        assertTrue(scaled.getPosY() < base.getPosY(), "放大后立绘左上角应上移");
+    }
+
+    @Test
+    @DisplayName("用户缩放后的 X/Y 微调仍然叠加在最终位置上")
+    void adjustmentsStillApplyAfterUserScale() throws Exception {
+        CharacterVisual scaled = visual(171, 243, 60, ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH);
+        scaled.setScale(2.0f);
+        int baseX = scaled.getPosX();
+        int baseY = scaled.getPosY();
+
+        scaled.setAdjX(10);
+        scaled.setAdjY(-20);
+
+        assertEquals(baseX + 10, scaled.getPosX());
+        assertEquals(baseY - 20, scaled.getPosY());
+    }
+
+    @Test
+    @DisplayName("JSON 里的 scale 会被读进 Builder（前端保存的缩放能在成片里生效）")
+    void scaleIsReadFromJson() throws Exception {
+        String json = """
+                {
+                  "chara": {
+                    "characterID": "c-test",
+                    "characterName": "测试角色",
+                    "height": 171,
+                    "faction": "未设定",
+                    "colorBg": "#FFFFFF",
+                    "colorText": "#000000"
+                  },
+                  "portrait": {
+                    "portraitID": "p-test",
+                    "characterID": "c-test",
+                    "imagePath": "",
+                    "portName": "测试立绘",
+                    "faceX": 243,
+                    "faceY": 60,
+                    "length": 183,
+                    "adjX": 0,
+                    "adjY": 0
+                  },
+                  "scale": 2.0
+                }
+                """;
+
+        CharacterVisual cv = new ObjectMapper().readValue(json, CharacterVisual.class);
+
+        assertEquals(2.0f, cv.getScale(), 1e-6, "JSON 的 scale 应写入 Builder");
+        assertEquals(2.0f, cv.getRenderScale(), 1e-6, "长度 183 时裁剪缩放为 1，渲染缩放应等于用户缩放");
     }
 }
