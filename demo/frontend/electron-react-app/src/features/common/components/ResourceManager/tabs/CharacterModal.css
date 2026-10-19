@@ -76,6 +76,60 @@
   margin: 0;
 }
 
+/* ============================================================
+ * 角色编辑弹窗（CharacterDetailModal）专用布局：
+ * 标题栏（角色名 + 保存/取消/删除按钮）固定高度、不参与滚动，
+ * 下面的 .modal-body 用 overflow: auto 自己滚。
+ *
+ * 这里全部用 .character-detail-modal 前缀做限定，
+ * 因为 PortraitModal / BackgroundModal 也复用 .modal-content /
+ * .modal-header，不能被这套纵向 flex 布局带跑。
+ * ============================================================ */
+.character-detail-modal {
+  display: flex;
+  flex-direction: column;
+  /* 滚动交给内容区，弹窗本身不再滚 */
+  overflow: hidden;
+  padding: 0;
+}
+
+/* 标题栏：固定高度（64px），flex: none 保证内容再多也不被压缩 */
+.character-detail-modal > .modal-header {
+  flex: 0 0 auto;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  box-sizing: border-box;
+  margin-bottom: 0;
+  padding: 0 20px;
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
+  border-radius: 8px 8px 0 0;
+}
+
+.character-detail-modal > .modal-header h2 {
+  flex: 1 1 auto;
+  /* 角色名过长时省略，避免把固定高度的标题栏撑成两行 */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-detail-modal > .modal-header .header-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+/* 内容区：独立滚动 */
+.character-detail-modal > .modal-body {
+  flex: 1 1 auto;
+  /* 不加这条 flex 子项不会收缩，overflow 也就不生效 */
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+}
+
 .header-actions {
   display: flex;
   gap: 10px;

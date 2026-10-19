@@ -757,7 +757,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      {/* character-detail-modal：标题栏固定高度不动，下面的 .modal-body 自己滚动 */}
+      <div className="modal-content character-detail-modal">
         <div className="modal-header">
           <h2>
             {isNewCharacter
@@ -785,32 +786,35 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           </div>
         </div>
 
-        <CharacterInfoSection
-          character={editingCharacter}
-          onCharacterUpdate={setEditingCharacter}
-          showColorPicker={showColorPicker}
-          onToggleColorPicker={handleToggleColorPicker}
-        />
+        {/* 内容区：独立滚动，标题栏不跟着滚 */}
+        <div className="modal-body">
+          <CharacterInfoSection
+            character={editingCharacter}
+            onCharacterUpdate={setEditingCharacter}
+            showColorPicker={showColorPicker}
+            onToggleColorPicker={handleToggleColorPicker}
+          />
 
-        <TagsSection
-          character={editingCharacter}
-          onCharacterUpdate={setEditingCharacter}
-        />
+          <TagsSection
+            character={editingCharacter}
+            onCharacterUpdate={setEditingCharacter}
+          />
 
-        <PortraitsSection
-          character={editingCharacter}
-          onAddPortrait={handleAddPortrait}
-          onEditPortrait={handleEditPortrait}
-          onDeletePortrait={handleDeletePortrait}
-          onSetDefaultPortrait={handleSetDefaultPortrait}
-          onApplyDefaultCropToAll={handleApplyDefaultCropToAll}
-          onBatchImportPortraits={handleBatchImportPortraits}
-          canApplyDefaultCrop={defaultCropTargets.length > 0}
-          batchProgress={batchProgress}
-          batchMessage={batchMessage}
-          onDismissBatchMessage={() => setBatchMessage(null)}
-          thumbnailVersion={thumbnailVersion}
-        />
+          <PortraitsSection
+            character={editingCharacter}
+            onAddPortrait={handleAddPortrait}
+            onEditPortrait={handleEditPortrait}
+            onDeletePortrait={handleDeletePortrait}
+            onSetDefaultPortrait={handleSetDefaultPortrait}
+            onApplyDefaultCropToAll={handleApplyDefaultCropToAll}
+            onBatchImportPortraits={handleBatchImportPortraits}
+            canApplyDefaultCrop={defaultCropTargets.length > 0}
+            batchProgress={batchProgress}
+            batchMessage={batchMessage}
+            onDismissBatchMessage={() => setBatchMessage(null)}
+            thumbnailVersion={thumbnailVersion}
+          />
+        </div>
       </div>
 
       {/* 删除确认对话框 */}
