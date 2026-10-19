@@ -5,7 +5,7 @@ server:
 # 不要手改这一行——它由 node scripts/version.mjs 与 package.json / pom.xml 一起同步。
 # 这里刻意不用 Maven 资源过滤（@project.version@），这样"源码里写的是什么版本"与
 # "跑起来报的是什么版本"永远一致，排障时不会看到构建残留的旧值。
-app.version: 0.3.3
+app.version: 0.3.4
 
 spring:
   application:
