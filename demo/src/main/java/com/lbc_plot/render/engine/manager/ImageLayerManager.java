@@ -76,17 +76,11 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
      */
     private void addLayer(String resourcePath, int x, int y, float scaleX, float scaleY, int targetWidth,
             int targetHeight) throws IOException {
-        long startTime = System.currentTimeMillis();
-
         BufferedImage image = ImageReader.readResourceImage(resourcePath);
         if (image == null) {
             logger.error("无法读取图片资源: {}", resourcePath);
             throw new IOException("图片资源不存在: " + resourcePath);
         }
-
-        // 计算最终尺寸
-        int finalWidth = image.getWidth();
-        int finalHeight = image.getHeight();
 
         if (targetWidth > 0 && targetHeight > 0) {
             // 指定像素尺寸
@@ -99,12 +93,10 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
                     resourcePath, scaleX * 100, scaleY * 100);
         }
 
-        LayerInfo layer = new LayerInfo(image, x, y, finalWidth, finalHeight, -1, -1, finalWidth, finalHeight);
-        layers.add(layer);
+        addImageLayer(image, x, y);
 
-        long duration = System.currentTimeMillis() - startTime;
-        logger.debug("添加图层完成: {}, 位置({},{}), 尺寸{}x{}, 耗时{}ms",
-                resourcePath, x, y, finalWidth, finalHeight, duration);
+        logger.debug("添加图层完成: {}, 位置({},{}), 尺寸{}x{}",
+                resourcePath, x, y, image.getWidth(), image.getHeight());
     }
 
     /**
@@ -115,6 +107,14 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
      * @param x     左上角y坐标
      */
     public void addImageLayerScaled(BufferedImage image, int x, int y, float scale) {
+        if (image == null) {
+            return;
+        }
+        // 缩放为 1（且值合法）时没必要复制一张同尺寸的副本
+        if (Math.abs(scale - 1.0f) < 1e-4f) {
+            addImageLayer(image, x, y);
+            return;
+        }
         BufferedImage scaledImage = RenderQualityUtils.scaleImageHighQuality(image, scale);
         addImageLayer(scaledImage, x, y);
     }
@@ -126,6 +126,24 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
         addImageLayer(scaledImage, x, y);
     }
 
+    /**
+     * 把图像直接「画到」目标矩形里：合成时由 {@link #drawSingleLayer} 用双三次插值一次性缩放，
+     * 不生成缩放后的中间副本。
+     *
+     * <p>背景这类「原图很大、放大后更大」的图层用它，可以省掉一张与目标同尺寸的中间图
+     * （4K 背景放大 2 倍时是 74MB），也省掉一次整幅写入。
+     */
+    public void addImageLayerIntoRect(BufferedImage image, int x, int y, int targetWidth, int targetHeight) {
+        if (image == null) {
+            return;
+        }
+        int safeWidth = Math.max(1, targetWidth);
+        int safeHeight = Math.max(1, targetHeight);
+        LayerInfo layer = new LayerInfo(image, x, y, safeWidth, safeHeight, -1, -1, safeWidth, safeHeight);
+        layers.add(layer);
+        growCanvasTo(x + safeWidth, y + safeHeight);
+    }
+
     public void addImageLayer(BufferedImage image, int x, int y) {
         int finalWidth = image.getWidth();
         int finalHeight = image.getHeight();
@@ -133,8 +151,8 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
         LayerInfo layer = new LayerInfo(image, x, y, finalWidth, finalHeight, -1, -1, finalWidth, finalHeight);
         layers.add(layer);
 
-        width = Math.max(width, x + finalWidth);
-        height = Math.max(height, y + finalHeight);
+        // 未锁定画布尺寸时才让图层撑大画布（固定尺寸下由合成阶段 clip 裁掉超出部分）
+        growCanvasTo(x + finalWidth, y + finalHeight);
 
         logger.debug("添加图像图层: 位置({},{}), 尺寸{}x{}", x, y, finalWidth, finalHeight);
     }
@@ -197,20 +215,29 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
 
     /**
      * 创建纯色图像
+     *
+     * <p>整块像素用 {@link java.util.Arrays#fill} 填：旧实现逐像素 {@code setRGB} 填 1920×1080
+     * 要 30ms 以上，而每渲染一张预览图/一帧静态层至少要填一次全屏底色。
      */
     private BufferedImage createSolidColorImage(int rgb, int alpha, int width, int height) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        int safeWidth = Math.max(1, width);
+        int safeHeight = Math.max(1, height);
+        BufferedImage image = new BufferedImage(safeWidth, safeHeight, BufferedImage.TYPE_INT_ARGB);
 
         // 组合颜色和透明度
         int argb = (alpha << 24) | (rgb & 0x00FFFFFF);
 
-        // 填充整个图像
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+        java.awt.image.DataBuffer buffer = image.getRaster().getDataBuffer();
+        if (buffer instanceof java.awt.image.DataBufferInt) {
+            java.util.Arrays.fill(((java.awt.image.DataBufferInt) buffer).getData(), argb);
+            return image;
+        }
+        // 理论上不会走到这里（刚创建的 INT_ARGB），保留逐像素兜底
+        for (int y = 0; y < safeHeight; y++) {
+            for (int x = 0; x < safeWidth; x++) {
                 image.setRGB(x, y, argb);
             }
         }
-
         return image;
     }
 

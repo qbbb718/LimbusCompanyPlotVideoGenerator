@@ -153,43 +153,54 @@ public class RenderOfVideo {
             logger.debug("渲染静态背景 (layerType={})", layerType);
             BufferedImage staticBackground = renderStaticLayer(record, plot, width, height, layerType);
 
-            // 3. 预计算文本动画状态（仅当需要文本动画时）
-            List<TextAnimationState> textStates = null;
+            // 3. 预计算每一帧要显示的文本（仅当需要文本动画时）。
+            //    逐帧数组而不是"状态列表 + 每帧线性查找"：长台词（一百多字）时每帧都要扫一遍状态表。
+            String[] frameTexts = null;
             if (needsTextAnimation) {
-                textStates = generateTextAnimationStates(
-                        record.getDialogue(), frameRate, requiredFrames);
+                frameTexts = buildFrameTexts(record.getDialogue(), frameRate, requiredFrames);
             }
 
             int framesRendered = 0;
             int overlayFrames = 0;
 
             // 4. 流式渲染所有帧
+            //
+            //    "定格复用"：打字动画结束后（以及低速档 1 字符/多帧）连续很多帧的画面完全一样，
+            //    没必要每帧都重新复制一遍静态层再重画一次文字。这里只保留最近一张"没有叠转场"的帧，
+            //    文本没变就直接复用；转场帧会就地改写画面，因此每帧现画一份、且不放进复用位。
+            BufferedImage reusableFrame = null;
+            String reusableText = null;
+
             for (int frameIndex = 0; frameIndex < requiredFrames; frameIndex++) {
+                boolean hasOverlay = transitionOverlay != null && StartTransition.opacityAt(frameIndex) > 0f;
                 BufferedImage frame;
 
-                if (needsTextAnimation) {
-                    // 根据当前帧索引确定文本状态
-                    String currentText = getTextForFrame(textStates, frameIndex);
-
-                    // 动态渲染当前帧
-                    frame = renderSingleFrame(staticBackground, currentText,
-                            record.getDialogue(), width, height);
-                } else {
-                    // 无文本动画：直接使用静态背景
-                    frame = copyImage(staticBackground);
-                }
-
-                // 起始转场：记录自己的画面已经画好，再把叠加层按当前帧的不透明度盖在上面淡出
-                if (transitionOverlay != null && StartTransition.opacityAt(frameIndex) > 0f) {
+                if (hasOverlay) {
+                    // 转场帧：必须独立一份（StartTransition.apply 会就地改像素）
+                    String text = frameTexts != null ? frameTexts[frameIndex] : null;
+                    frame = frameTexts != null
+                            ? renderSingleFrame(staticBackground, text, record.getDialogue(), width, height)
+                            : copyImage(staticBackground);
                     StartTransition.apply(frame, transitionOverlay, frameIndex);
                     overlayFrames++;
+                } else if (frameTexts == null) {
+                    // 纯静态分层：整段视频的画面相同，只复制一次
+                    if (reusableFrame == null) {
+                        reusableFrame = copyImage(staticBackground);
+                    }
+                    frame = reusableFrame;
+                } else {
+                    String text = frameTexts[frameIndex];
+                    if (reusableFrame == null || !text.equals(reusableText)) {
+                        reusableFrame = renderSingleFrame(staticBackground, text, record.getDialogue(),
+                                width, height);
+                        reusableText = text;
+                    }
+                    frame = reusableFrame;
                 }
 
                 // 立即写入视频文件
                 exporter.writeFrame(frame);
-
-                // 立即释放当前帧内存
-                frame = null;
 
                 framesRendered++;
 
@@ -261,8 +272,46 @@ public class RenderOfVideo {
 
     /**
      * 根据分层类型渲染静态背景层
+     *
+     * <p>不透明分层（FULL / BG_CHARACTERS / BACKGROUND_ONLY）在这里<b>一次性</b>转成
+     * {@link BufferedImage#TYPE_3BYTE_BGR}：
+     * <ul>
+     *   <li>编码器要的就是 BGR24：不转的话每帧写视频前都要做一次 1080p 的 ARGB→BGR 拷贝
+     *       （实测 ~1.5ms/帧，150 帧就是 200ms 以上）；静态层只转一次，于是每帧都省掉它。</li>
+     *   <li>ARGB 直送编码器反而<b>更慢</b>（sws_scale 的 ARGB→YUV420P 路径比 BGR→YUV420P 慢约 10%），
+     *       所以不能"干脆不转"。</li>
+     *   <li>转成 BGR 会把 alpha 叠在黑底上，这不改变画面：这些分层本来就以不透明黑底打底，
+     *       历史上每帧写视频前的同一次转换做的也是这件事。</li>
+     * </ul>
+     * 透明分层（UI_ONLY / CHARACTERS_ONLY）必须保留 alpha 通道，原样返回 ARGB。
      */
     private static BufferedImage renderStaticLayer(Record record, boolean plot, int width, int height,
+            String layerType) throws IOException {
+        BufferedImage layer = renderStaticLayerArgb(record, plot, width, height, layerType);
+        return isTransparentLayer(layerType) ? layer : toBgr(layer);
+    }
+
+    /** 把图像转成不透明 BGR（alpha 叠在黑底上，与旧版每帧写视频前的转换一致）。 */
+    private static BufferedImage toBgr(BufferedImage source) {
+        if (source == null) {
+            return null;
+        }
+        if (source.getType() == BufferedImage.TYPE_3BYTE_BGR) {
+            return source;
+        }
+        BufferedImage bgr = new BufferedImage(source.getWidth(), source.getHeight(),
+                BufferedImage.TYPE_3BYTE_BGR);
+        Graphics2D g2d = bgr.createGraphics();
+        try {
+            g2d.drawImage(source, 0, 0, null);
+        } finally {
+            g2d.dispose();
+        }
+        return bgr;
+    }
+
+    /** 按分层类型渲染静态层的原始（ARGB）结果。 */
+    private static BufferedImage renderStaticLayerArgb(Record record, boolean plot, int width, int height,
             String layerType) throws IOException {
         switch (layerType) {
             case LAYER_FULL:
@@ -324,108 +373,60 @@ public class RenderOfVideo {
     }
 
     /**
-     * 生成文本动画状态序列（修复延长问题）
-     * 现在会正确计算动画帧数，并在动画结束后使用最后一帧定格延长
+     * 预计算每一帧要显示的文本。
+     *
+     * <p>规则与原「文本动画状态序列」完全一致：
+     * <ul>
+     *   <li>{@code speed < 1.0}（慢速档）：每个字符持续 {@code round(1/speed)} 帧；</li>
+     *   <li>{@code speed >= 1.0}（快速档）：每帧显示 {@code round(speed)} 个字符；</li>
+     *   <li>动画提前结束（台词打完）后，剩余帧全部定格在最后一段文本上。</li>
+     * </ul>
+     *
+     * <p>返回长度恒为 {@code requiredFrames} 的数组：逐帧 O(1) 取文本，也方便上层做
+     * "文本没变就复用上一帧画面"的判断。
      */
-    private static List<TextAnimationState> generateTextAnimationStates(Dialogue dialogue, int frameRate,
-            int requiredFrames) {
-        List<TextAnimationState> states = new ArrayList<>();
-
-        if (dialogue == null || dialogue.getText() == null || dialogue.getText().isEmpty()) {
-            // 空文本，直接使用空白文本填满所有帧
-            states.add(new TextAnimationState("", 0, requiredFrames));
-            return states;
+    private static String[] buildFrameTexts(Dialogue dialogue, int frameRate, int requiredFrames) {
+        String[] texts = new String[Math.max(0, requiredFrames)];
+        if (texts.length == 0) {
+            return texts;
         }
 
-        String fullText = dialogue.getText();
-        float unifiedSpeed = getUnifiedSpeed(dialogue.getSpeed());
-        boolean isNarrator = dialogue.isNarrator();
+        String fullText = (dialogue == null || dialogue.getText() == null) ? "" : dialogue.getText();
+        if (fullText.isEmpty()) {
+            java.util.Arrays.fill(texts, "");
+            return texts;
+        }
 
-        logger.debug("生成文本动画状态: 文本长度={}, 统一速度={}, 需要总帧数={}",
+        float unifiedSpeed = getUnifiedSpeed(dialogue.getSpeed());
+        logger.debug("生成逐帧文本: 文本长度={}, 统一速度={}, 需要总帧数={}",
                 fullText.length(), unifiedSpeed, requiredFrames);
 
-        int currentFrame = 0;
-        int animationFrames = 0;
-
+        int filled = 0;
         if (unifiedSpeed < 1.0f) {
-            // 慢速模式：每个字符持续多帧
-            float framesPerChar = 1.0f / unifiedSpeed;
-            int actualFramesPerChar = Math.max(1, Math.round(framesPerChar));
-
-            for (int charIndex = 1; charIndex <= fullText.length(); charIndex++) {
+            // 慢速档：每个字符持续多帧
+            int framesPerChar = Math.max(1, Math.round(1.0f / unifiedSpeed));
+            for (int charIndex = 1; charIndex <= fullText.length() && filled < texts.length; charIndex++) {
                 String currentText = fullText.substring(0, charIndex);
-                int endFrame = currentFrame + actualFramesPerChar;
-
-                // 如果超出总帧数，调整到总帧数
-                if (endFrame > requiredFrames) {
-                    endFrame = requiredFrames;
-                }
-
-                states.add(new TextAnimationState(currentText, currentFrame, endFrame));
-                currentFrame = endFrame;
-
-                // 如果已经达到总帧数，提前结束
-                if (currentFrame >= requiredFrames) {
-                    break;
+                for (int repeat = 0; repeat < framesPerChar && filled < texts.length; repeat++) {
+                    texts[filled++] = currentText;
                 }
             }
-            animationFrames = currentFrame;
-
         } else {
-            // 快速模式：每帧显示多个字符
+            // 快速档：每帧显示多个字符
             int charsPerFrame = Math.max(1, Math.round(unifiedSpeed));
-            int totalAnimationFrames = (int) Math.ceil((double) fullText.length() / charsPerFrame);
-
-            for (int frameIndex = 0; frameIndex < totalAnimationFrames; frameIndex++) {
-                int endChar = Math.min((frameIndex + 1) * charsPerFrame, fullText.length());
-                String currentText = fullText.substring(0, endChar);
-                int endFrame = currentFrame + 1;
-
-                // 如果超出总帧数，调整到总帧数
-                if (endFrame > requiredFrames) {
-                    endFrame = requiredFrames;
-                }
-
-                states.add(new TextAnimationState(currentText, currentFrame, endFrame));
-                currentFrame = endFrame;
-
-                // 如果已经达到总帧数，提前结束
-                if (currentFrame >= requiredFrames) {
-                    break;
-                }
-            }
-            animationFrames = currentFrame;
-        }
-
-        // 🔥 修复：添加定格帧，但只在动画完成后开始
-        if (animationFrames < requiredFrames && !states.isEmpty()) {
-            TextAnimationState lastState = states.get(states.size() - 1);
-            states.add(new TextAnimationState(lastState.text, animationFrames, requiredFrames));
-            logger.debug("动画{}帧 + 定格{}帧 = 总{}帧", animationFrames, requiredFrames - animationFrames, requiredFrames);
-        } else if (states.isEmpty()) {
-            // 如果没有状态，添加空白状态
-            states.add(new TextAnimationState("", 0, requiredFrames));
-        }
-
-        return states;
-    }
-
-    /**
-     * 根据帧索引获取对应的文本
-     */
-    private static String getTextForFrame(List<TextAnimationState> textStates, int frameIndex) {
-        for (TextAnimationState state : textStates) {
-            if (frameIndex >= state.startFrame && frameIndex < state.endFrame) {
-                return state.text;
+            for (int start = 0; start < fullText.length() && filled < texts.length; start += charsPerFrame) {
+                int endChar = Math.min(start + charsPerFrame, fullText.length());
+                texts[filled++] = fullText.substring(0, endChar);
             }
         }
 
-        // 如果超出范围，返回最后一个状态的文本
-        if (!textStates.isEmpty()) {
-            return textStates.get(textStates.size() - 1).text;
+        // 动画结束后定格：剩余帧沿用最后一段文本
+        String holdText = filled > 0 ? texts[filled - 1] : fullText;
+        for (int i = filled; i < texts.length; i++) {
+            texts[i] = holdText;
         }
-
-        return "";
+        logger.debug("动画{}帧 + 定格{}帧 = 总{}帧", filled, texts.length - filled, texts.length);
+        return texts;
     }
 
     /**
@@ -446,8 +447,9 @@ public class RenderOfVideo {
         Graphics2D g2d = frame.createGraphics();
 
         try {
-            // 设置高质量渲染
-            RenderQualityUtils.setupUltraQualityRendering(g2d);
+            // 视频帧文字用灰度抗锯齿：LCD 子像素抗锯齿的彩边在 YUV420 + H.264 之后会变脏，
+            // 也让成片文字与预览图不一致（详见 RenderQualityUtils.setupVideoFrameRendering）。
+            RenderQualityUtils.setupVideoFrameRendering(g2d);
 
             final float designToFrame = ProjectConfig.VIDEO_WIDTH > 0
                     ? (float) frame.getWidth() / ProjectConfig.VIDEO_WIDTH
@@ -529,21 +531,6 @@ public class RenderOfVideo {
                 return 8.0f; // 极快：8字符/帧
             default:
                 return 1.0f;
-        }
-    }
-
-    /**
-     * 文本动画状态内部类
-     */
-    private static class TextAnimationState {
-        final String text;
-        final int startFrame;
-        final int endFrame;
-
-        TextAnimationState(String text, int startFrame, int endFrame) {
-            this.text = text;
-            this.startFrame = startFrame;
-            this.endFrame = endFrame;
         }
     }
 

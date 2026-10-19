@@ -55,22 +55,15 @@
     "text" : "这是怎么回事",
     "location" : "办公室",
     "speakerC" : [ {
-      "characterID" : "char_1785997936961",
-      "characterName" : "格里高尔",
-      "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    }, {
-      "characterID" : "char_1791800699958",
+      "characterID" : "char_1792296094464",
       "characterName" : "新角色",
       "height" : 170,
       "faction" : "未设定",
-      "colorBg" : "#4C361F",
+      "colorBg" : "#69350B",
       "colorText" : "#FBDBB3"
     } ],
-    "speakerName" : "格里高尔",
-    "faction" : "中立",
+    "speakerName" : "新角色",
+    "faction" : "未设定",
     "align" : "LEFT",
     "speed" : 3,
     "emotion" : "ANGRY",
@@ -83,14 +76,7 @@
     "freeTextX" : 0,
     "freeTextY" : 0
   },
-  "tempImages" : [ {
-    "uuid" : "93a9d801-b807-457e-8aca-0a021a941e4b",
-    "imagePath" : "C:/Users/26899/AppData/Roaming/limbus-company-plot-video-generator/projects/temp/images/93a9d801-b807-457e-8aca-0a021a941e4b.png",
-    "posX" : 0,
-    "posY" : 0,
-    "scale" : 1.0,
-    "dim" : false
-  } ],
+  "tempImages" : [ ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
     "audioId" : "办公室BGM",
@@ -125,10 +111,11 @@
       "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
       "defaultPortrait" : false
     },
-    "posX" : 1112,
+    "posX" : 88,
     "posY" : 257,
-    "adjX" : 384,
+    "adjX" : -640,
     "adjY" : 0,
+    "scale" : 1.0,
     "dim" : false
   }, {
     "chara" : {
@@ -157,6 +144,7 @@
     "posY" : 121,
     "adjX" : 0,
     "adjY" : 0,
+    "scale" : 1.0,
     "dim" : false
   } ],
   "bg" : [ {
@@ -228,6 +216,7 @@
     "posY" : 257,
     "adjX" : 384,
     "adjY" : 0,
+    "scale" : 1.0,
     "dim" : true
   } ],
   "bg" : [ {

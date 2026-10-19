@@ -58,7 +58,7 @@ class PortraitPreviewRendererTest {
         assertEquals(ProjectConfig.VIDEO_WIDTH, preview.getWidth(), "预览宽度应等于设计画布宽度");
         assertEquals(ProjectConfig.VIDEO_HEIGHT, preview.getHeight(), "预览高度应等于设计画布高度");
 
-        assertColorNear(preview, 300, 400, BACKGROUND_COLOR, "左侧背景区域应为背景色");
+        assertBackgroundTint(preview, 300, 400, "左侧背景区域应为背景色");
         assertColorNear(preview, 1000, 400, PORTRAIT_COLOR, "画面中央应出现立绘");
         assertBlack(preview, 1850, 50, "右上方超出 80% 场景区域，应为黑边");
         assertBlack(preview, 50, 1000, "左下角超出 80% 场景区域，应为黑边");
@@ -82,7 +82,7 @@ class PortraitPreviewRendererTest {
         assertEquals(960, preview.getWidth());
         assertEquals(540, preview.getHeight());
 
-        assertColorNear(preview, 150, 200, BACKGROUND_COLOR, "缩放后左侧仍应为背景色");
+        assertBackgroundTint(preview, 150, 200, "缩放后左侧仍应为背景色");
         assertColorNear(preview, 500, 200, PORTRAIT_COLOR, "缩放后中央仍应为立绘");
         assertBlack(preview, 925, 25, "缩放后右上方仍应为黑边");
     }
@@ -113,6 +113,20 @@ class PortraitPreviewRendererTest {
                         && Math.abs(actual.getGreen() - expected.getGreen()) <= 3
                         && Math.abs(actual.getBlue() - expected.getBlue()) <= 3,
                 message + "：期望 " + expected + "，实际 " + actual);
+    }
+
+    /**
+     * 背景色判断：画面四周压着一圈黑色渐变遮罩（见 {@link RenderOfImage} 的遮罩参数），
+     * 所以靠近边缘的取样点会比背景原色更暗。这里只要求"仍然是背景那个色相，且不会比原色更亮"。
+     *
+     * <p>遮罩本身的不透明度曲线由 {@link BorderMaskProfileTest} 单独盯着，这里只负责构图。
+     */
+    private static void assertBackgroundTint(BufferedImage image, int x, int y, String message) {
+        Color actual = new Color(image.getRGB(x, y), true);
+        assertTrue(actual.getBlue() > actual.getRed() + 40 && actual.getBlue() > actual.getGreen() + 40,
+                message + "：应仍是蓝色背景（不能是黑边或立绘），实际 " + actual);
+        assertTrue(actual.getBlue() <= BACKGROUND_COLOR.getBlue(),
+                message + "：遮罩只压暗不加亮，实际 " + actual);
     }
 
     /** 黑边判断 */

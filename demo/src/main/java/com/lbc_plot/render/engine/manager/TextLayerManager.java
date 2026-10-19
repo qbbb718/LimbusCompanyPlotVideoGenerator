@@ -223,8 +223,8 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
                 bottom = (int) (y + totalHeight);
             }
 
-            width = Math.max(width, right);
-            height = Math.max(height, bottom);
+            // 未锁定画布尺寸时才撑大画布（固定尺寸下超出的文字在合成时被裁掉）
+            growCanvasTo(right, bottom);
 
         } else {
             // 单行文本
@@ -253,8 +253,8 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
                 bottom = y + textHeight;
             }
 
-            width = Math.max(width, right);
-            height = Math.max(height, bottom);
+            // 未锁定画布尺寸时才撑大画布（固定尺寸下超出的文字在合成时被裁掉）
+            growCanvasTo(right, bottom);
         }
 
         tempG.dispose();

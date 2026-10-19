@@ -42,11 +42,25 @@ public class ImageReader {
      * {@code null}：返回 null 只会让调用方在上层留下一句“读不出来”，
      * 真正的根因（例如 FFmpeg 原生库不可用）就此丢失，用户只能看到红色“加载失败”占位图。
      *
+     * <p><b>解码结果会进 {@link ImageCache}</b>：预览/导出会反复读同一批背景与立绘，
+     * 每次重新解码一张 1080p 背景约 60ms，缓存命中后接近 0。返回的图像可能被多处共享，
+     * 调用方<b>只能读不能改</b>（需要改动请先复制）。
+     *
      * @param file 图片文件
      * @return BufferedImage
      * @throws IOException 文件不存在，或 ImageIO 与 FFmpeg 都无法解码
      */
     public static BufferedImage readImageFile(File file) throws IOException {
+        return ImageCache.load(file, ImageReader::decodeImageFileUncached);
+    }
+
+    /**
+     * 真正解码一张图片文件（不经过 {@link ImageCache}）。
+     *
+     * <p>只在缓存未命中、以及自检/测试需要"重新解码一次"时调用；
+     * 常规读图请走 {@link #readImageFile(File)}。
+     */
+    static BufferedImage decodeImageFileUncached(File file) throws IOException {
         if (file == null || !file.exists() || !file.isFile()) {
             throw new IOException("文件不存在: " + (file == null ? "null" : file.getAbsolutePath()));
         }

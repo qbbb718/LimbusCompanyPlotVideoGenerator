@@ -28,20 +28,18 @@ public class TextureColorizer {
 
     /**
      * 将白色纹理着色为目标RGB颜色
-     * 
+     *
+     * <p>算法与旧实现逐像素一致：先按加权平均算亮度，再用「目标色 × 亮度」着色、保留原 alpha。
+     * 但不再逐像素 {@code getRGB}/{@code new Color()}：整幅取一次 {@code int[]}、原地算完再整幅写回。
+     * 名片纹理是 1308×543（71 万像素），旧写法每次要 30~70ms，而每渲染一次预览都要跑一次。
+     *
      * @param texture     白色纹理（RGB格式）
      * @param targetRed   目标红色分量 (0-255)
      * @param targetGreen 目标绿色分量 (0-255)
      * @param targetBlue  目标蓝色分量 (0-255)
-     * @return 着色后的图像
+     * @return 着色后的图像（不修改入参）
      */
     public static BufferedImage colorizeToRGB(BufferedImage texture, int targetRed, int targetGreen, int targetBlue) {
-        long startTime = System.currentTimeMillis();
-
-        logger.info("开始纹理着色: 纹理尺寸={}x{}, 目标颜色=RGB({},{},{})",
-                texture.getWidth(), texture.getHeight(), targetRed, targetGreen, targetBlue);
-
-        // 验证输入参数
         if (texture == null) {
             logger.error("纹理不能为null");
             throw new IllegalArgumentException("纹理不能为null");
@@ -53,85 +51,39 @@ public class TextureColorizer {
             throw new IllegalArgumentException("颜色分量必须在0-255范围内");
         }
 
-        BufferedImage result = new BufferedImage(
-                texture.getWidth(), texture.getHeight(), BufferedImage.TYPE_INT_ARGB);
-
-        int totalPixels = texture.getWidth() * texture.getHeight();
-        int processedPixels = 0;
-        long lastLogTime = startTime;
-
-        for (int y = 0; y < texture.getHeight(); y++) {
-            for (int x = 0; x < texture.getWidth(); x++) {
-                int rgb = texture.getRGB(x, y);
-                Color originalColor = new Color(rgb, true); // 支持透明度
-
-                // 计算原像素的亮度（灰度值）
-                float brightness = calculateBrightness(originalColor);
-
-                // 应用目标颜色，保持亮度关系
-                Color newColor = applyTargetColor(originalColor, targetRed, targetGreen, targetBlue, brightness);
-
-                result.setRGB(x, y, newColor.getRGB());
-
-                processedPixels++;
-
-                // 每处理10%的像素或每隔5秒记录一次进度
-                long currentTime = System.currentTimeMillis();
-                if (processedPixels % (totalPixels / 10) == 0 || currentTime - lastLogTime > 5000) {
-                    float progress = (float) processedPixels / totalPixels * 100;
-                    // logger.debug("处理进度: {:.1f}% ({}/{} 像素)", progress, processedPixels,
-                    // totalPixels);
-                    lastLogTime = currentTime;
-                }
-            }
+        final int width = texture.getWidth();
+        final int height = texture.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        if (width <= 0 || height <= 0) {
+            return result;
         }
 
-        long duration = System.currentTimeMillis() - startTime;
-        logger.info("纹理着色完成: 耗时{}ms, 处理{}个像素, 平均{:.2f}像素/ms",
-                duration, totalPixels, (float) totalPixels / Math.max(1, duration));
+        int[] pixels = texture.getRGB(0, 0, width, height, null, 0, width);
+        for (int i = 0; i < pixels.length; i++) {
+            int pixel = pixels[i];
+            int alpha = pixel >>> 24;
+            if (alpha == 0) {
+                // 全透明像素着色后依旧不可见，保持原值
+                continue;
+            }
+            int r = (pixel >> 16) & 0xFF;
+            int g = (pixel >> 8) & 0xFF;
+            int b = pixel & 0xFF;
+            // 与人眼感知接近的加权平均亮度（与旧实现一致）
+            float brightness = (r * 0.299f + g * 0.587f + b * 0.114f) / 255.0f;
+            int outR = clamp((int) (targetRed * brightness));
+            int outG = clamp((int) (targetGreen * brightness));
+            int outB = clamp((int) (targetBlue * brightness));
+            pixels[i] = (alpha << 24) | (outR << 16) | (outG << 8) | outB;
+        }
+        result.setRGB(0, 0, width, height, pixels, 0, width);
 
         return result;
     }
 
-    /**
-     * 计算颜色的亮度（多种算法可选）
-     */
-    private static float calculateBrightness(Color color) {
-        // 方法2：加权平均（更符合人眼感知，推荐）
-        float brightness = (color.getRed() * 0.299f + color.getGreen() * 0.587f + color.getBlue() * 0.114f) / 255.0f;
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("计算亮度: RGB({},{},{}) -> 亮度={:.3f}",
-                    color.getRed(), color.getGreen(), color.getBlue(), brightness);
-        }
-
-        return brightness;
-    }
-
-    /**
-     * 应用目标颜色到原像素
-     */
-    private static Color applyTargetColor(Color originalColor, int targetRed, int targetGreen, int targetBlue,
-            float brightness) {
-        // 保持透明度
-        int alpha = originalColor.getAlpha();
-
-        // 基础着色：目标颜色 × 原像素亮度
-        int r = (int) (targetRed * brightness);
-        int g = (int) (targetGreen * brightness);
-        int b = (int) (targetBlue * brightness);
-
-        // 限制范围 (0-255)
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("应用颜色: 亮度={:.3f}, 目标RGB({},{},{}), 结果RGB({},{},{})",
-                    brightness, targetRed, targetGreen, targetBlue, r, g, b);
-        }
-
-        return new Color(r, g, b, alpha);
+    /** 限制到 0-255。 */
+    private static int clamp(int value) {
+        return value < 0 ? 0 : Math.min(value, 255);
     }
 
     /**

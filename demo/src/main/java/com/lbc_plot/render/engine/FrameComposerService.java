@@ -24,9 +24,8 @@ public class FrameComposerService extends BaseLayerManager
     public FrameComposerService() {
         this.imageManager = new ImageLayerManager();
         this.textManager = new TextLayerManager();
-        // 同步初始尺寸
-        this.imageManager.setOutputSize(width, height);
-        this.textManager.setOutputSize(width, height);
+        // 构造时不锁定尺寸：两个 manager 自己的默认尺寸就是 1920×1080，
+        // 保持"未调用 setOutputSize 时画布自适应图层"的旧行为。
     }
 
     // 重写尺寸设置以确保同步
@@ -71,14 +70,41 @@ public class FrameComposerService extends BaseLayerManager
     public BufferedImage compose() {
         BufferedImage result = createTransparentImage();
         Graphics2D g2d = result.createGraphics();
+        try {
+            RenderQualityUtils.setupHighQualityRendering(g2d);
+            g2d.setClip(0, 0, width, height);
 
-        RenderQualityUtils.setupHighQualityRendering(g2d);
-        g2d.setClip(0, 0, width, height);
+            imageManager.drawLayers(g2d);
+            textManager.drawTextLayers(g2d);
+        } finally {
+            g2d.dispose();
+        }
+        logCompositionStats();
+        return result;
+    }
 
-        imageManager.drawLayers(g2d);
-        textManager.drawTextLayers(g2d);
+    /**
+     * 以指定不透明底色合成一张图。
+     *
+     * <p>比"先 {@link #compose()} 再往上层叠一块全屏纯色"少分配一张 1080p 的 ARGB 图、
+     * 也少一次整幅写入：预览图 / 视频静态帧外圈的黑边属于这类场景。
+     *
+     * @param rgb 底色（24 位 RGB，alpha 强制为不透明）
+     */
+    public BufferedImage composeOnBackground(int rgb) {
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = result.createGraphics();
+        try {
+            RenderQualityUtils.setupHighQualityRendering(g2d);
+            g2d.setColor(new Color(rgb & 0x00FFFFFF));
+            g2d.fillRect(0, 0, width, height);
+            g2d.setClip(0, 0, width, height);
 
-        g2d.dispose();
+            imageManager.drawLayers(g2d);
+            textManager.drawTextLayers(g2d);
+        } finally {
+            g2d.dispose();
+        }
         logCompositionStats();
         return result;
     }
@@ -96,7 +122,10 @@ public class FrameComposerService extends BaseLayerManager
     }
 
     private void logCompositionStats() {
-        logger.info("合成完成: {}x{}, 图片图层{}, 文字图层{}",
+        if (!logger.isDebugEnabled()) {
+            return;
+        }
+        logger.debug("合成完成: {}x{}, 图片图层{}, 文字图层{}",
                 width, height, imageManager.getLayerCount(), textManager.getTextLayerCount());
     }
 
@@ -146,6 +175,11 @@ public class FrameComposerService extends BaseLayerManager
     public void addImageLayerResized(BufferedImage image, int x, int y, int targetWidth, int targetHeight,
             boolean keepAspectRatio) {
         imageManager.addImageLayerResized(image, x, y, targetWidth, targetHeight, keepAspectRatio);
+    }
+
+    @Override
+    public void addImageLayerIntoRect(BufferedImage image, int x, int y, int targetWidth, int targetHeight) {
+        imageManager.addImageLayerIntoRect(image, x, y, targetWidth, targetHeight);
     }
 
     @Override

@@ -28,10 +28,8 @@ import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.io.IOException;
 import java.io.File;
-import java.io.ByteArrayOutputStream;
 import java.util.UUID;
 import java.awt.image.BufferedImage;
-import javax.imageio.ImageIO;
 
 import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.common.util.io.ExportNoticeWriter;
@@ -80,9 +78,27 @@ public class RecordController {
      * <p>v8：背景支持缩放/位置、立绘支持缩放。默认值（scale=1、pos=0）下画面与旧版一致，
      * 但旧缓存无法反映新参数，统一作废。
      *
+     * <p>v9：渲染管线合并成两趟合成（去掉一次重复绘制与一次多余的 1080p 中间图），
+     * UI 图层直接画进最终画布，少了一次 8 位取整，个别像素与旧版差 1~2。
+     * 缓存里的旧图与新管线不完全一致，统一作废。
+     *
+     * <p>v10：四周的黑色渐变遮罩改成按原作帧反解出来的宽暗角
+     * （见 {@code RenderOfImage.buildBorderMask}），画面边缘明显变柔和，旧缓存作废。
+     *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v8";
+    private static final String PREVIEW_CACHE_VERSION = "v10";
+
+    /**
+     * 正在渲染中的预览图：key = 缓存文件名，value = 渲染结果。
+     *
+     * <p>同一张图被并发请求时（例如预览面板重新挂载、反复点同一条记录），后到的请求
+     * 直接等前一个的结果，不用把同样的画面渲染两遍。只对 {@code forceRefresh=false}
+     * 的请求生效：带 forceRefresh 的调用方是在说"记录内容变了，别拿旧的"，
+     * 此时不能把别人的在途结果当成自己的。
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<String, CompletableFuture<byte[]>> PREVIEW_IN_FLIGHT =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * 文件名里不允许出现的字符（Windows 限制最严，跨平台按这一套过滤即可）：
@@ -371,7 +387,7 @@ public class RecordController {
             @RequestParam(defaultValue = "false") boolean forceRefresh,
             @RequestParam(defaultValue = "true") boolean plot) {
         long startTime = System.currentTimeMillis();
-        logger.info("预览图请求: uuid={}, width={}, height={}, forceRefresh={}, plot={}",
+        logger.debug("预览图请求: uuid={}, width={}, height={}, forceRefresh={}, plot={}",
                 record.getUuid(), width, height, forceRefresh, plot);
 
         try {
@@ -390,53 +406,108 @@ public class RecordController {
             if (!forceRefresh && Files.exists(cacheFile)) {
                 byte[] cachedBytes = Files.readAllBytes(cacheFile);
                 long elapsed = System.currentTimeMillis() - startTime;
-                logger.info("预览图缓存命中: uuid={}, 大小={} bytes, 耗时={} ms",
+                logger.debug("预览图缓存命中: uuid={}, 大小={} bytes, 耗时={} ms",
                         record.getUuid(), cachedBytes.length, elapsed);
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.IMAGE_PNG);
-                headers.setContentLength(cachedBytes.length);
-                return ResponseEntity.ok().headers(headers).body(cachedBytes);
+                return pngResponse(cachedBytes);
             }
 
-            // 渲染 + 写缓存
-            BufferedImage previewImage = RenderOfImage.renderPre(record, plot, width, height);
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(previewImage, "PNG", baos);
-            byte[] imageBytes = baos.toByteArray();
-
-            // 保存到磁盘缓存
-            Files.write(cacheFile, imageBytes);
-            logger.info("预览图已缓存: {}", cacheFile.toAbsolutePath());
-
-            // 顺手清掉同一 uuid+分辨率的旧版（无版本号）缓存：它是修复前渲染的坏图，
-            // 留着只会占地方、并让人误以为问题还在。失败不影响本次返回。
-            Path legacyCacheFile = cacheDir.resolve(String.format("preview_%s_%dx%d.png",
-                    record.getUuid(), width, height));
-            try {
-                if (Files.deleteIfExists(legacyCacheFile)) {
-                    logger.info("已清理旧版预览图缓存: {}", legacyCacheFile.getFileName());
+            // 同一张图正在渲染时直接复用结果（仅限未声明"内容已变"的请求）。
+            // forceRefresh=true 的调用方是在说"记录内容变了"，不能把别人的在途结果当成自己的。
+            CompletableFuture<byte[]> mine = new CompletableFuture<>();
+            CompletableFuture<byte[]> running = forceRefresh ? null : PREVIEW_IN_FLIGHT.putIfAbsent(cacheFileName, mine);
+            if (running != null) {
+                try {
+                    byte[] shared = running.join();
+                    logger.debug("预览图复用并发渲染结果: uuid={}, 耗时={} ms",
+                            record.getUuid(), System.currentTimeMillis() - startTime);
+                    return pngResponse(shared);
+                } catch (Exception e) {
+                    // 抢先渲染的那个失败了：退化为"本请求自己渲染一次"，不要把异常抛给用户
+                    logger.debug("并发渲染失败，改为独立渲染: {}", e.getMessage());
                 }
-            } catch (Exception ex) {
-                logger.debug("清理旧版预览图缓存失败: {}", ex.getMessage());
             }
+            // registered=true 表示这次渲染结果要负责交给等待者；false 表示退化路径（不登记）
+            final boolean registered = running == null;
 
-            long elapsed = System.currentTimeMillis() - startTime;
-            logger.info("预览图渲染完成: uuid={}, 大小={} bytes, 耗时={} ms",
-                    record.getUuid(), imageBytes.length, elapsed);
+            try {
+                // 渲染
+                BufferedImage previewImage = RenderOfImage.renderPre(record, plot, width, height);
+                long renderDone = System.currentTimeMillis();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.IMAGE_PNG);
-            headers.setContentLength(imageBytes.length);
-            headers.setCacheControl("no-cache");
+                // 编码：预览图是不透明画面，用快速 PNG 编码器（比 ImageIO.write 快一倍多且文件更小）
+                byte[] imageBytes = com.lbc_plot.common.util.io.PreviewPngWriter.toBytes(previewImage, true);
 
-            return ResponseEntity.ok().headers(headers).body(imageBytes);
+                // 保存到磁盘缓存（临时文件 + 原子改名，避免半截文件被当成有效缓存长期返回）
+                writeCacheAtomically(cacheFile, imageBytes);
+
+                // 顺手清掉同一 uuid+分辨率的旧版（无版本号）缓存：它是修复前渲染的坏图，
+                // 留着只会占地方、并让人误以为问题还在。失败不影响本次返回。
+                Path legacyCacheFile = cacheDir.resolve(String.format("preview_%s_%dx%d.png",
+                        record.getUuid(), width, height));
+                try {
+                    if (Files.deleteIfExists(legacyCacheFile)) {
+                        logger.debug("已清理旧版预览图缓存: {}", legacyCacheFile.getFileName());
+                    }
+                } catch (Exception ex) {
+                    logger.debug("清理旧版预览图缓存失败: {}", ex.getMessage());
+                }
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                logger.info("预览图渲染完成: uuid={}, 尺寸={}x{}, 大小={} bytes, 渲染={} ms, 编码={} ms, 总耗时={} ms",
+                        record.getUuid(), width, height, imageBytes.length,
+                        renderDone - startTime, System.currentTimeMillis() - renderDone, elapsed);
+
+                if (registered) {
+                    mine.complete(imageBytes);
+                }
+                return pngResponse(imageBytes);
+            } catch (Exception e) {
+                if (registered) {
+                    mine.completeExceptionally(e);
+                }
+                throw e;
+            } finally {
+                if (registered) {
+                    PREVIEW_IN_FLIGHT.remove(cacheFileName, mine);
+                }
+            }
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - startTime;
             logger.error("预览图渲染失败: uuid={}, 耗时={} ms, 错误={}",
                     record.getUuid(), elapsed, e.getMessage(), e);
             throw new RuntimeException("渲染预览图失败: " + e.getMessage());
+        }
+    }
+
+    /** 把预览图字节包装成 PNG 响应。 */
+    private ResponseEntity<byte[]> pngResponse(byte[] bytes) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+        headers.setContentLength(bytes.length);
+        headers.setCacheControl("no-cache");
+        return ResponseEntity.ok().headers(headers).body(bytes);
+    }
+
+    /**
+     * 原子写入预览图缓存：先写同目录临时文件再改名。
+     *
+     * <p>直接 {@code Files.write} 时，进程被关掉/磁盘满会留下半截 PNG，
+     * 而缓存命中路径只检查"文件存在"，于是那张坏图会被一直当成有效缓存返回。
+     */
+    private void writeCacheAtomically(Path cacheFile, byte[] bytes) throws IOException {
+        Path tmp = cacheFile.resolveSibling(cacheFile.getFileName() + ".tmp");
+        Files.write(tmp, bytes);
+        try {
+            Files.move(tmp, cacheFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException moveError) {
+            // 少数文件系统（或被占用）上 move 会失败：退回直接写目标文件
+            logger.debug("预览图缓存改名失败，改为直接写入: {}", moveError.getMessage());
+            Files.write(cacheFile, bytes);
+            try {
+                Files.deleteIfExists(tmp);
+            } catch (IOException ignored) {
+                // 清理失败不影响功能
+            }
         }
     }
 
