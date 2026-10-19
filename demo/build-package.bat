@@ -83,6 +83,24 @@ if not defined PACK_OUTPUT set "PACK_OUTPUT=%REPO_ROOT%\release"
 echo Output directory: %PACK_OUTPUT%
 echo.
 
+REM --- Download mirrors ---
+REM electron-builder fetches the Electron binary (137 MB) and the NSIS
+REM toolchain at packaging time. Both default to github.com, which is
+REM unreachable on many networks; the failure looks like
+REM   Get "https://github.com/electron/electron/releases/...": dial tcp ...:
+REM   connectex: A connection attempt failed ...
+REM   app-builder.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+REM app-builder.exe reads these two variables itself, so setting them for
+REM npm is not enough - they must be in this process environment.
+REM   - variable already defined -> yours wins (no override)
+REM   - DOWNLOAD_MIRROR=off      -> keep the github.com default
+REM Both mirrored paths were verified: electron/39.8.10/v39.8.10 zip and
+REM electron-builder-binaries/nsis-3.0.4.1 + nsis-resources-3.4.1.
+if /i not "%DOWNLOAD_MIRROR%"=="off" (
+    if not defined ELECTRON_MIRROR set "ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/"
+    if not defined ELECTRON_BUILDER_BINARIES_MIRROR set "ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/"
+)
+
 REM --- Prerequisite checks ---
 set "HAS_ERROR="
 
@@ -164,7 +182,25 @@ echo.
 REM --- 3. Package Electron app ---
 echo [3/4] Packaging Electron app...
 echo        This may take a while on first run ^(downloading Electron binary^)...
+if defined ELECTRON_MIRROR echo        Electron binary mirror: %ELECTRON_MIRROR%
+if defined ELECTRON_BUILDER_BINARIES_MIRROR echo        NSIS binaries mirror: %ELECTRON_BUILDER_BINARIES_MIRROR%
 echo.
+
+REM --- winCodeSign cache ---
+REM app-builder.exe needs winCodeSign-2.6.0 (rcedit writes the exe icon and
+REM version info). It downloads the 7z and unpacks it with 7za.exe, which
+REM fails on the two macOS symlinks inside that archive unless the shell is
+REM elevated:
+REM   ERROR: Cannot create symbolic link : a required privilege is not held
+REM   by the client
+REM   app-builder.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+REM Pre-extracting it (skipping only those two symlinks) avoids 7za: an
+REM existing cache directory is trusted as is. Not fatal - an elevated shell
+REM can still unpack the archive itself, which is what happens on CI.
+if exist "%REPO_ROOT%\scripts\prepare-win-codesign.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\scripts\prepare-win-codesign.ps1"
+    if errorlevel 1 echo        [WARN] Continuing without the winCodeSign cache.
+)
 
 REM Stop only processes that live inside this repository and can lock files
 REM under the output directory: a leftover backend (java/javaw), a dev or
@@ -229,7 +265,10 @@ echo [ERROR] Packaging failed.
 echo.
 echo        Common causes:
 echo        1. A file in the output directory is locked by another process ^(try rebooting^)
-echo        2. Electron binary download failed ^(check VPN/network^)
+echo        2. Electron / NSIS download failed - the mirror is unreachable too.
+echo           Try another one, or the default hosts:
+echo             set "ELECTRON_MIRROR=https://mirrors.huaweicloud.com/electron/"
+echo             set DOWNLOAD_MIRROR=off
 echo        3. Antivirus is blocking file operations
 goto :FATAL
 

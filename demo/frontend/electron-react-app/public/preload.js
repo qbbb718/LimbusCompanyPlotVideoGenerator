@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 文件操作
   openFile: () => ipcRenderer.invoke("dialog:openFile"),
   openImageFile: () => ipcRenderer.invoke("dialog:openImageFile"),
+  // 立绘批量导入：一次选多张图
+  openImageFiles: () => ipcRenderer.invoke("dialog:openImageFiles"),
   saveFile: (defaultPath, data) =>
     ipcRenderer.invoke("dialog:saveFile", defaultPath, data),
   readFile: (filePath) => ipcRenderer.invoke("file:read", filePath),

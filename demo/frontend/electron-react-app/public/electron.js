@@ -1049,6 +1049,25 @@ ipcMain.handle("dialog:openImageFile", async () => {
   return { canceled };
 });
 
+// 图片文件对话框（多选）：立绘批量导入用
+ipcMain.handle("dialog:openImageFiles", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: "批量选择立绘图片",
+    buttonLabel: "导入",
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "bmp", "webp"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+
+  if (!canceled) {
+    return { canceled, filePaths };
+  }
+
+  return { canceled };
+});
+
 // 文件对话框
 ipcMain.handle("dialog:openFile", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({

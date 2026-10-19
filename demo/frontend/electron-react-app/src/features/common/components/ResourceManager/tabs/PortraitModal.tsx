@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Portrait } from "@types";
 import {
   detectEmotionFromFileName,
@@ -15,6 +15,10 @@ import {
   PortraitScenePreview,
   createLogger,
 } from "./PortraitModal/index";
+import {
+  PortraitCropState,
+  isValidCropState,
+} from "@features/common/utils/portraitCrop";
 import "./CharacterModal.css";
 import "./EmotionInput.css";
 
@@ -55,41 +59,54 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   } = usePortraitState({ characterId, portrait, isNewPortrait });
 
   const {
-    crop,
-    zoom,
     croppedAreaPixels,
     onCropComplete,
     handleImageLoad,
     resetCropParameters,
   } = useImageCropper(portrait);
 
-  // 获取角色的默认立绘裁剪状态
-  const getDefaultCropState = () => {
-    // 优先使用传入的默认立绘数据
-    if (defaultPortrait) {
-      return {
-        faceX: defaultPortrait.faceX || 0,
-        faceY: defaultPortrait.faceY || 0,
-        length: defaultPortrait.length || 100,
-      };
-    }
+  /**
+   * 角色默认立绘的裁剪参数 —— 「裁剪与默认立绘一致」按钮的目标。
+   *
+   * 为 null 时按钮不显示，三种情况都不该有按钮：
+   * 1. 角色还没有默认立绘（一根立绘都没有），没有可对齐的目标；
+   * 2. 默认立绘还没框过头（length <= 0），裁剪参数没有意义；
+   * 3. 正在编辑的就是默认立绘本身，"与自己一致"没有意义。
+   */
+  const defaultCropState = useMemo<PortraitCropState | null>(() => {
+    if (!defaultPortrait) return null;
 
-    // 如果没有默认立绘数据，使用当前立绘的数据
-    if (portrait) {
-      return {
-        faceX: portrait.faceX || 0,
-        faceY: portrait.faceY || 0,
-        length: portrait.length || 100,
-      };
-    }
-
-    // 否则，使用默认值
-    return {
-      faceX: 0,
-      faceY: 0,
-      length: 100,
+    const crop: PortraitCropState = {
+      faceX: defaultPortrait.faceX ?? 0,
+      faceY: defaultPortrait.faceY ?? 0,
+      length: defaultPortrait.length ?? 0,
     };
-  };
+    if (!isValidCropState(crop)) return null;
+
+    if (portrait && portrait.portraitID === defaultPortrait.portraitID) {
+      return null;
+    }
+    return crop;
+  }, [defaultPortrait, portrait]);
+
+  /**
+   * 新选文件时给新立绘**预置**的裁剪参数。
+   *
+   * <p>和按钮的目标不同：这里只是"让新立绘一打开就落在合理的位置"，所以默认立绘用不了时
+   * （正在编辑默认立绘本身、默认立绘还没框过头）退回当前立绘自己的裁剪参数 ——
+   * 换图重传不该把裁剪框丢掉。
+   */
+  const presetCropState = useMemo<PortraitCropState | undefined>(() => {
+    if (defaultCropState) return defaultCropState;
+    if (!portrait) return undefined;
+
+    const crop: PortraitCropState = {
+      faceX: portrait.faceX ?? 0,
+      faceY: portrait.faceY ?? 0,
+      length: portrait.length ?? 0,
+    };
+    return isValidCropState(crop) ? crop : undefined;
+  }, [defaultCropState, portrait]);
 
   const {
     fileInputRef, // 文件输入框引用
@@ -100,12 +117,11 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     onFileSelected: (file: File, imagePath: string, baseName: string) => {
       // 保存文件对象供后续上传到后端
       setPendingFile(file);
-      // 获取角色的默认立绘裁剪状态
-      const defaultCropState = getDefaultCropState();
+      // 新立绘先用默认立绘的裁剪参数预置，保证同一角色不同表情的缩放一致
       const nextPortrait = createNewPortrait(
         imagePath,
         baseName,
-        defaultCropState,
+        presetCropState,
       );
 
       // 读取上传图片的文件名自动设置情绪：中文、英文关键词都支持
@@ -188,12 +204,10 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             {/* 使用拆分后的组件 */}
             <PortraitPreview
               portraitPreview={portraitPreview}
-              crop={crop}
-              zoom={zoom}
               currentPortrait={currentPortrait}
               onCropComplete={onCropComplete}
               handleImageLoad={handleImageLoad}
-              defaultCropState={getDefaultCropState()}
+              defaultCropState={defaultCropState}
             />
 
             {/* 裁剪区域下方右侧：预览立绘在完整画面中的效果 */}

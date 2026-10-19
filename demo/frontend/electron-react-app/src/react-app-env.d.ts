@@ -7,6 +7,11 @@ interface Window {
     closeWindow: () => void;
     openFile: () => Promise<any>;
     openImageFile: () => Promise<any>;
+    /** 批量选择图片（立绘批量导入）：多选对话框，返回 filePaths 数组 */
+    openImageFiles: () => Promise<{
+      canceled: boolean;
+      filePaths?: string[];
+    }>;
     saveFile: (filename: string, data: string) => Promise<any>;
     readFile: (filePath: string) => Promise<Buffer>;
     /** 保存工程：更新已关联的工程文件（Ctrl+S），不弹对话框 */

@@ -7,6 +7,8 @@ interface PortraitCardProps {
   portrait: Portrait;
   characterId: string;
   isDefault: boolean;
+  /** 缩略图版本号：批量重生成缩略图后变，用来强制刷新缩略图 */
+  thumbnailVersion?: number;
   onEdit: (portrait: Portrait) => void;
   onSetDefault: (portraitId: string) => void;
   onDelete: (portraitId: string) => void;
@@ -16,6 +18,7 @@ const PortraitCard: React.FC<PortraitCardProps> = ({
   portrait,
   characterId,
   isDefault,
+  thumbnailVersion = 0,
   onEdit,
   onSetDefault,
   onDelete,
@@ -40,6 +43,7 @@ const PortraitCard: React.FC<PortraitCardProps> = ({
         <PortraitThumbnail
           portrait={portrait}
           characterId={characterId}
+          cacheBust={thumbnailVersion}
           onLoadComplete={handleImageLoad}
           onError={handleImageError}
         />

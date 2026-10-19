@@ -713,4 +713,106 @@
   cursor: not-allowed;
 }
 
+/* 立绘列表标题行：标题在左，批量操作按钮在右 */
+.portraits-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.portraits-section .section-header h3 {
+  margin: 0;
+}
+
+.portraits-section .section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.portraits-section .section-actions button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.portraits-section .section-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 批量操作的进度 / 结果提示条 */
+.batch-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+
+.batch-status--busy {
+  background: #f0f6ff;
+  border-color: #cfe3ff;
+  color: #1d4ed8;
+  align-items: center;
+}
+
+.batch-status--success {
+  background: #f0fbf1;
+  border-color: #cfe9d3;
+  color: #1f7a33;
+}
+
+.batch-status--error {
+  background: #fff2f0;
+  border-color: #ffccc7;
+  color: #a8071a;
+}
+
+.batch-status--info {
+  background: #fffbe6;
+  border-color: #ffe58f;
+  color: #874d00;
+}
+
+.batch-status-text {
+  flex: 1;
+}
+
+.batch-status-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.batch-status-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: batch-status-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes batch-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 

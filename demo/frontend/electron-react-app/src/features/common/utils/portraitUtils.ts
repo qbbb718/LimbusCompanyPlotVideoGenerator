@@ -1,4 +1,5 @@
 import { Portrait } from "@types";
+import { AppConfig } from "@root/features/common/config/appConfig";
 
 /**
  * 立绘工具函数
@@ -56,4 +57,31 @@ export const markDefaultPortrait = (
     ...p,
     defaultPortrait: p.portraitID === portraitId,
   }));
+};
+
+/**
+ * 立绘原图的访问 URL。
+ *
+ * <p>`Portrait.imagePath` 是相对角色素材根目录的路径（例如
+ * `char_1785997975135/portrait_1785997993031.png`），必须整段拼上去：
+ * 只取文件名会让「按 characterId 分目录存放」的新立绘 404。
+ */
+export const buildPortraitImageUrl = (
+  imagePath: string | null | undefined,
+): string => {
+  if (!imagePath) {
+    return "";
+  }
+  if (
+    /^https?:/i.test(imagePath) ||
+    imagePath.startsWith("data:") ||
+    imagePath.startsWith("blob:")
+  ) {
+    return imagePath;
+  }
+  const apiBase = AppConfig.api.baseUrl.replace(/\/$/, "");
+  return `${apiBase}${AppConfig.resources.charactersBasePath}/${imagePath.replace(
+    /^\/+/,
+    "",
+  )}`;
 };

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Portrait, Emotion } from '@types';
 import createLogger from '../utils/logger';
-import { AppConfig } from '@root/features/common/config/appConfig';
+import { buildPortraitImageUrl } from '@features/common/utils/portraitUtils';
 
 const log = createLogger('usePortraitState');
 
@@ -32,17 +32,10 @@ export const usePortraitState = ({ characterId, portrait, isNewPortrait }: UsePo
   // 加载立绘图片
   const loadPortraitImage = async (imagePath: string) => {
     try {
-      // 检查是否是相对路径（后端资源）
-      if (!imagePath.startsWith('http') && !imagePath.startsWith('data:')) {
-        const apiBase = AppConfig.api.baseUrl.replace(/\/$/, '');
-        const imageUrl = `${apiBase}${AppConfig.resources.charactersBasePath}/${imagePath.replace(/^\/+/, '')}`;
-        log('使用HTTP URL加载图片', { imageUrl });
-        setPortraitPreview(imageUrl);
-      } else {
-        // 如果是绝对路径或data URL，直接使用
-        log('直接使用图片路径', imagePath);
-        setPortraitPreview(imagePath);
-      }
+      // 相对路径（后端资源）统一走 buildPortraitImageUrl 拼 URL
+      const imageUrl = buildPortraitImageUrl(imagePath);
+      log('加载立绘图片', { imagePath, imageUrl });
+      setPortraitPreview(imageUrl);
     } catch (error) {
       log('加载立绘图片失败', error);
     }

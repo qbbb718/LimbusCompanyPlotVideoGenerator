@@ -25,6 +25,8 @@ export interface ElectronAPI {
   // 文件操作
   openFile: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
   openImageFile: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
+  /** 批量选择图片（立绘批量导入）：多选对话框，返回 filePaths 数组 */
+  openImageFiles: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
   saveFile: (defaultPath: string, data: string) => Promise<{ canceled: boolean; filePath?: string }>;
   readFile: (filePath: string) => Promise<Buffer>;
   /** 保存工程：更新已关联的工程文件（Ctrl+S） */
