@@ -22,11 +22,11 @@ interface PortraitsSectionProps {
   onSetDefaultPortrait: (portraitId: string) => void;
   onDeletePortrait: (portraitId: string) => void;
   onAddPortrait: () => void;
-  /** 把默认立绘以外的所有立绘，裁剪都改成默认立绘的 */
+  /** 把默认立绘以外的所有立绘，裁剪都按默认立绘的比例套用 */
   onApplyDefaultCropToAll: () => void;
   /** 一次选多张图批量导入立绘 */
   onBatchImportPortraits: () => void;
-  /** 有可用的默认立绘裁剪时才允许「与默认立绘裁剪一致」 */
+  /** 有可用的默认立绘裁剪、且有其它立绘时才允许「与默认立绘裁剪一致」 */
   canApplyDefaultCrop: boolean;
   batchProgress: PortraitBatchProgress | null;
   batchMessage: PortraitBatchMessage | null;
@@ -76,8 +76,8 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
             disabled={isBusy || !canApplyDefaultCrop}
             title={
               canApplyDefaultCrop
-                ? "把默认立绘以外的立绘，裁剪框都改成默认立绘的（用于同一角色不同表情保持同样的头部比例）"
-                : "没有需要修改的立绘：角色还没有默认立绘、默认立绘还没框好头部，或其它立绘的裁剪已经一致"
+                ? "把默认立绘以外的立绘，裁剪框都按默认立绘的比例套用（原图尺寸不同也能保持同样的头部比例）"
+                : "没有需要修改的立绘：角色还没有默认立绘、默认立绘还没框好头部，或没有其它立绘"
             }
           >
             与默认立绘裁剪一致
@@ -86,7 +86,7 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
             className="btn-secondary"
             onClick={onBatchImportPortraits}
             disabled={isBusy}
-            title="一次选多张立绘图片导入；若已有默认立绘，导入的立绘会自动套用默认立绘的裁剪"
+            title="一次选多张立绘图片导入；若已有默认立绘，导入的立绘会按比例套用默认立绘的裁剪"
           >
             批量导入立绘
           </button>

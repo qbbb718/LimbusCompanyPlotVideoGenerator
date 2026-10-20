@@ -1,5 +1,7 @@
 import { Portrait } from "@types";
 import { AppConfig } from "@root/features/common/config/appConfig";
+import { ImageSize } from "./portraitCrop";
+import { loadImageElement } from "./imageUtils";
 
 /**
  * 立绘工具函数
@@ -84,4 +86,48 @@ export const buildPortraitImageUrl = (
     /^\/+/,
     "",
   )}`;
+};
+
+/**
+ * 正在读取中的立绘原图尺寸（按 URL 去重）。
+ *
+ * <p>只去重**并发**的重复读取，读到就删：立绘图片可能被「换一张图」原地覆盖，
+ * 长期缓存会让下一次套用裁剪时用的是旧尺寸。
+ */
+const pendingPortraitImageSizes = new Map<string, Promise<ImageSize | null>>();
+
+/**
+ * 读一张立绘原图的像素尺寸。
+ *
+ * <p>`{ faceX, faceY, length }` 存的是原图像素，想把默认立绘的裁剪**按比例**套到
+ * 另一张立绘上，必须先知道两张图各自的尺寸（例如 1600×2432 与 640×983）。
+ * 读不到（路径为空 / 图片 404 / 解码失败）时返回 null，调用方退回按像素照搬。
+ */
+export const loadPortraitImageSize = (
+  imagePath: string | null | undefined,
+): Promise<ImageSize | null> => {
+  const url = buildPortraitImageUrl(imagePath);
+  if (!url) {
+    return Promise.resolve(null);
+  }
+
+  const pending = pendingPortraitImageSizes.get(url);
+  if (pending) {
+    return pending;
+  }
+
+  const loading = loadImageElement(url).then(
+    (image) => {
+      pendingPortraitImageSizes.delete(url);
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    },
+    (error) => {
+      pendingPortraitImageSizes.delete(url);
+      console.warn("[portraitUtils] 读取立绘原图尺寸失败", url, error);
+      return null;
+    },
+  );
+
+  pendingPortraitImageSizes.set(url, loading);
+  return loading;
 };

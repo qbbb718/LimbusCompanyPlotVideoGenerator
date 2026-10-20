@@ -4,7 +4,7 @@ import {
   detectEmotionFromFileName,
   mapEmotion,
 } from "../../../utils/emotionMapper";
-import { createCroppedImage } from "../../../utils/imageUtils";
+import { createCroppedImage, loadImageElement } from "../../../utils/imageUtils";
 import ApiService from "@features/common/ApiService";
 import {
   usePortraitState,
@@ -16,13 +16,45 @@ import {
   createLogger,
 } from "./PortraitModal/index";
 import {
+  ImageSize,
   PortraitCropState,
   isValidCropState,
+  resolveDefaultCropRect,
 } from "@features/common/utils/portraitCrop";
+import { portraitCropOf } from "@features/common/utils/portraitBatch";
+import { loadPortraitImageSize } from "@features/common/utils/portraitUtils";
 import "./CharacterModal.css";
 import "./EmotionInput.css";
 
 const log = createLogger("PortraitModal");
+
+/**
+ * 等"新图 + 源图"尺寸最多这么久。
+ *
+ * <p>图片解码 / 请求卡住时不能把编辑器锁死：超时就先用兜底的像素值，
+ * 用户可以随后再点「裁剪与默认立绘一致」按比例校正。
+ */
+const PRESET_CROP_TIMEOUT_MS = 4000;
+
+/**
+ * 读一张待上传图片（本地文件）的像素尺寸。
+ *
+ * <p>objectURL 解码完就回收；读不到时返回 null，调用方退回按像素照搬。
+ */
+const readImageFileSize = async (file: File): Promise<ImageSize | null> => {
+  if (!file || file.size === 0) return null;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImageElement(objectUrl);
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  } catch (error) {
+    log("读取待上传图片尺寸失败", error);
+    return null;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
 
 interface PortraitModalProps {
   characterId: string;
@@ -46,6 +78,9 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
 }) => {
   // 保存用户选择的文件对象，供上传到后端使用
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // 正在读新图的尺寸、算预置裁剪：算完之前先别把裁剪器挂出来，
+  // 否则会用旧立绘的裁剪框先闪一下，再跳到按比例算好的位置
+  const [isPreparingImage, setIsPreparingImage] = useState(false);
   // 立绘场景预览弹窗是否打开
   const [showScenePreview, setShowScenePreview] = useState(false);
   // 使用自定义hooks管理状态
@@ -89,13 +124,7 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     return crop;
   }, [defaultPortrait, portrait]);
 
-  /**
-   * 新选文件时给新立绘**预置**的裁剪参数。
-   *
-   * <p>和按钮的目标不同：这里只是"让新立绘一打开就落在合理的位置"，所以默认立绘用不了时
-   * （正在编辑默认立绘本身、默认立绘还没框过头）退回当前立绘自己的裁剪参数 ——
-   * 换图重传不该把裁剪框丢掉。
-   */
+  /** 新立绘打开时**兜底**用的裁剪像素值（读不到图片尺寸时才会直接用到） */
   const presetCropState = useMemo<PortraitCropState | undefined>(() => {
     if (defaultCropState) return defaultCropState;
     if (!portrait) return undefined;
@@ -108,6 +137,46 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
     return isValidCropState(crop) ? crop : undefined;
   }, [defaultCropState, portrait]);
 
+  /**
+   * 新选的图该用哪个裁剪框。
+   *
+   * <p>`presetCropState` 是**像素**值，只能直接用在尺寸相同的图上。同一角色的立绘
+   * 可能是 1600×2432、也可能导出了 640×983 的版本，照搬像素值会让头框偏大或偏小，
+   * 所以这里按源图（默认立绘 / 这张立绘自己的旧图）的比例换算到新图上；
+   * 读不到任何一边的尺寸时，退回原来的像素值。
+   */
+  const resolveCropForNewFile = async (
+    file: File,
+  ): Promise<PortraitCropState | undefined> => {
+    const sourcePortrait = defaultCropState ? defaultPortrait : portrait;
+    const sourceCrop = defaultCropState
+      ? defaultCropState
+      : portrait
+        ? portraitCropOf(portrait)
+        : null;
+    if (!sourcePortrait || !sourceCrop || !isValidCropState(sourceCrop)) {
+      return presetCropState;
+    }
+
+    const [sourceImageSize, targetImageSize] = await Promise.all([
+      loadPortraitImageSize(sourcePortrait.imagePath),
+      readImageFileSize(file),
+    ]);
+    if (!targetImageSize) {
+      return presetCropState;
+    }
+
+    const { rect } = resolveDefaultCropRect({
+      crop: sourceCrop,
+      sourceImageSize,
+      imageSize: targetImageSize,
+    });
+    if (!rect) {
+      return presetCropState;
+    }
+    return { faceX: rect.left, faceY: rect.top, length: rect.width };
+  };
+
   const {
     fileInputRef, // 文件输入框引用
     selectImageFile, // 选择图片文件
@@ -115,27 +184,49 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   } = useFileSelector({
     characterId,
     onFileSelected: (file: File, imagePath: string, baseName: string) => {
-      // 保存文件对象供后续上传到后端
-      setPendingFile(file);
-      // 新立绘先用默认立绘的裁剪参数预置，保证同一角色不同表情的缩放一致
-      const nextPortrait = createNewPortrait(
-        imagePath,
-        baseName,
-        presetCropState,
-      );
+      // 换图要读两边的原图尺寸才能按比例预置裁剪，所以异步建好新立绘再写状态
+      setIsPreparingImage(true);
+      void (async () => {
+        try {
+          // 保存文件对象供后续上传到后端
+          setPendingFile(file);
+          // 新立绘按默认立绘的裁剪**比例**预置，保证同一角色不同表情的缩放一致。
+          // 读尺寸卡住时用兜底像素值，别让保存按钮一直灰着。
+          const presetCrop = await Promise.race([
+            resolveCropForNewFile(file),
+            new Promise<PortraitCropState | undefined>((resolve) =>
+              setTimeout(
+                () => resolve(presetCropState),
+                PRESET_CROP_TIMEOUT_MS,
+              ),
+            ),
+          ]);
+          const nextPortrait = createNewPortrait(
+            imagePath,
+            baseName,
+            presetCrop,
+          );
 
-      // 读取上传图片的文件名自动设置情绪：中文、英文关键词都支持
-      // 例：罗佳-face_happy_L.png → 开心；罗佳-悲伤.png → 悲伤
-      const fileName = file.name || baseName;
-      const detectedEmotion = detectEmotionFromFileName(fileName);
-      // 文件名里没有情绪关键词时，保留用户当前已选的情绪，不要退回“正常”
-      const emotion = detectedEmotion ?? mapEmotion(currentPortrait.emotion);
-      nextPortrait.emotion = emotion as unknown as Portrait["emotion"];
-      if (detectedEmotion) {
-        log("根据文件名自动设置情绪", { fileName, emotion: detectedEmotion });
-      }
+          // 读取上传图片的文件名自动设置情绪：中文、英文关键词都支持
+          // 例：罗佳-face_happy_L.png → 开心；罗佳-悲伤.png → 悲伤
+          const fileName = file.name || baseName;
+          const detectedEmotion = detectEmotionFromFileName(fileName);
+          // 文件名里没有情绪关键词时，保留用户当前已选的情绪，不要退回“正常”
+          const emotion =
+            detectedEmotion ?? mapEmotion(currentPortrait.emotion);
+          nextPortrait.emotion = emotion as unknown as Portrait["emotion"];
+          if (detectedEmotion) {
+            log("根据文件名自动设置情绪", {
+              fileName,
+              emotion: detectedEmotion,
+            });
+          }
 
-      setEditingPortrait(nextPortrait);
+          setEditingPortrait(nextPortrait);
+        } finally {
+          setIsPreparingImage(false);
+        }
+      })();
     },
     onPreviewSet: setPortraitPreview,
     onCropReset: resetCropParameters,
@@ -202,12 +293,22 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             </div>
 
             {/* 使用拆分后的组件 */}
+            {isPreparingImage && (
+              <div
+                className="portrait-preview-loading"
+                role="status"
+                style={{ padding: "24px 0", color: "#666", fontSize: "14px" }}
+              >
+                正在读取立绘尺寸并按比例套用裁剪…
+              </div>
+            )}
             <PortraitPreview
-              portraitPreview={portraitPreview}
+              portraitPreview={isPreparingImage ? null : portraitPreview}
               currentPortrait={currentPortrait}
               onCropComplete={onCropComplete}
               handleImageLoad={handleImageLoad}
               defaultCropState={defaultCropState}
+              defaultPortraitImagePath={defaultPortrait?.imagePath ?? null}
             />
 
             {/* 裁剪区域下方右侧：预览立绘在完整画面中的效果 */}
@@ -215,11 +316,13 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               <button
                 className="btn-secondary"
                 onClick={() => setShowScenePreview(true)}
-                disabled={!portraitPreview}
+                disabled={!portraitPreview || isPreparingImage}
                 title={
-                  portraitPreview
-                    ? "按当前裁剪参数渲染立绘在画面中的效果"
-                    : "请先选择立绘文件"
+                  isPreparingImage
+                    ? "正在读取新图的尺寸，稍等一下"
+                    : portraitPreview
+                      ? "按当前裁剪参数渲染立绘在画面中的效果"
+                      : "请先选择立绘文件"
                 }
               >
                 预览
@@ -241,6 +344,10 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
           </button>
           <button
             className="save-button"
+            disabled={isPreparingImage}
+            title={
+              isPreparingImage ? "正在读取新图的尺寸，稍等一下" : undefined
+            }
             onClick={async () => {
               if (editingPortrait) {
                 // 情绪由中文下拉框直接写入 editingPortrait.emotion，

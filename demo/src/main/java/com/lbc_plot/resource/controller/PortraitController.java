@@ -297,11 +297,25 @@ public class PortraitController {
 
     /**
      * 设置默认立绘
+     *
+     * <p>立绘的<b>文件</b>在上传接口就已经落盘，但 portraits 表里的<b>记录</b>要等用户
+     * 点「保存」（PUT /api/characters/{id}，内部会 upsert 全部立绘）才写。
+     * 于是"刚导入几张贴图、还没保存就点设为默认"时，库里根本没有这条立绘，
+     * 旧实现会直接抛"立绘不存在"，界面上就是"设置默认立绘失败，请重试"。
+     *
+     * <p>所以这里允许前端把立绘数据一起带过来：库里查不到这条记录时，先用请求体补写
+     * 一条 portraits 记录，再补角色-立绘关联、设默认。不带请求体时行为与以前完全一致
+     * （查不到就报错），老前端/其它调用方不受影响。
+     *
+     * @param characterId 角色ID
+     * @param portraitId  立绘ID
+     * @param portrait    立绘数据（可选，仅在库里还没有这条记录时用于补写）
      */
     @PutMapping("/characters/{characterId}/portraits/{portraitId}/default")
     public void setDefaultPortrait(
             @PathVariable String characterId,
-            @PathVariable String portraitId) {
+            @PathVariable String portraitId,
+            @RequestBody(required = false) Portrait portrait) {
         try {
             logger.info("设置默认立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId);
 
@@ -311,10 +325,17 @@ public class PortraitController {
                 CharacterDAO characterDao = handle.attach(CharacterDAO.class);
 
                 // 检查立绘是否存在
-                Portrait portrait = dao.findById(portraitId).orElse(null);
-                if (portrait == null) {
-                    logger.warning("立绘不存在，ID: " + portraitId);
-                    throw new RuntimeException("立绘不存在");
+                if (!dao.existsById(portraitId)) {
+                    if (portrait == null) {
+                        logger.warning("立绘不存在，ID: " + portraitId);
+                        throw new RuntimeException("立绘不存在");
+                    }
+                    // 立绘刚上传、还没保存过角色：用前端带来的数据补一条记录，
+                    // 否则"默认立绘"没有可指向的立绘行，关联表也无从建立。
+                    portrait.setPortraitID(portraitId);
+                    portrait.setCharacterID(characterId);
+                    dao.save(portrait);
+                    logger.info("立绘尚未入库，已用请求体补写记录: " + portraitId);
                 }
 
                 // 更新角色的默认立绘ID

@@ -87,8 +87,6 @@ describe("立绘批量操作", () => {
   });
 
   describe("collectCropUpdateTargets", () => {
-    const defaultCrop = { faceX: 243, faceY: 0, length: 192 };
-
     test("跳过默认立绘本身，返回其它立绘", () => {
       const portraits = [
         createPortrait({ portraitID: "default", defaultPortrait: true }),
@@ -101,38 +99,40 @@ describe("立绘批量操作", () => {
         }),
       ];
 
-      const targets = collectCropUpdateTargets(portraits, "default", defaultCrop);
+      const targets = collectCropUpdateTargets(portraits, "default");
 
       expect(targets.map((p) => p.portraitID)).toEqual(["b"]);
     });
 
-    test("已经和默认立绘一致的立绘不再处理", () => {
+    test("裁剪像素值相同也照样返回（改成按比例换算后，像素相同不代表一致）", () => {
+      // 默认立绘 1600×2432 上 192px 的框，和 640×983 立绘上的 192px 框完全不是同一个头框，
+      // 所以这里不能按像素把后者排除掉
       const portraits = [
         createPortrait({ portraitID: "default", defaultPortrait: true }),
         createPortrait({ portraitID: "same", portName: "same" }),
       ];
 
-      expect(collectCropUpdateTargets(portraits, "default", defaultCrop)).toEqual(
-        [],
-      );
+      expect(
+        collectCropUpdateTargets(portraits, "default").map(
+          (p) => p.portraitID,
+        ),
+      ).toEqual(["same"]);
     });
 
-    test("没有默认立绘 ID 时只按裁剪是否一致来挑", () => {
+    test("没有默认立绘 ID 时所有立绘都算目标", () => {
       const portraits = [
         createPortrait({ portraitID: "a", faceX: 0, faceY: 0, length: 100 }),
         createPortrait({ portraitID: "b" }),
       ];
 
-      const targets = collectCropUpdateTargets(portraits, null, defaultCrop);
+      const targets = collectCropUpdateTargets(portraits, null);
 
-      expect(targets.map((p) => p.portraitID)).toEqual(["a"]);
+      expect(targets.map((p) => p.portraitID)).toEqual(["a", "b"]);
     });
 
     test("空列表返回空数组", () => {
-      expect(collectCropUpdateTargets([], "default", defaultCrop)).toEqual([]);
-      expect(
-        collectCropUpdateTargets(undefined, "default", defaultCrop),
-      ).toEqual([]);
+      expect(collectCropUpdateTargets([], "default")).toEqual([]);
+      expect(collectCropUpdateTargets(undefined, "default")).toEqual([]);
     });
   });
 

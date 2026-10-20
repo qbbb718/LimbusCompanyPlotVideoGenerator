@@ -253,10 +253,14 @@
 
 ### 设置默认立绘
 - **URL**: `PUT /characters/{characterId}/portraits/{portraitId}/default`
-- **说明**: 将指定立绘设为角色的默认立绘
+- **说明**: 将指定立绘设为角色的默认立绘。
+  立绘的**文件**在上传接口就已保存，但 portraits 表里的**记录**要等保存角色
+  （`PUT /characters/{id}`）才写；所以这里允许带上立绘数据，库里查不到这条记录时
+  先用它补写一条记录，再补关联、设默认（不带请求体时查不到仍然报"立绘不存在"）。
 - **路径参数**:
   - `characterId` - 角色ID
   - `portraitId` - 立绘ID
+- **请求体**: `Portrait` JSON 对象（可选，仅在库里还没有这条立绘记录时用于补写）
 
 ### 渲染立绘预览图
 - **URL**: `POST /portraits/preview`

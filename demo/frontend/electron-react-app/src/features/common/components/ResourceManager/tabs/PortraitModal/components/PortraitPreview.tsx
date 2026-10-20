@@ -7,6 +7,7 @@ import {
   PortraitCropState,
   resolveDefaultCropRect,
 } from "@features/common/utils/portraitCrop";
+import { loadPortraitImageSize } from "@features/common/utils/portraitUtils";
 import "react-advanced-cropper/dist/style.css";
 import "./AdvancedImageCropper.css";
 
@@ -29,6 +30,11 @@ interface PortraitPreviewProps {
    * 本身），此时按钮不显示 —— 否则点一下只会把裁剪框丢到 (0,0) 那种无意义的位置。
    */
   defaultCropState?: PortraitCropState | null;
+  /**
+   * 默认立绘的原图路径：`defaultCropState` 存的是**原图像素**，想按比例套到这张
+   * （尺寸可能不同的）图上，必须先读默认立绘自己原图的宽高。
+   */
+  defaultPortraitImagePath?: string | null;
 }
 
 const toArea = (rect: {
@@ -57,6 +63,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
     onCropComplete,
     handleImageLoad,
     defaultCropState,
+    defaultPortraitImagePath,
   }) => {
     const cropperRef = useRef<CropperRef>(null);
     // 正在为哪张立绘应用默认裁剪：等待图片就绪期间如果换了立绘就废弃这次操作
@@ -82,6 +89,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
         faceY: currentPortrait.faceY,
         length: currentPortrait.length,
         hasDefaultCropState: !!defaultCropState,
+        defaultPortraitImagePath,
       });
     }, [
       portraitPreview,
@@ -90,6 +98,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
       currentPortrait.faceY,
       currentPortrait.length,
       defaultCropState,
+      defaultPortraitImagePath,
     ]);
 
     /**
@@ -116,7 +125,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
       return null;
     }, []);
 
-    /** 把裁剪框设成默认立绘的裁剪框 */
+    /** 把裁剪框按默认立绘的比例套到这张图上 */
     const applyDefaultCropState = useCallback(async () => {
       if (!defaultCropState || !cropperRef.current) return;
 
@@ -125,6 +134,11 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
       setIsApplying(true);
 
       try {
+        // 默认立绘的原图尺寸和"裁剪器就绪"互不依赖，并行等
+        const sourceSizePromise = loadPortraitImageSize(
+          defaultPortraitImagePath,
+        );
+
         let state = cropperRef.current.getState();
         if (!state?.imageSize?.width) {
           state = await waitForCropperState(portraitId);
@@ -136,8 +150,12 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
         const cropper = cropperRef.current;
         if (!cropper) return;
 
-        const { rect, adjusted } = resolveDefaultCropRect({
+        const sourceImageSize = await sourceSizePromise;
+        if (applyingPortraitIdRef.current !== portraitId) return;
+
+        const { rect, adjusted, mode } = resolveDefaultCropRect({
           crop: defaultCropState,
+          sourceImageSize,
           imageSize: state.imageSize,
         });
         if (!rect) {
@@ -147,21 +165,31 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
 
         log(
           adjusted ? "默认裁剪框越出图片，已按图片范围修正" : "应用默认裁剪状态",
-          { crop: defaultCropState, rect, imageSize: state.imageSize },
+          {
+            crop: defaultCropState,
+            mode,
+            rect,
+            sourceImageSize,
+            imageSize: state.imageSize,
+          },
         );
 
         cropper.setCoordinates(rect);
 
         // 回读裁剪器的实际坐标：越界时它会把框夹进图片，
-        // 若继续用默认立绘的原始值回调，保存下来的坐标就和裁剪框对不上了。
+        // 若继续用换算出来的原始值回调，保存下来的坐标就和裁剪框对不上了。
         const actual = toArea(cropper.getCoordinates());
         if (actual && onCropComplete) {
           onCropComplete(actual, actual);
         }
 
-        if (adjusted) {
+        if (mode === "pixel" && defaultPortraitImagePath) {
           setNotice(
-            "默认立绘的裁剪框超出这张立绘的图片范围（两张原图尺寸不同），已按边界修正，请手动微调。",
+            "读不到默认立绘的原图尺寸，只能按像素照搬裁剪值，可能和这张立绘的头框对不上，请手动微调。",
+          );
+        } else if (adjusted) {
+          setNotice(
+            "按默认立绘比例换算的裁剪框超出这张立绘的图片范围，已按边界修正，请手动微调。",
           );
         }
       } finally {
@@ -174,6 +202,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
       }
     }, [
       defaultCropState,
+      defaultPortraitImagePath,
       currentPortrait.portraitID,
       onCropComplete,
       waitForCropperState,
@@ -234,7 +263,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
                   className="btn-secondary"
                   type="button"
                   disabled={isApplying}
-                  title="把裁剪框设成角色默认立绘的裁剪框（用于同一角色不同表情保持同样的头部比例）"
+                  title="把裁剪框按比例套用角色默认立绘的裁剪框（原图尺寸不同也能保持同样的头部比例）"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

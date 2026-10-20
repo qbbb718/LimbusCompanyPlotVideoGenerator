@@ -14,17 +14,21 @@ import PortraitModal from "./PortraitModal";
 import {
   buildPortraitImageUrl,
   getDefaultPortrait,
+  loadPortraitImageSize,
   markDefaultPortrait,
 } from "@features/common/utils/portraitUtils";
 import {
+  CropRect,
   PortraitCropState,
   isValidCropState,
   resolveDefaultCropRect,
+  toCropRatio,
 } from "@features/common/utils/portraitCrop";
 import {
   buildImportedPortrait,
   collectCropUpdateTargets,
   hasPortraitName,
+  isSameCrop,
   portraitCropOf,
   stripFileExtension,
 } from "@features/common/utils/portraitBatch";
@@ -92,6 +96,10 @@ interface CharacterDetailModalProps {
   portraits: Portrait[];
 }
 
+/** 把 0~1 的比例写成百分比（25% / 12.5%），确认框和结果提示里给用户看 */
+const formatCropPercent = (ratio: number): string =>
+  `${Math.round(ratio * 1000) / 10}%`;
+
 /**
  * 角色详情模态框组件
  * 用于展示和编辑角色信息，包括基本信息、标签和立绘等
@@ -147,15 +155,16 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     const crop = portraitCropOf(defaultPortrait);
     return isValidCropState(crop) ? crop : null;
   }, [defaultPortrait]);
-  // 需要改裁剪的立绘（默认立绘本身、已经一致的都不算）：
-  // 为空时按钮直接置灰，用户不用点进去才知道"没得改"
+  // 需要改裁剪的立绘（默认立绘本身不算）：
+  // 为空时按钮直接置灰，用户不用点进去才知道"没得改"。
+  // 这里不按像素判断"已经一致"——改成按比例换算后，同一组像素值在不同尺寸的
+  // 原图上并不等价，是否真的需要改要等读到原图尺寸才知道（执行时逐张比较）。
   const defaultCropTargets = useMemo(
     () =>
       defaultPortrait && defaultPortraitCrop
         ? collectCropUpdateTargets(
             editingCharacter?.portraits,
             defaultPortrait.portraitID,
-            defaultPortraitCrop,
           )
         : [],
     [editingCharacter?.portraits, defaultPortrait, defaultPortraitCrop],
@@ -305,11 +314,14 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   };
 
   /**
-   * 「与默认立绘裁剪一致」：把默认立绘以外的所有立绘，裁剪框都改成默认立绘的。
+   * 「与默认立绘裁剪一致」：把默认立绘以外的所有立绘，裁剪框都按默认立绘的
+   * **比例**套用（原图尺寸不同也能保持同样的头部比例）。
    *
-   * <p>每张原图尺寸可能不同，所以逐张按图片尺寸把框夹进图片，并用**夹取后的实际坐标**
-   * 写回立绘（否则会出现"框在图里、存下来的坐标在图外"）。改完重生成缩略图，
-   * 不然列表里看到的还是旧头部的图。
+   * <p>裁剪值存的是原图像素，所以先读默认立绘自己的原图尺寸，把它的框换成
+   * 「中心点 + 边长占宽度的比例」，再逐张按各自原图尺寸落到图上，并夹进图片范围；
+   * 写回立绘的是**夹取后的实际坐标**（否则会出现"框在图里、存下来的坐标在图外"）。
+   * 读不到默认立绘原图尺寸时退回按像素照搬（老行为）。
+   * 改完重生成缩略图，不然列表里看到的还是旧头部的图。
    */
   const handleApplyDefaultCropToAll = async () => {
     if (!editingCharacter) return;
@@ -327,14 +339,27 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (targets.length === 0) {
       setBatchMessage({
         kind: "info",
-        text: "其它立绘的裁剪已经和默认立绘一致了，不需要再改。",
+        text: "角色只有这一张默认立绘，没有需要套用裁剪的其它立绘。",
       });
       return;
     }
 
+    // 读尺寸期间先置忙，避免用户连点两次弹出两个确认框
+    setBatchProgress({ kind: "crop", done: 0, total: targets.length });
+    // 按比例换算必须先知道默认立绘自己的原图尺寸（库里只存了像素值）
+    const defaultImageSize = await loadPortraitImageSize(
+      defaultPortrait.imagePath,
+    );
+    setBatchProgress(null);
+    const defaultRatio = toCropRatio(defaultPortraitCrop, defaultImageSize);
+    const modeText = defaultRatio
+      ? `按默认立绘「${defaultPortrait.portName}」的比例套用（头部框占原图宽度 ${formatCropPercent(
+          defaultRatio.sideRatio,
+        )}，原图 ${defaultImageSize?.width}×${defaultImageSize?.height}）`
+      : `按像素照搬默认立绘「${defaultPortrait.portName}」的裁剪值（读不到它的原图尺寸）`;
+
     const confirmed = window.confirm(
-      `将把 ${targets.length} 张立绘的裁剪改成默认立绘「${defaultPortrait.portName}」的裁剪` +
-        `（${defaultPortraitCrop.faceX}, ${defaultPortraitCrop.faceY}, ${defaultPortraitCrop.length}），` +
+      `将把 ${targets.length} 张立绘的裁剪${modeText}，` +
         `并重新生成这些立绘的缩略图。确定吗？`,
     );
     if (!confirmed) return;
@@ -342,6 +367,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     const characterId = editingCharacter.characterID;
     const updatedPortraits = new Map<string, Portrait>();
     let adjustedCount = 0;
+    let unchangedCount = 0;
     let imageFailedCount = 0;
     let thumbnailFailedCount = 0;
     setBatchMessage(null);
@@ -351,7 +377,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       setBatchProgress({ kind: "crop", done: index, total: targets.length });
 
       // 先按"图片尺寸未知"取一份兜底值（原图读不到时至少让数值一致）
-      let rect = resolveDefaultCropRect({
+      let rect: CropRect | null = resolveDefaultCropRect({
         crop: defaultPortraitCrop,
         imageSize: null,
       }).rect;
@@ -364,6 +390,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         );
         const resolved = resolveDefaultCropRect({
           crop: defaultPortraitCrop,
+          sourceImageSize: defaultImageSize,
           imageSize: {
             width: image.naturalWidth,
             height: image.naturalHeight,
@@ -380,6 +407,17 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
           portrait.portName,
           error,
         );
+      }
+
+      // 比例换算后算出来还是原来的框：不用重算缩略图（不同尺寸的图很少刚好相同）
+      const nextCrop = {
+        faceX: rect.left,
+        faceY: rect.top,
+        length: rect.width,
+      };
+      if (isSameCrop(portraitCropOf(portrait), nextCrop)) {
+        unchangedCount += 1;
+        continue;
       }
 
       let thumbnailPath = portrait.thumbnailPath;
@@ -399,9 +437,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
       updatedPortraits.set(portrait.portraitID, {
         ...portrait,
-        faceX: rect.left,
-        faceY: rect.top,
-        length: rect.width,
+        ...nextCrop,
         thumbnailPath,
       });
     }
@@ -423,7 +459,29 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       setThumbnailVersion((version) => version + 1);
     }
 
-    const parts = [`已更新 ${updatedPortraits.size} 张立绘的裁剪`];
+    // 一张都没改动：说明算出来的框和现在存的一样（或原图都读不到，只能算像素值）
+    if (updatedPortraits.size === 0) {
+      const reason =
+        imageFailedCount > 0
+          ? `${imageFailedCount} 张原图加载失败，没法定比例（现有数值看起来已经一致）`
+          : `所有立绘的裁剪都已经和默认立绘一致（${
+              defaultRatio ? "按比例" : "按像素"
+            }）`;
+      setBatchMessage({
+        kind: "info",
+        text: `${reason}，没有需要修改的。`,
+      });
+      return;
+    }
+
+    const parts = [
+      `已${defaultRatio ? "按比例" : "按像素"}更新 ${
+        updatedPortraits.size
+      } 张立绘的裁剪`,
+    ];
+    if (unchangedCount > 0) {
+      parts.push(`${unchangedCount} 张算出来本来就是这个裁剪，已跳过`);
+    }
     if (adjustedCount > 0) {
       parts.push(`其中 ${adjustedCount} 张超出原图范围，已按图片边界修正`);
     }
@@ -445,8 +503,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   /**
    * 「批量导入立绘」：一次选多张图，逐张上传原图 + 生成缩略图后加进立绘列表。
    *
-   * <p>若角色已有可用的默认立绘，导入的立绘直接套用默认立绘的裁剪
-   * （按各自原图尺寸夹进图片），保证同一角色不同表情的头部比例一致。
+   * <p>若角色已有可用的默认立绘，导入的立绘按默认立绘的**比例**套用裁剪
+   * （原图尺寸不同也能保持同样的头部比例），再按各自原图尺寸夹进图片。
    */
   const handleBatchImportPortraits = async () => {
     // 先选文件：用户取消就什么都不做（不必为了取消而先把新角色存进后端）
@@ -476,6 +534,10 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     const cropSource: PortraitCropState = hasDefaultCrop
       ? (targetDefaultCrop as PortraitCropState)
       : { faceX: 0, faceY: 0, length: 100 };
+    // 按比例套用裁剪要知道默认立绘自己的原图尺寸；读不到就退回像素照搬
+    const defaultImageSize = hasDefaultCrop
+      ? await loadPortraitImageSize(targetDefaultPortrait?.imagePath)
+      : null;
 
     const importedPortraits: Portrait[] = [];
     const skippedNames: string[] = [];
@@ -509,6 +571,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         const image = await loadImageElement(objectUrl);
         const resolved = resolveDefaultCropRect({
           crop: cropSource,
+          sourceImageSize: defaultImageSize,
           imageSize: {
             width: image.naturalWidth,
             height: image.naturalHeight,
@@ -591,7 +654,11 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (importedPortraits.length > 0) {
       parts.push(
         `已导入 ${importedPortraits.length} 张立绘${
-          hasDefaultCrop ? "（裁剪已与默认立绘一致）" : ""
+          hasDefaultCrop
+            ? defaultImageSize
+              ? "（裁剪已按比例套用默认立绘）"
+              : "（裁剪已按像素套用默认立绘）"
+            : ""
         }`,
       );
     }
@@ -666,10 +733,18 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (!editingCharacter) return;
 
     try {
+      // 刚添加/批量导入的立绘此时还只存在于本地状态里（portraits 表要等点「保存」才写），
+      // 所以把立绘数据一起传给后端：库里查不到这条记录时后端会用它补写，
+      // 否则会报"立绘不存在"（设置默认立绘失败）。
+      const portrait = (editingCharacter.portraits || []).find(
+        (p) => p.portraitID === portraitId,
+      );
+
       // 调用API设置默认立绘（后端会清除该角色其他立绘的默认标记）
       await ApiService.setDefaultPortrait(
         editingCharacter.characterID,
         portraitId,
+        portrait,
       );
 
       // 本地同步默认标记。默认立绘由 defaultPortrait 字段表示，

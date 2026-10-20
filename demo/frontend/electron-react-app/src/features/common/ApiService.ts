@@ -587,9 +587,14 @@ class ApiService {
   }
 
   // 设置默认立绘
-  async setDefaultPortrait(characterId: string, portraitId: string) {
+  // 立绘可能还没入库（新加的立绘要等角色「保存」才写 portraits 表），
+  // 所以把立绘数据一起带上：后端查不到这条记录时会用请求体补写，避免"立绘不存在"。
+  async setDefaultPortrait(characterId: string, portraitId: string, portrait?: any) {
     try {
-      const response = await apiClient.put(`/characters/${characterId}/portraits/${portraitId}/default`);
+      const response = await apiClient.put(
+        `/characters/${characterId}/portraits/${portraitId}/default`,
+        portrait,
+      );
       return response.data;
     } catch (error) {
       console.error('设置默认立绘失败:', error);

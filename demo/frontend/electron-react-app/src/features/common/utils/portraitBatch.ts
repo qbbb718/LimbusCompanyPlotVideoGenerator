@@ -26,7 +26,7 @@ export const portraitCropOf = (portrait: Portrait): PortraitCropState => ({
   length: portrait.length ?? 0,
 });
 
-/** 两个裁剪参数是否完全一致（批量改裁剪用于跳过已经一致的那几张） */
+/** 两个裁剪参数是否完全一致（批量改裁剪用于跳过已经算好的那几张） */
 export const isSameCrop = (
   a: PortraitCropState,
   b: PortraitCropState,
@@ -36,24 +36,24 @@ export const isSameCrop = (
   Math.round(a.length) === Math.round(b.length);
 
 /**
- * 挑出需要把裁剪改成默认立绘裁剪的那些立绘：
- * - 默认立绘本身不动；
- * - 裁剪已经一致的不动（避免无意义的重算 + 重新上传缩略图）。
+ * 挑出需要把裁剪改成默认立绘裁剪的那些立绘：默认立绘本身不动，其它立绘全部纳入。
+ *
+ * <p>这里**不再**按像素判断"裁剪已经一致"：改成按比例换算后，同一组像素值在
+ * 不同尺寸的原图上并不等价（1600×2432 和 640×983 上同样的 400px 框，占图片的
+ * 比例差很多）。真正的"算出来是否和现在一样"要等拿到每张原图的尺寸才知道，
+ * 放在批量执行时逐张比较（`isSameCrop`），不用为了按钮置灰先把所有原图都读一遍。
  */
 export const collectCropUpdateTargets = (
   portraits: Portrait[] | undefined | null,
   defaultPortraitId: string | null | undefined,
-  defaultCrop: PortraitCropState,
 ): Portrait[] => {
   if (!portraits || portraits.length === 0) {
     return [];
   }
-  return portraits.filter((portrait) => {
-    if (defaultPortraitId && portrait.portraitID === defaultPortraitId) {
-      return false;
-    }
-    return !isSameCrop(portraitCropOf(portrait), defaultCrop);
-  });
+  return portraits.filter(
+    (portrait) =>
+      !(defaultPortraitId && portrait.portraitID === defaultPortraitId),
+  );
 };
 
 /** 立绘名是否已存在（批量导入时同名文件跳过，避免重复导入） */
