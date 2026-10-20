@@ -128,7 +128,7 @@ node scripts\version.mjs --check         # 校验一致性（CI 用）
 node scripts\version.mjs --check-tag v0.2.4   # 额外校验 git tag（发版前/CI 用）
 ```
 
-- 安装包文件名、"关于"弹窗、设置页「关于 → 版本」、自动更新源（`latest.yml`）都来自 `package.json`（经 `app.getVersion()`）
+- 安装包文件名（`LCP<版本号>.exe`，由 `electron-builder.yml` 的 `nsis.artifactName` 决定）、"关于"弹窗、设置页「关于 → 版本」、自动更新源（`latest.yml`）都来自 `package.json`（经 `app.getVersion()`）
 - 后端 jar 版本来自 `demo/pom.xml` 的 `<project><version>`（`demo-0.<版本>-SNAPSHOT.jar`）
 - 后端日志「后端版本: x.y.z」与 `GET /api/health` 的 `version` 来自 `demo/src/main/resources/application.yml` 的 `app.version`
 - 前端日志（`logs\log-*.log`）启动时会打印 `应用版本: x.y.z | 运行模式: ...`，排障先看这一行

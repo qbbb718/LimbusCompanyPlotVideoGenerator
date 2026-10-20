@@ -51,14 +51,19 @@ win:
   # 解析该 URL 时抛 URISyntaxException，FFmpeg 原生库加载失败（UnsatisfiedLinkError），
   # 而它是 Error 不会被 catch (Exception) 捕获，表现为“导出视频进度永远 0%”。
   # 只影响安装目录/可执行文件名：productName（界面显示名、卸载项名称）、
-  # shortcutName、安装包文件名（${productName} Setup x.x.x.exe）都不变。
+  # shortcutName 都不变；安装包文件名由 nsis.artifactName 单独指定。
   executableName: LimbusCompanyPlotVideoGenerator
   # 请求管理员权限以确保文件系统操作正常
   requestedExecutionLevel: asInvoker
 
 nsis:
+  # 安装包文件名：LCP + 版本号，例如 LCP0.3.5.exe
+  # （默认是 "${productName} Setup ${version}.${ext}"，带空格，文件名很长）
+  artifactName: "LCP${version}.${ext}"
   oneClick: false
   allowToChangeInstallationDirectory: true
+  # build/installer.nsh（electron-builder 的 nsis.include 默认路径）负责
+  # 在「选择安装位置」页面上加“安装路径中不能有中文或空格”的提示
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: "边狱巴士剧情视频生成器"
