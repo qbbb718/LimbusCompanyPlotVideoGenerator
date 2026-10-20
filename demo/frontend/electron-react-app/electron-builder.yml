@@ -10,6 +10,9 @@ files:
   - build/**/*
   - public/electron.js
   - public/preload.js
+  # 屏幕取色：主进程模块 + 全屏遮罩页面（electron.js 用相对路径 require / loadFile）
+  - public/color-picker.js
+  - public/color-picker-overlay.html
   # node_modules 由 electron-builder 自动按生产依赖打包，无需手动声明
 
 extraResources:

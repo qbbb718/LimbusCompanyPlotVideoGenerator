@@ -73,7 +73,23 @@ interface Window {
     onMenuExportVideo: (callback: () => void) => void;
     onMenuAbout: (callback: () => void) => void;
     removeAllListeners: (channel: string) => void;
+    /**
+     * 屏幕取色：主进程打开铺满屏幕的取色遮罩（可吸取软件窗口以外的颜色），
+     * 单击拾取、Esc / 右键取消。取消时返回 reason="canceled"，失败时 reason="error"。
+     */
+    pickScreenColor: () => Promise<ScreenColorPickResult>;
   };
+}
+
+/** 主进程 color-picker:pick 的返回 */
+interface ScreenColorPickResult {
+  ok: boolean;
+  /** 成功时是 #RRGGBB（大写） */
+  color?: string;
+  /** canceled = 用户取消；error = 截图/遮罩出错 */
+  reason?: "canceled" | "error";
+  /** reason="error" 时的提示文字 */
+  error?: string;
 }
 
 /**

@@ -53,6 +53,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
 
+  // 屏幕取色：打开全屏取色遮罩，可吸取本窗口以内/以外的任意颜色。
+  // 返回 { ok:true, color:"#RRGGBB" } / { ok:false, reason:"canceled"|"error", error? }
+  pickScreenColor: () => ipcRenderer.invoke("color-picker:pick"),
+
   // 通知
   showNotification: (title, body) =>
     ipcRenderer.invoke("notification:show", title, body),

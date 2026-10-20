@@ -1,0 +1,86 @@
+/* ===== 颜色面板公共控件：十六进制输入框 + 屏幕取色按钮 ===== */
+
+/* 十六进制颜色输入框：等宽字体，和色块并排放在颜色面板里 */
+.hex-color-input {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.hex-color-input:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+}
+
+/* 还在输入、但不是合法颜色（#FF / #FFFFFFF …）：标红提醒，失焦后自动回退 */
+.hex-color-input.is-invalid {
+  border-color: #ff4d4f;
+  background: #fff1f0;
+}
+
+.hex-color-input:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* 吸管按钮：默认跟随面板文字颜色，悬停变主题蓝 */
+.screen-color-picker-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.screen-color-picker-button:hover:not(:disabled) {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.screen-color-picker-button:focus-visible {
+  outline: 2px solid #91d5ff;
+  outline-offset: 1px;
+}
+
+.screen-color-picker-button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.screen-color-picker-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* 取色遮罩开着的时候转一个小圈，表示"正在吸色" */
+.screen-color-picker-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #d9d9d9;
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: screen-color-picker-spin 0.8s linear infinite;
+}
+
+@keyframes screen-color-picker-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

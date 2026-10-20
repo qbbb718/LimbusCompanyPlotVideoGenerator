@@ -11,6 +11,10 @@ import {
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@features/common/config/appConfig";
 import {
+  HexColorInput,
+  ScreenColorPickerButton,
+} from "@features/common/components/ColorPickerControls";
+import {
   TEXT_SPEED_MAX,
   TEXT_SPEED_MIN,
   TEXT_SPEED_STEP,
@@ -211,6 +215,16 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   useEffect(() => {
     commitColorRef.current = commitColorPicker;
   });
+
+  /**
+   * @function 立即应用一个自由文字颜色
+   * 十六进制输入框与吸管取色都走这里：不经过 colorDraft 草稿，
+   * 因为这两个操作本身就是"确定的最终值"，用户不需要再点一次"完成"。
+   */
+  const applyFreeTextColor = (color: string) => {
+    setColorDraft(null);
+    updateDialogue("freeTextColor", color);
+  };
 
   const handleCharacterSelect = (characterID: string) => {
     if (!characterID) return;
@@ -435,8 +449,8 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
                       type="button"
                       className="free-text-color-swatch"
                       style={{ backgroundColor: displayColor }}
-                      title="选择文字颜色"
-                      aria-label="选择文字颜色"
+                      title="打开颜色面板"
+                      aria-label="打开颜色面板"
                       onClick={() => {
                         if (showColorPicker) {
                           commitColorPicker();
@@ -445,9 +459,20 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
                         }
                       }}
                     />
-                    <span className="free-text-color-hex">
-                      {displayColor.toUpperCase()}
-                    </span>
+                    <HexColorInput
+                      className="free-text-color-hex-input"
+                      value={displayColor}
+                      onCommit={applyFreeTextColor}
+                      ariaLabel="文字颜色的十六进制编码"
+                      title="输入十六进制颜色，如 #FF8800（支持 #RGB / #RRGGBB）"
+                    />
+                    <ScreenColorPickerButton
+                      onPicked={applyFreeTextColor}
+                      title="屏幕取色：吸取屏幕上任意位置的颜色（包括软件窗口以外）"
+                    />
+                  </div>
+                  <div className="free-text-color-hint">
+                    可直接输入十六进制编码，或点吸管吸取屏幕上的颜色
                   </div>
                   {showColorPicker && (
                     <div className="free-text-color-popover">

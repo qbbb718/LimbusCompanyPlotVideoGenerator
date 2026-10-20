@@ -17,6 +17,8 @@ const {
   createZipBuffer,
   formatTimestamp,
 } = require("./log-export/zip-writer");
+// 屏幕取色（颜色面板的"吸管"）：desktopCapturer + 全屏遮罩，见 color-picker.js
+const { registerColorPicker } = require("./color-picker");
 const isDev = !app.isPackaged;
 
 // autoUpdater — 仅在打包后可用，开发模式静默跳过
@@ -1031,6 +1033,10 @@ ipcMain.handle("update:install", () => {
 ipcMain.handle("get-app-version", () => {
   return app.getVersion();
 });
+
+// 屏幕取色：剧情编辑-文本-自由文字的"文字颜色"，以及角色编辑里的"名片文字颜色/背景颜色"
+// 共用同一个吸管。注册一次即可，实际取色时再按需创建全屏遮罩窗口。
+registerColorPicker();
 
 // 图片文件对话框
 ipcMain.handle("dialog:openImageFile", async () => {

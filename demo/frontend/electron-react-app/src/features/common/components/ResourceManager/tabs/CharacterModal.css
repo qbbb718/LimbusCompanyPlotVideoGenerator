@@ -413,7 +413,30 @@
   position: relative;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+/* 十六进制输入框：与色块、吸管按钮同高；面板窄时靠 flex 收缩/换行，不撑破布局 */
+.color-picker-wrapper input.color-picker-hex-input {
+  flex: 1 1 120px;
+  width: 140px;
+  min-width: 92px;
+  max-width: 180px;
+  height: 40px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* 吸管按钮：跟色块同样大小，一排看起来整齐 */
+.color-picker-wrapper .screen-color-picker-button {
+  width: 40px;
+  height: 40px;
+}
+
+.color-picker-wrapper .screen-color-picker-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .color-preview-box {

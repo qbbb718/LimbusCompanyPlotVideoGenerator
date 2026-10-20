@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'"
+    />
+    <title>屏幕取色</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+        color-scheme: dark;
+      }
+
+      body {
+        /* 十字准星比系统箭头更容易对准单个像素 */
+        cursor: crosshair;
+        user-select: none;
+        -webkit-user-select: none;
+        font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+      }
+
+      /* 铺满整块屏幕的截图：撑满窗口，让"窗口坐标 ↔ 截图坐标"只差一个缩放比 */
+      #screen-image {
+        position: fixed;
+        left: 0;
+        top: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        -webkit-user-drag: none;
+      }
+
+      /* 放大镜：跟随光标，显示光标周围 N×N 个像素和一个中心格 */
+      #loupe {
+        position: fixed;
+        left: 0;
+        top: 0;
+        display: none;
+        padding: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 8px;
+        background: rgba(18, 18, 18, 0.92);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+        pointer-events: none;
+        will-change: transform;
+      }
+
+      #loupe.visible {
+        display: block;
+      }
+
+      #loupe-canvas {
+        display: block;
+        width: 150px;
+        height: 150px;
+        border-radius: 4px;
+        image-rendering: pixelated;
+      }
+
+      .loupe-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .loupe-swatch {
+        width: 22px;
+        height: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        border-radius: 4px;
+        flex: none;
+      }
+
+      .loupe-hex {
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #fff;
+      }
+
+      .loupe-rgb {
+        margin-left: auto;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 11px;
+        color: #a8a8a8;
+      }
+
+      /* 底部操作提示：不挡拾取，点它等于点屏幕 */
+      .hint {
+        position: fixed;
+        left: 50%;
+        bottom: 26px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.68);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+        color: #f2f2f2;
+        font-size: 13px;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
+        transform: translateX(-50%);
+      }
+
+      .hint kbd {
+        padding: 2px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.12);
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <img id="screen-image" alt="" draggable="false" />
+
+    <div id="loupe">
+      <canvas id="loupe-canvas" width="150" height="150"></canvas>
+      <div class="loupe-meta">
+        <span id="loupe-swatch" class="loupe-swatch"></span>
+        <span id="loupe-hex" class="loupe-hex">#FFFFFF</span>
+        <span id="loupe-rgb" class="loupe-rgb">255, 255, 255</span>
+      </div>
+    </div>
+
+    <div class="hint">单击拾取颜色 · <kbd>Esc</kbd> 或右键取消</div>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      const SOURCE_CHANNEL = "color-picker:source";
+      const RESULT_CHANNEL = "color-picker:result";
+      const CANCEL_CHANNEL = "color-picker:cancel";
+
+      /** 放大镜覆盖的源像素边长（奇数，正中间那格就是取样点） */
+      const LOUPE_CELLS = 15;
+      /** 放大镜画布边长（CSS 像素） */
+      const LOUPE_SIZE = 150;
+      /** 放大镜与光标之间的间距 */
+      const LOUPE_OFFSET = 24;
+      /** 放大镜离窗口边缘的最小距离 */
+      const LOUPE_MARGIN = 8;
+
+      const screenImage = document.getElementById("screen-image");
+      const loupe = document.getElementById("loupe");
+      const loupeCanvas = document.getElementById("loupe-canvas");
+      const loupeCtx = loupeCanvas.getContext("2d", { willReadFrequently: true });
+      const loupeSwatch = document.getElementById("loupe-swatch");
+      const loupeHex = document.getElementById("loupe-hex");
+      const loupeRgb = document.getElementById("loupe-rgb");
+
+      // 1×1 的画布只用来读单个像素：drawImage 只取 1×1 的源区域，不会做任何插值
+      const sampleCanvas = document.createElement("canvas");
+      sampleCanvas.width = 1;
+      sampleCanvas.height = 1;
+      const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
+
+      let imageReady = false;
+      let settled = false;
+
+      /* ---------- 与主进程通信 ---------- */
+
+      ipcRenderer.on(SOURCE_CHANNEL, (event, payload) => {
+        if (!payload || typeof payload.image !== "string" || !payload.image) {
+          cancel("截图数据为空，请重试");
+          return;
+        }
+
+        screenImage.addEventListener(
+          "load",
+          () => {
+            imageReady = true;
+            // 打开遮罩时鼠标可能一动没动，先用初始光标位置把放大镜摆好
+            const cursorX = Number(payload.cursorX);
+            const cursorY = Number(payload.cursorY);
+            if (Number.isFinite(cursorX) && Number.isFinite(cursorY)) {
+              updateAt(cursorX, cursorY);
+            }
+          },
+          { once: true },
+        );
+        screenImage.addEventListener(
+          "error",
+          () => cancel("截图加载失败，请重试"),
+          { once: true },
+        );
+        screenImage.src = payload.image;
+      });
+
+      /** 取消取色：通知主进程收起所有遮罩 */
+      function cancel(message) {
+        if (settled) return;
+        settled = true;
+        try {
+          ipcRenderer.send(CANCEL_CHANNEL, message ? { error: message } : {});
+        } catch (error) {
+          // 主进程已经关掉遮罩时 send 可能失败，这里没什么可做的
+        }
+      }
+
+      /** 拾取当前像素：把 #RRGGBB 交给主进程 */
+      function pickAt(clientX, clientY) {
+        if (settled || !imageReady) return;
+        const point = mapToImage(clientX, clientY);
+        if (!point) return;
+        const color = readColor(point.sx, point.sy);
+        if (!color) return;
+
+        settled = true;
+        try {
+          ipcRenderer.send(RESULT_CHANNEL, { color: colorToHex(color) });
+        } catch (error) {
+          settled = false;
+          cancel("取色失败，请重试");
+        }
+      }
+
+      /* ---------- 坐标换算与像素读取 ---------- */
+
+      /**
+       * 窗口坐标 → 截图上的像素坐标。
+       * 截图是显示器物理分辨率，遮罩窗口是 DIP 尺寸，两者只差一个缩放比，
+       * 所以按"图片实际尺寸 / 图片显示尺寸"折算即可（不要用 devicePixelRatio，
+       * 免得窗口尺寸被系统取整后和 dpr 对不上）。
+       */
+      function mapToImage(clientX, clientY) {
+        const rect = screenImage.getBoundingClientRect();
+        const width = screenImage.naturalWidth;
+        const height = screenImage.naturalHeight;
+        if (!width || !height || !rect.width || !rect.height) return null;
+
+        const sx = clamp(
+          Math.floor(((clientX - rect.left) / rect.width) * width),
+          0,
+          width - 1,
+        );
+        const sy = clamp(
+          Math.floor(((clientY - rect.top) / rect.height) * height),
+          0,
+          height - 1,
+        );
+        return { sx, sy, width, height };
+      }
+
+      /** 读取截图上一个像素的 RGB */
+      function readColor(sx, sy) {
+        try {
+          sampleCtx.clearRect(0, 0, 1, 1);
+          sampleCtx.drawImage(screenImage, sx, sy, 1, 1, 0, 0, 1, 1);
+          const data = sampleCtx.getImageData(0, 0, 1, 1).data;
+          return { r: data[0], g: data[1], b: data[2] };
+        } catch (error) {
+          return null;
+        }
+      }
+
+      /* ---------- 放大镜 ---------- */
+
+      /** 更新放大镜内容并把它摆到光标旁边 */
+      function updateAt(clientX, clientY) {
+        const point = mapToImage(clientX, clientY);
+        if (!point) return;
+        const color = readColor(point.sx, point.sy);
+        if (!color) return;
+
+        const hex = colorToHex(color);
+        loupeSwatch.style.backgroundColor = hex;
+        loupeHex.textContent = hex;
+        loupeRgb.textContent = `${color.r}, ${color.g}, ${color.b}`;
+        drawLoupe(point);
+        moveLoupe(clientX, clientY);
+        loupe.classList.add("visible");
+      }
+
+      /** 把光标周围 LOUPE_CELLS×LOUPE_CELLS 个像素放大画进画布 */
+      function drawLoupe(point) {
+        const half = Math.floor(LOUPE_CELLS / 2);
+        const cell = LOUPE_SIZE / LOUPE_CELLS;
+        const sx0 = point.sx - half;
+        const sy0 = point.sy - half;
+
+        // 靠近屏幕边缘时取样区域会越界：把源矩形裁剪到图片内，
+        // 再按"被裁掉多少"平移目标坐标，保证中心格始终对准光标那个像素
+        const srcX = Math.max(0, sx0);
+        const srcY = Math.max(0, sy0);
+        const srcW = Math.min(LOUPE_CELLS, point.width - srcX);
+        const srcH = Math.min(LOUPE_CELLS, point.height - srcY);
+        const destX = (srcX - sx0) * cell;
+        const destY = (srcY - sy0) * cell;
+
+        loupeCtx.imageSmoothingEnabled = false;
+        loupeCtx.clearRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
+        loupeCtx.fillStyle = "#111";
+        loupeCtx.fillRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
+        if (srcW > 0 && srcH > 0) {
+          loupeCtx.drawImage(
+            screenImage,
+            srcX,
+            srcY,
+            srcW,
+            srcH,
+            destX,
+            destY,
+            srcW * cell,
+            srcH * cell,
+          );
+        }
+
+        // 中心格描边（外黑内白），深浅背景上都看得见
+        const center = half * cell;
+        loupeCtx.lineWidth = 2;
+        loupeCtx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+        loupeCtx.strokeRect(center + 1, center + 1, cell - 2, cell - 2);
+        loupeCtx.lineWidth = 1;
+        loupeCtx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+        loupeCtx.strokeRect(center + 0.5, center + 0.5, cell - 1, cell - 1);
+      }
+
+      /** 放大镜默认在光标右下方；贴近屏幕边缘时翻到另一侧，避免被裁掉 */
+      function moveLoupe(clientX, clientY) {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const loupeWidth = loupe.offsetWidth || LOUPE_SIZE + 16;
+        const loupeHeight = loupe.offsetHeight || LOUPE_SIZE + 52;
+
+        let left = clientX + LOUPE_OFFSET;
+        let top = clientY + LOUPE_OFFSET;
+        if (left + loupeWidth + LOUPE_MARGIN > viewportWidth) {
+          left = clientX - LOUPE_OFFSET - loupeWidth;
+        }
+        if (top + loupeHeight + LOUPE_MARGIN > viewportHeight) {
+          top = clientY - LOUPE_OFFSET - loupeHeight;
+        }
+        left = clamp(left, LOUPE_MARGIN, viewportWidth - loupeWidth - LOUPE_MARGIN);
+        top = clamp(top, LOUPE_MARGIN, viewportHeight - loupeHeight - LOUPE_MARGIN);
+
+        loupe.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(
+          top,
+        )}px, 0)`;
+      }
+
+      /* ---------- 工具函数 ---------- */
+
+      function clamp(value, min, max) {
+        // max < min 理论上不会出现（窗口至少比放大镜大），兜一下底
+        if (max < min) return min;
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function colorToHex(color) {
+        return (
+          "#" +
+          [color.r, color.g, color.b]
+            .map((value) => {
+              const hex = Math.round(value).toString(16).toUpperCase();
+              return hex.length === 1 ? "0" + hex : hex;
+            })
+            .join("")
+        );
+      }
+
+      /* ---------- 交互 ---------- */
+
+      window.addEventListener("mousemove", (event) => {
+        if (settled) return;
+        updateAt(event.clientX, event.clientY);
+      });
+
+      window.addEventListener("mousedown", (event) => {
+        if (settled) return;
+        // 所有按键都拦掉默认行为：右键会弹菜单、中键会进自动滚动，都会破坏取色
+        event.preventDefault();
+        if (event.button === 2) {
+          cancel();
+          return;
+        }
+        if (event.button !== 0) return;
+        pickAt(event.clientX, event.clientY);
+      });
+
+      window.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+      });
+
+      // 滚轮缩放会把截图放大/缩小，坐标映射就对不上了
+      window.addEventListener(
+        "wheel",
+        (event) => {
+          event.preventDefault();
+        },
+        { passive: false },
+      );
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancel();
+        }
+      });
+
+      window.addEventListener("dragstart", (event) => {
+        event.preventDefault();
+      });
+    </script>
+  </body>
+</html>
