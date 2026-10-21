@@ -194,3 +194,138 @@ describe("预览热区层", () => {
     expect(container.querySelector(".preview-hit-layer")).toBeNull();
   });
 });
+
+describe("预览热区层 → 拖拽", () => {
+  /**
+   * jsdom 没有 PointerEvent，用 MouseEvent 造同类型的合成事件（React 只认事件类型，
+   * clientX/clientY/shiftKey 都在 MouseEvent 上）。
+   */
+  const firePointer = (
+    element: Element,
+    type: "pointerdown" | "pointermove" | "pointerup",
+    init: MouseEventInit,
+  ) => {
+    element.dispatchEvent(
+      new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }),
+    );
+  };
+
+  const renderDraggable = () => {
+    const onSelect = jest.fn();
+    const onLayerMove = jest.fn();
+    const onLayerDragStart = jest.fn();
+    const onLayerDragEnd = jest.fn();
+    const onLayerDragCancel = jest.fn();
+    const result = render(
+      <PreviewHitLayer
+        layers={[background, charA, charB]}
+        frame={FRAME}
+        onSelect={onSelect}
+        getLayerPosition={(layer) =>
+          layer.kind === "character" ? { x: 100, y: 200 } : { x: 0, y: 0 }
+        }
+        onLayerMove={onLayerMove}
+        onLayerDragStart={onLayerDragStart}
+        onLayerDragEnd={onLayerDragEnd}
+        onLayerDragCancel={onLayerDragCancel}
+      />,
+    );
+    const layer = stubLayout(result.container);
+    return {
+      layer,
+      onSelect,
+      onLayerMove,
+      onLayerDragStart,
+      onLayerDragEnd,
+      onLayerDragCancel,
+    };
+  };
+
+  test("拖动超过阈值：先选中该元素，再持续回写「起点 + 位移」", () => {
+    const handlers = renderDraggable();
+    firePointer(handlers.layer, "pointerdown", { clientX: 800, clientY: 400 });
+    firePointer(handlers.layer, "pointermove", { clientX: 810, clientY: 400 });
+    firePointer(handlers.layer, "pointerup", { clientX: 810, clientY: 400 });
+
+    // 拖动即选中（属性面板要跟着切）
+    expect(handlers.onSelect).toHaveBeenCalledTimes(1);
+    expect(handlers.onSelect.mock.calls[0][0].key).toBe("character:0");
+    expect(handlers.onLayerDragStart).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "character:0" }),
+      { x: 100, y: 200 },
+    );
+
+    // 舞台 1920 宽、frame 1920 → 1 CSS 像素 = 1.25 设计像素；位移 10 CSS → +12.5
+    const [, position] = handlers.onLayerMove.mock.calls.at(-1)!;
+    expect(position.x).toBeCloseTo(100 + 10 * 1.25);
+    expect(position.y).toBeCloseTo(200);
+    expect(handlers.onLayerDragEnd).toHaveBeenCalledTimes(1);
+  });
+
+  test("位移不足阈值按点击处理：不进入拖拽", () => {
+    const handlers = renderDraggable();
+    firePointer(handlers.layer, "pointerdown", { clientX: 800, clientY: 400 });
+    firePointer(handlers.layer, "pointermove", { clientX: 801, clientY: 401 });
+    firePointer(handlers.layer, "pointerup", { clientX: 801, clientY: 401 });
+    fireEvent.click(handlers.layer, { clientX: 800, clientY: 400 });
+
+    expect(handlers.onLayerMove).not.toHaveBeenCalled();
+    expect(handlers.onLayerDragStart).not.toHaveBeenCalled();
+    // 仍然是普通点击 → 选中最上层
+    expect(handlers.onSelect).toHaveBeenCalledTimes(1);
+    expect(handlers.onSelect.mock.calls[0][0].key).toBe("character:0");
+  });
+
+  test("拖完的 pointerup 会带一个 click，不能让它再触发一次选中", () => {
+    const handlers = renderDraggable();
+    firePointer(handlers.layer, "pointerdown", { clientX: 800, clientY: 400 });
+    firePointer(handlers.layer, "pointermove", { clientX: 830, clientY: 400 });
+    firePointer(handlers.layer, "pointerup", { clientX: 830, clientY: 400 });
+    fireEvent.click(handlers.layer, { clientX: 830, clientY: 400 });
+    expect(handlers.onSelect).toHaveBeenCalledTimes(1); // 只有拖动开始时那一次
+  });
+
+  test("Shift 锁轴：只有位移大的轴生效", () => {
+    const handlers = renderDraggable();
+    firePointer(handlers.layer, "pointerdown", { clientX: 800, clientY: 400 });
+    firePointer(handlers.layer, "pointermove", {
+      clientX: 840,
+      clientY: 410,
+      shiftKey: true,
+    });
+    firePointer(handlers.layer, "pointerup", { clientX: 840, clientY: 410, shiftKey: true });
+
+    const [, position] = handlers.onLayerMove.mock.calls.at(-1)!;
+    expect(position.x).toBeCloseTo(100 + 40 * 1.25);
+    expect(position.y).toBeCloseTo(200); // 纵向被锁掉
+  });
+
+  test("Esc 取消拖动：回调 cancel，由上层还原位置", () => {
+    const handlers = renderDraggable();
+    firePointer(handlers.layer, "pointerdown", { clientX: 800, clientY: 400 });
+    firePointer(handlers.layer, "pointermove", { clientX: 830, clientY: 430 });
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(handlers.onLayerDragCancel).toHaveBeenCalledTimes(1);
+    expect(handlers.onLayerDragCancel.mock.calls[0][0].key).toBe("character:0");
+    expect(handlers.onLayerDragEnd).not.toHaveBeenCalled();
+  });
+
+  test("没有传拖拽回调时就是纯点选模式（pointer 事件不产生位移）", () => {
+    const onSelect = jest.fn();
+    const onLayerMove = jest.fn();
+    const { container } = render(
+      <PreviewHitLayer
+        layers={[background, charA]}
+        frame={FRAME}
+        onSelect={onSelect}
+        onLayerMove={onLayerMove}
+      />,
+    );
+    const layer = stubLayout(container);
+    firePointer(layer, "pointerdown", { clientX: 800, clientY: 400 });
+    firePointer(layer, "pointermove", { clientX: 860, clientY: 400 });
+    firePointer(layer, "pointerup", { clientX: 860, clientY: 400 });
+    expect(onLayerMove).not.toHaveBeenCalled();
+  });
+});

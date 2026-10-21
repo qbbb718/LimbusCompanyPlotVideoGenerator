@@ -70,12 +70,48 @@
   filter: brightness(0.5);
 }
 
+/**
+ * 边框暗角 —— 复刻后端的 buildBorderMask()：整幅 1920×1080 的黑色渐隐遮罩，
+ * 中心全透明，四边按 alpha(d) = 1/(1+(d/81.25)^3)（纵向半衰 63.75）向内衰减。
+ *
+ * 四条 linear-gradient 各自负责一边，叠在一起就是 1-(1-ax)(1-ay)（与后端 combineAlpha 等价）。
+ * 百分比按遮罩自身尺寸折算：横向 81.25/1920 = 4.23%/单位半衰，纵向 63.75/1080 = 5.90%。
+ */
+.preview-scene-shape {
+  position: absolute;
+  pointer-events: none;
+}
+
+.preview-scene-border {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 1) 0, rgba(0, 0, 0, 0.5) 4.23%, rgba(0, 0, 0, 0.111) 8.47%, rgba(0, 0, 0, 0.036) 12.7%, rgba(0, 0, 0, 0.008) 21.2%, rgba(0, 0, 0, 0) 33.9%),
+    linear-gradient(to left, rgba(0, 0, 0, 1) 0, rgba(0, 0, 0, 0.5) 4.23%, rgba(0, 0, 0, 0.111) 8.47%, rgba(0, 0, 0, 0.036) 12.7%, rgba(0, 0, 0, 0.008) 21.2%, rgba(0, 0, 0, 0) 33.9%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 1) 0, rgba(0, 0, 0, 0.5) 5.9%, rgba(0, 0, 0, 0.111) 11.81%, rgba(0, 0, 0, 0.036) 17.71%, rgba(0, 0, 0, 0.008) 29.5%, rgba(0, 0, 0, 0) 47.2%),
+    linear-gradient(to top, rgba(0, 0, 0, 1) 0, rgba(0, 0, 0, 0.5) 5.9%, rgba(0, 0, 0, 0.111) 11.81%, rgba(0, 0, 0, 0.036) 17.71%, rgba(0, 0, 0, 0.008) 29.5%, rgba(0, 0, 0, 0) 47.2%);
+}
+
 /* ===== 热区层（点击命中） ===== */
 
 .preview-hit-layer {
   position: absolute;
   inset: 0;
   z-index: 8;
+  /* 拖拽时不要选中文字、也不要用指针滚动页面 */
+  touch-action: none;
+  user-select: none;
+}
+
+/* 只有"能拖"的三种图层显示抓手光标（对话框/名片/地点牌不可拖） */
+.preview-hit-layer.draggable .preview-hit.kind-character,
+.preview-hit-layer.draggable .preview-hit.kind-background,
+.preview-hit-layer.draggable .preview-hit.kind-tempImage {
+  cursor: grab;
+}
+
+.preview-hit-layer.draggable:active .preview-hit.kind-character,
+.preview-hit-layer.draggable:active .preview-hit.kind-background,
+.preview-hit-layer.draggable:active .preview-hit.kind-tempImage {
+  cursor: grabbing;
 }
 
 /* 热区本身是透明按钮：悬停才浮出淡淡的框，避免平时干扰看画面 */

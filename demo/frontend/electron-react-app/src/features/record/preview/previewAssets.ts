@@ -15,7 +15,15 @@ import ApiService from "@services/ApiService";
 import { buildPortraitImageUrl } from "@features/common/utils/portraitUtils";
 import { SceneLayerKind, sceneLayerKey } from "./previewLayout";
 
-/** UI 素材地址：对话框与地点牌（叠在场景之上、不受摄像机影响） */
+/**
+ * UI 素材地址：对话框 / 地点牌。
+ *
+ * <p>注意边框**不是**素材：后端用 {@code RenderOfImage.buildBorderMask()} 现画一张
+ * 1920×1080 的黑色渐隐遮罩（`alpha(d) = 1/(1+(d/81.25)^3)`，横向半衰 81.25、纵向 63.75，
+ * 画布正中间全透明），所以 DOM 场景层用 CSS 渐变复刻它，见 preview.css 的
+ * `.preview-scene-border`——不要再去读 `border.png`（那是另一张 1536×864 的旧素材，
+ * 贴上去会出现一个错位的小黑框）。
+ */
 export const UI_IMAGE_URLS = {
   dialogBox: ApiService.getUiAssetUrl("dialogBox.png"),
   locationPlate: ApiService.getUiAssetUrl("location.png"),

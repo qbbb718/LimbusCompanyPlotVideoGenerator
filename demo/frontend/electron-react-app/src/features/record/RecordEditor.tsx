@@ -39,12 +39,25 @@ import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
 import { ProjectWorkspace } from "./useProjectWorkspace";
 import {
+  EditorSnapshot,
+  HistoryState,
+  createHistory,
+  dropLastHistory,
+  historyDepth,
+  popHistory,
+  popRedo,
+  pushHistory,
+  redoDepth,
+} from "./recordHistory";
+import {
   focusRequestForLayer,
   PreviewSelection,
   PropertyFocusRequest,
   selectionOfLayer,
 } from "./preview/previewTargets";
 import type { PreviewLayer } from "./preview/previewLayout";
+import { writeLayerPosition } from "./preview/previewDrag";
+import type { DragPoint } from "./preview/previewDrag";
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
@@ -131,6 +144,123 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   // 空工程只自动补一条记录，避免 StrictMode 下 effect 重跑出两条
   const autoCreatedRef = useRef(false);
 
+  /* ===================== 撤销（Ctrl+Z） ===================== */
+
+  /** 撤销栈：每项是"某次改动之前的记录 + 分组" */
+  const historyRef = useRef<HistoryState>(createHistory());
+  /** 拖拽期间挂起压栈：一次拖动只算一步，过程中的每帧回写不单独入栈 */
+  const undoSuspendedRef = useRef(false);
+  /** 撤销后要求预览跳过后端磁盘缓存重渲一张 */
+  const [previewRefreshToken, setPreviewRefreshToken] = useState(0);
+
+  /**
+   * @function 压入一份"改动前"的快照
+   * @param coalesce true = 允许与上一次合并（打字/拖滑杆这类连续编辑）
+   */
+  const pushUndo = useCallback((coalesce = false) => {
+    if (undoSuspendedRef.current) return;
+    historyRef.current = pushHistory(
+      historyRef.current,
+      { records: recordsRef.current, groups: groupsRef.current },
+      Date.now(),
+      coalesce,
+    );
+  }, []);
+
+  /** 当前工程快照（撤销/重做时用来把"反方向"的那一步存起来） */
+  const currentSnapshot = useCallback(
+    (): EditorSnapshot => ({
+      records: recordsRef.current,
+      groups: groupsRef.current,
+    }),
+    [],
+  );
+
+  /**
+   * @function 把一份快照写回工程（撤销与重做共用）
+   *
+   * <p>恢复记录与分组、清掉预览选中态，并让预览图跳过后端缓存重渲一次——
+   * 撤销/重做都是把记录改成**旧内容**，后端缓存按 uuid 存，直接用缓存会停在改之前的画面。
+   */
+  const applySnapshot = useCallback(
+    (snapshot: EditorSnapshot) => {
+      setRecords(snapshot.records);
+      recordsRef.current = snapshot.records;
+      setGroups(snapshot.groups);
+      groupsRef.current = snapshot.groups;
+      setPreviewSelection(null);
+      setPreviewRefreshToken((value) => value + 1);
+    },
+    [setRecords, setGroups],
+  );
+
+  /**
+   * @function 撤销一步（Ctrl+Z）
+   * 撤销前先把当前状态推进重做栈，这样 Ctrl+Y 能原样回来。
+   */
+  const undo = useCallback(() => {
+    const { state, snapshot } = popHistory(historyRef.current, currentSnapshot());
+    historyRef.current = state;
+    if (!snapshot) {
+      workspace.showToast("info", "没有可撤销的操作");
+      return;
+    }
+
+    applySnapshot(snapshot);
+    workspace.showToast(
+      "info",
+      historyDepth(state) > 0
+        ? `已撤销（还可撤销 ${historyDepth(state)} 步）`
+        : "已撤销到最早的状态",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applySnapshot, currentSnapshot]);
+
+  /**
+   * @function 重做一步（Ctrl+Y / Ctrl+Shift+Z）
+   * 把最近撤销掉的那一步恢复回来，同时把当前状态放回撤销栈（之后还能再 Ctrl+Z）。
+   */
+  const redo = useCallback(() => {
+    const { state, snapshot } = popRedo(historyRef.current, currentSnapshot());
+    historyRef.current = state;
+    if (!snapshot) {
+      workspace.showToast("info", "没有可重做的操作");
+      return;
+    }
+
+    applySnapshot(snapshot);
+    workspace.showToast(
+      "info",
+      redoDepth(state) > 0
+        ? `已重做（还可重做 ${redoDepth(state)} 步）`
+        : "已重做到最新",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applySnapshot, currentSnapshot]);
+
+  // Ctrl/⌘+Z 撤销、Ctrl+Y（或 Ctrl+Shift+Z）重做。
+  // 捕获阶段注册，避免被输入框里的原生撤销/重做抢走。
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const key = event.key?.toLowerCase();
+
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        undo();
+        return;
+      }
+      if (key === "y" || (key === "z" && event.shiftKey)) {
+        event.preventDefault();
+        event.stopPropagation();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [undo, redo]);
+
   /**
    * @function 应用一次记录数组变更
    * 选中项改用 uuid 追踪：拖动记录、分组重排后下标都会变，
@@ -141,6 +271,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
    */
   const applyRecords = useCallback(
     (nextRecords: Record[], nextGroups?: RecordGroup[]) => {
+      // 结构性改动（增删/排序/分组）各自成一步，不与打字合并
+      pushUndo(false);
       const previousRecords = recordsRef.current;
       const selectedUuid = previousRecords[selectedIndexRef.current]?.uuid;
 
@@ -161,7 +293,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         setSelectedRecordIndex(nextIndex);
       }
     },
-    [setRecords, setSelectedRecordIndex, setGroups],
+    [pushUndo, setRecords, setSelectedRecordIndex, setGroups],
   );
 
   const createNewRecord = useCallback(() => {
@@ -269,7 +401,12 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     }
   }, [isLoadingProject, records, createNewRecord]);
 
+  /**
+   * @function 更新单条记录
+   * 压撤销快照用 `coalesce = true`：连续打字/拖滑杆合并成一步（见 recordHistory.ts）。
+   */
   const updateRecord = (index: number, updatedRecord: Record) => {
+    pushUndo(true);
     setRecords((prev) => {
       const newRecords = [...(prev || [])];
       newRecords[index] = { ...updatedRecord, isDirty: true };
@@ -299,6 +436,61 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   const clearPreviewSelection = useCallback(() => {
     setPreviewSelection(null);
   }, []);
+
+  /* ===================== 预览里拖动元素 ===================== */
+
+  /** 本次拖动的起点（Esc / 指针取消时还原）；null 表示没在拖 */
+  const dragStartRef = useRef<{ layer: PreviewLayer; start: DragPoint } | null>(
+    null,
+  );
+
+  /**
+   * @function 开始拖动
+   * 压一次撤销快照（整段拖动算一步），并挂起拖拽过程中的压栈。
+   */
+  const handleElementDragStart = (layer: PreviewLayer, start: DragPoint) => {
+    dragStartRef.current = { layer, start };
+    pushUndo(false);
+    undoSuspendedRef.current = true;
+  };
+
+  /**
+   * @function 拖动中：把新位置写回记录
+   *
+   * <p>这里已经是"设计画布像素的绝对位置"，语义差异（立绘是偏移、背景/临时图片是坐标）
+   * 由 {@link writeLayerPosition} 统一处理。用 ref 读最新记录，避免闭包里的旧快照。
+   */
+  const handleElementDragMove = (layer: PreviewLayer, position: DragPoint) => {
+    const current = recordsRef.current[selectedIndexRef.current];
+    if (!current) return;
+    const next = writeLayerPosition(current, layer.kind, layer.index, position);
+    if (next) updateRecord(selectedIndexRef.current, next);
+  };
+
+  const handleElementDragEnd = () => {
+    dragStartRef.current = null;
+    undoSuspendedRef.current = false;
+  };
+
+  /** Esc / 指针取消：把元素放回拖动起点 */
+  const handleElementDragCancel = (layer: PreviewLayer) => {
+    const session = dragStartRef.current;
+    dragStartRef.current = null;
+    undoSuspendedRef.current = false;
+    if (!session) return;
+    const current = recordsRef.current[selectedIndexRef.current];
+    if (!current) return;
+    const restored = writeLayerPosition(
+      current,
+      layer.kind,
+      layer.index,
+      session.start,
+    );
+    if (restored) updateRecord(selectedIndexRef.current, restored);
+    // 已经手动还原到起点：那次"拖动前"的快照 == 当前状态，弹掉它，
+    // 否则下一次 Ctrl+Z 会变成一次空操作。
+    historyRef.current = dropLastHistory(historyRef.current);
+  };
 
   /**
    * 切换记录时清掉选中态与定位请求：
@@ -341,10 +533,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   const handleGlobalTextSpeedChange = useCallback(
     (speed: number) => {
       const normalized = normalizeTextSpeed(speed);
+      pushUndo(false);
       setProjectSettings((prev) => ({ ...prev, textSpeed: normalized }));
       setRecords((prev) => withGlobalTextSpeed(prev || [], normalized));
     },
-    [setProjectSettings, setRecords],
+    [pushUndo, setProjectSettings, setRecords],
   );
 
   const deleteRecord = (index: number) => {
@@ -760,6 +953,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               selectedElementKey={previewSelection?.key ?? null}
               onSelectElement={handlePreviewSelect}
               onClearSelection={clearPreviewSelection}
+              onElementDragStart={handleElementDragStart}
+              onElementDragMove={handleElementDragMove}
+              onElementDragEnd={handleElementDragEnd}
+              onElementDragCancel={handleElementDragCancel}
+              refreshToken={previewRefreshToken}
             />
           </ResizablePanel>
 
