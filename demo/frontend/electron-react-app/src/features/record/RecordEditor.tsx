@@ -39,6 +39,10 @@ import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
 import { ProjectWorkspace } from "./useProjectWorkspace";
 import {
+  cameraKeyframe,
+  isIdentityCamera,
+} from "./preview/cameraView";
+import {
   EditorSnapshot,
   HistoryState,
   createHistory,
@@ -317,6 +321,16 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       ? JSON.parse(JSON.stringify(inherit.tempImages))
       : [];
 
+    // 摄像机：新记录的**起点**接上一条的终点（有运镜就取终点，没有就取它当前的镜头），
+    // 这样连续两条记录之间镜头不会跳。上一条缺失/没有镜头时留空 = 默认位置。
+    const inheritedCameraFrame = inherit
+      ? cameraKeyframe(inherit.camera, "end")
+      : undefined;
+    const inheritedCamera =
+      inheritedCameraFrame && !isIdentityCamera(inheritedCameraFrame)
+        ? inheritedCameraFrame
+        : undefined;
+
     // 在分组里按"+"新增 → 新记录留在同一分组；分组已被解散则按未分组处理
     const inheritGroupId =
       inherit?.groupId &&
@@ -354,6 +368,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       tempImages: inheritedTempImages,
       effects: [],
       audioCommands: inheritedAudioCommands,
+      // 起点接上一条的终点（见 inheritedCamera 处的注释）
+      camera: inheritedCamera,
       isDirty: true,
     };
 
@@ -958,6 +974,19 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               onElementDragEnd={handleElementDragEnd}
               onElementDragCancel={handleElementDragCancel}
               refreshToken={previewRefreshToken}
+              // 摄像机模式：镜头与「铺满背景」都直接写回当前记录
+              onCameraChange={(camera) => {
+                const current = recordsRef.current[selectedIndexRef.current];
+                if (!current) return;
+                updateRecord(selectedIndexRef.current, { ...current, camera });
+              }}
+              onBackgroundScaleChange={(index, scale) => {
+                const current = recordsRef.current[selectedIndexRef.current];
+                if (!current?.bg?.[index]) return;
+                const bg = [...current.bg];
+                bg[index] = { ...bg[index], scale };
+                updateRecord(selectedIndexRef.current, { ...current, bg });
+              }}
             />
           </ResizablePanel>
 

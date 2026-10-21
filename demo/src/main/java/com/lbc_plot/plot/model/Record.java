@@ -22,8 +22,13 @@ public class Record {
     private String uuid; // 避免修改顺序破坏dirty
     private int durationFrames; // 持续时间（帧数）
     private Dialogue dialogue; // 文本对话内容
-    @JsonIgnore
-    private Camera camera; // 摄像机信息
+    /**
+     * 摄像机（每条记录一个）。
+     *
+     * <p>要随记录一起序列化：出片时记录是作为请求体发给后端的，JSON 里没有 camera
+     * 就渲染不出用户设定的取景。缺省 (960,540,1.0) 是恒等变换，旧工程不受影响。
+     */
+    private Camera camera;
     private List<BackgroundVisual> bg; // 背景视觉元素
     private List<CharacterVisual> chars; // 角色立绘列表
     private List<TempImageVisual> tempImages; // 临时图片（NPC、道具等）
@@ -92,6 +97,13 @@ public class Record {
         this.isDirty = true;
     }
 
+    /**
+     * 摄像机。
+     *
+     * <p>与 {@code effects} 同理：不能 {@code @JsonIgnore}，否则导出视频时请求体里没有取景信息，
+     * 渲染端只能按恒等变换出片，用户拖好的镜头会丢。
+     */
+    @JsonProperty("camera")
     public Camera getCamera() {
         return camera;
     }

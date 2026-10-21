@@ -39,9 +39,15 @@ public class BackgroundVisual extends VisualElement {
     @JsonProperty
     private boolean visible = true;
 
-    /** 缩放上下限：与前端滑杆（0.1 ~ 3.0）一致，同时防止异常数值生成超大 / 零尺寸中间图 */
+    /**
+     * 缩放上下限：与前端滑杆一致，同时防止异常数值生成超大 / 零尺寸中间图。
+     *
+     * <p>上限比立绘/临时图片的 3.0 大：背景要能「铺满画面」，
+     * 9:16 的竖图要盖住 16:9 取景框约需 3.16 倍，卡在 3.0 会差 100 多像素铺不满。
+     * 前端对应 constant 是 visualCoordinates.MAX_BACKGROUND_SCALE。
+     */
     private static final float MIN_SCALE = 0.1f;
-    private static final float MAX_SCALE = 3.0f;
+    private static final float MAX_SCALE = 4.0f;
 
     /**
      * 构造函数

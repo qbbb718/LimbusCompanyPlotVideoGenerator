@@ -87,7 +87,7 @@ public class RecordController {
      *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v10";
+    private static final String PREVIEW_CACHE_VERSION = "v11";
 
     /**
      * 正在渲染中的预览图：key = 缓存文件名，value = 渲染结果。

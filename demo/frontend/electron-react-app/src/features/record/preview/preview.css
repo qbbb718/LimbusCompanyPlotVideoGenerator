@@ -24,6 +24,16 @@
   border-radius: 4px;
 }
 
+/*
+ * 播放中：画布以外一律纯黑。
+ *
+ * 舞台的位置与大小完全不变（还是按视频比例居中），只是把容器的底色换成 #000 ——
+ * 播放时看起来就是"正片 + 黑边"，不会被容器的深蓝灰底勾出一道边。
+ */
+.preview-image.is-playing {
+  background-color: #000;
+}
+
 .preview-stage {
   position: absolute;
   overflow: hidden;
@@ -56,6 +66,12 @@
   inset: 0;
   pointer-events: none;
   z-index: 5;
+}
+
+/* 裁剪容器：只负责 clip-path，不参与定位（百分比仍以 stage 为基准） */
+.preview-scene-clip {
+  position: absolute;
+  inset: 0;
 }
 
 .preview-scene-item {
@@ -268,4 +284,234 @@
   padding: 0 4px;
   font-size: 11px;
   color: #fbbf24;
+}
+
+/* ===== 预览模式切换（最终效果 / 摄像机） ===== */
+
+.preview-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 6px 0;
+  flex-shrink: 0;
+}
+
+.preview-mode-bar button {
+  padding: 3px 12px;
+  font-size: 12px;
+  color: #444;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.preview-mode-bar button.active {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+/* ===== 摄像机模式（世界视图） ===== */
+
+.camera-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0b0b0b;
+  touch-action: none;
+  user-select: none;
+  cursor: move;
+}
+
+.camera-stage.panning {
+  cursor: grabbing;
+}
+
+.camera-stage.editing-elements {
+  cursor: default;
+}
+
+/* 世界框：固定像素定位（由视图缩放/平移算出），里面的图层一律用百分比 */
+.camera-world {
+  position: absolute;
+  background-color: #101010;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* 世界参考框（背景归位范围 ∪ 画布）：镜头夹取的基准，也是"画面至少要盖住"的范围 */
+.camera-world-ref {
+  position: absolute;
+  outline: 1px dashed rgba(255, 255, 255, 0.4);
+  outline-offset: -1px;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+/* 取景框：框外一圈压暗（用超大 box-shadow 实现，不占布局、不吃事件） */
+.camera-frame {
+  position: absolute;
+  outline: 2px solid #38bdf8;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 12;
+}
+
+.camera-frame-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-100%);
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 2px;
+}
+
+/* 四条边框带：唯一能"拖镜头"的固定手柄（别的工具下也有效） */
+.camera-frame-edge {
+  position: absolute;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.camera-frame-edge.edge-n {
+  left: -8px;
+  right: -8px;
+  top: -8px;
+  height: 16px;
+}
+
+.camera-frame-edge.edge-s {
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  height: 16px;
+}
+
+.camera-frame-edge.edge-w {
+  top: -8px;
+  bottom: -8px;
+  left: -8px;
+  width: 16px;
+}
+
+.camera-frame-edge.edge-e {
+  top: -8px;
+  bottom: -8px;
+  right: -8px;
+  width: 16px;
+}
+
+/* ===== 摄像机模式工具条 ===== */
+
+.camera-toolbar {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: rgba(20, 20, 20, 0.82);
+  color: #ddd;
+  font-size: 12px;
+  cursor: default;
+}
+
+.camera-toolbar button {
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.camera-toolbar button:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.camera-toolbar button.active {
+  color: #111;
+  background: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.camera-tool-group {
+  display: flex;
+  gap: 4px;
+}
+
+.camera-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.camera-zoom-value {
+  min-width: 46px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-zoom-readout {
+  color: #fbbf24;
+}
+
+.camera-hint {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  right: 8px;
+  z-index: 20;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(20, 20, 20, 0.7);
+  color: #bbb;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.camera-center-readout {
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== C2：终点虚影 / 缓动下拉 ===== */
+
+.camera-frame-ghost {
+  position: absolute;
+  outline: 1px dashed rgba(56, 189, 248, 0.75);
+  outline-offset: -1px;
+  background: rgba(56, 189, 248, 0.06);
+  pointer-events: none;
+  z-index: 11;
+}
+
+.camera-easing-select {
+  padding: 1px 4px;
+  font-size: 12px;
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.camera-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

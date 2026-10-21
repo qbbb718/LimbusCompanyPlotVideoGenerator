@@ -14,6 +14,17 @@ import PreviewSceneLayer from "./preview/PreviewSceneLayer";
 import type { SceneLayerItem } from "./preview/PreviewSceneLayer";
 import PreviewDebugOverlay from "./preview/PreviewDebugOverlay";
 import PreviewHitLayer from "./preview/PreviewHitLayer";
+import CameraModeView from "./preview/CameraModeView";
+import {
+  cameraAt,
+  cameraMoveFrames,
+  cameraProgressOf,
+  coverScaleForBackground,
+  isAnimatedCamera,
+} from "./preview/cameraView";
+import { sceneLayerKey } from "./preview/previewLayout";
+import type { RecordCamera } from "@types";
+import { useCameraPlayback } from "./preview/useCameraPlayback";
 
 interface RecordPreviewProps {
   selectedRecord: Record;
@@ -54,6 +65,10 @@ interface RecordPreviewProps {
    * 记录变干净（isDirty=false）时会命中上一次渲的图，画面就停在撤销之前的样子。
    */
   refreshToken?: number;
+  /** 摄像机模式里调整了镜头（由 RecordEditor 写回记录） */
+  onCameraChange?: (camera: RecordCamera) => void;
+  /** 「铺满背景」：把第 index 张背景的 scale 改成给定值 */
+  onBackgroundScaleChange?: (index: number, scale: number) => void;
 }
 
 /**
@@ -94,6 +109,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   onElementDragEnd,
   onElementDragCancel,
   refreshToken = 0,
+  onCameraChange,
+  onBackgroundScaleChange,
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   /** 正在向后端要新图（**旧图继续显示**，不再像以前那样先卸载再加载，避免闪一下黑） */
@@ -111,6 +128,22 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
    * 同时**暂停预览图请求**，松手之后才重新要一张（否则拖动中会白渲十几次）。
    */
   const [isDragging, setIsDragging] = useState(false);
+  /**
+   * 预览模式：`effect` = 看后端渲的成片；`camera` = 看没渲染 UI 的世界并调镜头。
+   *
+   * <p>摄像机模式不显示栅格图（那张图是取景后的结果，没法用来显示世界全图），
+   * 也**不发预览图请求**——镜头一动记录就变，每动一下都让后端重渲一遍纯属浪费。
+   */
+  const [viewMode, setViewMode] = useState<"effect" | "camera">("effect");
+  /** 运镜时长（帧）：预览与成片用同一个数字，这里只是把它读出来 */
+  const moveFrames = cameraMoveFrames(selectedRecord.camera);
+  /** 记录比运镜还短时按记录播（与导出一样会被截断） */
+  const playFrames =
+    (selectedRecord.durationFrames ?? 0) > 0
+      ? Math.min(moveFrames, selectedRecord.durationFrames)
+      : moveFrames;
+  /** 摇镜预览：播放这几帧，DOM 场景层跟着重投影 */
+  const playback = useCameraPlayback(playFrames);
 
   const blobUrlRef = useRef<string | null>(null);
   // 上次渲染时用的强制刷新令牌：撤销之后记录"变回旧内容"，磁盘缓存会命中旧图，必须跳过缓存
@@ -145,6 +178,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         freeTextX: r.dialogue?.freeTextX,
         freeTextY: r.dialogue?.freeTextY,
       },
+      // 镜头也算视觉内容：改了取景必须重新取图，否则预览图停在旧构图
+      camera: r.camera,
     });
 
   /**
@@ -165,7 +200,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   useEffect(() => {
     // 拖拽期间不请求预览图：画面由 DOM 场景层实时顶上，
     // 松手后 isDragging 变 false，这个 effect 会带着最新记录重新跑一次。
-    if (isDragging) return undefined;
+    // 摄像机模式同理：那张图是取景后的成片，用不上；镜头一动就重渲纯属浪费。
+    if (isDragging || viewMode === "camera" || playback.playing) return undefined;
 
     let cancelled = false;
 
@@ -231,7 +267,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     // 不需要 forceRefresh，但必须重新请求一次才能拿到另一种样式的图。
     // isDragging 进依赖：松手那一刻要用最新记录补一张。
     // refreshToken 进依赖：撤销要跳过后端磁盘缓存。
-  }, [selectedRecord, videoWidth, videoHeight, plot, applyPreviewUrl, isDragging, refreshToken]);
+    // viewMode 进依赖：从摄像机模式切回最终效果时要立刻补一张（成片按新镜头渲）。
+  }, [selectedRecord, videoWidth, videoHeight, plot, applyPreviewUrl, isDragging, refreshToken, viewMode, playback.playing]);
 
   // 组件卸载时清理 blob URL
   useEffect(() => {
@@ -283,6 +320,15 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
   const { sizes } = useImageSizes(imageUrls);
 
+  /** 播放用的镜头（t 时刻）：「最终效果」里摇镜预览就是每帧重算几何 */
+  const playbackCamera =
+    playback.t !== null
+      ? cameraAt(
+          selectedRecord.camera,
+          cameraProgressOf(playback.elapsedFrames, moveFrames),
+        )
+      : undefined;
+
   /** 一条记录在预览图上的全部几何（矩形、世界框、缺失尺寸清单） */
   const geometry = useMemo(
     () =>
@@ -296,11 +342,58 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         },
         dialogBoxSize: sizes[UI_IMAGE_URLS.dialogBox],
         locationSize: sizes[UI_IMAGE_URLS.locationPlate],
+        // 镜头：预览图已经按它取景，热区也要跟着一起投影，否则框和画面对不上。
+        // 播放时用插值后的镜头，DOM 场景层才会真的"摇"起来。
+        camera: playbackCamera ?? selectedRecord.camera,
       }),
-    [selectedRecord, plot, videoWidth, videoHeight, sceneImages, sizes],
+    [selectedRecord, plot, videoWidth, videoHeight, sceneImages, sizes, playbackCamera],
   );
 
   const frameSize = { width: videoWidth || 1920, height: videoHeight || 1080 };
+
+  /**
+   * 场景框在输出图里的矩形：设计画布中间 80%（`0.8` 缩放 + (192,108) 偏移）。
+   *
+   * <p>成片里场景只画到这一块，四周是黑边；DOM 场景层（播放/对位/拖动）必须按它裁剪，
+   * 否则镜头一摇，背景会溢出到黑边上——看起来就是"黑框没了"。
+   */
+  const sceneBoxRect = sceneToOutput(
+    { x: 0, y: 0, w: DESIGN_WIDTH, h: DESIGN_HEIGHT },
+    frameSize,
+  );
+
+  /**
+   * 「铺满背景」：把最上面那张**已加载出尺寸**的背景放大到盖住当前取景框。
+   *
+   * <p>为什么要它：后端背景是 contain（完整放进目标框），30:9 这种横长条在 scale=1 时
+   * 只画成 1920×576、上下留黑，世界也只有画布那么大，镜头根本没地方摇。
+   */
+  const coverTargetIndex = useMemo(() => {
+    const backgrounds = selectedRecord.bg ?? [];
+    for (let index = backgrounds.length - 1; index >= 0; index--) {
+      const url = sceneImages[sceneLayerKey("background", index)];
+      if (url && sizes[url]) return index;
+    }
+    return -1;
+  }, [selectedRecord.bg, sceneImages, sizes]);
+
+  const coverBackground =
+    coverTargetIndex >= 0 && onBackgroundScaleChange
+      ? () => {
+          const background = (selectedRecord.bg ?? [])[coverTargetIndex];
+          const url = sceneImages[sceneLayerKey("background", coverTargetIndex)];
+          const size = url ? sizes[url] : undefined;
+          if (!background || !size) return;
+          onBackgroundScaleChange(
+            coverTargetIndex,
+            coverScaleForBackground(background, size, {
+              centerX: selectedRecord.camera?.centerX ?? 960,
+              centerY: selectedRecord.camera?.centerY ?? 540,
+              zoom: selectedRecord.camera?.zoom ?? 1,
+            }),
+          );
+        }
+      : undefined;
 
   /**
    * 场景层的绘制列表。
@@ -326,6 +419,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         src: srcOf(layer),
         rect: layer.outRect,
         dim: layer.dim,
+        // 世界层要裁到场景框；边框与 UI 不裁（见 PreviewSceneLayer 的说明）
+        clipWithScene: true,
       }))
       .filter((item) => item.src);
 
@@ -355,8 +450,74 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
   return (
     <div className="preview-container">
-      <div className="preview-image" ref={containerRef}>
-        {stage && (
+      {/* 两种看法：后端渲的成片 / 没渲染 UI 的世界（可移镜） */}
+      <div className="preview-mode-bar" role="tablist" aria-label="预览模式">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === "effect"}
+          className={viewMode === "effect" ? "active" : ""}
+          onClick={() => setViewMode("effect")}
+          title="看最终成片；点画面里的元素可直接编辑"
+        >
+          🖼 最终效果
+        </button>
+        {viewMode === "effect" && (
+          <button
+            type="button"
+            className={playback.playing ? "active" : ""}
+            onClick={() => (playback.playing ? playback.stop() : playback.play())}
+            disabled={!isAnimatedCamera(selectedRecord.camera)}
+            title={
+              isAnimatedCamera(selectedRecord.camera)
+                ? "按记录时长播放一遍镜头（DOM 近似，台词不参与动画）"
+                : "这条记录的镜头不会动：去「摄像机」模式把终点挪一下"
+            }
+          >
+            {playback.playing ? "⏹ 停止" : "▶ 播放"}
+          </button>
+        )}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === "camera"}
+          className={viewMode === "camera" ? "active" : ""}
+          onClick={() => setViewMode("camera")}
+          title="看没渲染 UI 的世界并调整镜头（背景/立绘/临时图片受镜头影响）"
+        >
+          🎥 摄像机
+        </button>
+      </div>
+      <div
+        className={`preview-image${playback.playing ? " is-playing" : ""}`}
+        ref={containerRef}
+      >
+        {viewMode === "camera" ? (
+          <CameraModeView
+            layers={geometry.layers}
+            worldRef={geometry.worldRef}
+            worldBox={geometry.worldBox}
+            camera={selectedRecord.camera}
+            durationFrames={selectedRecord.durationFrames ?? 0}
+            sceneImages={sceneImages}
+            stageSize={containerSize}
+            selectedKey={selectedElementKey}
+            onCameraChange={(camera) => onCameraChange?.(camera)}
+            onSelectLayer={(layer) => onSelectElement?.(layer)}
+            onClearSelection={onClearSelection}
+            getLayerPosition={(layer) =>
+              readLayerPosition(selectedRecord, layer.kind, layer.index)
+            }
+            onLayerDragStart={(layer, start) => {
+              onElementDragStart?.(layer, start);
+            }}
+            onLayerMove={(layer, position) => onElementDragMove?.(layer, position)}
+            onLayerDragEnd={(layer) => onElementDragEnd?.(layer)}
+            onLayerDragCancel={(layer) => onElementDragCancel?.(layer)}
+            onCoverBackground={coverBackground}
+          />
+        ) : (
+          stage && (
           <div
             className="preview-stage"
             style={{
@@ -374,12 +535,18 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
                 draggable={false}
                 // 拖拽中完全隐藏（位置已经变了，旧图会"拖影"）；
                 // 只是打开对位自检的「◧ 场景」时压暗，方便看出两层是否严丝合缝。
-                style={{ opacity: isDragging ? 0 : showScene ? 0.35 : 1 }}
+                style={{
+                  opacity: isDragging || playback.playing ? 0 : showScene ? 0.35 : 1,
+                }}
               />
             )}
 
-            {(showScene || isDragging) && sceneItems.length > 0 && (
-              <PreviewSceneLayer items={sceneItems} frame={frameSize} />
+            {(showScene || isDragging || playback.playing) && sceneItems.length > 0 && (
+              <PreviewSceneLayer
+                items={sceneItems}
+                frame={frameSize}
+                clipRect={sceneBoxRect}
+              />
             )}
 
             {/* 热区：点元素 → 切页签 + 定位到属性面板；点空白 → 取消选中 */}
@@ -470,6 +637,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
             </div>
           </div>
+          )
         )}
       </div>
       <div className="preview-timeline">

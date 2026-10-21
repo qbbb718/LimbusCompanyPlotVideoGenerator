@@ -57,6 +57,14 @@ interface PreviewHitLayerProps {
   onLayerDragCancel?: (layer: PreviewLayer) => void;
   /** 相机 zoom（identity = 1）；C1 之后放得越大，同样的手势移动的世界像素越少 */
   cameraZoom?: number;
+  /**
+   * 覆盖「世界像素 / 舞台 CSS 像素」的换算系数。
+   *
+   * <p>最终效果模式下这个比例里含 0.8 场景缩放与相机 zoom，由 frame/容器尺寸推；
+   * 摄像机模式的世界视图里世界像素与设计像素一一对应（没有 0.8、没有相机），
+   * 直接传 `1 / 视图缩放` 更直观，也不用让组件去理解场景变换。
+   */
+  worldPerCssPixel?: number;
 }
 
 const percent = (value: number, total: number): string =>
@@ -111,6 +119,7 @@ const PreviewHitLayer: React.FC<PreviewHitLayerProps> = ({
   onLayerDragEnd,
   onLayerDragCancel,
   cameraZoom = 1,
+  worldPerCssPixel,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   /** 循环下钻的记忆：上次命中的集合与下标 */
@@ -279,11 +288,16 @@ const PreviewHitLayer: React.FC<PreviewHitLayerProps> = ({
     }
 
     const rect = containerRef.current?.getBoundingClientRect();
-    let worldDelta = worldDeltaFromStage(
-      cssDelta,
-      { width: rect?.width ?? 0, height: rect?.height ?? 0 },
-      cameraZoom,
-    );
+    // 世界像素 / CSS 像素：摄像机模式直接给系数，最终效果模式按 frame 与容器尺寸折算
+    const perPixel =
+      worldPerCssPixel !== undefined
+        ? { x: worldPerCssPixel, y: worldPerCssPixel }
+        : worldDeltaFromStage(
+            { x: 1, y: 1 },
+            { width: rect?.width ?? 0, height: rect?.height ?? 0 },
+            cameraZoom,
+          );
+    let worldDelta = { x: cssDelta.x * perPixel.x, y: cssDelta.y * perPixel.y };
     if (event.shiftKey) worldDelta = lockAxis(worldDelta);
 
     scheduleMove(session.layer, {

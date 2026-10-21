@@ -5,12 +5,12 @@ import NumberField from "./NumberField";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
 import {
-  MAX_VISUAL_SCALE,
+  MAX_BACKGROUND_SCALE,
   MIN_VISUAL_SCALE,
   VISUAL_SCALE_STEP,
   backgroundOffsetLimit,
   createCoordinateMapper,
-  normalizeScale,
+  normalizeBackgroundScale,
 } from "./visualCoordinates";
 import "../RecordEditor.css";
 import "./TransformControls.css";
@@ -181,7 +181,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
         <div className="backgrounds-list">
           {currentBackgrounds.map((bg, index) => {
             // 老工程文件可能没有这些字段：按默认值（1.0 / 居中）显示，不出现 NaN
-            const scale = normalizeScale(bg.scale);
+            const scale = normalizeBackgroundScale(bg.scale);
             const offsetX = bg.posX ?? 0;
             const offsetY = bg.posY ?? 0;
             const currentUiX = toUiX(offsetX);
@@ -229,7 +229,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                     className="transform-number"
                     value={scale}
                     min={MIN_VISUAL_SCALE}
-                    max={MAX_VISUAL_SCALE}
+                    max={MAX_BACKGROUND_SCALE}
                     ariaLabel={`背景 ${index + 1} 缩放`}
                     title="背景缩放（1 = 铺满画面，2 = 长宽各放大一倍）"
                     onChange={(value) =>
@@ -249,7 +249,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                     <input
                       type="range"
                       min={MIN_VISUAL_SCALE}
-                      max={MAX_VISUAL_SCALE}
+                      max={MAX_BACKGROUND_SCALE}
                       step={VISUAL_SCALE_STEP}
                       value={scale}
                       aria-label={`背景 ${index + 1} 缩放滑块`}

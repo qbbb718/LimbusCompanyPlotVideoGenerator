@@ -71,6 +71,35 @@ export interface ElectronAPI {
 
 // 注意：Window接口已在react-app-env.d.ts中定义
 
+/**
+ * 摄像机：把「世界坐标」映射到「场景画布 1920×1080」。
+ *
+ * <p>只影响场景层（背景 / 立绘 / 临时图片）；边框、对话框、角色名片、地点牌、台词都在设计画布上
+ * 直接绘制，不受它影响。字段与后端 {@code com.lbc_plot.render.video.Camera} 一一对应。
+ *
+ * <p>三个字段是**起点**；可选 `to` 是终点、`easing` 是起点→终点之间的缓动。
+ * 没有 `to` = 静止镜头。缺省值 (960, 540, 1) 是恒等变换 = 加摄像机之前的效果。
+ */
+export interface RecordCamera {
+  /** 取景中心 X（世界坐标；960 = 画布中心） */
+  centerX: number;
+  /** 取景中心 Y（世界坐标；540 = 画布中心） */
+  centerY: number;
+  /** 1 = 取景框正好 1920×1080；2 = 放大一倍 */
+  zoom: number;
+  /** 终点（缺省 = 静止镜头）；形状与起点相同 */
+  to?: { centerX: number; centerY: number; zoom: number };
+  /** 缓动：linear / easeIn / easeOut / easeInOut（缺省 linear） */
+  easing?: "linear" | "easeIn" | "easeOut" | "easeInOut";
+  /**
+   * 从起点走到终点的时长（帧，整数，最小 1）；缺省 24。
+   *
+   * <p>只有"有终点"时才有意义：走完之后镜头**停住**，等这条记录剩下的时间播完。
+   * 预览与导出用同一套进度公式（cameraView.cameraProgressOf / 后端 RenderOfVideo）。
+   */
+  moveFrames?: number;
+}
+
 // 情绪枚举 - 与后端保持一致
 export enum Emotion {
   NORMAL = 'normal',
@@ -288,6 +317,11 @@ export interface Record {
   groupId?: string;
   /** 仅在读写工程文件时出现：分组名称与折叠状态的快照；运行时请用 groupId */
   group?: RecordGroupStamp;
+  /**
+   * 摄像机（每条记录一个）；缺省 = 恒等变换（960, 540, 1），与旧工程一致。
+   * 由「剧情编辑 → 摄像机模式」写入，渲染时只作用于场景层。
+   */
+  camera?: RecordCamera;
 }
 
 // 角色

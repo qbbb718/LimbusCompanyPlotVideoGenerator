@@ -17,6 +17,15 @@ export const MAX_VISUAL_SCALE = 3.0;
 export const VISUAL_SCALE_STEP = 0.1;
 
 /**
+ * 背景单独用更大的上限（4.0）。
+ *
+ * <p>背景要能「铺满画面」：9:16 的竖图要盖住 16:9 的取景框需要约 3.16 倍，
+ * 卡在 3.0 会差 100 多像素铺不满（见 preview/cameraView.coverScaleForBackground）。
+ * 立绘 / 临时图片不需要这么大，仍用 {@link MAX_VISUAL_SCALE}。
+ */
+export const MAX_BACKGROUND_SCALE = 4.0;
+
+/**
  * 把记录里的 scale 归一化成可用值：缺省 / 非法（0、负数、NaN）按 1.0，越界的收敛到
  * [0.1, 3.0]。后端 CharacterVisual / BackgroundVisual 对非法值和上下限也是同一套兜底，
  * 保证界面显示的数值与实际渲染一致。
@@ -26,6 +35,14 @@ export const normalizeScale = (value?: number): number => {
     return 1;
   }
   return Math.min(MAX_VISUAL_SCALE, Math.max(MIN_VISUAL_SCALE, value));
+};
+
+/** 背景专用：兜底规则同上，上限放宽到 {@link MAX_BACKGROUND_SCALE} */
+export const normalizeBackgroundScale = (value?: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return 1;
+  }
+  return Math.min(MAX_BACKGROUND_SCALE, Math.max(MIN_VISUAL_SCALE, value));
 };
 
 export interface CoordinateMapper {

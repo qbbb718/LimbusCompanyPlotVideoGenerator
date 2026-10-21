@@ -16,6 +16,7 @@ import {
   DialogueAlign,
   Emotion,
   Record,
+  RecordCamera,
 } from "@types";
 import { generateUUID } from "./utils";
 import {
@@ -24,6 +25,16 @@ import {
   RecordGroup,
   stampGroups,
 } from "./recordGroups";
+import {
+  MAX_CAMERA_ZOOM,
+  MIN_CAMERA_ZOOM,
+  DESIGN_HEIGHT as DESIGN_CANVAS_HEIGHT,
+  DESIGN_WIDTH as DESIGN_CANVAS_WIDTH,
+} from "./preview/previewLayout";
+import {
+  CAMERA_EASINGS,
+  DEFAULT_CAMERA_EASING,
+} from "./preview/cameraView";
 
 /** 工程文件扩展名（保存对话框过滤器与默认文件名使用） */
 export const PROJECT_FILE_EXTENSION = ".json";
@@ -133,6 +144,57 @@ const normalizeFreeTextFontSize = (value: unknown): number => {
 };
 
 /**
+ * @function 归一化摄像机
+ *
+ * 缺省 / 非法值一律当"没有摄像机"（恒等变换）——旧工程、旧版本写的文件都没有这个字段，
+ * 保持 undefined 就意味着照常渲染，不会因为多读一个字段改变构图。
+ * zoom 收敛到 [0.5, 4]，与后端 Camera.getZoomFactor() 及前端 clampCamera 一致。
+ *
+ * <p>C2 的起止镜头：`to` 缺省 = 静止；有 `to` 但和起点一样也当静止（不写动画字段）。
+ *
+ * @param raw 文件里的 camera 字段
+ * @return 摄像机；恒等（960,540,1）且没有动画时返回 undefined，避免无意义地往工程里写一个空镜头
+ */
+const normalizeCamera = (raw: any): RecordCamera | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const readKey = (frame: any) => {
+    const centerX = asNumber(frame?.centerX, DESIGN_CANVAS_WIDTH / 2);
+    const centerY = asNumber(frame?.centerY, DESIGN_CANVAS_HEIGHT / 2);
+    // zoom <= 0 当作 1（0 会让取景框尺寸发散），其余收敛到 [0.5, 4]；与后端 Camera 一致
+    const rawZoom = asNumber(frame?.zoom, 1);
+    const zoom =
+      rawZoom > 0
+        ? Math.min(MAX_CAMERA_ZOOM, Math.max(MIN_CAMERA_ZOOM, rawZoom))
+        : 1;
+    return { centerX, centerY, zoom };
+  };
+
+  const start = readKey(raw);
+  const end = raw.to ? readKey(raw.to) : undefined;
+  const easing = CAMERA_EASINGS.includes(raw.easing)
+    ? (raw.easing as RecordCamera["easing"])
+    : undefined;
+
+  const animated =
+    end !== undefined &&
+    (Math.abs(start.centerX - end.centerX) > 0.5 ||
+      Math.abs(start.centerY - end.centerY) > 0.5 ||
+      Math.abs(start.zoom - end.zoom) > 1e-4);
+
+  const isIdentity =
+    Math.abs(start.zoom - 1) < 1e-4 &&
+    Math.abs(start.centerX - DESIGN_CANVAS_WIDTH / 2) < 0.5 &&
+    Math.abs(start.centerY - DESIGN_CANVAS_HEIGHT / 2) < 0.5;
+  // 静止 + 恒等 = 没有镜头；有动画的镜头哪怕起点恒等也要留着
+  if (!animated && isIdentity) return undefined;
+
+  return animated
+    ? { ...start, to: end, easing: easing ?? DEFAULT_CAMERA_EASING }
+    : start;
+};
+
+/**
  * @function 把文件里的音频指令归一化为前端结构
  * 后端 RecordsIO 写出的字段是 audioId，前端用 path；fadeDuration 是后端字段，
  * 归一化时原样保留（前端不展示，但保存回文件时不至于丢掉）。
@@ -206,6 +268,8 @@ export const normalizeRecord = (raw: any): Record => {
     chars: Array.isArray(source.chars) ? source.chars : [],
     tempImages: Array.isArray(source.tempImages) ? source.tempImages : [],
     effects: Array.isArray(source.effects) ? source.effects : [],
+    // 摄像机：旧工程没有这个字段 → undefined = 恒等，渲染与旧版一致
+    camera: normalizeCamera(source.camera),
     audioCommands: Array.isArray(source.audioCommands)
       ? source.audioCommands.map(normalizeAudioCommand)
       : [],

@@ -148,14 +148,14 @@ describe("预览几何 → 背景", () => {
     ).toEqual({ x: -840, y: 0, w: 3600, h: 1080 });
   });
 
-  test("scale 非法/缺省时按 1 处理，越界收敛到 [0.1, 3]", () => {
+  test("scale 非法/缺省时按 1 处理，越界收敛到 [0.1, 4]", () => {
     expect(
       backgroundWorldRect(makeBackground({ scale: 0 }) as any, IMAGE_16_9),
     ).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
-    // scale=99 被夹到 3：16:9 背景在 3 倍目标框里等比放大 → 5760×3240，仍居中
+    // scale=99 被夹到 4（背景上限比立绘大，竖图要能铺满）：16:9 背景 → 7680×4320，仍居中
     expect(
       backgroundWorldRect(makeBackground({ scale: 99 }) as any, IMAGE_16_9),
-    ).toEqual({ x: -1920, y: -1080, w: 5760, h: 3240 });
+    ).toEqual({ x: -2880, y: -1620, w: 7680, h: 4320 });
   });
 
   test("posX/posY 叠加在居中位置之上（背景 tab 的 X/Y 就是它）", () => {

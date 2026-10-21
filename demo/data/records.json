@@ -33,6 +33,7 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
+  "camera" : null,
   "effects" : [ ],
   "isDirty" : false,
   "chars" : [ ],
@@ -83,6 +84,21 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
+  "camera" : {
+    "centerX" : 960.0,
+    "centerY" : 540.0,
+    "zoom" : 1.0,
+    "to" : {
+      "centerX" : 439.1039,
+      "centerY" : 378.0192,
+      "zoom" : 2.8576512,
+      "to" : null,
+      "easing" : "easeOut",
+      "moveFrames" : 24
+    },
+    "easing" : "easeOut",
+    "moveFrames" : 24
+  },
   "effects" : [ {
     "type" : "CROSS_DISSOLVE",
     "enabled" : true
@@ -160,17 +176,24 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "43a4de8b-7f0d-4606-8e20-ddb93b2e756d",
+  "uuid" : "04c1ff47-ff9e-466d-8ff6-756229742266",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "哇塞...",
+    "text" : "...",
     "location" : "办公室",
-    "speakerC" : [ ],
-    "speakerName" : "旁白",
-    "faction" : "中立",
+    "speakerC" : [ {
+      "characterID" : "char_1792296094464",
+      "characterName" : "新角色",
+      "height" : 170,
+      "faction" : "未设定",
+      "colorBg" : "#69350B",
+      "colorText" : "#FBDBB3"
+    } ],
+    "speakerName" : "新角色",
+    "faction" : "未设定",
     "align" : "LEFT",
     "speed" : 3,
-    "emotion" : "SURPRISED",
+    "emotion" : "NORMAL",
     "freeText" : false,
     "bold" : false,
     "italic" : false,
@@ -183,10 +206,18 @@
   "tempImages" : [ ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
-    "audioId" : "-STOP",
+    "audioId" : "办公室BGM",
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
+  "camera" : {
+    "centerX" : 439.1039,
+    "centerY" : 378.0192,
+    "zoom" : 2.8576512,
+    "to" : null,
+    "easing" : "easeOut",
+    "moveFrames" : 24
+  },
   "effects" : [ ],
   "isDirty" : false,
   "chars" : [ {
@@ -212,19 +243,48 @@
       "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
       "defaultPortrait" : false
     },
-    "posX" : 1112,
+    "posX" : 88,
     "posY" : 257,
-    "adjX" : 384,
+    "adjX" : -640,
     "adjY" : 0,
     "scale" : 1.0,
-    "dim" : true
+    "dim" : false
+  }, {
+    "chara" : {
+      "characterID" : "char_1791800699958",
+      "characterName" : "新角色",
+      "height" : 170,
+      "faction" : "未设定",
+      "colorBg" : "#4C361F",
+      "colorText" : "#FBDBB3"
+    },
+    "portrait" : {
+      "portraitID" : "portrait_1791800709646",
+      "characterID" : "char_1791800699958",
+      "imagePath" : "char_1791800699958/portrait_1791800709646.webp",
+      "portName" : "巴里-default",
+      "emotion" : "normal",
+      "faceX" : 423,
+      "faceY" : 108,
+      "length" : 176,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : "/assets/characters/char_1791800699958/thumbnails/thumbnail_portrait_1791800709646.png",
+      "defaultPortrait" : true
+    },
+    "posX" : 520,
+    "posY" : 121,
+    "adjX" : 0,
+    "adjY" : 0,
+    "scale" : 1.0,
+    "dim" : false
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "bg_1791465440079",
-      "path" : "/assets/backgrounds/办公室_1791465458644.png",
+      "uuid" : "bg_1792301526450",
+      "path" : "/assets/backgrounds/办公室_1792301537868.png",
       "name" : "办公室",
-      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1791465440079_1791465458953.png"
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1792301526450_1792301538082.png"
     },
     "posX" : 0,
     "posY" : 0,

@@ -38,13 +38,18 @@ import type {
   BackgroundVisual,
   CharacterVisual,
   Record as PlotRecord,
+  RecordCamera,
   TempImageVisual,
 } from "@types";
 import {
   DESIGN_CANVAS_HEIGHT,
   DESIGN_CANVAS_WIDTH,
+  normalizeBackgroundScale,
   normalizeScale,
 } from "../properties/visualCoordinates";
+
+/** 记录里的摄像机类型（定义在 @types，这里转出让预览模块不必都去 import @types） */
+export type { RecordCamera } from "@types";
 
 /* ============================ 设计常量 ============================ */
 
@@ -115,14 +120,6 @@ export interface PreviewRect {
  * 摄像机：把世界坐标映射到场景画布。
  * identity（960, 540, 1）时输出与加摄像机之前逐像素一致。
  */
-export interface RecordCamera {
-  /** 取景中心 X（世界坐标，960 = 画布中心） */
-  centerX: number;
-  /** 取景中心 Y（世界坐标，540 = 画布中心） */
-  centerY: number;
-  /** 1 = 取景框正好 1920×1080；2 = 放大一倍 */
-  zoom: number;
-}
 
 /** 默认（等同没有摄像机）：旧工程全部用它 */
 export const DEFAULT_CAMERA: RecordCamera = {
@@ -295,7 +292,7 @@ export function backgroundWorldRect(
   imageSize: ImageSize,
   withOffset = true,
 ): PreviewRect {
-  const scale = normalizeScale(background.scale);
+  const scale = normalizeBackgroundScale(background.scale);
   const targetWidth = Math.max(1, Math.round(DESIGN_WIDTH * scale));
   const targetHeight = Math.max(1, Math.round(DESIGN_HEIGHT * scale));
   const fit = Math.min(

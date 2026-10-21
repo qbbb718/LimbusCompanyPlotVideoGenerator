@@ -28,6 +28,7 @@ import net.coobird.thumbnailator.Thumbnails;
 
 import com.lbc_plot.render.service.impl.CharacterServiceImpl;
 import com.lbc_plot.render.video.BackgroundVisual;
+import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.TempImageVisual;
@@ -250,6 +251,13 @@ public class RenderOfImage {
      * UI 也额外单独合成了一张 1080p 的图——每次都白多分配/写入两三张 8MB 的画布。
      */
     public static BufferedImage renderPre(Record record, boolean plot, int width, int height) throws IOException {
+        // 预览图看的是这一条的**第一帧**，用起点镜头（带 to 的镜头此刻就等于起点）
+        return renderPre(record, plot, width, height, record.getCamera());
+    }
+
+    /** 带镜头的完整预览渲染（动态镜头逐帧出片时，每帧传入当时的镜头） */
+    public static BufferedImage renderPre(Record record, boolean plot, int width, int height, Camera camera)
+            throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("开始渲染预览图: plot={}, 请求尺寸={}x{}, 记录 uuid={}", plot, width, height,
                     record.getUuid());
@@ -261,11 +269,11 @@ public class RenderOfImage {
 
         try {
             // 第一趟：场景层（全部在 1080p 设计画布上，与请求的输出分辨率无关）
-            renderBackground(composer, record);
+            renderBackground(composer, record, camera);
             if (plot) {
-                renderCharacters(composer, record);
+                renderCharacters(composer, record, camera);
             }
-            renderTempImages(composer, record);
+            renderTempImages(composer, record, camera);
             composer.addImageLayer(border, 0, 0);
             BufferedImage coImage = composer.compose();
             // 必须清空：否则场景图层会在第二趟里被重复绘制一遍
@@ -289,17 +297,23 @@ public class RenderOfImage {
      */
     public static BufferedImage renderPreExceptDialogue(Record record, boolean plot, int width, int height)
             throws IOException {
+        return renderPreExceptDialogue(record, plot, width, height, record.getCamera());
+    }
+
+    /** 带镜头的"除对话"渲染：动态镜头出片时，静态层每帧都要走它 */
+    public static BufferedImage renderPreExceptDialogue(Record record, boolean plot, int width, int height,
+            Camera camera) throws IOException {
         final int designW = designWidth();
         final int designH = designHeight();
         FrameComposerService composer = newDesignComposer();
 
         try {
             // 第一趟：场景层
-            renderBackground(composer, record);
+            renderBackground(composer, record, camera);
             if (plot) {
-                renderCharacters(composer, record);
+                renderCharacters(composer, record, camera);
             }
-            renderTempImages(composer, record);
+            renderTempImages(composer, record, camera);
             composer.addImageLayer(border, 0, 0);
             BufferedImage coImage = composer.compose();
             composer.clearLayers();
@@ -327,8 +341,14 @@ public class RenderOfImage {
      */
     public static BufferedImage renderBackgroundOnly(Record record, boolean plot, int width, int height)
             throws IOException {
+        return renderBackgroundOnly(record, plot, width, height, record.getCamera());
+    }
+
+    /** 仅渲染背景（指定镜头） */
+    public static BufferedImage renderBackgroundOnly(Record record, boolean plot, int width, int height,
+            Camera camera) throws IOException {
         FrameComposerService composer = newDesignComposer();
-        renderBackground(composer, record);
+        renderBackground(composer, record, camera);
         return composeFinalImage(composer, width, height, -1);
     }
 
@@ -336,8 +356,14 @@ public class RenderOfImage {
      * 仅渲染角色立绘
      */
     public static BufferedImage renderCharactersOnly(Record record, int width, int height) throws IOException {
+        return renderCharactersOnly(record, width, height, record.getCamera());
+    }
+
+    /** 仅渲染角色立绘（指定镜头） */
+    public static BufferedImage renderCharactersOnly(Record record, int width, int height, Camera camera)
+            throws IOException {
         FrameComposerService composer = newDesignComposer();
-        renderCharacters(composer, record);
+        renderCharacters(composer, record, camera);
         return composeFinalImage(composer, width, height, -1);
     }
 
@@ -353,7 +379,7 @@ public class RenderOfImage {
     /**
      * 渲染背景层（铺满 1080p 设计画布；缩放/位置与输出分辨率无关，统一在设计画布内换算）
      */
-    private static void renderBackground(FrameComposerService composer, Record record) {
+    private static void renderBackground(FrameComposerService composer, Record record, Camera camera) {
         final int designW = designWidth();
         final int designH = designHeight();
 
@@ -377,7 +403,7 @@ public class RenderOfImage {
             }
         }
 
-        renderFullScreenBackground(composer, bgList, designW, designH);
+        renderFullScreenBackground(composer, bgList, designW, designH, camera);
     }
 
     /**
@@ -392,7 +418,12 @@ public class RenderOfImage {
      * </ul>
      */
     private static void renderFullScreenBackground(FrameComposerService composer, List<BackgroundVisual> bgList,
-            int width, int height) {
+            int width, int height, Camera camera) {
+        // 摄像机只影响「场景层」：把背景的世界矩形换算到取景画布上。
+        // 恒等（缺省）时走原路径，不加任何取整，旧工程逐像素不变。
+        final boolean hasCamera = camera != null && !camera.isIdentity();
+        final float zoom = hasCamera ? camera.getZoomFactor() : 1f;
+
         for (BackgroundVisual bg : bgList) {
             if (!validateBackgroundVisual(bg))
                 continue;
@@ -403,7 +434,14 @@ public class RenderOfImage {
                     logger.warn("背景绘制区域为空，跳过: {}", bg);
                     continue;
                 }
-                composer.addImageLayerIntoRect(bg.getBgImage(), bounds.x, bounds.y, bounds.width, bounds.height);
+                if (hasCamera) {
+                    composer.addImageLayerIntoRect(bg.getBgImage(),
+                            camera.screenX(bounds.x), camera.screenY(bounds.y),
+                            Math.max(1, Math.round(bounds.width * zoom)),
+                            Math.max(1, Math.round(bounds.height * zoom)));
+                } else {
+                    composer.addImageLayerIntoRect(bg.getBgImage(), bounds.x, bounds.y, bounds.width, bounds.height);
+                }
                 if (logger.isDebugEnabled()) {
                     logger.debug("添加背景图层: name={}, scale={}, pos=({},{}), 绘制区域={}",
                             bg.getBackground().getName(), bg.getScale(), bg.getPosX(), bg.getPosY(), bounds);
@@ -434,7 +472,7 @@ public class RenderOfImage {
     /**
      * 渲染角色立绘层
      */
-    private static void renderCharacters(FrameComposerService composer, Record record) {
+    private static void renderCharacters(FrameComposerService composer, Record record, Camera camera) {
         List<CharacterVisual> chars = record.getCharacters();
         if (chars == null || chars.isEmpty()) {
             logger.debug("记录中没有角色立绘信息");
@@ -450,7 +488,7 @@ public class RenderOfImage {
                 continue;
 
             try {
-                renderSingleCharacter(composer, chara);
+                renderSingleCharacter(composer, chara, camera);
             } catch (Exception e) {
                 logger.error("添加角色图层失败: {}", chara.getChara().getCharacterName(), e);
             }
@@ -476,12 +514,22 @@ public class RenderOfImage {
 
     /**
      * 渲染单个角色
+     *
+     * <p>摄像机只改「画在哪、画多大」：把世界坐标里的左上角换算成取景画布坐标，
+     * 缩放再乘上 zoom。恒等时完全不经过换算，旧工程逐像素不变。
      */
-    private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara) {
+    private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara, Camera camera) {
         BufferedImage charImage = chara.getImage();
         // 实际缩放 = 裁剪推导的缩放 × 用户手动缩放（剧情编辑 → 立绘 → 缩放），
         // 与 CharacterVisual.updatePos() 里计算 posX/posY 用的是同一个值。
         float scaled = chara.getRenderScale();
+        int x = chara.getPosX();
+        int y = chara.getPosY();
+        if (camera != null && !camera.isIdentity()) {
+            scaled = camera.screenScale(scaled);
+            x = camera.screenX(x);
+            y = camera.screenY(y);
+        }
         logger.debug("{}立绘渲染比例为{}", chara.getChara().getCharacterName(), scaled);
 
         if (chara.isDim()) {
@@ -489,28 +537,29 @@ public class RenderOfImage {
             BufferedImage darkenedImage = ImageDarkener.darkenImage(charImage, 0.5f);
             if (darkenedImage == null) {
                 logger.error("图像压暗失败，使用原图: {}", chara.getChara().getCharacterName());
-                composer.addImageLayerScaled(charImage, chara.getPosX(), chara.getPosY(), scaled);
+                composer.addImageLayerScaled(charImage, x, y, scaled);
             } else {
-                composer.addImageLayerScaled(darkenedImage, chara.getPosX(), chara.getPosY(), scaled);
+                composer.addImageLayerScaled(darkenedImage, x, y, scaled);
                 logger.debug("添加压暗角色图层: {} at ({},{})",
-                        chara.getChara().getCharacterName(), chara.getPosX(), chara.getPosY());
+                        chara.getChara().getCharacterName(), x, y);
             }
         } else {
-            composer.addImageLayerScaled(charImage, chara.getPosX(), chara.getPosY(), scaled);
+            composer.addImageLayerScaled(charImage, x, y, scaled);
             logger.debug("添加角色图层: {} at ({},{})",
-                    chara.getChara().getCharacterName(), chara.getPosX(), chara.getPosY());
+                    chara.getChara().getCharacterName(), x, y);
         }
     }
 
     /**
      * 渲染临时图片层（NPC、道具等）
      */
-    private static void renderTempImages(FrameComposerService composer, Record record) {
+    private static void renderTempImages(FrameComposerService composer, Record record, Camera camera) {
         List<TempImageVisual> tempImages = record.getTempImages();
         if (tempImages == null || tempImages.isEmpty()) {
             return;
         }
         logger.debug("开始渲染临时图片层，共 {} 张", tempImages.size());
+        final boolean hasCamera = camera != null && !camera.isIdentity();
         // 逆序渲染：数组末尾先绘制（底层），数组开头后绘制（顶层），与前端列表顺序一致
         for (int i = tempImages.size() - 1; i >= 0; i--) {
             TempImageVisual temp = tempImages.get(i);
@@ -527,9 +576,17 @@ public class RenderOfImage {
                         img = temp.getImage();
                     }
                 }
-                composer.addImageLayerScaled(img, temp.getPosX(), temp.getPosY(), temp.getScale());
+                int x = temp.getPosX();
+                int y = temp.getPosY();
+                float scale = temp.getScale();
+                if (hasCamera) {
+                    x = camera.screenX(x);
+                    y = camera.screenY(y);
+                    scale = camera.screenScale(scale);
+                }
+                composer.addImageLayerScaled(img, x, y, scale);
                 logger.debug("添加临时图片图层: uuid={} at ({},{}), scale={}, dim={}",
-                        temp.getUuid(), temp.getPosX(), temp.getPosY(), temp.getScale(), temp.isDim());
+                        temp.getUuid(), x, y, scale, temp.isDim());
             } catch (Exception e) {
                 logger.error("渲染临时图片失败: uuid={}", temp.getUuid(), e);
             }
