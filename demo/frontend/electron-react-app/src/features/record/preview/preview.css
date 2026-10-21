@@ -1,0 +1,235 @@
+/**
+ * 预览舞台（P0 起）—— 把原来的「一张图」改造成可交互的舞台。
+ *
+ * 结构：
+ *   .preview-image            容器（position: relative，负责量尺寸）
+ *   └── .preview-stage        等比舞台（px 绝对定位 = 预览图实际显示区域）
+ *       ├── img.preview-render        后端渲染的栅格图（真值）
+ *       ├── .preview-scene-layer      DOM 场景层（对位自检 / 拖拽 / 摄像机模式复用）
+ *       ├── .preview-debug-layer      几何叠框（对位自检）
+ *       ├── .preview-refresh-chip     重新渲染中的小提示（不遮住旧图）
+ *       └── .preview-debug-bar        调试开关
+ *
+ * 所有叠层都用**百分比**定位，分母是 stage（= 图片），所以窗口缩放不会错位。
+ */
+
+/* ===== 容器与舞台 ===== */
+
+.preview-image {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  background-color: #1a1a2e;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.preview-stage {
+  position: absolute;
+  overflow: hidden;
+  background-color: #000;
+}
+
+/* 舞台尺寸已经按视频比例算好，图片铺满即可（不再依赖 object-fit 的留白计算） */
+.preview-stage > .preview-render {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: fill;
+  transition: opacity 0.18s ease;
+}
+
+/* 加载/错误状态盖在舞台上方居中（替换原来依赖 flex 居中的写法） */
+.preview-image > .preview-status {
+  position: absolute;
+  inset: 0;
+  justify-content: center;
+  z-index: 20;
+}
+
+/* ===== DOM 场景层 ===== */
+
+.preview-scene-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.preview-scene-item {
+  position: absolute;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.preview-scene-item.dim {
+  /* 与后端 ImageDarkener.darkenImage(image, 0.5f) 对齐 */
+  filter: brightness(0.5);
+}
+
+/* ===== 热区层（点击命中） ===== */
+
+.preview-hit-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+}
+
+/* 热区本身是透明按钮：悬停才浮出淡淡的框，避免平时干扰看画面 */
+.preview-hit {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.preview-hit:hover {
+  background: rgba(56, 189, 248, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.85);
+}
+
+/* 选中态：亮青色实线框，且比悬停更明显 */
+.preview-hit.selected {
+  background: rgba(56, 189, 248, 0.08);
+  box-shadow: inset 0 0 0 2px #38bdf8;
+}
+
+/* 键盘 Tab 过来时用黄色外框，和鼠标悬停区分开 */
+.preview-hit:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* ===== 对位叠框 ===== */
+
+.preview-debug-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.preview-debug-scene-box {
+  position: absolute;
+  outline: 1px dashed rgba(255, 255, 255, 0.55);
+  outline-offset: -1px;
+}
+
+.preview-debug-box {
+  position: absolute;
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.preview-debug-box.kind-background {
+  color: #4ade80;
+}
+.preview-debug-box.kind-character {
+  color: #fbbf24;
+}
+.preview-debug-box.kind-tempImage {
+  color: #22d3ee;
+}
+.preview-debug-box.kind-dialogBox {
+  color: #a78bfa;
+}
+.preview-debug-box.kind-namePlate {
+  color: #fb923c;
+}
+.preview-debug-box.kind-locationPlate {
+  color: #60a5fa;
+}
+
+.preview-debug-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-100%);
+  padding: 0 3px;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ===== 角标与调试开关 ===== */
+
+.preview-refresh-chip {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 9px;
+}
+
+.preview-refresh-chip::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  animation: preview-spin 0.8s linear infinite;
+}
+
+.preview-debug-bar {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+
+.preview-debug-bar:hover {
+  opacity: 1;
+}
+
+.preview-debug-bar button {
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #ddd;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.preview-debug-bar button:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.preview-debug-bar button.active {
+  color: #111;
+  background: #fbbf24;
+  border-color: #fbbf24;
+}
+
+.preview-debug-missing {
+  padding: 0 4px;
+  font-size: 11px;
+  color: #fbbf24;
+}

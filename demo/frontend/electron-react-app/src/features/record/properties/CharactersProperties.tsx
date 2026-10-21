@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Record,
   MyCharacter,
   CharacterVisual,
   Portrait,
-  Emotion,
 } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
 import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
+import { useFocusFlash } from "../preview/useFocusFlash";
+import type { PropertyFocusRequest } from "../preview/previewTargets";
 import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
@@ -56,6 +57,11 @@ interface CharactersPropertiesProps {
   videoWidth?: number;
   /** 设置页选的输出视频高度 */
   videoHeight?: number;
+  /**
+   * 从预览里点中立绘后下发的定位请求：收到后滚到对应角色卡片并闪一下。
+   * 不传表示没有跳转（例如用户自己点的页签）。
+   */
+  focusRequest?: PropertyFocusRequest | null;
 }
 
 const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
@@ -64,6 +70,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   updateRecord,
   videoWidth,
   videoHeight,
+  focusRequest,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -75,6 +82,14 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   const [newPortrait, setNewPortrait] = useState<Portrait | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [portraitModalIndex, setPortraitModalIndex] = useState<number | null>(null);
+
+  // 每张角色卡片的 DOM 节点：从预览点中立绘时要滚到它
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const flashingIndex = useFocusFlash(
+    focusRequest,
+    "characters",
+    (index) => itemRefs.current[index],
+  );
 
   useEffect(() => {
     fetchCharacters();
@@ -193,7 +208,15 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
       <h4>角色立绘</h4>
       <div className="characters-list">
         {currentCharacters.map((char, index) => (
-          <div key={index} className="character-item">
+          <div
+            key={index}
+            ref={(element) => {
+              itemRefs.current[index] = element;
+            }}
+            className={`character-item${
+              flashingIndex === index ? " property-focus-flash" : ""
+            }`}
+          >
             <div className="character-header">
               <h5>{char.chara.characterName}</h5>
               <div className="character-controls">

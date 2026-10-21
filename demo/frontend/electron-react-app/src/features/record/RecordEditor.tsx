@@ -38,6 +38,13 @@ import {
 import ResizablePanel from "./ResizablePanel_updated";
 import ExportSuccessDialog from "./ExportSuccessDialog";
 import { ProjectWorkspace } from "./useProjectWorkspace";
+import {
+  focusRequestForLayer,
+  PreviewSelection,
+  PropertyFocusRequest,
+  selectionOfLayer,
+} from "./preview/previewTargets";
+import type { PreviewLayer } from "./preview/previewLayout";
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
@@ -72,6 +79,21 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   } = workspace;
 
   const [topPanelHeight, setTopPanelHeight] = useState(400);
+
+  /**
+   * 预览里选中的元素。
+   *
+   * <p>放在编辑器层而不是预览组件里：切页签 / 切记录都可能需要清掉它，
+   * 且属性面板的高亮请求也由这里下发（见 handlePreviewSelect）。
+   */
+  const [previewSelection, setPreviewSelection] =
+    useState<PreviewSelection | null>(null);
+  /**
+   * 「滚到属性面板哪一块并闪一下」的一次性请求。
+   * `nonce` 用时间戳，保证同一个元素连点两次也会重新滚动 + 闪烁。
+   */
+  const [propertyFocus, setPropertyFocus] =
+    useState<PropertyFocusRequest | null>(null);
 
   // 视频生成进度状态
   const [videoProgress, setVideoProgress] = useState<{
@@ -254,6 +276,39 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       return newRecords;
     });
   };
+
+  /**
+   * @function 预览里点中一个元素
+   *
+   * 三件事一起做：记下选中态（画选中框）→ 切到对应页签 → 下发一次定位请求
+   * （属性面板收到后会滚到该条目并闪一下，见 useFocusFlash）。
+   * 页签与定位目标的映射集中在 previewTargets.ts，这里只管调用。
+   */
+  const handlePreviewSelect = useCallback(
+    (layer: PreviewLayer) => {
+      setPreviewSelection(selectionOfLayer(layer));
+      const target = focusRequestForLayer(layer, Date.now());
+      if (!target) return;
+      setActivePropertyTab(target.tab);
+      setPropertyFocus(target.focus);
+    },
+    [setActivePropertyTab],
+  );
+
+  /** 点空白处取消选中：保留页签与面板内容，只去掉选中框 */
+  const clearPreviewSelection = useCallback(() => {
+    setPreviewSelection(null);
+  }, []);
+
+  /**
+   * 切换记录时清掉选中态与定位请求：
+   * 否则会留着上一条记录的元素 key，选中框画到别的记录上、面板还停在旧的高亮里。
+   */
+  const selectedUuid = records?.[selectedRecordIndex]?.uuid;
+  useEffect(() => {
+    setPreviewSelection(null);
+    setPropertyFocus(null);
+  }, [selectedUuid]);
 
   /**
    * @function 更新项目设置（全局设置 tab 用）
@@ -611,6 +666,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
             onOpenGlobalSpeed={openGlobalTextSpeed}
+            focusRequest={propertyFocus}
           />
         );
       case "characters":
@@ -621,6 +677,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             updateRecord={updateRecord}
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
+            focusRequest={propertyFocus}
           />
         );
       case "tempImages":
@@ -631,6 +688,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             updateRecord={updateRecord}
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
+            focusRequest={propertyFocus}
           />
         );
       case "background":
@@ -641,6 +699,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             updateRecord={updateRecord}
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
+            focusRequest={propertyFocus}
           />
         );
       case "effects":
@@ -698,6 +757,9 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               records={currentRecords}
               selectedRecordIndex={selectedRecordIndex}
               setSelectedRecordIndex={setSelectedRecordIndex}
+              selectedElementKey={previewSelection?.key ?? null}
+              onSelectElement={handlePreviewSelect}
+              onClearSelection={clearPreviewSelection}
             />
           </ResizablePanel>
 
@@ -779,3 +841,4 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
 };
 
 export default RecordEditor;
+

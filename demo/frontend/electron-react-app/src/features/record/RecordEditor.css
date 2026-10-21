@@ -874,6 +874,24 @@ body.record-list-dragging .project-toast {
   }
 }
 
+/* 从预览里点选元素后，属性面板里对应的条目/字段闪一下。
+   视觉与上面的 text-speed-flash 保持一致，时长与 previewTargets 的
+   PROPERTY_FOCUS_FLASH_MS（1600ms）对齐。 */
+.property-focus-flash {
+  animation: property-focus-flash 1.6s ease-out;
+}
+
+@keyframes property-focus-flash {
+  0% {
+    background-color: #e6f4ff;
+    box-shadow: inset 0 0 0 2px #1890ff;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px rgba(24, 144, 255, 0);
+  }
+}
+
 .loading {
   display: flex;
   justify-content: center;

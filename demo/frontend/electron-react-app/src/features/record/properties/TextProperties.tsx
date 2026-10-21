@@ -23,6 +23,8 @@ import {
 import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
+import { PROPERTY_FOCUS_FLASH_MS } from "../preview/useFocusFlash";
+import type { PropertyFocusRequest, TextFocusField } from "../preview/previewTargets";
 import "../RecordEditor.css";
 import "./TextProperties.css";
 
@@ -39,6 +41,11 @@ interface TextPropertiesProps {
    * "文字显示速度（全局）"滑块（不传时不渲染该链接）。
    */
   onOpenGlobalSpeed?: () => void;
+  /**
+   * 从预览里点中「对话框 / 角色名片 / 地点牌」后下发的定位请求：
+   * 按 `field` 滚到「对话内容 / 说话人 / 场景」并闪一下。
+   */
+  focusRequest?: PropertyFocusRequest | null;
 }
 
 /**
@@ -77,6 +84,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   videoWidth,
   videoHeight,
   onOpenGlobalSpeed,
+  focusRequest,
 }) => {
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -93,6 +101,35 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
 
   const colorControlRef = useRef<HTMLDivElement | null>(null);
   const commitColorRef = useRef<() => void>(() => {});
+
+  /* ===== 从预览点选 UI 元素后的定位（说话人 / 对话内容 / 场景）===== */
+  const speakerBlockRef = useRef<HTMLDivElement | null>(null);
+  const dialogueBlockRef = useRef<HTMLDivElement | null>(null);
+  const locationBlockRef = useRef<HTMLDivElement | null>(null);
+  const [flashingField, setFlashingField] = useState<TextFocusField | null>(null);
+
+  useEffect(() => {
+    if (!focusRequest || focusRequest.kind !== "text") return;
+    const field: TextFocusField = focusRequest.field ?? "dialogue";
+    const target =
+      field === "speaker"
+        ? speakerBlockRef.current
+        : field === "location"
+          ? locationBlockRef.current
+          : dialogueBlockRef.current;
+    target?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+
+    setFlashingField(field);
+    const timer = window.setTimeout(
+      () => setFlashingField(null),
+      PROPERTY_FOCUS_FLASH_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [focusRequest]);
+
+  /** 该字段是否正在闪烁（从预览跳转过来时闪一下，与其它面板同一套视觉） */
+  const flashClass = (field: TextFocusField) =>
+    flashingField === field ? " property-focus-flash" : "";
 
   useEffect(() => {
     ApiService.getCharacters()
@@ -380,8 +417,10 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
     <div className="text-properties">
       <div className="form-row">
         <div
+          ref={speakerBlockRef}
           className={
-            isNarrator ? "form-group full-width" : "form-group half-width"
+            (isNarrator ? "form-group full-width" : "form-group half-width") +
+            flashClass("speaker")
           }
         >
           <label>说话人</label>
@@ -521,7 +560,10 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
         </div>
       )}
 
-      <div className="form-group">
+      <div
+        ref={dialogueBlockRef}
+        className={"form-group" + flashClass("dialogue")}
+      >
         <label>对话内容</label>
         <textarea
           value={dialogue.text}
@@ -627,7 +669,10 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
       
 
 
-      <div className="form-group">
+      <div
+        ref={locationBlockRef}
+        className={"form-group" + flashClass("location")}
+      >
         <label>场景</label>
         <input
           type="text"

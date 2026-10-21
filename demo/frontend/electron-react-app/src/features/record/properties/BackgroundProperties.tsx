@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Record, Background, BackgroundVisual } from "@types";
 import ApiService from "@services/ApiService";
 import NumberField from "./NumberField";
+import { useFocusFlash } from "../preview/useFocusFlash";
+import type { PropertyFocusRequest } from "../preview/previewTargets";
 import {
   MAX_VISUAL_SCALE,
   MIN_VISUAL_SCALE,
@@ -22,6 +24,8 @@ interface BackgroundPropertiesProps {
   videoWidth?: number;
   /** 设置页选的输出视频高度 */
   videoHeight?: number;
+  /** 从预览里点中背景后下发的定位请求：滚到对应背景卡片并闪一下 */
+  focusRequest?: PropertyFocusRequest | null;
 }
 
 /**
@@ -59,10 +63,19 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   updateRecord,
   videoWidth,
   videoHeight,
+  focusRequest,
 }) => {
   // 滑杆/数值框按设置页选的输出尺寸显示，写回记录时换算回 1080p 设计画布
   const { uiWidth, uiHeight, toUiX, toUiY, toDesignX, toDesignY } =
     createCoordinateMapper(videoWidth, videoHeight);
+
+  // 每张背景卡片的 DOM 节点：从预览点中背景时滚到它
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const flashingIndex = useFocusFlash(
+    focusRequest,
+    "background",
+    (index) => itemRefs.current[index],
+  );
 
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
   const [showSelector, setShowSelector] = useState<boolean>(false);
@@ -185,7 +198,15 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
             );
 
             return (
-              <div key={index} className="background-item">
+              <div
+                key={index}
+                ref={(element) => {
+                  itemRefs.current[index] = element;
+                }}
+                className={`background-item${
+                  flashingIndex === index ? " property-focus-flash" : ""
+                }`}
+              >
                 <div className="background-header">
                   {/* 缩略图 + 名称：不看名字也能一眼认出是哪张背景 */}
                   <div className="background-item-info">

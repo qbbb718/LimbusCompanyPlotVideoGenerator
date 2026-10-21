@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Record, TempImageVisual } from "@types";
 import ApiService from "@services/ApiService";
 import NumberField from "./NumberField";
+import { useFocusFlash } from "../preview/useFocusFlash";
+import type { PropertyFocusRequest } from "../preview/previewTargets";
 import {
   MAX_VISUAL_SCALE,
   MIN_VISUAL_SCALE,
@@ -69,6 +71,8 @@ interface TempImagesPropertiesProps {
   videoWidth?: number;
   /** 设置页选的输出视频高度 */
   videoHeight?: number;
+  /** 从预览里点中临时图片后下发的定位请求：滚到对应卡片并闪一下 */
+  focusRequest?: PropertyFocusRequest | null;
 }
 
 /**
@@ -83,6 +87,7 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
   updateRecord,
   videoWidth,
   videoHeight,
+  focusRequest,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -90,6 +95,14 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
     createCoordinateMapper(videoWidth, videoHeight);
 
   const currentTempImages: TempImageVisual[] = selectedRecord.tempImages || [];
+
+  // 每张临时图片卡片的 DOM 节点：从预览点中时滚到它
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const flashingIndex = useFocusFlash(
+    focusRequest,
+    "tempImages",
+    (index) => itemRefs.current[index],
+  );
 
   const updateTempImage = (index: number, field: string, value: any) => {
     const updated = [...currentTempImages];
@@ -151,7 +164,15 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
     <div className="temp-images-properties">
       <h4>临时图片（路人/道具）</h4>
       {currentTempImages.map((temp, index) => (
-        <div key={temp.uuid || index} className="temp-image-item">
+        <div
+          key={temp.uuid || index}
+          ref={(element) => {
+            itemRefs.current[index] = element;
+          }}
+          className={`temp-image-item${
+            flashingIndex === index ? " property-focus-flash" : ""
+          }`}
+        >
           <div className="temp-image-header">
             {/* 缩略图 + 名称：不看图片也能确认是哪一张路人/道具 */}
             <div className="temp-image-title">
