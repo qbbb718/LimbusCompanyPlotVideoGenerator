@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.lbc_plot.resource.dao.BackgroundDAO;
 import com.lbc_plot.resource.model.Background;
+import com.lbc_plot.resource.service.ResourceTransferService;
 import com.lbc_plot.resource.service.StorageService;
 
 import org.jdbi.v3.core.Jdbi;
@@ -21,9 +22,12 @@ import com.lbc_plot.config.AppConfig;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
+
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * 背景资源API控制器
@@ -46,6 +50,9 @@ public class BackgroundController {
 
     @Autowired
     private AppConfig appConfig;
+
+    @Autowired
+    private ResourceTransferService resourceTransferService;
 
     /**
      * 获取所有背景
@@ -282,6 +289,58 @@ public class BackgroundController {
             logger.error("删除背景失败: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("删除背景失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @api 导出背景
+     * @endpoint POST /api/backgrounds/export
+     * @param backgroundIds 要导出的背景 ID 列表；传空数组或不传表示导出全部背景
+     * @return ZIP 文件（backgrounds.json + 每张背景的原图与缩略图）
+     *
+     * <p>与「角色」页面的多选导出保持同样的包结构约定：清单在包根目录，
+     * 每张背景一个以 uuid 命名的目录（缩略图在其 thumbnails/ 子目录下）。
+     */
+    @PostMapping("/backgrounds/export")
+    public ResponseEntity<StreamingResponseBody> exportBackgrounds(
+            @RequestBody(required = false) List<String> backgroundIds) {
+        Path tempZip = null;
+        try {
+            logger.info("导出背景请求，数量: {}", backgroundIds == null ? 0 : backgroundIds.size());
+            tempZip = resourceTransferService.exportBackgrounds(backgroundIds);
+            return TransferHttpSupport.zipDownload(tempZip,
+                    "backgrounds_" + System.currentTimeMillis() + ".zip");
+        } catch (Exception e) {
+            // 响应还没开始写时，临时包只能在这里清掉
+            ResourceTransferService.deleteQuietly(tempZip);
+            logger.error("导出背景失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("导出背景失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @api 导入背景
+     * @endpoint POST /api/backgrounds/import
+     * @param file 由"导出背景"生成的 ZIP
+     * @return 导入后的背景列表（ID 冲突的背景会被分配新 ID，不会覆盖本机已有背景）
+     */
+    @PostMapping("/backgrounds/import")
+    public List<Background> importBackgrounds(@RequestParam("file") MultipartFile file) {
+        Path tempZip = null;
+        try {
+            logger.info("导入背景请求，文件: {}", file.getOriginalFilename());
+            tempZip = ResourceTransferService.saveUploadedZip(file, "backgrounds_import_");
+            return resourceTransferService.importBackgrounds(tempZip);
+        } catch (IllegalArgumentException e) {
+            // 资源包本身有问题（缺清单、包为空…）：交给 GlobalExceptionHandler 回 400
+            throw e;
+        } catch (Exception e) {
+            logger.error("导入背景失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("导入背景失败: " + e.getMessage());
+        } finally {
+            ResourceTransferService.deleteQuietly(tempZip);
         }
     }
 

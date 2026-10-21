@@ -690,11 +690,13 @@ body.record-list-dragging .project-toast {
   overflow: hidden;
 }
 
-/* 属性页签：一行铺满、每个页签等宽（flex: 1 1 0 → 6 个页签各占 1/6）。
-   面板拖窄到 ≤ 460px 时由下面的容器查询把 emoji 叠到文字上方，
-   保证"全局设置"这种长名字不会被截断。 */
+/* 属性页签：一行铺满、每个页签等宽（flex: 1 1 56px → 7 个页签各占 1/7）。
+   面板拖窄到 ≤ 520px 时由下面的容器查询把 emoji 叠到文字上方，
+   保证"临时图片""全局设置"这种长名字不会被截断。
+   面板被拖到更窄（< 7×56px）时整行换行成多行，而不是让 4 个字的页签名互相叠在一起。 */
 .property-tabs {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   width: 100%;
   border-bottom: 1px solid #ddd;
@@ -703,7 +705,7 @@ body.record-list-dragging .project-toast {
 }
 
 .property-tabs button {
-  flex: 1 1 0;
+  flex: 1 1 56px;
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
@@ -743,9 +745,10 @@ body.record-list-dragging .project-toast {
   line-height: 1;
 }
 
-/* 属性面板被拖得很窄时（≤ 460px，6 个页签每个不到 77px）：
-   emoji 叠到文字上方、字号收小，六等分仍然是一行且不互相挤压。 */
-@container (max-width: 460px) {
+/* 属性面板被拖得很窄时（≤ 520px，7 个页签每个不到 75px）：
+   emoji 叠到文字上方、字号收小；再窄就按 56px 的最小宽度换行，
+   页签名始终完整可读，不会互相挤压。 */
+@container (max-width: 520px) {
   .property-tabs button {
     flex-direction: column;
     flex-wrap: nowrap;

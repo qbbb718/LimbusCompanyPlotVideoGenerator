@@ -13,6 +13,7 @@ import RecordPreview from "./RecordPreview";
 import PropertyTabs from "./PropertyTabs";
 import TextProperties from "./properties/TextProperties";
 import CharactersProperties from "./properties/CharactersProperties";
+import TempImagesProperties from "./properties/TempImagesProperties";
 import BackgroundProperties from "./properties/BackgroundProperties";
 import EffectsProperties from "./properties/EffectsProperties";
 import AudioProperties from "./properties/AudioProperties";
@@ -615,6 +616,16 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       case "characters":
         return (
           <CharactersProperties
+            selectedRecord={selectedRecord}
+            selectedRecordIndex={selectedRecordIndex}
+            updateRecord={updateRecord}
+            videoWidth={projectSettings.videoWidth}
+            videoHeight={projectSettings.videoHeight}
+          />
+        );
+      case "tempImages":
+        return (
+          <TempImagesProperties
             selectedRecord={selectedRecord}
             selectedRecordIndex={selectedRecordIndex}
             updateRecord={updateRecord}

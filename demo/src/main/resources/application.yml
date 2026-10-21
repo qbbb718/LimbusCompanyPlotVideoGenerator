@@ -18,8 +18,16 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 50MB
-      max-request-size: 50MB
+      # 资源包导入（/api/characters|backgrounds|audios|resources/import）要接收"全部资源"ZIP：
+      # 角色立绘 + 背景 + 音频打包后可能上 GB，原来的 50MB 上限连一次批量迁移都装不下，
+      # 用户会看到"文件大小超过限制"。这里按 4GB 放开，单文件与整个请求都要够。
+      max-file-size: 4096MB
+      max-request-size: 4096MB
+  mvc:
+    async:
+      # 资源包下载走 StreamingResponseBody（传完立即删临时文件，避免 GB 级 ZIP 堆在临时目录），
+      # 属于异步请求；Tomcat 默认 30 秒的异步超时对大包不够用，这里放宽到 30 分钟。
+      request-timeout: 30m
   datasource:
     # SQLite 用绝对路径，由 DatabaseConfig 从 RuntimePaths 计算后作为该占位符的默认值提供，
     # 避免不同 JVM 工作目录打开不同的库（旧配置为 ./data/project.db）。

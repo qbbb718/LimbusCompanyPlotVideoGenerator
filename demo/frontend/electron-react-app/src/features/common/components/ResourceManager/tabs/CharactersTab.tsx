@@ -3,6 +3,11 @@ import { MyCharacter, Portrait } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from "@root/features/common/config/appConfig";
 import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
+import {
+  downloadBlob,
+  describeTransferError,
+  zipFileName,
+} from "@features/common/utils/resourceTransfer";
 import "../ResourceManager.css";
 import PortraitModal from "./PortraitModal";
 import CharacterDetailModal from "./CharacterDetailModal";
@@ -107,19 +112,12 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       }
       log("导出角色", ids);
       const blob = await ApiService.exportCharacters(ids);
-      // 触发浏览器下载
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `characters_${new Date().toISOString().slice(0, 10)}.zip`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // 触发浏览器下载（文件名与"背景/音频"导出保持一致：类型_日期.zip）
+      downloadBlob(blob, zipFileName("characters"));
       alert(`成功导出 ${ids.length} 个角色`);
     } catch (error) {
       console.error("导出角色失败:", error);
-      alert("导出角色失败，请重试");
+      alert(describeTransferError(error, "导出角色失败，请重试"));
     }
   };
 
@@ -136,7 +134,7 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
       alert(`成功导入 ${importedChars.length} 个角色`);
     } catch (error) {
       console.error("导入角色失败:", error);
-      alert("导入角色失败，请检查文件格式");
+      alert(describeTransferError(error, "导入角色失败，请检查文件是否为角色资源包"));
     } finally {
       // 重置 input 以便重复选择同一文件
       e.target.value = "";

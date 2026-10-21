@@ -4,7 +4,6 @@ import {
   MyCharacter,
   CharacterVisual,
   Portrait,
-  TempImageVisual,
   Emotion,
 } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
@@ -26,12 +25,15 @@ import "./TransformControls.css";
 import "./CharactersProperties.css";
 
 /*
- * 坐标系说明：记录里持久化的坐标（立绘 adjX/adjY、临时图片 posX/posY）都存 1080p 设计画布
- * 空间里的像素，与设置页选的输出分辨率无关 —— 所以同一条记录换任何分辨率导出，构图都完全一致。
+ * 坐标系说明：记录里持久化的立绘坐标（adjX/adjY）存 1080p 设计画布空间里的像素，
+ * 与设置页选的输出分辨率无关 —— 所以同一条记录换任何分辨率导出，构图都完全一致。
  *
  * 编辑器里的滑杆/数值框按**设置页选的视频大小**显示（见 visualCoordinates 的
  * createCoordinateMapper）：X 轴滑块范围是 ±视频宽度/2、Y 轴是 ±视频高度，
  * 和预览图的实际像素一一对应；写回记录前再换算回设计画布像素。
+ *
+ * 临时图片（路人/道具）已拆到同级的 TempImagesProperties（「临时图片」页签），
+ * 那边沿用同一套坐标换算规则。
  */
 
 /** 立绘位置快捷按钮的档位：-3..3 对应画面宽度的 0%、1/6 … 5/6、100% */
@@ -45,42 +47,6 @@ const stepToPercent = (n: number) => 50 + (n * 100) / 6;
  * 与后端 %位置% 换算（adjX = (位置% - 50) * 1920 / 100）走的是同一套语义，只是显示单位不同。
  */
 const stepToUiAdjX = (n: number, uiWidth: number) => (uiWidth * n) / 6;
-
-/** 临时图片档位 n 的左边缘位置（当前视频宽度下的像素） */
-const stepToUiTempPosX = (n: number, uiWidth: number) =>
-  uiWidth / 2 + (uiWidth * n) / 6;
-
-/**
- * 临时图片缩略图（48×48，属性面板"临时图片（路人/道具）"列表项用）。
- *
- * 记录里的 imagePath 既可能是 ./projects/temp/images/... 这样的相对路径，也可能是后端
- * RuntimePaths 存下来的 C:/Users/.../projects/temp/images/... 绝对路径，统一交给
- * ApiService.getTempImageUrl 解析（绝对路径直接拼 URL 会 404，图片根本显示不出来）。
- * 图片加载失败时把 <img> 藏起来，露出 CSS ::before 的 "?" 占位，不留破图。
- *
- * @param imagePath 记录里 TempImageVisual.imagePath
- * @param label 图片的无障碍名称（"临时图片 N"）
- */
-const TempImageThumb: React.FC<{ imagePath: string; label: string }> = ({
-  imagePath,
-  label,
-}) => {
-  const url = ApiService.getTempImageUrl(imagePath);
-  return (
-    <span className="temp-image-thumb">
-      {url && (
-        <img
-          src={url}
-          alt={label}
-          title={imagePath}
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
-      )}
-    </span>
-  );
-};
 
 interface CharactersPropertiesProps {
   selectedRecord: Record;
@@ -124,7 +90,6 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   };
 
   const currentCharacters = selectedRecord.chars || [];
-  const currentTempImages = selectedRecord.tempImages || [];
 
   // 角色下拉选项（带默认立绘小头像），与"说话人"下拉框使用同一个组件
   const characterOptions: CharacterSelectOption[] = characters.map((chara) => ({
@@ -221,64 +186,6 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
     setNewChara(null);
     setNewPortrait(null);
     setShowAddForm(false);
-  };
-
-  // ===== 临时图片操作 =====
-
-  const updateTempImage = (index: number, field: string, value: any) => {
-    const updated = [...currentTempImages];
-    updated[index] = { ...updated[index], [field]: value };
-    updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
-    console.log(`[CharactersProperties] updateTempImage[${index}]: ${field}=${value}`);
-  };
-
-  const deleteTempImage = async (index: number) => {
-    const temp = currentTempImages[index];
-    if (temp.uuid) {
-      try {
-        await ApiService.deleteTempImage(temp.uuid);
-      } catch (e) {
-        console.error("[CharactersProperties] 删除临时图片文件失败:", e);
-      }
-    }
-    const updated = currentTempImages.filter((_, i) => i !== index);
-    updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
-    console.log(`[CharactersProperties] deleteTempImage[${index}]: uuid=${temp.uuid}`);
-  };
-
-  const addTempImage = async () => {
-    try {
-      const result = await (window as any).electronAPI?.openImageFile?.();
-      if (!result || result.canceled || !result.filePaths?.length) return;
-
-      const filePath = result.filePaths[0];
-      console.log("[CharactersProperties] 选择临时图片:", filePath);
-
-      // 通过 Electron IPC 读取本地文件为 Blob（避免 file:// fetch 被沙箱拦截）
-      const fileBuffer = await (window as any).electronAPI.readFile(filePath);
-      const uint8Array = new Uint8Array(fileBuffer);
-      const blob = new Blob([uint8Array]);
-      const file = new File([blob], filePath.split(/[\\/]/).pop() || "temp.png", {
-        type: "image/png",
-      });
-
-      const uploadResult = await ApiService.uploadTempImage(file);
-      console.log("[CharactersProperties] 临时图片上传结果:", uploadResult);
-
-      const newTemp: TempImageVisual = {
-        uuid: uploadResult.uuid,
-        imagePath: uploadResult.imagePath,
-        posX: 0,
-        posY: 0,
-        scale: 1.0,
-        dim: false,
-      };
-
-      const updated = [...currentTempImages, newTemp];
-      updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
-    } catch (error) {
-      console.error("[CharactersProperties] 添加临时图片失败:", error);
-    }
   };
 
   return (
@@ -672,147 +579,6 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
         );
       })()}
 
-      {/* ===== 临时图片区域 ===== */}
-      <div className="temp-images-section">
-        <h4>临时图片（路人/道具）</h4>
-        {currentTempImages.map((temp, index) => (
-          <div key={temp.uuid || index} className="temp-image-item">
-            <div className="temp-image-header">
-              {/* 缩略图 + 名称：不看图片也能确认是哪一张路人/道具 */}
-              <div className="temp-image-title">
-                <TempImageThumb
-                  imagePath={temp.imagePath}
-                  label={`临时图片 ${index + 1}`}
-                />
-                <span>临时图片 {index + 1}</span>
-              </div>
-              <button onClick={() => deleteTempImage(index)}>删除</button>
-            </div>
-            <div className="temp-image-controls">
-              {/* 第一行：缩放文本框+滑块(3/4) | 是否压暗(1/4) */}
-              <div className="char-row">
-                <div className="temp-col-scale">
-                  <span className="char-label-fixed">缩放</span>
-                  <NumberField
-                    className="char-input-fixed"
-                    value={normalizeScale(temp.scale)}
-                    min={MIN_VISUAL_SCALE}
-                    max={MAX_VISUAL_SCALE}
-                    ariaLabel={`临时图片 ${index + 1} 缩放`}
-                    onChange={(value) =>
-                      updateTempImage(index, "scale", value)
-                    }
-                  />
-                  <div className="char-slider-auto">
-                    <input
-                      type="range"
-                      min={MIN_VISUAL_SCALE}
-                      max={MAX_VISUAL_SCALE}
-                      step={VISUAL_SCALE_STEP}
-                      value={normalizeScale(temp.scale)}
-                      aria-label={`临时图片 ${index + 1} 缩放滑块`}
-                      onChange={(e) =>
-                        updateTempImage(
-                          index,
-                          "scale",
-                          Number(e.target.value),
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="temp-col-dim">
-                  <label>压暗</label>
-                  <input
-                    type="checkbox"
-                    checked={temp.dim}
-                    onChange={(e) =>
-                      updateTempImage(index, "dim", e.target.checked)
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* 第二行：X坐标调整（同角色立绘格式：0..视频宽度） */}
-              <div className="char-row">
-                <span className="char-label-fixed">X坐标调整</span>
-                <NumberField
-                  className="char-input-fixed"
-                  integer
-                  value={toUiX(temp.posX)}
-                  ariaLabel={`临时图片 ${index + 1} X 坐标`}
-                  onChange={(value) =>
-                    updateTempImage(index, "posX", toDesignX(value))
-                  }
-                />
-                <div className="char-slider-auto">
-                  <div className="adjX-quick-positions">
-                    {QUICK_POSITION_STEPS.map((n) => (
-                      <button
-                        key={n}
-                        onClick={() =>
-                          updateTempImage(
-                            index,
-                            "posX",
-                            toDesignX(stepToUiTempPosX(n, uiWidth)),
-                          )
-                        }
-                        className="adjX-quick-btn"
-                        title={`${stepToPercent(n)}% （posX=${Math.round(stepToUiTempPosX(n, uiWidth))}）`}
-                      />
-                    ))}
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={uiWidth}
-                    value={toUiX(temp.posX)}
-                    onChange={(e) =>
-                      updateTempImage(
-                        index,
-                        "posX",
-                        toDesignX(parseInt(e.target.value)),
-                      )
-                    }
-                    className="adjX-slider"
-                  />
-                </div>
-              </div>
-
-              {/* 第三行：Y坐标调整（同角色立绘格式，Y 方向用一个视频高度为界） */}
-              <div className="char-row">
-                <span className="char-label-fixed">Y坐标调整</span>
-                <NumberField
-                  className="char-input-fixed"
-                  integer
-                  value={toUiY(temp.posY)}
-                  ariaLabel={`临时图片 ${index + 1} Y 坐标`}
-                  onChange={(value) =>
-                    updateTempImage(index, "posY", toDesignY(value))
-                  }
-                />
-                <input
-                  type="range"
-                  min={-uiHeight}
-                  max={uiHeight}
-                  value={toUiY(temp.posY)}
-                  onChange={(e) =>
-                    updateTempImage(
-                      index,
-                      "posY",
-                      toDesignY(parseInt(e.target.value)),
-                    )
-                  }
-                  className="char-slider-auto"
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-        <button className="add-character-btn" onClick={addTempImage}>
-          添加临时图片
-        </button>
-      </div>
     </div>
   );
 };

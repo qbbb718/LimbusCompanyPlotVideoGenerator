@@ -41,11 +41,16 @@ CREATE TABLE IF NOT EXISTS character_portraits (
 );
 
 -- 背景表：存储背景资源元数据（文件路径、显示名等）
+-- 注意：新库必须带上 thumbnail_path。DatabaseInitializer 只在"表已存在"时才补这一列，
+-- 全新安装走的是本脚本建表；少了这一列，第一次启动就有背景相关 SQL 报
+-- "table backgrounds has no column named thumbnail_path"（保存背景、导入背景都会失败），
+-- 要等到第二次启动才自愈。字段与 initial_schema.sql / BackgroundDAO 保持一致。
 CREATE TABLE IF NOT EXISTS backgrounds (
     background_id TEXT PRIMARY KEY NOT NULL,
     image_path TEXT NOT NULL,
     display_name TEXT,
     source TEXT,
+    thumbnail_path TEXT,
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

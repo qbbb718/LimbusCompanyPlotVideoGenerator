@@ -5,6 +5,64 @@
   padding: 15px;
 }
 
+/* ===== 页面顶部：全部资源（角色 + 背景 + 音频）导入导出 =====
+   与各标签页里的"按类型导入导出"区分开：这里是整库操作，换机/备份时用。 */
+.resource-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+.resource-topbar-info {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.resource-topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.resource-topbar-hint {
+  font-size: 12px;
+  color: #888;
+}
+
+.resource-topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.resource-topbar-actions button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1890ff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.resource-topbar-actions button:hover:not(:disabled) {
+  background-color: #40a9ff;
+}
+
+/* 导入/导出进行中：按钮置灰，避免重复点击打出多个资源包 */
+.resource-topbar-actions button:disabled,
+.resource-actions button:disabled {
+  background-color: #bfbfbf;
+  cursor: not-allowed;
+}
+
 .resource-tabs {
   display: flex;
   border-bottom: 1px solid #ddd;
@@ -37,12 +95,16 @@
 
 .resource-actions {
   display: flex;
+  /* 导入/导出按钮加上后一行按钮变多，窗口拉窄时换行而不是把搜索框挤没 */
+  flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
   margin-bottom: 15px;
 }
 
 .resource-actions input {
   flex: 1;
+  min-width: 160px;
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -481,6 +543,50 @@
 }
 
 .character-card-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* 背景卡片左上角的导出勾选框（角色/音频是卡片内的复选框列，背景是图片卡片，改成浮层） */
+.background-card-checkbox {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.background-card-checkbox input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.background-card.selected {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* 音频条目左侧的导出勾选框（与角色卡片保持一致的列样式） */
+.audio-item-checkbox {
+  width: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9f9f9;
+  border-right: 1px solid #eee;
+}
+
+.audio-item-checkbox input[type="checkbox"] {
   cursor: pointer;
   width: 16px;
   height: 16px;

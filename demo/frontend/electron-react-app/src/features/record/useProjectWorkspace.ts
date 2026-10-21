@@ -33,6 +33,8 @@ import { readGroups, RecordGroup } from "./recordGroups";
 export type PropertyTab =
   | "text"
   | "characters"
+  /** 临时图片（路人 / 道具）：原先是「立绘」页签里的一段，现在是同级页签 */
+  | "tempImages"
   | "background"
   | "effects"
   | "audio"

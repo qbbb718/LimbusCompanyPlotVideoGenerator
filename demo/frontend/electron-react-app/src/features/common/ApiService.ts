@@ -474,6 +474,101 @@ class ApiService {
     }
   }
 
+  // 导出背景为 ZIP 文件（backgroundIds 为空表示导出全部）
+  async exportBackgrounds(backgroundIds: string[]): Promise<Blob> {
+    try {
+      const response = await apiClient.post('/backgrounds/export', backgroundIds, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导出背景失败:', error);
+      throw error;
+    }
+  }
+
+  // 从 ZIP 文件导入背景
+  async importBackgrounds(file: File): Promise<any[]> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post('/backgrounds/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导入背景失败:', error);
+      throw error;
+    }
+  }
+
+  // 导出音频为 ZIP 文件（audioIds 为空表示导出全部）
+  async exportAudios(audioIds: string[]): Promise<Blob> {
+    try {
+      const response = await apiClient.post('/audios/export', audioIds, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导出音频失败:', error);
+      throw error;
+    }
+  }
+
+  // 从 ZIP 文件导入音频
+  async importAudios(file: File): Promise<any[]> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post('/audios/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导入音频失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 导出全部资源（角色 + 背景 + 音频）为 ZIP 文件。
+   *
+   * 资源管理页顶部的「导出全部资源」用它：一次打包整库，换机/备份时不用分三次导出。
+   */
+  async exportAllResources(): Promise<Blob> {
+    try {
+      const response = await apiClient.post('/resources/export', undefined, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导出全部资源失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 导入全部资源（角色 + 背景 + 音频）。
+   *
+   * 后端也兼容单一类型的资源包（例如把"角色包"直接传到这个接口），
+   * 返回各类型实际导入的数量。
+   */
+  async importAllResources(
+    file: File,
+  ): Promise<{ characters: number; backgrounds: number; audios: number }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post('/resources/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('导入全部资源失败:', error);
+      throw error;
+    }
+  }
+
   // 上传立绘图片文件到后端
   // 文件会被保存到角色目录（目录名=characterId）中，命名为 {portraitId}.{ext}
   async uploadPortraitFile(

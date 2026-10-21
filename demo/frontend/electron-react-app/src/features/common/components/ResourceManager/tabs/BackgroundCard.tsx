@@ -9,6 +9,12 @@ interface BackgroundCardProps {
   onSelect: (background: Background) => void;
   onEdit: (background: Background) => void;
   onDelete: (backgroundId: string) => void;
+  /** 导出多选模式：卡片左上角出现复选框（与「角色」页面的多选导出一致） */
+  selectionMode?: boolean;
+  /** 当前是否被勾选（仅多选模式下有意义） */
+  isChecked?: boolean;
+  /** 勾选/取消勾选回调 */
+  onToggleCheck?: (backgroundId: string) => void;
 }
 
 const BackgroundCard: React.FC<BackgroundCardProps> = ({
@@ -17,6 +23,9 @@ const BackgroundCard: React.FC<BackgroundCardProps> = ({
   onSelect,
   onEdit,
   onDelete,
+  selectionMode = false,
+  isChecked = false,
+  onToggleCheck,
 }) => {
   const resolveSrc = (src?: string) => {
     if (!src) return undefined;
@@ -43,6 +52,19 @@ const BackgroundCard: React.FC<BackgroundCardProps> = ({
       onClick={() => onSelect(background)}
       onDoubleClick={() => onEdit(background)}
     >
+      {selectionMode && (
+        // 勾选框单独阻止冒泡，避免点勾选时顺带把卡片选中/打开编辑
+        <div
+          className="background-card-checkbox"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => onToggleCheck?.(background.uuid)}
+          />
+        </div>
+      )}
       <div className="background-actions">
         <button
           className="bg-action-btn bg-edit-btn"

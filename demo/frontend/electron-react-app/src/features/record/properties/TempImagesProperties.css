@@ -1,0 +1,155 @@
+/*
+ * 「临时图片（路人 / 道具）」页签 —— 原先是「立绘」页签里的一段，现在独立成同级页签。
+ *
+ * 行 / 列 / 滑块这些通用控件样式仍然复用 CharactersProperties.css
+ * （.char-row / .char-label-fixed / .char-input-fixed / .char-slider-auto /
+ *   .adjX-slider / .adjX-quick-positions / .adjX-quick-btn），这里只放本页签独有的部分。
+ */
+
+/* 页签根容器：与 .characters-properties 保持同一套内边距 / 纵向布局 */
+.temp-images-properties {
+  padding: 0 15px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.temp-images-properties > h4 {
+  margin-bottom: 10px;
+}
+
+.temp-image-item {
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #fafafa;
+}
+
+.temp-image-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.temp-image-header button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* 标题行左侧：「缩略图 + 临时图片 N」 */
+.temp-image-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.temp-image-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 缩略图：48×48 灰底方块，图片按 contain 完整放进框里（路人/道具多是透明 PNG，裁切会切掉轮廓）。
+ * 加载失败时的占位问号由 ::before 提供：<img> 的 onError 把图片 display:none，露出来的就是问号。
+ * 绝对定位让图片浮在问号上，成功加载时自然盖住占位符。
+ */
+.temp-image-thumb {
+  position: relative;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.temp-image-thumb::before {
+  content: "?";
+  color: #bbb;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.temp-image-thumb img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.temp-image-controls {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 缩放区域：占第一行的 3/4 */
+.temp-col-scale {
+  flex: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.temp-col-scale .char-slider-auto {
+  flex: 1;
+  min-width: 0;
+}
+
+.temp-col-scale .char-slider-auto input[type="range"] {
+  width: 100%;
+  margin: 0;
+}
+
+/* 压暗区域：占第一行的 1/4 */
+.temp-col-dim {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.temp-col-dim label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.temp-col-dim input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* 添加临时图片按钮 —— 与「立绘」页签的「+ 添加立绘」同款（蓝底白字、左对齐） */
+.add-temp-image-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: #fff;
+  background-color: #1890ff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-temp-image-btn:hover {
+  background-color: #40a9ff;
+}

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import java.io.File;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 
@@ -22,10 +23,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.resource.dao.AudioDAO;
 import com.lbc_plot.resource.model.Audio;
+import com.lbc_plot.resource.service.ResourceTransferService;
 import com.lbc_plot.resource.service.StorageService;
 
 import org.jdbi.v3.core.Jdbi;
@@ -51,6 +54,9 @@ public class AudioController {
 
     @Autowired
     private StorageService storageService;
+
+    @Autowired
+    private ResourceTransferService resourceTransferService;
 
     /**
      * 上传音频文件。
@@ -202,6 +208,58 @@ public class AudioController {
             logger.severe("删除音频失败: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("删除音频失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @api 导出音频
+     * @endpoint POST /api/audios/export
+     * @param audioIds 要导出的音频 ID 列表；传空数组或不传表示导出全部音频
+     * @return ZIP 文件（audios.json + 每个音频一个以 uuid 命名的目录）
+     *
+     * <p>与「角色」「背景」页面的多选导出保持同样的包结构约定：清单在包根目录，
+     * 素材文件放在以 ID 命名的子目录里。
+     */
+    @PostMapping("/audios/export")
+    public ResponseEntity<StreamingResponseBody> exportAudios(
+            @RequestBody(required = false) List<String> audioIds) {
+        Path tempZip = null;
+        try {
+            logger.info("导出音频请求，数量: " + (audioIds == null ? 0 : audioIds.size()));
+            tempZip = resourceTransferService.exportAudios(audioIds);
+            return TransferHttpSupport.zipDownload(tempZip,
+                    "audios_" + System.currentTimeMillis() + ".zip");
+        } catch (Exception e) {
+            // 响应还没开始写时，临时包只能在这里清掉
+            ResourceTransferService.deleteQuietly(tempZip);
+            logger.severe("导出音频失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("导出音频失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @api 导入音频
+     * @endpoint POST /api/audios/import
+     * @param file 由"导出音频"生成的 ZIP
+     * @return 导入后的音频列表（ID 冲突的音频会被分配新 ID，不会覆盖本机已有音频）
+     */
+    @PostMapping("/audios/import")
+    public List<Audio> importAudios(@RequestParam("file") MultipartFile file) {
+        Path tempZip = null;
+        try {
+            logger.info("导入音频请求，文件: " + file.getOriginalFilename());
+            tempZip = ResourceTransferService.saveUploadedZip(file, "audios_import_");
+            return resourceTransferService.importAudios(tempZip);
+        } catch (IllegalArgumentException e) {
+            // 资源包本身有问题（缺清单、包为空…）：交给 GlobalExceptionHandler 回 400
+            throw e;
+        } catch (Exception e) {
+            logger.severe("导入音频失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("导入音频失败: " + e.getMessage());
+        } finally {
+            ResourceTransferService.deleteQuietly(tempZip);
         }
     }
 

@@ -1,12 +1,16 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Background } from "@types";
 import ApiService from "@services/ApiService";
 import { AppConfig } from '@root/features/common/config/appConfig';
+import {
+  downloadBlob,
+  describeTransferError,
+  zipFileName,
+} from "@features/common/utils/resourceTransfer";
 import "../ResourceManager.css";
 import "./BackgroundsTab.css";
 import BackgroundCard from "./BackgroundCard";
 import BackgroundModal from "./BackgroundModal";
-import BackgroundActions from "./BackgroundActions";
 
 // 将blob URL转换为File对象
 const blobUrlToFile = async (blobUrl: string, filename: string): Promise<File> => {
@@ -48,9 +52,121 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   // 缩略图状态
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
 
+  // ===== 资源包导入 / 多选导出（与「角色」页面保持一致） =====
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedExportIds, setSelectedExportIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  // 导入/导出进行中：按钮置灰，避免重复点击打出多个包
+  const [transferring, setTransferring] = useState(false);
+
+  // 当前可见的背景（搜索过滤后的结果）：多选与"没勾选就导出全部"都以它为准
+  const filteredBackgrounds = backgrounds.filter((background) =>
+    background.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  // 全选复选框的 indeterminate（半选）状态
+  useEffect(() => {
+    if (selectAllRef.current) {
+      const count = selectedExportIds.size;
+      selectAllRef.current.indeterminate =
+        count > 0 && count < filteredBackgrounds.length;
+    }
+  }, [selectedExportIds, filteredBackgrounds.length]);
+
+  // 背景列表或搜索词变化时清空勾选，避免把已经看不见的项一起导出
+  useEffect(() => {
+    setSelectedExportIds(new Set());
+  }, [backgrounds.length, searchTerm]);
+
   // 日志函数
   const log = (message: string, data?: any) => {
     console.log(`[BackgroundsTab] ${message}`, data);
+  };
+
+  /** 退出多选模式时清空勾选 */
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedExportIds(new Set());
+  };
+
+  /** 切换单张背景的导出勾选状态 */
+  const toggleExportSelect = (backgroundId: string) => {
+    setSelectedExportIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(backgroundId)) {
+        next.delete(backgroundId);
+      } else {
+        next.add(backgroundId);
+      }
+      return next;
+    });
+  };
+
+  /** 全选/取消全选（仅作用于当前可见背景） */
+  const toggleSelectAll = () => {
+    const allSelected =
+      filteredBackgrounds.length > 0 &&
+      filteredBackgrounds.every((bg) => selectedExportIds.has(bg.uuid));
+    if (allSelected) {
+      setSelectedExportIds(new Set());
+    } else {
+      setSelectedExportIds(new Set(filteredBackgrounds.map((bg) => bg.uuid)));
+    }
+  };
+
+  /** 导出背景 — 优先导出勾选的背景，没有勾选时导出当前列表全部 */
+  const handleExportBackgrounds = async () => {
+    const ids =
+      selectedExportIds.size > 0
+        ? Array.from(selectedExportIds)
+        : filteredBackgrounds.map((bg) => bg.uuid);
+    if (ids.length === 0) {
+      alert("没有可导出的背景");
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      log("导出背景", ids);
+      const blob = await ApiService.exportBackgrounds(ids);
+      downloadBlob(blob, zipFileName("backgrounds"));
+      alert(`成功导出 ${ids.length} 张背景`);
+      exitSelectionMode();
+    } catch (error) {
+      console.error("导出背景失败:", error);
+      alert(describeTransferError(error, "导出背景失败，请重试"));
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  /** 导入背景 — 选择 ZIP 文件后上传，成功后重新拉取列表 */
+  const handleImportBackgrounds = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setTransferring(true);
+    try {
+      log("导入背景", file.name);
+      const importedBackgrounds = await ApiService.importBackgrounds(file);
+      const allBackgrounds = await ApiService.getBackgrounds();
+      setBackgrounds(allBackgrounds);
+      alert(`成功导入 ${importedBackgrounds.length} 张背景`);
+    } catch (error) {
+      console.error("导入背景失败:", error);
+      alert(
+        describeTransferError(error, "导入背景失败，请检查文件是否为背景资源包"),
+      );
+    } finally {
+      setTransferring(false);
+      // 重置 input，便于再次选择同一个文件
+      e.target.value = "";
+    }
   };
 
   // 自动生成缩略图
@@ -464,18 +580,72 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const filteredBackgrounds = backgrounds.filter((background) =>
-    background.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
   return (
     <div className="resource-tab">
-      <BackgroundActions
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        openResourceFolder={openResourceFolder}
-        onAddBackground={handleAddBackground}
-      />
+      <div className="resource-actions">
+        <input
+          type="text"
+          placeholder="搜索背景..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        {selectionMode && (
+          <label className="select-all-checkbox">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={
+                filteredBackgrounds.length > 0 &&
+                filteredBackgrounds.every((bg) =>
+                  selectedExportIds.has(bg.uuid),
+                )
+              }
+              onChange={toggleSelectAll}
+            />
+            全选
+          </label>
+        )}
+
+        <button
+          className="btn-primary"
+          onClick={handleAddBackground}
+          disabled={transferring}
+        >
+          ➕ 添加背景
+        </button>
+        <button
+          onClick={() => importFileRef.current?.click()}
+          disabled={transferring}
+        >
+          {transferring ? "⏳ 处理中…" : "📥 导入背景"}
+        </button>
+
+        {selectionMode ? (
+          <>
+            <button onClick={handleExportBackgrounds} disabled={transferring}>
+              ✅ 确认导出 ({selectedExportIds.size})
+            </button>
+            <button onClick={exitSelectionMode} disabled={transferring}>
+              ❌ 取消
+            </button>
+          </>
+        ) : (
+          <button onClick={() => setSelectionMode(true)} disabled={transferring}>
+            📤 选择导出
+          </button>
+        )}
+        <input
+          type="file"
+          ref={importFileRef}
+          style={{ display: "none" }}
+          accept=".zip"
+          onChange={handleImportBackgrounds}
+        />
+
+        <button onClick={() => openResourceFolder("backgrounds")}>
+          📂 打开背景文件夹
+        </button>
+      </div>
 
       <div className="backgrounds-grid">
         {filteredBackgrounds.map((background) => (
@@ -486,6 +656,9 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
             onSelect={setSelectedBackground}
             onEdit={handleEditBackground}
             onDelete={handleDeleteBackground}
+            selectionMode={selectionMode}
+            isChecked={selectedExportIds.has(background.uuid)}
+            onToggleCheck={toggleExportSelect}
           />
         ))}
       </div>

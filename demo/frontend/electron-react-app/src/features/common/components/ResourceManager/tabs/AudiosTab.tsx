@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Audio, AudioType } from "@types";
 import ApiService from "@services/ApiService";
+import {
+  downloadBlob,
+  describeTransferError,
+  zipFileName,
+} from "@features/common/utils/resourceTransfer";
 import "../ResourceManager.css";
 
 interface AudiosTabProps {
@@ -30,9 +35,119 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // ===== 资源包导入 / 多选导出（与「角色」页面保持一致） =====
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedExportIds, setSelectedExportIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  // 导入/导出进行中：按钮置灰，避免重复点击打出多个包
+  const [transferring, setTransferring] = useState(false);
+
+  // 当前可见的音频（搜索过滤后的结果）：多选与"没勾选就导出全部"都以它为准
+  const filteredAudios = audios.filter((audio) =>
+    audio.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  // 全选复选框的 indeterminate（半选）状态
+  useEffect(() => {
+    if (selectAllRef.current) {
+      const count = selectedExportIds.size;
+      selectAllRef.current.indeterminate =
+        count > 0 && count < filteredAudios.length;
+    }
+  }, [selectedExportIds, filteredAudios.length]);
+
+  // 音频列表或搜索词变化时清空勾选，避免把已经看不见的项一起导出
+  useEffect(() => {
+    setSelectedExportIds(new Set());
+  }, [audios.length, searchTerm]);
+
   // 日志函数
   const log = (message: string, data?: any) => {
     console.log(`[AudiosTab] ${message}`, data);
+  };
+
+  /** 退出多选模式时清空勾选 */
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedExportIds(new Set());
+  };
+
+  /** 切换单个音频的导出勾选状态 */
+  const toggleExportSelect = (audioId: string) => {
+    setSelectedExportIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(audioId)) {
+        next.delete(audioId);
+      } else {
+        next.add(audioId);
+      }
+      return next;
+    });
+  };
+
+  /** 全选/取消全选（仅作用于当前可见音频） */
+  const toggleSelectAll = () => {
+    const allSelected =
+      filteredAudios.length > 0 &&
+      filteredAudios.every((audio) => selectedExportIds.has(audio.uuid));
+    if (allSelected) {
+      setSelectedExportIds(new Set());
+    } else {
+      setSelectedExportIds(new Set(filteredAudios.map((audio) => audio.uuid)));
+    }
+  };
+
+  /** 导出音频 — 优先导出勾选的音频，没有勾选时导出当前列表全部 */
+  const handleExportAudios = async () => {
+    const ids =
+      selectedExportIds.size > 0
+        ? Array.from(selectedExportIds)
+        : filteredAudios.map((audio) => audio.uuid);
+    if (ids.length === 0) {
+      alert("没有可导出的音频");
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      log("导出音频", ids);
+      const blob = await ApiService.exportAudios(ids);
+      downloadBlob(blob, zipFileName("audios"));
+      alert(`成功导出 ${ids.length} 个音频`);
+      exitSelectionMode();
+    } catch (error) {
+      console.error("导出音频失败:", error);
+      alert(describeTransferError(error, "导出音频失败，请重试"));
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  /** 导入音频 — 选择 ZIP 文件后上传，成功后重新拉取列表 */
+  const handleImportAudios = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setTransferring(true);
+    try {
+      log("导入音频", file.name);
+      const importedAudios = await ApiService.importAudios(file);
+      const allAudios = await ApiService.getAudios();
+      setAudios(allAudios);
+      alert(`成功导入 ${importedAudios.length} 个音频`);
+    } catch (error) {
+      console.error("导入音频失败:", error);
+      alert(
+        describeTransferError(error, "导入音频失败，请检查文件是否为音频资源包"),
+      );
+    } finally {
+      setTransferring(false);
+      // 重置 input，便于再次选择同一个文件
+      e.target.value = "";
+    }
   };
 
   useEffect(() => {
@@ -225,10 +340,6 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     }
   };
 
-  const filteredAudios = audios.filter((audio) =>
-    audio.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
   return (
     <div className="resource-tab">
       <div className="resource-actions">
@@ -238,11 +349,59 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button className="btn-primary" onClick={handleAddAudio}>
+        {selectionMode && (
+          <label className="select-all-checkbox">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={
+                filteredAudios.length > 0 &&
+                filteredAudios.every((audio) => selectedExportIds.has(audio.uuid))
+              }
+              onChange={toggleSelectAll}
+            />
+            全选
+          </label>
+        )}
+
+        <button
+          className="btn-primary"
+          onClick={handleAddAudio}
+          disabled={transferring}
+        >
           ➕ 添加音频
         </button>
+        <button
+          onClick={() => importFileRef.current?.click()}
+          disabled={transferring}
+        >
+          {transferring ? "⏳ 处理中…" : "📥 导入音频"}
+        </button>
+
+        {selectionMode ? (
+          <>
+            <button onClick={handleExportAudios} disabled={transferring}>
+              ✅ 确认导出 ({selectedExportIds.size})
+            </button>
+            <button onClick={exitSelectionMode} disabled={transferring}>
+              ❌ 取消
+            </button>
+          </>
+        ) : (
+          <button onClick={() => setSelectionMode(true)} disabled={transferring}>
+            📤 选择导出
+          </button>
+        )}
+        <input
+          type="file"
+          ref={importFileRef}
+          style={{ display: "none" }}
+          accept=".zip"
+          onChange={handleImportAudios}
+        />
+
         <button onClick={() => openResourceFolder("audios")}>
-         📂  打开音频文件夹
+          📂 打开音频文件夹
         </button>
       </div>
 
@@ -254,6 +413,19 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
             onClick={() => setSelectedAudio(audio)}
             onDoubleClick={() => handleEditAudio(audio)}
           >
+            {selectionMode && (
+              // 勾选框单独阻止冒泡，避免点勾选时顺带把条目选中/打开编辑
+              <div
+                className="audio-item-checkbox"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedExportIds.has(audio.uuid)}
+                  onChange={() => toggleExportSelect(audio.uuid)}
+                />
+              </div>
+            )}
             {/* 悬浮在条目右上角的操作按钮，与「背景」页面的卡片保持一致 */}
             <div className="card-hover-actions">
               <button
