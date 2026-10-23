@@ -14,6 +14,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
+import com.lbc_plot.render.video.anim.SpriteAnimation;
+
 /**
  * 临时图片视觉元素（路人、道具等非角色管理的素材）
  *
@@ -30,6 +32,9 @@ public class TempImageVisual extends VisualElement {
     private int posY;           // Y 坐标
     private float scale;        // 缩放比例（1.0 = 原尺寸）
     private boolean dim;        // 是否压暗
+
+    /** 移动动画装备（预设 + 关键帧）；null = 不动，渲染走原路径、逐像素不变 */
+    private SpriteAnimation anim;
 
     @JsonIgnore
     private transient BufferedImage image; // 懒加载缓存
@@ -52,6 +57,7 @@ public class TempImageVisual extends VisualElement {
         this.posY = builder.posY;
         this.scale = builder.scale;
         this.dim = builder.dim;
+        this.anim = builder.anim;
     }
 
     // ---- 懒加载图像 ----
@@ -131,6 +137,22 @@ public class TempImageVisual extends VisualElement {
         this.dim = dim;
     }
 
+    /** 移动动画装备；null 表示不动 */
+    @JsonProperty
+    public SpriteAnimation getAnim() {
+        return anim;
+    }
+
+    public void setAnim(SpriteAnimation anim) {
+        this.anim = anim;
+    }
+
+    /** 这张图是否真的会动（渲染端据此决定要不要走逐帧 + 仿射路径） */
+    @JsonIgnore
+    public boolean isAnimated() {
+        return anim != null && anim.isAnimated();
+    }
+
     @Override
     public String toString() {
         return "TempImageVisual{" +
@@ -166,6 +188,10 @@ public class TempImageVisual extends VisualElement {
         @JsonProperty
         private boolean dim = DEFAULT_DIM;
 
+        /** 移动动画装备；旧工程没有该字段时为 null（= 不动） */
+        @JsonProperty
+        private SpriteAnimation anim;
+
         /** 无参构造器（Jackson 反序列化必需） */
         public Builder() {
         }
@@ -197,6 +223,12 @@ public class TempImageVisual extends VisualElement {
 
         public Builder dim(boolean dim) {
             this.dim = dim;
+            return this;
+        }
+
+        /** 设置移动动画（null = 不动） */
+        public Builder anim(SpriteAnimation anim) {
+            this.anim = anim;
             return this;
         }
 

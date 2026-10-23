@@ -16,10 +16,13 @@ import { ProjectSettings } from "@types";
 import {
   STORY_TYPE_PERSONALITY,
   STORY_TYPE_STORY,
+  STAY_FRAMES_MAX,
+  STAY_FRAMES_MIN,
   TEXT_SPEED_MAX,
   TEXT_SPEED_MIN,
   TEXT_SPEED_STEP,
   VIDEO_SIZE_OPTIONS,
+  normalizeStayFrames,
   normalizeTextSpeed,
   parseVideoSizeKey,
   pickOutputDirectory,
@@ -62,6 +65,9 @@ const GlobalProperties: React.FC<GlobalPropertiesProps> = ({
 
   // 全局文字显示速度：settings 里可能没有这个字段（旧工程 / 旧 localStorage），统一走归一化兜底
   const globalTextSpeed = normalizeTextSpeed(projectSettings.textSpeed);
+
+  // 结尾停留帧数同理（工程级；旧工程没有该字段时用后端默认值 75）
+  const stayFrames = normalizeStayFrames(projectSettings.stayFrames);
 
   const textSpeedGroupRef = useRef<HTMLDivElement | null>(null);
   // 回调只用于高亮结束后清标记，用 ref 存一份，避免父组件每次渲染都重启动画
@@ -205,6 +211,24 @@ const GlobalProperties: React.FC<GlobalPropertiesProps> = ({
         <div className="global-hint">
           数值越大文字显示越快（1 最慢，6 最快）。修改后会统一应用到所有文本的显示速度，
           覆盖各条记录在“文本”页里单独调过的速度；之后新增的记录也按这个速度。
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label>结尾停留时长（帧）</label>
+        <input
+          type="number"
+          min={STAY_FRAMES_MIN}
+          max={STAY_FRAMES_MAX}
+          step={1}
+          value={stayFrames}
+          onChange={(e) => onChange("stayFrames", normalizeStayFrames(e.target.value))}
+          aria-label="结尾停留时长（帧）"
+        />
+        <div className="global-hint">
+          每条记录说完/播完之后再多停多少帧（30fps 下 75 帧 = 2.5 秒）。
+          时长 = max(文字, 音频, 动画) + 这个值；<b>随本工程保存</b>，
+          修改后重新导出会强制重渲已缓存的片段。
         </div>
       </div>
 

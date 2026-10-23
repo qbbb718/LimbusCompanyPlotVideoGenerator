@@ -1,3 +1,5 @@
+import type { SpriteAnimation } from "../../record/animation/animationTypes";
+
 // 对话对齐方式
 export enum DialogueAlign {
   LEFT = 'LEFT',
@@ -217,6 +219,13 @@ export interface CharacterVisual {
    */
   scale?: number;
   dim: boolean;
+  /**
+   * 移动动画装备（预设 + 关键帧）。缺省/`null` = 不动，渲染走原来的路径、逐像素不变。
+   *
+   * <p>语义见 `docs/立绘动画设计.md`：动画是**相对摆位**的增量，
+   * 不会覆盖 posX/posY，也不会覆盖用户缩放。
+   */
+  anim?: SpriteAnimation;
 }
 
 // 临时图片视觉元素（NPC、道具等）
@@ -227,6 +236,8 @@ export interface TempImageVisual {
   posY: number;
   scale: number;
   dim: boolean;
+  /** 移动动画装备；缺省 = 不动（见 CharacterVisual.anim） */
+  anim?: SpriteAnimation;
 }
 
 /**
@@ -257,6 +268,16 @@ export const EFFECT_TYPE_FADE_FROM_BLACK = "FADE_FROM_BLACK";
  */
 export const EFFECT_TYPE_FADE_FROM_WHITE = "FADE_FROM_WHITE";
 
+/**
+ * 特效类型：镜头摇动。
+ *
+ * <p>按帧轻微晃动"看世界的那台相机"：只影响背景 / 立绘 / 临时图片（世界层），
+ * 对话框、地点牌、角色名片与边框暗角画在设计画布上，**UI 与遮罩不受影响**。
+ * 与三种起始转场互不冲突，可以同时开。
+ * 取值与后端 EffectVisual.TYPE_CAMERA_SHAKE 一致（公式见 preview/cameraShake.ts 与 CameraShake.java）。
+ */
+export const EFFECT_TYPE_CAMERA_SHAKE = "CAMERA_SHAKE";
+
 // 特效视觉元素（记录级特效条目）
 export interface EffectVisual {
   /** 特效类型，取值见 EFFECT_TYPE_* 常量（三种起始转场互斥） */
@@ -266,6 +287,10 @@ export interface EffectVisual {
    * 所以 effects 里存在的条目就是"已勾选"的。
    */
   enabled?: boolean;
+  /** 镜头摇动的幅度（屏幕像素）；缺省见 DEFAULT_CAMERA_SHAKE_AMPLITUDE */
+  amplitude?: number;
+  /** 镜头摇动的周期（帧）；缺省见 DEFAULT_CAMERA_SHAKE_PERIOD_FRAMES */
+  periodFrames?: number;
 }
 
 // 音频类型枚举
@@ -372,6 +397,13 @@ export interface ProjectSettings {
    * 新增记录也用它作为初始值（见 RecordEditor.createNewRecord）。
    */
   textSpeed?: number;
+  /**
+   * 结尾停留帧数（工程级）：{@code 时长 = max(文字, 音频, 动画) + stayFrames}。
+   *
+   * <p>直接影响每条记录的成片长度，也进片段缓存指纹；缺省 75（与后端
+   * {@code ProjectConfig.DEFAULT_STAY_FRAMES} 一致）。改动后重新导出会强制重渲缓存片段。
+   */
+  stayFrames?: number;
   bgmGain: number;
   voiceGain: number;
   sfxGain: number;
@@ -409,6 +441,8 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   sfxVolume: 0.7,
   // 与后端 ProjectConfig.DEFAULT_DIALOGUE_SPEED 一致（3 = 标准速度）
   textSpeed: 3,
+  // 与后端 ProjectConfig.DEFAULT_STAY_FRAMES 一致（75 帧 = 2.5 秒 @30fps）
+  stayFrames: 75,
   bgmGain: 1.0,
   voiceGain: 1.0,
   sfxGain: 1.0,

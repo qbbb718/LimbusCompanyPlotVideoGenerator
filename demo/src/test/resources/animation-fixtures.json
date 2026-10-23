@@ -1,0 +1,1579 @@
+{
+  "$comment": "立绘动画双端对拍夹具：Java(SpriteAnimatorTest) 与 TS(spriteAnimator.test.ts) 都必须逐项通过。改公式时必须同步更新本文件。",
+  "timebase": {
+    "unit": "frame",
+    "fps": 30
+  },
+  "hash": [
+    {
+      "seed": 1337,
+      "index": 0,
+      "axis": 0,
+      "expect": 0.708877
+    },
+    {
+      "seed": 1337,
+      "index": 0,
+      "axis": 1,
+      "expect": 0.460626
+    },
+    {
+      "seed": 1337,
+      "index": 1,
+      "axis": 0,
+      "expect": 0.125827
+    },
+    {
+      "seed": 1337,
+      "index": 3,
+      "axis": 2,
+      "expect": 0.08814
+    },
+    {
+      "seed": 0,
+      "index": 0,
+      "axis": 0,
+      "expect": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "keyframes/loop-easeInOut",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "a",
+            "kind": "keyframes",
+            "durationFrames": 10,
+            "loop": "loop",
+            "channels": [
+              "x",
+              "y"
+            ],
+            "keys": [
+              {
+                "f": 0,
+                "v": {
+                  "x": 0,
+                  "y": 0
+                },
+                "ease": "easeInOut"
+              },
+              {
+                "f": 10,
+                "v": {
+                  "x": 100,
+                  "y": -20
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 2,
+          "expect": {
+            "x": 3.2,
+            "y": -0.64,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 5,
+          "expect": {
+            "x": 50,
+            "y": -10,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 12,
+          "expect": {
+            "x": 3.2,
+            "y": -0.64,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/breathe-loop",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "b",
+            "kind": "preset",
+            "preset": "breathe",
+            "durationFrames": 120,
+            "loop": "loop",
+            "params": {
+              "amplitude": 0.02,
+              "periodFrames": 120
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.02,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 0.98,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 120,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/sway-loop",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "c",
+            "kind": "preset",
+            "preset": "sway",
+            "durationFrames": 80,
+            "loop": "loop",
+            "params": {
+              "angle": 3,
+              "periodFrames": 80
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 20,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 3,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 40,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": -3,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/pulse-once",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "d",
+            "kind": "preset",
+            "preset": "pulse",
+            "durationFrames": 20,
+            "loop": "once",
+            "params": {
+              "peak": 1.2,
+              "periodFrames": 20
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.2,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 15,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.141421,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 20,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 25,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/bounce-iterations",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "e",
+            "kind": "preset",
+            "preset": "bounce",
+            "durationFrames": 80,
+            "loop": "loop",
+            "params": {
+              "amplitude": 30,
+              "periodFrames": 20,
+              "iterations": 2,
+              "decay": 0.5
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": -30,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 20,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": -15,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 40,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 45,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 80,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/blink-loop",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "f",
+            "kind": "preset",
+            "preset": "blink",
+            "durationFrames": 30,
+            "loop": "loop",
+            "params": {
+              "min": 0.4,
+              "periodFrames": 30,
+              "duty": 0.4
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 2,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 0.4
+          }
+        },
+        {
+          "frame": 6,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 0.4
+          }
+        },
+        {
+          "frame": 12,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 15,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/shake-jitter-seed",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "g",
+            "kind": "preset",
+            "preset": "shake",
+            "durationFrames": 40,
+            "loop": "loop",
+            "params": {
+              "amplitude": 10,
+              "periodFrames": 4,
+              "seed": 1337,
+              "style": "jitter"
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 2,
+          "expect": {
+            "x": 2.08877,
+            "y": -0.393744,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 4,
+          "expect": {
+            "x": 4.17754,
+            "y": -0.787488,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 6,
+          "expect": {
+            "x": -1.65296,
+            "y": -0.448876,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 9,
+          "expect": {
+            "x": -4.241046,
+            "y": 2.193573,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": -0.998631,
+            "y": 4.49741,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "compose/breathe+sway",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "h1",
+            "kind": "preset",
+            "preset": "breathe",
+            "durationFrames": 120,
+            "loop": "loop",
+            "params": {
+              "amplitude": 0.02,
+              "periodFrames": 120
+            }
+          },
+          {
+            "id": "h2",
+            "kind": "preset",
+            "preset": "sway",
+            "durationFrames": 80,
+            "loop": "loop",
+            "params": {
+              "angle": 3,
+              "periodFrames": 80
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 20,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.017321,
+            "rotate": 3,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.02,
+            "rotate": 2.12132,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "loop/pingpong",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "i",
+            "kind": "preset",
+            "preset": "breathe",
+            "durationFrames": 50,
+            "loop": "pingpong",
+            "params": {
+              "amplitude": 0.05,
+              "periodFrames": 100
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 25,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.05,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 50,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.029389,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 75,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.05,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 100,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "timing/startDelay+fadeIn",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "j",
+            "kind": "preset",
+            "preset": "pulse",
+            "startFrame": 5,
+            "durationFrames": 10,
+            "loop": "once",
+            "fadeInFrames": 5,
+            "params": {
+              "peak": 1.2,
+              "periodFrames": 10
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 4,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 5,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 7,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.047023,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.2,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 14,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.061803,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 15,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "compose/replace-priority",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "k1",
+            "kind": "keyframes",
+            "durationFrames": 20,
+            "loop": "hold",
+            "channels": [
+              "x"
+            ],
+            "blend": "replace",
+            "priority": 0,
+            "keys": [
+              {
+                "f": 0,
+                "v": {
+                  "x": 0
+                },
+                "ease": "linear"
+              },
+              {
+                "f": 20,
+                "v": {
+                  "x": 100
+                }
+              }
+            ]
+          },
+          {
+            "id": "k2",
+            "kind": "keyframes",
+            "durationFrames": 20,
+            "loop": "hold",
+            "channels": [
+              "x"
+            ],
+            "blend": "replace",
+            "priority": 5,
+            "keys": [
+              {
+                "f": 0,
+                "v": {
+                  "x": 50
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 50,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 5,
+          "expect": {
+            "x": 50,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 50,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "compose/add-two-offsets",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "l1",
+            "kind": "keyframes",
+            "durationFrames": 20,
+            "loop": "hold",
+            "channels": [
+              "x"
+            ],
+            "keys": [
+              {
+                "f": 0,
+                "v": {
+                  "x": 10
+                }
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "kind": "keyframes",
+            "durationFrames": 20,
+            "loop": "hold",
+            "channels": [
+              "x"
+            ],
+            "keys": [
+              {
+                "f": 0,
+                "v": {
+                  "x": 20
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 30,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 7,
+          "expect": {
+            "x": 30,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "empty/no-clips",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": []
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "empty/disabled-clip",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "m",
+            "kind": "preset",
+            "preset": "bounce",
+            "durationFrames": 40,
+            "loop": "loop",
+            "enabled": false
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "defaults/bounce",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "n-bounce",
+            "kind": "preset",
+            "preset": "bounce",
+            "durationFrames": 240,
+            "loop": "loop"
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": -23.635386,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": -11.431535,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "defaults/shake",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "n-shake",
+            "kind": "preset",
+            "preset": "shake",
+            "durationFrames": 240,
+            "loop": "loop"
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": -3.311711,
+            "y": 5.429879,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 3.011948,
+            "y": 5.842565,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0.286884,
+            "y": 2.465964,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 2.205584,
+            "y": 3.710662,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "defaults/breathe",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "n-breathe",
+            "kind": "preset",
+            "preset": "breathe",
+            "durationFrames": 240,
+            "loop": "loop"
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.0125,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.025,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 0.975,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "defaults/sway",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "n-sway",
+            "kind": "preset",
+            "preset": "sway",
+            "durationFrames": 240,
+            "loop": "loop"
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 1.606969,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 2.165064,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": -2.165064,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "defaults/blink",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "n-blink",
+            "kind": "preset",
+            "preset": "blink",
+            "durationFrames": 240,
+            "loop": "loop"
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 0.35
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 0.35
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "defaults/pulse",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "n-pulse",
+            "kind": "preset",
+            "preset": "pulse",
+            "durationFrames": 240,
+            "loop": "loop"
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 10,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1.118177,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 30,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 60,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 90,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "preset/shake-sine",
+      "anim": {
+        "version": 1,
+        "timebase": {
+          "unit": "frame",
+          "fps": 30
+        },
+        "clips": [
+          {
+            "id": "o",
+            "kind": "preset",
+            "preset": "shake",
+            "durationFrames": 40,
+            "loop": "loop",
+            "params": {
+              "amplitude": 8,
+              "periodFrames": 12,
+              "style": "sine"
+            }
+          }
+        ]
+      },
+      "frames": [
+        {
+          "frame": 0,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 3,
+          "expect": {
+            "x": 8,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 6,
+          "expect": {
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        },
+        {
+          "frame": 9,
+          "expect": {
+            "x": -8,
+            "y": 0,
+            "scale": 1,
+            "rotate": 0,
+            "alpha": 1
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+/**
+ * 移动动画面板的样式（S4 收尾⑤：每条动画一张卡片 + 整块可折叠）。
+ *
+ * 配色跟随属性面板的浅色主题（与 CharactersProperties.css 的 #ddd / #555 一套），
+ * 不要用深色，否则在白色面板里像一块补丁。
+ */
+
+.animation-panel {
+  margin-top: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fafafa;
+}
+
+.animation-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+/* 折叠开关：看起来像标题，不像按钮 */
+.animation-panel-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #333;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.animation-panel-toggle:hover {
+  color: #1890ff;
+}
+
+/* 收起时也要看得到"这个元素上有没有动画" */
+.animation-panel-summary {
+  font-size: 12px;
+  color: #8c8c8c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.animation-panel-body {
+  margin-top: 6px;
+}
+
+/* 一条动画 = 一张卡片 */
+.animation-clip-card {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid #e6e6e6;
+  border-left: 3px solid #1890ff;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.animation-clip-card.is-selected {
+  border-left-color: #faad14;
+  background: #fffbe6;
+}
+
+.animation-clip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.animation-clip-title {
+  flex: 1;
+  text-align: left;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.animation-clip-meta {
+  opacity: 0.6;
+}
+
+.animation-clip-body {
+  margin-top: 6px;
+  padding-left: 18px;
+  border-top: 1px dashed #e8e8e8;
+  padding-top: 6px;
+}

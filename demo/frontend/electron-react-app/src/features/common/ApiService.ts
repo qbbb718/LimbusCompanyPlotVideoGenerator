@@ -319,9 +319,39 @@ class ApiService {
     }
   }
 
+  /**
+   * 问后端"这条记录最终成片有多少帧"。
+   *
+   * <p>为什么必须问后端：时长公式是 `max(文字, 音频, 动画) + stayFrames`（见
+   * RecordDurationCalculator），前端拿不到音频长度、文字动画的逐帧展开规则也不一致，
+   * 自己算只会得到一个近似值——预览的播放头就会与成片错位（播到"结尾"其实还有一截）。
+   *
+   * <p>接口失败时**不要抛给调用方**：预览能用近似值继续工作，编辑不该被这条请求打断
+   * （调用方接住 rejection 后回落到本地近似）。
+   *
+   * @param record 记录（前端结构，后端按自己的模型反序列化）
+   * @param plot 是否剧情模式（人格故事下动画不参与渲染，也就不该撑长时长）
+   * @param stayFrames 工程级结尾停留帧数；不传时后端用默认值
+   * @returns 总帧数与分项（audio/text/animation/stay）
+   */
+  async getRecordDuration(
+    record: any,
+    plot: boolean = true,
+    stayFrames?: number,
+  ): Promise<{
+    frames: number;
+    audioFrames: number;
+    textFrames: number;
+    animationFrames: number;
+    stayFrames: number;
+    frameRate: number;
+  }> {
+    const response = await apiClient.post('/records/duration', { record, plot, stayFrames });
+    return response.data;
+  }
+
   // 查询视频生成进度
-  async getVideoProgress(taskId: string): Promise<{
-    stage: number;
+  async getVideoProgress(taskId: string): Promise<{    stage: number;
     current: number;
     total: number;
     message: string;
@@ -345,6 +375,7 @@ class ApiService {
   // keepTempFiles: 是否保留中间文件，便于下次导出时跳过未修改的 Record
   // projectName: 项目名称，后端作为导出视频文件名前缀（"项目名称_"）
   // plot: 是否剧情模式（全局设置里的"剧情类型"：剧情 true / 人格故事 false）
+  // stayFrames: 结尾停留帧数（工程级设置，参与时长计算与片段缓存指纹）
   async generateVideo(
     records: any[],
     outputPath: string,
@@ -355,6 +386,7 @@ class ApiService {
     keepTempFiles: boolean = false,
     projectName: string = "",
     plot: boolean = true,
+    stayFrames: number = 75,
   ) {
     try {
       const response = await apiClient.post('/generate-video', {
@@ -367,6 +399,7 @@ class ApiService {
         keepTempFiles,
         projectName,
         plot,
+        stayFrames,
       });
       return response.data;
     } catch (error) {

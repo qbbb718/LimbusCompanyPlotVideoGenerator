@@ -35,9 +35,31 @@ import {
   CAMERA_EASINGS,
   DEFAULT_CAMERA_EASING,
 } from "./preview/cameraView";
+import { normalizeStayFrames } from "@features/common/utils/projectSettings";
 
 /** 工程文件扩展名（保存对话框过滤器与默认文件名使用） */
 export const PROJECT_FILE_EXTENSION = ".json";
+
+/**
+ * 工程文件格式版本。
+ *
+ * <p>`{version: 1, settings, records}` 这一层是 S2c-2 才加的：旧的工程文件顶层就是记录数组。
+ * 解析端两种都认（{@link parseProjectText}），写端只在**给了 settings** 时才写新形状，
+ * 这样 `serializeProject(records, groups)` 的既有调用方（含后端 RecordsIO 的导入格式）不受影响。
+ */
+export const PROJECT_FILE_VERSION = 1;
+
+/**
+ * 工程文件里与**内容无关、只与该工程有关**的设置。
+ *
+ * <p>目前只有"结尾停留帧数"：它影响本工程每条记录的时长，必须跟着工程走，
+ * 不能跟着机器走（否则换台机器打开同一个工程，成片节奏就变了）。
+ */
+export interface ProjectFileSettings {
+  /** 结尾停留帧数（0~300，缺省 75） */
+  stayFrames?: number;
+}
+
 
 /** 保存工程的结果（取消时 canceled 为 true） */
 export interface SaveProjectFileResult {
@@ -97,14 +119,36 @@ export const defaultProjectFileName = (projectName?: string): string => {
  * 保持与后端 RecordsIO 一致的缩进格式，方便用文本工具查看/比对工程文件。
  * 工程文件顶层仍然是记录数组：分组信息作为 group 快照附在每条带分组的记录上
  * （见 recordGroups.stampGroups），因此后端导入、老版本打开都不受影响。
+ *
+ * <p>给了 `settings` 时改写成 `{version, settings, records}`（S2c-2）：
+ * 结尾停留帧数是**工程级**的，必须随工程文件往返，否则换台机器打开同一个工程节奏就变了。
+ * 不给 `settings` 时仍然是裸数组 —— 保证"只有记录"的老调用方（与后端 RecordsIO 的
+ * 导入格式）逐字节不变。
+ *
  * @param records 当前工程的全部记录
  * @param groups 分组定义（名称与折叠状态）
+ * @param settings 工程级设置（缺省不写 settings 段落，输出裸数组）
  * @return 可直接写入文件的 JSON 文本
  */
 export const serializeProject = (
   records: Record[],
   groups: RecordGroup[] = [],
-): string => JSON.stringify(stampGroups(records, groups), null, 2);
+  settings?: ProjectFileSettings,
+): string => {
+  const stamped = stampGroups(records, groups);
+  if (!settings) {
+    return JSON.stringify(stamped, null, 2);
+  }
+  return JSON.stringify(
+    {
+      version: PROJECT_FILE_VERSION,
+      settings: { stayFrames: normalizeStayFrames(settings.stayFrames) },
+      records: stamped,
+    },
+    null,
+    2,
+  );
+};
 
 /** 数值兜底：非数字（含 NaN）时取默认值 */
 const asNumber = (value: unknown, fallback: number): number =>
@@ -284,18 +328,23 @@ export const normalizeRecord = (raw: any): Record => {
 export const normalizeRecords = (raw: unknown): Record[] =>
   Array.isArray(raw) ? raw.map(normalizeRecord) : [];
 
-/** 工程文件解析结果：记录 + 从记录快照里还原出来的分组 */
+/** 工程文件解析结果：记录 + 从记录快照里还原出来的分组 + 工程级设置 */
 export interface ParsedProject {
   records: Record[];
   groups: RecordGroup[];
+  /** 工程级设置；旧工程（顶层是裸数组）没有这一段 → undefined，调用方保留当前设置 */
+  settings?: ProjectFileSettings;
 }
 
 /**
  * @function 解析工程文件文本
- * 兼容两种写法：顶层直接是记录数组（后端 RecordsIO 格式），或包了一层 { records: [...] }。
+ * 兼容三种写法：
+ * 1. 顶层直接是记录数组（旧工程 / 后端 RecordsIO 格式）；
+ * 2. 包了一层 `{ records: [...] }`；
+ * 3. `{ version, settings, records }`（S2c-2 起由 {@link serializeProject} 写出）。
  * 分组定义从记录上的 group 快照还原；找不到分组定义的 groupId 会被丢掉（记录变回未分组）。
  * @param text 工程文件内容
- * @return 归一化后的记录与分组
+ * @return 归一化后的记录、分组与工程级设置
  * @throws 内容不是合法 JSON 或不含记录数组时抛出错误（调用方负责提示用户）
  */
 export const parseProjectText = (text: string): ParsedProject => {
@@ -317,10 +366,16 @@ export const parseProjectText = (text: string): ParsedProject => {
   }
 
   const groups = readGroups(list);
-  return {
+  const parsed: ParsedProject = {
     groups,
     records: keepKnownGroups(normalizeRecords(list), groups),
   };
+  // 裸数组里没有 settings 段落 → 不动当前设置（旧工程打开后仍是用户上次的值）
+  const settings = Array.isArray(data) ? null : data?.settings;
+  if (settings && typeof settings === "object") {
+    parsed.settings = { stayFrames: normalizeStayFrames(settings.stayFrames) };
+  }
+  return parsed;
 };
 
 /**

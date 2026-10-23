@@ -1,6 +1,7 @@
 package com.lbc_plot.common.util.json;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.lbc_plot.plot.model.Record;
@@ -24,12 +25,23 @@ public class RecordsIO {
 
     /**
      * 从文件导入Records
+     *
+     * <p>兼容两种顶层形状：
+     * <ol>
+     *   <li>裸记录数组（本类的 {@link #exportRecords} 与旧版工程文件）；</li>
+     *   <li>{@code {version, settings, records:[...]}} —— 新版工程文件（S2c-2 起，
+     *       前端把工程级的 {@code stayFrames} 也写进文件）。若不兼容这一种，
+     *       前端"导入工程 → 同步到后端"会静默失败，下次启动就看不到刚导入的工程。</li>
+     * </ol>
      */
     public static List<Record> importRecords(Path filePath) throws IOException {
-        List<Record> records = mapper.readValue(
-                filePath.toFile(),
-                new TypeReference<List<Record>>() {
-                });
+        JsonNode root = mapper.readTree(filePath.toFile());
+        JsonNode listNode = root != null && root.isObject() ? root.get("records") : root;
+        if (listNode == null || !listNode.isArray()) {
+            throw new IOException("工程文件里没有记录数组（顶层既不是数组，也没有 records 字段）");
+        }
+        List<Record> records = mapper.convertValue(listNode, new TypeReference<List<Record>>() {
+        });
         System.out.println("导入成功: " + records.size() + "条记录");
         return records;
     }

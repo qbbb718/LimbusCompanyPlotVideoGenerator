@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import com.lbc_plot.render.engine.manager.FontLoader;
 import com.lbc_plot.common.util.ImageCropper;
-import com.lbc_plot.common.util.ImageDarkener;
+import com.lbc_plot.common.util.SpriteImageCache;
 import com.lbc_plot.common.util.RenderQualityUtils;
 import com.lbc_plot.common.util.RuntimePaths;
 import com.lbc_plot.common.util.TextureColorizer;
@@ -32,6 +32,7 @@ import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.TempImageVisual;
+import com.lbc_plot.render.video.anim.TransformState;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
 import com.lbc_plot.resource.dao.CharacterDAO;
@@ -258,6 +259,17 @@ public class RenderOfImage {
     /** 带镜头的完整预览渲染（动态镜头逐帧出片时，每帧传入当时的镜头） */
     public static BufferedImage renderPre(Record record, boolean plot, int width, int height, Camera camera)
             throws IOException {
+        return renderPre(record, plot, width, height, camera, 0);
+    }
+
+    /**
+     * 完整预览渲染（**指定帧号**）。
+     *
+     * <p>立绘 / 临时图片挂了移动动画时，第 0 帧和第 N 帧的画面并不相同，所以帧号要能传进来。
+     * 没有动画时 frameIndex 完全不影响结果（变换恒等 → 走原来的绘制路径，逐像素不变）。
+     */
+    public static BufferedImage renderPre(Record record, boolean plot, int width, int height, Camera camera,
+            int frameIndex) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("开始渲染预览图: plot={}, 请求尺寸={}x{}, 记录 uuid={}", plot, width, height,
                     record.getUuid());
@@ -271,9 +283,9 @@ public class RenderOfImage {
             // 第一趟：场景层（全部在 1080p 设计画布上，与请求的输出分辨率无关）
             renderBackground(composer, record, camera);
             if (plot) {
-                renderCharacters(composer, record, camera);
+                renderCharacters(composer, record, camera, frameIndex);
             }
-            renderTempImages(composer, record, camera);
+            renderTempImages(composer, record, camera, frameIndex);
             composer.addImageLayer(border, 0, 0);
             BufferedImage coImage = composer.compose();
             // 必须清空：否则场景图层会在第二趟里被重复绘制一遍
@@ -303,6 +315,12 @@ public class RenderOfImage {
     /** 带镜头的"除对话"渲染：动态镜头出片时，静态层每帧都要走它 */
     public static BufferedImage renderPreExceptDialogue(Record record, boolean plot, int width, int height,
             Camera camera) throws IOException {
+        return renderPreExceptDialogue(record, plot, width, height, camera, 0);
+    }
+
+    /** 带镜头 + 帧号的"除对话"渲染：立绘动画逐帧出片时，每帧都要走它 */
+    public static BufferedImage renderPreExceptDialogue(Record record, boolean plot, int width, int height,
+            Camera camera, int frameIndex) throws IOException {
         final int designW = designWidth();
         final int designH = designHeight();
         FrameComposerService composer = newDesignComposer();
@@ -311,9 +329,9 @@ public class RenderOfImage {
             // 第一趟：场景层
             renderBackground(composer, record, camera);
             if (plot) {
-                renderCharacters(composer, record, camera);
+                renderCharacters(composer, record, camera, frameIndex);
             }
-            renderTempImages(composer, record, camera);
+            renderTempImages(composer, record, camera, frameIndex);
             composer.addImageLayer(border, 0, 0);
             BufferedImage coImage = composer.compose();
             composer.clearLayers();
@@ -362,8 +380,15 @@ public class RenderOfImage {
     /** 仅渲染角色立绘（指定镜头） */
     public static BufferedImage renderCharactersOnly(Record record, int width, int height, Camera camera)
             throws IOException {
+        return renderCharactersOnly(record, width, height, camera, 0);
+    }
+
+    /** 仅渲染角色立绘（指定镜头 + 帧号：立绘动画逐帧出片时用） */
+    public static BufferedImage renderCharactersOnly(Record record, int width, int height, Camera camera,
+            int frameIndex)
+            throws IOException {
         FrameComposerService composer = newDesignComposer();
-        renderCharacters(composer, record, camera);
+        renderCharacters(composer, record, camera, frameIndex);
         return composeFinalImage(composer, width, height, -1);
     }
 
@@ -471,15 +496,18 @@ public class RenderOfImage {
 
     /**
      * 渲染角色立绘层
+     *
+     * @param frameIndex 记录内的帧号（立绘动画求值用；没有动画时对结果没有任何影响）
      */
-    private static void renderCharacters(FrameComposerService composer, Record record, Camera camera) {
+    private static void renderCharacters(FrameComposerService composer, Record record, Camera camera,
+            int frameIndex) {
         List<CharacterVisual> chars = record.getCharacters();
         if (chars == null || chars.isEmpty()) {
             logger.debug("记录中没有角色立绘信息");
             return;
         }
 
-        logger.debug("开始渲染{}个角色立绘", chars.size());
+        logger.debug("开始渲染{}个角色立绘（第{}帧）", chars.size(), frameIndex);
 
         // 逆序渲染：数组末尾先绘制（底层），数组开头后绘制（顶层），与前端列表顺序一致
         for (int i = chars.size() - 1; i >= 0; i--) {
@@ -488,7 +516,7 @@ public class RenderOfImage {
                 continue;
 
             try {
-                renderSingleCharacter(composer, chara, camera);
+                renderSingleCharacter(composer, chara, camera, frameIndex);
             } catch (Exception e) {
                 logger.error("添加角色图层失败: {}", chara.getChara().getCharacterName(), e);
             }
@@ -513,80 +541,135 @@ public class RenderOfImage {
     }
 
     /**
-     * 渲染单个角色
+     * 渲染单个角色（含移动动画）
      *
-     * <p>摄像机只改「画在哪、画多大」：把世界坐标里的左上角换算成取景画布坐标，
-     * 缩放再乘上 zoom。恒等时完全不经过换算，旧工程逐像素不变。
+     * <p>摄像机只改「画在哪、画多大」：把世界坐标里的左上角换算成取景画布坐标，缩放再乘上 zoom。
+     * 恒等时完全不经过换算，旧工程逐像素不变。
+     *
+     * <p>动画的变换**在场景画布坐标系里**应用（先过 camera 再套动画），这与"先在世界坐标里做动画、
+     * 再过 camera"是**严格等价**的：camera 是"等比缩放 + 平移"，与动画的旋转/缩放可交换，
+     * 所以世界位移乘 zoom、锚点用换算后的位置即可（见 {@link #drawSprite}）。
      */
-    private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara, Camera camera) {
+    private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara, Camera camera,
+            int frameIndex) {
         BufferedImage charImage = chara.getImage();
         // 实际缩放 = 裁剪推导的缩放 × 用户手动缩放（剧情编辑 → 立绘 → 缩放），
         // 与 CharacterVisual.updatePos() 里计算 posX/posY 用的是同一个值。
         float scaled = chara.getRenderScale();
         int x = chara.getPosX();
         int y = chara.getPosY();
+        float zoom = 1f;
         if (camera != null && !camera.isIdentity()) {
             scaled = camera.screenScale(scaled);
             x = camera.screenX(x);
             y = camera.screenY(y);
+            zoom = camera.getZoomFactor();
         }
         logger.debug("{}立绘渲染比例为{}", chara.getChara().getCharacterName(), scaled);
 
-        if (chara.isDim()) {
-            // 不是说话人要压暗
-            BufferedImage darkenedImage = ImageDarkener.darkenImage(charImage, 0.5f);
-            if (darkenedImage == null) {
-                logger.error("图像压暗失败，使用原图: {}", chara.getChara().getCharacterName());
-                composer.addImageLayerScaled(charImage, x, y, scaled);
-            } else {
-                composer.addImageLayerScaled(darkenedImage, x, y, scaled);
-                logger.debug("添加压暗角色图层: {} at ({},{})",
-                        chara.getChara().getCharacterName(), x, y);
-            }
-        } else {
-            composer.addImageLayerScaled(charImage, x, y, scaled);
-            logger.debug("添加角色图层: {} at ({},{})",
-                    chara.getChara().getCharacterName(), x, y);
+        // 压暗结果按"源图 + 比例"缓存：逐帧重画时不能每帧再遍历一遍全部像素
+        BufferedImage image = chara.isDim() ? SpriteImageCache.darkened(charImage, 0.5f) : charImage;
+
+        TransformState transform = RecordAnimation.transformOf(chara, frameIndex);
+        drawSprite(composer, image, x, y, scaled, transform,
+                RecordAnimation.CHARACTER_ANCHOR_X, RecordAnimation.CHARACTER_ANCHOR_Y, zoom);
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("添加角色图层: {} at ({},{}), 动画={}, 压暗={}",
+                    chara.getChara().getCharacterName(), x, y,
+                    transform.isIdentity() ? "无" : transform, chara.isDim());
         }
     }
 
     /**
-     * 渲染临时图片层（NPC、道具等）
+     * 画一个「可能带移动动画」的精灵（立绘 / 临时图片共用）。
+     *
+     * <p>两条路径：
+     * <ol>
+     *   <li><b>恒等</b>：预缩放后按整数坐标贴图 —— 与改造前的绘制**逐像素一致**（回归基线靠它）；</li>
+     *   <li><b>非恒等</b>：把「平移 + 绕锚点旋转/缩放 + 透明度」编成**一个** {@link AffineTransform}
+     *       再画。绝不能"先 drawImage 再 g.rotate"——那会变成绕画布原点旋转，是最经典的实现事故。</li>
+     * </ol>
+     *
+     * <p>预缩放走 {@link SpriteImageCache}：逐帧重画时省掉每帧一次双三次重采样。
+     * 注意缩放在**旋转之前**做（先把图缩到目标尺寸，再做动画的旋转/缩放），
+     * 与旧路径"先 scaleImageHighQuality 再贴图"的顺序一致。
+     *
+     * @param image     源图（压暗版本由调用方准备好）
+     * @param x         未变换时的左上角（场景画布坐标）
+     * @param y         未变换时的左上角（场景画布坐标）
+     * @param scale     预缩放比例（**已含 camera 的 zoom**）
+     * @param transform 动画变换（null / 恒等 → 走原路径）
+     * @param anchorX   锚点在图像内的相对位置（0~1，0.5 = 水平居中）
+     * @param anchorY   锚点在图像内的相对位置（0~1，1 = 底边）
+     * @param zoom      camera 的缩放（把世界像素位移换算成场景像素）
      */
-    private static void renderTempImages(FrameComposerService composer, Record record, Camera camera) {
+    private static void drawSprite(FrameComposerService composer, BufferedImage image, int x, int y,
+            float scale, TransformState transform, double anchorX, double anchorY, float zoom) {
+        BufferedImage scaled = SpriteImageCache.scaled(image, scale);
+
+        if (transform == null || transform.isIdentity()) {
+            // scaled 已经缩放过：scale 传 1 就是 1:1 贴图，与改造前的 addImageLayerScaled(img,x,y,scale) 等价
+            composer.addImageLayerScaled(scaled, x, y, 1f);
+            return;
+        }
+
+        double anchorPixelX = x + anchorX * scaled.getWidth();
+        double anchorPixelY = y + anchorY * scaled.getHeight();
+        double deltaX = transform.getX() * zoom;
+        double deltaY = transform.getY() * zoom;
+
+        AffineTransform matrix = new AffineTransform();
+        matrix.translate(anchorPixelX + deltaX, anchorPixelY + deltaY);
+        matrix.rotate(Math.toRadians(transform.getRotate()));
+        matrix.scale(transform.getScale(), transform.getScale());
+        matrix.translate(-anchorPixelX, -anchorPixelY);
+        // 最后一步：把图摆到 (x, y)。这一句必须在"绕锚点"之后，因为仿射是从右往左作用到像素上的
+        matrix.translate(x, y);
+
+        composer.addImageLayerTransformed(scaled, matrix, (float) transform.getAlpha());
+    }
+
+    /**
+     * 渲染临时图片层（NPC、道具等），支持移动动画
+     *
+     * @param frameIndex 记录内的帧号（动画求值用；没有动画时无影响）
+     */
+    private static void renderTempImages(FrameComposerService composer, Record record, Camera camera,
+            int frameIndex) {
         List<TempImageVisual> tempImages = record.getTempImages();
         if (tempImages == null || tempImages.isEmpty()) {
             return;
         }
-        logger.debug("开始渲染临时图片层，共 {} 张", tempImages.size());
+        logger.debug("开始渲染临时图片层，共 {} 张（第{}帧）", tempImages.size(), frameIndex);
         final boolean hasCamera = camera != null && !camera.isIdentity();
         // 逆序渲染：数组末尾先绘制（底层），数组开头后绘制（顶层），与前端列表顺序一致
         for (int i = tempImages.size() - 1; i >= 0; i--) {
             TempImageVisual temp = tempImages.get(i);
             try {
-                BufferedImage img = temp.getImage();
-                if (img == null) {
+                BufferedImage source = temp.getImage();
+                if (source == null) {
                     logger.warn("临时图片为空，跳过: uuid={}, path={}", temp.getUuid(), temp.getImagePath());
                     continue;
                 }
-                if (temp.isDim()) {
-                    img = ImageDarkener.darkenImage(img, 0.5f);
-                    if (img == null) {
-                        logger.warn("临时图片压暗失败，使用原图: uuid={}", temp.getUuid());
-                        img = temp.getImage();
-                    }
-                }
+                // 压暗走缓存：逐帧重画时不能每帧再遍历一遍全部像素
+                BufferedImage img = temp.isDim() ? SpriteImageCache.darkened(source, 0.5f) : source;
+
                 int x = temp.getPosX();
                 int y = temp.getPosY();
                 float scale = temp.getScale();
+                float zoom = 1f;
                 if (hasCamera) {
                     x = camera.screenX(x);
                     y = camera.screenY(y);
                     scale = camera.screenScale(scale);
+                    zoom = camera.getZoomFactor();
                 }
-                composer.addImageLayerScaled(img, x, y, scale);
-                logger.debug("添加临时图片图层: uuid={} at ({},{}), scale={}, dim={}",
-                        temp.getUuid(), x, y, scale, temp.isDim());
+                drawSprite(composer, img, x, y, scale, RecordAnimation.transformOf(temp, frameIndex),
+                        RecordAnimation.TEMP_IMAGE_ANCHOR_X, RecordAnimation.TEMP_IMAGE_ANCHOR_Y, zoom);
+                logger.debug("添加临时图片图层: uuid={} at ({},{}), scale={}, dim={}, 动画={}",
+                        temp.getUuid(), x, y, scale, temp.isDim(),
+                        RecordAnimation.transformOf(temp, frameIndex));
             } catch (Exception e) {
                 logger.error("渲染临时图片失败: uuid={}", temp.getUuid(), e);
             }

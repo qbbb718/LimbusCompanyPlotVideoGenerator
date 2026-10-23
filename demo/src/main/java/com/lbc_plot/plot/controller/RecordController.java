@@ -276,6 +276,8 @@ public class RecordController {
         // 剧情类型：全局设置里选"剧情"时 plot = true（立绘 + 黑边 + 0.8 缩放居中），
         // "人格故事"时 false（只画背景与 UI/对话）。未传该字段的旧调用方保持原行为（true）。
         final boolean plot = request.isPlot();
+        // 结尾停留帧数：工程级设置，参与时长计算与片段缓存指纹
+        final int stayFrames = request.getStayFrames();
         final List<Record> records = request.getRecords();
 
         // 获取导出分层类型，默认为完整视频
@@ -337,7 +339,8 @@ public class RecordController {
                                         "[" + layerType + "] " + message);
                             },
                             layerType,
-                            request.isKeepTempFiles());
+                            request.isKeepTempFiles(),
+                            stayFrames);
                 }
 
                 long elapsed = System.currentTimeMillis() - startTime;
@@ -703,6 +706,15 @@ public class RecordController {
          */
         private boolean plot = true;
 
+        /**
+         * 每条记录结尾的停留帧数（工程级设置，来自「全局设置」tab）。
+         *
+         * <p>缺省 {@link ProjectConfig#DEFAULT_STAY_FRAMES}：字段出现之前的老调用方行为不变。
+         * 它参与时长计算、也进片段缓存指纹，所以必须**随请求传入**而不是读静态字段
+         * （导出是异步队列，改 static 会让并发任务互相污染）。
+         */
+        private int stayFrames = ProjectConfig.DEFAULT_STAY_FRAMES;
+
         public List<Record> getRecords() {
             return records;
         }
@@ -773,6 +785,15 @@ public class RecordController {
 
         public void setPlot(boolean plot) {
             this.plot = plot;
+        }
+
+        /** 结尾停留帧数；非法/负数按 0 处理（0 = 说完立刻切下一条） */
+        public int getStayFrames() {
+            return Math.max(0, stayFrames);
+        }
+
+        public void setStayFrames(int stayFrames) {
+            this.stayFrames = stayFrames;
         }
     }
 

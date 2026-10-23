@@ -34,8 +34,23 @@ public class EffectVisual extends VisualElement {
     /** 白屏转场：视频开头叠一层纯白再淡出，即从白屏淡入（共 {@link StartTransition#FRAMES} 帧） */
     public static final String TYPE_FADE_FROM_WHITE = "FADE_FROM_WHITE";
 
+    /**
+     * 镜头摇动：按帧轻微晃动"看世界的那台相机"。
+     *
+     * <p>只影响世界层（背景 / 立绘 / 临时图片）——对话框、地点牌、角色名片与边框暗角
+     * 画在设计画布上，不经过相机，所以**UI 与遮罩不受影响**（见 {@link CameraShake}）。
+     * 与三种起始转场互不冲突，可以同时启用。
+     */
+    public static final String TYPE_CAMERA_SHAKE = "CAMERA_SHAKE";
+
     /** 特效类型，取值见 {@code TYPE_*} 常量 */
     private String type;
+
+    /** 镜头摇动的幅度（屏幕像素）；缺省见 {@link CameraShake#DEFAULT_AMPLITUDE} */
+    private Double amplitude;
+
+    /** 镜头摇动的周期（帧）；缺省见 {@link CameraShake#DEFAULT_PERIOD_FRAMES} */
+    private Double periodFrames;
 
     /**
      * 是否勾选/启用；缺省（JSON 里没写这个字段）按启用处理，
@@ -125,6 +140,31 @@ public class EffectVisual extends VisualElement {
     @JsonIgnore
     public boolean isStartTransition() {
         return isCrossDissolve() || isFadeFromBlack() || isFadeFromWhite();
+    }
+
+    /**
+     * @function 判断这条特效是不是"已启用的镜头摇动"
+     * @return 类型匹配且勾选时返回 true
+     */
+    @JsonIgnore
+    public boolean isCameraShake() {
+        return isEnabledType(TYPE_CAMERA_SHAKE);
+    }
+
+    public Double getAmplitude() {
+        return amplitude;
+    }
+
+    public void setAmplitude(Double amplitude) {
+        this.amplitude = amplitude;
+    }
+
+    public Double getPeriodFrames() {
+        return periodFrames;
+    }
+
+    public void setPeriodFrames(Double periodFrames) {
+        this.periodFrames = periodFrames;
     }
 
     /**

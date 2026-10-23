@@ -106,6 +106,38 @@ export const normalizeTextSpeed = (
   return Math.min(TEXT_SPEED_MAX, Math.max(TEXT_SPEED_MIN, stepped));
 };
 
+/* ==================== 结尾停留帧数（工程级） ==================== */
+
+/**
+ * 结尾停留帧数：每条记录说完/播完之后再多停多少帧。
+ *
+ * <p>它是**工程级**设置（不同作品节奏不同），随导出请求发给后端参与时长计算：
+ * {@code 时长 = max(文字, 音频, 动画) + stayFrames}。默认值与后端
+ * {@code ProjectConfig.DEFAULT_STAY_FRAMES} 保持一致（75 帧 = 2.5 秒 @30fps）。
+ */
+export const DEFAULT_STAY_FRAMES = 75;
+
+/** 允许范围：0 = 说完立刻切；上限 300 帧（10 秒）已经远超任何合理节奏 */
+export const STAY_FRAMES_MIN = 0;
+export const STAY_FRAMES_MAX = 300;
+
+/**
+ * @function 归一化结尾停留帧数
+ *
+ * @param value 任意来源的值（localStorage / 工程文件 / 输入框字符串）
+ * @param fallback 完全取不到数字时的兜底值
+ * @return [0, 300] 之间的整数帧数
+ */
+export const normalizeStayFrames = (
+  value: unknown,
+  fallback: number = DEFAULT_STAY_FRAMES,
+): number => {
+  if (value === null || value === undefined || value === "") return fallback;
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(STAY_FRAMES_MAX, Math.max(STAY_FRAMES_MIN, Math.round(numeric)));
+};
+
 /**
  * @function 把全局文字显示速度写到所有记录
  * "全局设置"里的"文字显示速度（全局）"修改后要统一覆盖每条记录的

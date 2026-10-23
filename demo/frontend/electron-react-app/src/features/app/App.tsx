@@ -5,6 +5,7 @@ import { ResourceManager } from "@features/resource";
 import { Settings } from "@features/settings";
 import { TextToRecords } from "@features/text-to-records";
 import { ProjectSettings } from "./types";
+import { normalizeStayFrames } from "@features/common/utils/projectSettings";
 import { Record } from "@types";
 
 function App() {
@@ -28,7 +29,15 @@ function App() {
   });
 
   // 当前工程由 App 层持有，切换页面（资源管理/设置…）不丢编辑内容；详见 useProjectWorkspace.ts
-  const workspace = useProjectWorkspace(projectSettings.name);
+  // 工程级设置（stayFrames）随工程文件往返：保存时写进 {settings} 段，导入时回填（S2c-2）
+  const workspace = useProjectWorkspace(projectSettings.name, {
+    stayFrames: projectSettings.stayFrames,
+    onSettingsLoaded: (settings) =>
+      setProjectSettings((prev) => ({
+        ...prev,
+        stayFrames: normalizeStayFrames(settings.stayFrames),
+      })),
+  });
 
   useEffect(() => {
     const initializeApp = async () => {

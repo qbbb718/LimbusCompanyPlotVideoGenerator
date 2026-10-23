@@ -7,6 +7,7 @@ import { TextToRecords } from "@features/text-to-records";
 import { ProjectSettings as IProjectSettings, Record } from "@types";
 import ApiService from "@services/ApiService";
 import { loadSettings, saveSettings } from "@features/common/components/Settings/Settings";
+import { normalizeStayFrames } from "@features/common/utils/projectSettings";
 import log from "electron-log";
 
 function AppElectron() {
@@ -21,7 +22,17 @@ function AppElectron() {
   // 当前工程（记录 + 选中位置 + 关联的工程文件）由 App 层持有：
   // 切换到资源管理/设置等页面时会卸载编辑器组件，但工程内容不会丢，
   // 回到"剧情编辑"时仍是离开前的样子。详见 useProjectWorkspace.ts。
-  const workspace = useProjectWorkspace(projectSettings.name);
+  //
+  // 工程级设置（stayFrames）随工程文件往返：保存时写进 {settings} 段，
+  // 导入带 settings 的工程后回填到这里（S2c-2）。旧工程没有这一段 → 保留当前值。
+  const workspace = useProjectWorkspace(projectSettings.name, {
+    stayFrames: projectSettings.stayFrames,
+    onSettingsLoaded: (settings) =>
+      setProjectSettings((prev) => ({
+        ...prev,
+        stayFrames: normalizeStayFrames(settings.stayFrames),
+      })),
+  });
   const { saveProject, importProject } = workspace;
 
   useEffect(() => {

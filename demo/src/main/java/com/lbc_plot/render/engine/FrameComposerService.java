@@ -59,6 +59,20 @@ public class FrameComposerService extends BaseLayerManager
         imageManager.addLayerScaled(resourcePath, x, y, scaleX, scaleY);
     }
 
+    /**
+     * 添加带仿射变换的图像图层（立绘 / 临时图片的移动动画用）。
+     *
+     * <p>刻意不放进 {@code ImageLayerInterface}：那是"画一张图"的通用契约，
+     * 而带变换的贴图是渲染内部能力。
+     *
+     * @param image     已预缩放的图（可走 {@code SpriteImageCache} 复用）
+     * @param transform 原图像素 → 画布像素的完整变换
+     * @param alpha     不透明度 0~1
+     */
+    public void addImageLayerTransformed(BufferedImage image, java.awt.geom.AffineTransform transform, float alpha) {
+        imageManager.addImageLayerTransformed(image, transform, alpha);
+    }
+
     // 委托文字操作方法
     @Override
     public void addLocationText(String text) {

@@ -13,6 +13,7 @@ import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
 import NumberField from "./NumberField";
+import CharacterAnimationPanel from "./CharacterAnimationPanel";
 import {
   DESIGN_CANVAS_WIDTH,
   MAX_VISUAL_SCALE,
@@ -62,6 +63,14 @@ interface CharactersPropertiesProps {
    * 不传表示没有跳转（例如用户自己点的页签）。
    */
   focusRequest?: PropertyFocusRequest | null;
+  /** 是否剧情模式；人格故事（false）下立绘不参与渲染，动画区要置灰提示 */
+  plot?: boolean;
+  /** 预览当前停在哪一帧（关键帧时间轴画播放头用） */
+  previewFrame?: number | null;
+  /** 请求预览跳到某一帧（点时间轴 / 关键帧时触发） */
+  onSeekFrame?: (recordFrame: number) => void;
+  /** 一句台词本身的长度（max(语音, 文字) 帧）；关键帧动画默认按它铺满 */
+  lineFrames?: number;
 }
 
 const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
@@ -71,6 +80,10 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   videoWidth,
   videoHeight,
   focusRequest,
+  plot = true,
+  previewFrame,
+  onSeekFrame,
+  lineFrames,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -428,6 +441,17 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                   className="char-slider-auto"
                 />
               </div>
+
+              {/* 移动动画：预设 + 参数 / 关键帧表格（预览用上方的 ▶ 播放） */}
+              <CharacterAnimationPanel
+                anim={char.anim}
+                elementLabel={char.chara?.characterName ?? `立绘 ${index + 1}`}
+                plot={plot}
+                previewFrame={previewFrame}
+                onSeekFrame={onSeekFrame}
+                lineFrames={lineFrames}
+                onChange={(next) => updateCharacter(index, "anim", next)}
+              />
             </div>
           </div>
         ))}

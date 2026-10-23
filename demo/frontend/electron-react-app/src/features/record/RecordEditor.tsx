@@ -21,6 +21,7 @@ import GlobalProperties from "./properties/GlobalProperties";
 import {
   normalizeTextSpeed,
   plotOf,
+  normalizeStayFrames,
   withGlobalTextSpeed,
 } from "@features/common/utils/projectSettings";
 import { generateUUID } from "./utils";
@@ -62,6 +63,7 @@ import {
 import type { PreviewLayer } from "./preview/previewLayout";
 import { writeLayerPosition } from "./preview/previewDrag";
 import type { DragPoint } from "./preview/previewDrag";
+import { useRecordDuration } from "./preview/useRecordDuration";
 
 interface RecordEditorProps {
   projectSettings: ProjectSettings;
@@ -156,6 +158,46 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   const undoSuspendedRef = useRef(false);
   /** 撤销后要求预览跳过后端磁盘缓存重渲一张 */
   const [previewRefreshToken, setPreviewRefreshToken] = useState(0);
+  /**
+   * 关键帧时间轴 → 预览的跳帧请求（S4 收尾：时间轴）。
+   *
+   * <p>`token` 用自增计数器而不是时间戳：同一毫秒内连点两下也要各自生效。
+   */
+  const [previewSeek, setPreviewSeek] = useState<{ frame: number; token: number } | null>(null);
+  const seekTokenRef = useRef(0);
+  /** 预览当前帧（由 RecordPreview 上报）：右侧关键帧时间轴用它画播放头 */
+  const [previewFrame, setPreviewFrame] = useState<number | null>(null);
+
+  /**
+   * 时长请求用的"当前记录"。
+   *
+   * <p>必须在这层算：`selectedRecord` 定义在渲染函数靠后的位置（后面还有 early return），
+   * hook 不能放在 early return 之后。这里取同一个表达式，null 时 hook 自己会跳过请求。
+   */
+  const durationRecord = records?.[selectedRecordIndex] ?? records?.[0] ?? null;
+
+  /**
+   * 当前记录的时长（后端准数）。
+   *
+   * <p>提到这里请求一次、两处共用：预览播放头要总帧数，关键帧时间轴要
+   * **max(语音时长, 文字时长)**（动画默认铺满整句台词）。各发一次请求纯属浪费。
+   */
+  const durationInfo = useRecordDuration(
+    durationRecord,
+    plotOf(projectSettings),
+    normalizeStayFrames(projectSettings.stayFrames),
+  );
+  /** 一句台词"自己的"长度（不含结尾停留）：关键帧动画默认按它铺满 */
+  const lineFrames = Math.max(
+    durationInfo.breakdown?.audioFrames ?? 0,
+    durationInfo.breakdown?.textFrames ?? 0,
+  );
+
+  /** 选中某一帧 → 让预览渲染那一帧（时间轴点击/关键帧点击都走这里） */
+  const handleSeekPreview = useCallback((frame: number) => {
+    seekTokenRef.current += 1;
+    setPreviewSeek({ frame, token: seekTokenRef.current });
+  }, []);
 
   /**
    * @function 压入一份"改动前"的快照
@@ -760,6 +802,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         // 项目名称 → 导出视频文件名前缀；剧情类型 → 后端 plot（决定是否叠加立绘/黑边）
         projectSettings.name,
         plotOf(projectSettings),
+        // 结尾停留帧数：工程级设置，参与时长计算与片段缓存指纹
+        normalizeStayFrames(projectSettings.stayFrames),
       );
 
       const taskId = result.taskId || result.outputPath; // 兼容旧格式
@@ -887,6 +931,12 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
             focusRequest={propertyFocus}
+            // 人格故事模式下立绘不参与渲染 → 动画区置灰（S4 收尾②）
+            plot={plotOf(projectSettings)}
+            // 关键帧时间轴：播放头 + 点击跳帧 + 轴长按语音/文字时长
+            previewFrame={previewFrame}
+            onSeekFrame={handleSeekPreview}
+            lineFrames={lineFrames}
           />
         );
       case "tempImages":
@@ -898,6 +948,10 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
             focusRequest={propertyFocus}
+            plot={plotOf(projectSettings)}
+            previewFrame={previewFrame}
+            onSeekFrame={handleSeekPreview}
+            lineFrames={lineFrames}
           />
         );
       case "background":
@@ -974,6 +1028,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               onElementDragEnd={handleElementDragEnd}
               onElementDragCancel={handleElementDragCancel}
               refreshToken={previewRefreshToken}
+              // 总帧数用上面统一请求到的后端准数（含 stayFrames）；拿不到时预览自己回落近似值
+              durationFrames={durationInfo.frames}
+              // 关键帧时间轴 ↔ 预览：点轴上的帧 → 渲染该帧；反向把当前帧报给时间轴画播放头
+              seekRequest={previewSeek}
+              onFrameChange={setPreviewFrame}
               // 摄像机模式：镜头与「铺满背景」都直接写回当前记录
               onCameraChange={(camera) => {
                 const current = recordsRef.current[selectedIndexRef.current];

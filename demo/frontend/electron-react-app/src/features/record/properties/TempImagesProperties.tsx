@@ -14,6 +14,7 @@ import {
 import "../RecordEditor.css";
 import "./CharactersProperties.css";
 import "./TempImagesProperties.css";
+import CharacterAnimationPanel from "./CharacterAnimationPanel";
 
 /*
  * 坐标系说明：和「立绘」页签完全一致 —— 记录里的 posX/posY 存的是 1080p 设计画布像素，
@@ -73,6 +74,14 @@ interface TempImagesPropertiesProps {
   videoHeight?: number;
   /** 从预览里点中临时图片后下发的定位请求：滚到对应卡片并闪一下 */
   focusRequest?: PropertyFocusRequest | null;
+  /** 是否剧情模式；人格故事（false）下临时图片不参与渲染，动画区要置灰提示 */
+  plot?: boolean;
+  /** 预览当前停在哪一帧（关键帧时间轴画播放头用） */
+  previewFrame?: number | null;
+  /** 请求预览跳到某一帧（点时间轴 / 关键帧时触发） */
+  onSeekFrame?: (recordFrame: number) => void;
+  /** 一句台词本身的长度（max(语音, 文字) 帧）；关键帧动画默认按它铺满 */
+  lineFrames?: number;
 }
 
 /**
@@ -88,6 +97,10 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
   videoWidth,
   videoHeight,
   focusRequest,
+  plot = true,
+  previewFrame,
+  onSeekFrame,
+  lineFrames,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -302,6 +315,17 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
                 className="char-slider-auto"
               />
             </div>
+
+            {/* 移动动画：临时图片与立绘共用同一套面板（锚点缺省在中心） */}
+            <CharacterAnimationPanel
+              anim={temp.anim}
+              elementLabel={`临时图片 ${index + 1}`}
+              plot={plot}
+              previewFrame={previewFrame}
+              onSeekFrame={onSeekFrame}
+              lineFrames={lineFrames}
+              onChange={(next) => updateTempImage(index, "anim", next)}
+            />
           </div>
         </div>
       ))}

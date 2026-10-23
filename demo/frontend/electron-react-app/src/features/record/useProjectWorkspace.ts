@@ -22,6 +22,7 @@ import {
   parseProjectText,
   pathOfFile,
   pickProjectFilePath,
+  ProjectFileSettings,
   readTextFile,
   saveProjectFileAs,
   serializeProject,
@@ -86,6 +87,14 @@ const TOAST_DURATION: { [key in ProjectToastKind]: number } = {
   error: 5000,
 };
 
+/** 工程级设置的读写通道（见 useProjectWorkspace 的 options） */
+export interface ProjectWorkspaceOptions {
+  /** 当前工程的结尾停留帧数（保存工程时写进文件） */
+  stayFrames?: number;
+  /** 导入的工程文件带了 settings 时回调（把文件里的值回填到设置面板） */
+  onSettingsLoaded?: (settings: ProjectFileSettings) => void;
+}
+
 /** 把异常转成可展示的文本 */
 const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -93,9 +102,15 @@ const errorText = (error: unknown): string =>
 /**
  * @function 使用工程工作区
  * @param projectName 设置里填写的项目名（用于生成默认工程文件名）
+ * @param options 工程级设置的读写通道（S2c-2）：
+ *                `stayFrames` 是当前值（保存时写进文件），
+ *                `onSettingsLoaded` 在导入带 settings 的工程后回调（调用方据此回填设置面板）
  * @return 工程状态与"保存/导入"等操作
  */
-export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
+export function useProjectWorkspace(
+  projectName?: string,
+  options: ProjectWorkspaceOptions = {},
+): ProjectWorkspace {
   const [records, setRecords] = useState<Record[] | undefined>(undefined);
   const [groups, setGroups] = useState<RecordGroup[]>([]);
   const [selectedRecordIndex, setSelectedRecordIndex] = useState(0);
@@ -114,6 +129,11 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
   filePathRef.current = filePath;
   const projectNameRef = useRef<string | undefined>(projectName);
   projectNameRef.current = projectName;
+  // 工程级设置也用 ref 镜像：saveProject 的引用要保持稳定（Ctrl+S 的监听只注册一次）
+  const stayFramesRef = useRef<number | undefined>(options.stayFrames);
+  stayFramesRef.current = options.stayFrames;
+  const onSettingsLoadedRef = useRef(options.onSettingsLoaded);
+  onSettingsLoadedRef.current = options.onSettingsLoaded;
   const savingRef = useRef(false);
   const importingRef = useRef(false);
 
@@ -187,7 +207,9 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
 
     savingRef.current = true;
     try {
-      const text = serializeProject(currentRecords, groupsRef.current);
+      const text = serializeProject(currentRecords, groupsRef.current, {
+        stayFrames: stayFramesRef.current,
+      });
       const defaultName = defaultProjectFileName(projectNameRef.current);
       const api: any = (window as any).electronAPI;
 
@@ -295,6 +317,10 @@ export function useProjectWorkspace(projectName?: string): ProjectWorkspace {
 
         setRecords(imported);
         setGroups(importedProject.groups);
+        // 工程级设置：只有文件里带了这一段的才回填（旧工程裸数组 → 保留用户当前设置）
+        if (importedProject.settings) {
+          onSettingsLoadedRef.current?.(importedProject.settings);
+        }
         setSelectedRecordIndex(0);
         setActivePropertyTab("text");
         setFilePath(path);

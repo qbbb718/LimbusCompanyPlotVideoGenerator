@@ -39,6 +39,17 @@ export interface SceneLayerItem {
    * 对话框底部本来就压在下方黑边上；裁了就会被黑框咬掉一截。
    */
   clipWithScene?: boolean;
+  /**
+   * 移动动画的 DOM 样式（由 `domTransform.spriteDomStyle` 算出）。
+   *
+   * <p>**恒等时不要传**：不传就不加任何 style，DOM 层与被后端渲出来的栅格图逐像素一致
+   * （"没配动画就完全不变"靠这条保证）。传了也只动 transform/opacity，不触发 layout。
+   */
+  transform?: string;
+  /** 动画的变换原点（相对元素盒子的百分比） */
+  transformOrigin?: string;
+  /** 动画的不透明度（1 = 不传） */
+  opacity?: number;
 }
 
 interface PreviewSceneLayerProps {
@@ -98,6 +109,16 @@ const PreviewSceneLayer: React.FC<PreviewSceneLayerProps> = ({
       width: percent(item.rect.w, frame.width),
       height: percent(item.rect.h, frame.height),
     };
+    // 动画样式：只有非恒等时调用方才传；只动 transform/opacity，不触发布局
+    if (item.transform) {
+      style.transform = item.transform;
+      style.transformOrigin = item.transformOrigin ?? "50% 50%";
+      if (typeof item.opacity === "number") {
+        style.opacity = item.opacity;
+      }
+      // 播放中提升为合成层（只在真正有动画时才有代价）
+      style.willChange = "transform";
+    }
 
     // 没有图片的层（边框暗角）：用一个纯 CSS 的 div 画
     if (!item.src) {

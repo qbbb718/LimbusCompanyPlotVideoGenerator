@@ -1,11 +1,16 @@
 import React from "react";
 import {
+  EFFECT_TYPE_CAMERA_SHAKE,
   EFFECT_TYPE_CROSS_DISSOLVE,
   EFFECT_TYPE_FADE_FROM_BLACK,
   EFFECT_TYPE_FADE_FROM_WHITE,
   Record,
   START_TRANSITION_FRAMES,
 } from "@types";
+import {
+  DEFAULT_CAMERA_SHAKE_AMPLITUDE,
+  DEFAULT_CAMERA_SHAKE_PERIOD_FRAMES,
+} from "../preview/cameraShake";
 import "../RecordEditor.css";
 import "./EffectsProperties.css";
 
@@ -95,6 +100,26 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
   const effects = selectedRecord.effects || [];
   const activeType = activeTransitionType(selectedRecord);
   const seconds = (START_TRANSITION_FRAMES / EXPORT_FRAME_RATE).toFixed(2);
+  /** 镜头摇动是独立开关（不是转场），与三种起始转场互不影响 */
+  const shakeEnabled = effects.some(
+    (effect) => effect?.type === EFFECT_TYPE_CAMERA_SHAKE && effect.enabled !== false,
+  );
+
+  /**
+   * @function 勾选/取消"镜头摇动"
+   *
+   * <p>只增删这一条，不碰三种起始转场（它们由 {@link toggleTransition} 管）。
+   * @param checked 勾选状态
+   */
+  const toggleCameraShake = (checked: boolean) => {
+    const nextEffects = checked
+      ? [
+          ...effects.filter((effect) => effect?.type !== EFFECT_TYPE_CAMERA_SHAKE),
+          { type: EFFECT_TYPE_CAMERA_SHAKE, enabled: true },
+        ]
+      : effects.filter((effect) => effect?.type !== EFFECT_TYPE_CAMERA_SHAKE);
+    updateRecord(selectedRecordIndex, { ...selectedRecord, effects: nextEffects });
+  };
 
   /**
    * @function 勾选/取消勾选某种起始转场
@@ -154,6 +179,27 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
             当前是第一条记录，没有「上一条记录」可以叠加，交叉溶解不会生效；黑屏/白屏转场不受影响。
           </p>
         )}
+
+      {/* 镜头摇动：不是转场，与上面三种互不冲突，可以同时开 */}
+      <h4 style={{ marginTop: 12 }}>镜头摇动</h4>
+      <div className="effects-list">
+        <div className={`effect-item${shakeEnabled ? " active" : ""}`}>
+          <label className="effect-item-head">
+            <input
+              type="checkbox"
+              checked={shakeEnabled}
+              onChange={(e) => toggleCameraShake(e.target.checked)}
+              aria-label="镜头摇动"
+            />
+            <span className="effect-item-name">镜头摇动</span>
+          </label>
+          <p className="effect-item-desc">
+            {`按帧轻轻晃动摇镜头，像手持拍摄。只晃背景 / 立绘 / 临时图片——对话框、地点牌、角色名片与黑边暗角不受影响。默认幅度 ${
+              DEFAULT_CAMERA_SHAKE_AMPLITUDE
+            }px、周期 ${DEFAULT_CAMERA_SHAKE_PERIOD_FRAMES} 帧；与上面的转场可以同时开启。`}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

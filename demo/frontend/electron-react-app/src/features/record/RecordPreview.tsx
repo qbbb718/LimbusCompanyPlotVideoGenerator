@@ -22,9 +22,14 @@ import {
   coverScaleForBackground,
   isAnimatedCamera,
 } from "./preview/cameraView";
-import { sceneLayerKey } from "./preview/previewLayout";
+import { sceneLayerKey, DEFAULT_CAMERA } from "./preview/previewLayout";
+import { applyCameraShake, cameraShakeConfigOf } from "./preview/cameraShake";
 import type { RecordCamera } from "@types";
-import { useCameraPlayback } from "./preview/useCameraPlayback";
+import { useTimelinePlayback } from "./preview/useTimelinePlayback";
+import { anchorOf, durationEndFrameOf, isAnimated } from "./animation/spriteAnimator";
+import { evaluate as evaluateSpriteAnim } from "./animation/spriteAnimator";
+import { spriteDomStyle } from "./preview/domTransform";
+import type { SpriteAnimation } from "./animation/animationTypes";
 
 interface RecordPreviewProps {
   selectedRecord: Record;
@@ -69,6 +74,27 @@ interface RecordPreviewProps {
   onCameraChange?: (camera: RecordCamera) => void;
   /** 「铺满背景」：把第 index 张背景的 scale 改成给定值 */
   onBackgroundScaleChange?: (index: number, scale: number) => void;
+  /**
+   * 这条记录的成片总帧数（`POST /api/records/duration` 的 `frames`，含 stayFrames）。
+   *
+   * <p>由 RecordEditor 统一请求后传下来（关键帧时间轴也要用同一份数据），
+   * 传 null / 不传时回落到本地近似 `max(运镜时长, 动画结束帧)`。
+   */
+  durationFrames?: number | null;
+  /**
+   * 外部请求把预览跳到某一帧（关键帧时间轴点击时用）。
+   *
+   * <p>用 `{frame, token}` 而不是单个数字：用户可能连着点同一帧两次，
+   * 只给数字时 effect 依赖不变、第二次点击不会生效；`token` 每次点击都变。
+   */
+  seekRequest?: { frame: number; token: number } | null;
+  /**
+   * 预览当前帧变化（播放 / 跳帧 / 停止都会报）。
+   *
+   * <p>关键帧时间轴用它画播放头——那边在右侧属性面板，拿不到播放器状态。
+   * `frame = null` 表示没停在某一帧（显示的是静态栅格图）。
+   */
+  onFrameChange?: (frame: number | null) => void;
 }
 
 /**
@@ -111,6 +137,9 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   refreshToken = 0,
   onCameraChange,
   onBackgroundScaleChange,
+  durationFrames,
+  seekRequest,
+  onFrameChange,
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   /** 正在向后端要新图（**旧图继续显示**，不再像以前那样先卸载再加载，避免闪一下黑） */
@@ -143,7 +172,91 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       ? Math.min(moveFrames, selectedRecord.durationFrames)
       : moveFrames;
   /** 摇镜预览：播放这几帧，DOM 场景层跟着重投影 */
-  const playback = useCameraPlayback(playFrames);
+  /**
+   * 立绘 / 临时图片动画最晚结束于第几帧（0 = 没有动画）。
+   *
+   * <p>用与后端**同一套**"有限时长才参与"的规则（`durationEndFrameOf`）：
+   * 无限循环的 clip 不参与——它跟记录一起结束，不该把预览撑长。
+   */
+  const animEndFrame = useMemo(() => {
+    const anims: (SpriteAnimation | undefined)[] = [
+      ...(selectedRecord.chars ?? []).map((character) => character.anim),
+      ...(selectedRecord.tempImages ?? []).map((temp) => temp.anim),
+    ];
+    let end = 0;
+    for (const anim of anims) {
+      if (!anim || !Array.isArray(anim.clips)) continue;
+      for (const clip of anim.clips) {
+        const clipEnd = durationEndFrameOf(clip);
+        if (clipEnd !== null && clipEnd > end) end = clipEnd;
+      }
+    }
+    return end;
+  }, [selectedRecord]);
+
+  /**
+   * 本地近似：只有镜头会动时按运镜时长，动画更晚结束就按动画。
+   *
+   * <p>后端准数由上层（RecordEditor 里的 `useRecordDuration`）传进来：那份数据还要给
+   * 关键帧时间轴用（长度 = max(语音, 文字)），只请求一次比每处各发一次划算。
+   */
+  const approximateFrames = Math.max(playFrames, animEndFrame, 1);
+
+  /**
+   * 一个播放头同时驱动镜头与立绘动画。
+   *
+   * <p>刻意不拆成两个 rAF 循环：拆开就会出现"镜头已经停了、立绘还在抖"的错位，
+   * 而且播放/停止要按两次。总帧数优先用后端的准数（与成片等长），
+   * 拿不到时用运镜时长与动画结束帧的较大者（S3 收尾②）。
+   */
+  const playback = useTimelinePlayback(durationFrames ?? approximateFrames);
+
+  /**
+   * 外部请求跳帧（关键帧时间轴点击）。
+   *
+   * <p>依赖 `token` 而不是 `frame`：连点同一帧两次也要生效。
+   * `seek` 会停在那一帧不自动继续播，正是"选中即渲染该帧"要的语义。
+   */
+  useEffect(() => {
+    if (!seekRequest) return;
+    playback.seek(seekRequest.frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekRequest?.token]);
+
+  /** 把当前帧报给上层（时间轴画播放头用）；帧没变就不报，避免无谓的重渲染 */
+  useEffect(() => {
+    onFrameChange?.(playback.frame);
+  }, [playback.frame, onFrameChange]);
+
+  /**
+   * 有没有"能播动"的东西：镜头会动，或者有立绘/图片动画。
+   *
+   * <p>动画侧**不能**用 `animEndFrame > 0` 判断：无限循环的 clip（最常见的"弹跳·循环"）
+   * 按设计不参与时长计算，`durationEndFrameOf` 返回 null，`animEndFrame` 一直是 0——
+   * 以前就是这样把"只在循环动画的记录"误判成没动画、播放按钮直接禁用。
+   *
+   * <p>都没有时播放器其实什么也不会变：以前按钮是 `disabled`，点下去毫无反馈，
+   * 很容易被当成"软件卡住了"。现在按钮保持可点，点了给一段文字说明原因。
+   */
+  const hasSpriteAnimation = useMemo(() => {
+    const anims = [
+      ...(selectedRecord.chars ?? []).map((character) => character.anim),
+      ...(selectedRecord.tempImages ?? []).map((temp) => temp.anim),
+    ];
+    return anims.some((anim) => isAnimated(anim));
+  }, [selectedRecord]);
+  const hasPlayableAnimation = isAnimatedCamera(selectedRecord.camera) || hasSpriteAnimation;
+
+  /** "没有动画所以播放无效"的说明；点了 ▶ 才出现，几秒后自动消失 */
+  const [playHint, setPlayHint] = useState<string | null>(null);
+  useEffect(() => {
+    if (!playHint) return undefined;
+    const timer = setTimeout(() => setPlayHint(null), 6000);
+    return () => clearTimeout(timer);
+  }, [playHint]);
+
+  /** 动画求值用的帧号：不播时按第 0 帧（与后端预览图渲的是同一帧，画面才对得上） */
+  const spriteFrame = playback.frame ?? 0;
 
   const blobUrlRef = useRef<string | null>(null);
   // 上次渲染时用的强制刷新令牌：撤销之后记录"变回旧内容"，磁盘缓存会命中旧图，必须跳过缓存
@@ -322,12 +435,32 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
   /** 播放用的镜头（t 时刻）：「最终效果」里摇镜预览就是每帧重算几何 */
   const playbackCamera =
-    playback.t !== null
+    playback.frame !== null
       ? cameraAt(
           selectedRecord.camera,
           cameraProgressOf(playback.elapsedFrames, moveFrames),
         )
       : undefined;
+
+  /**
+   * 镜头摇动（特效）：叠加在**世界层的相机**上。
+   *
+   * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时图片。
+   * 静止（未播放、未跳帧）时按第 0 帧算 → 位移 0，预览栅格图与成片第 0 帧仍然一致。
+   */
+  const shakeConfig = useMemo(
+    () => cameraShakeConfigOf(selectedRecord.effects),
+    [selectedRecord.effects],
+  );
+  const sceneCamera = useMemo(
+    () =>
+      applyCameraShake(
+        playbackCamera ?? selectedRecord.camera ?? DEFAULT_CAMERA,
+        shakeConfig,
+        playback.frame !== null ? playback.elapsedFrames : 0,
+      ),
+    [playbackCamera, selectedRecord.camera, shakeConfig, playback.frame, playback.elapsedFrames],
+  );
 
   /** 一条记录在预览图上的全部几何（矩形、世界框、缺失尺寸清单） */
   const geometry = useMemo(
@@ -344,7 +477,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         locationSize: sizes[UI_IMAGE_URLS.locationPlate],
         // 镜头：预览图已经按它取景，热区也要跟着一起投影，否则框和画面对不上。
         // 播放时用插值后的镜头，DOM 场景层才会真的"摇"起来。
-        camera: playbackCamera ?? selectedRecord.camera,
+        camera: sceneCamera,
       }),
     [selectedRecord, plot, videoWidth, videoHeight, sceneImages, sizes, playbackCamera],
   );
@@ -412,16 +545,45 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       return "";
     };
 
+    /** 取某个世界图层对应的动画装备（背景没有动画 → null） */
+    const animOf = (layer: (typeof geometry.layers)[number]): SpriteAnimation | null => {
+      if (layer.kind === "character") {
+        return selectedRecord.chars?.[layer.index]?.anim ?? null;
+      }
+      if (layer.kind === "tempImage") {
+        return selectedRecord.tempImages?.[layer.index]?.anim ?? null;
+      }
+      return null;
+    };
+
     const worldItems = geometry.layers
       .filter((layer) => layer.space === "world")
-      .map((layer) => ({
-        key: layer.key,
-        src: srcOf(layer),
-        rect: layer.outRect,
-        dim: layer.dim,
-        // 世界层要裁到场景框；边框与 UI 不裁（见 PreviewSceneLayer 的说明）
-        clipWithScene: true,
-      }))
+      .map((layer) => {
+        const anim = animOf(layer);
+        // 锚点缺省：立绘脚底（弹跳/摇摆的自然支点）、临时图片中心
+        const anchor = anchorOf(
+          anim,
+          0.5,
+          layer.kind === "character" ? 1 : 0.5,
+        );
+        // 恒等时返回 null → 不加任何 style，DOM 层与栅格图逐像素一致
+        const style = spriteDomStyle(
+          layer.baseRect,
+          evaluateSpriteAnim(anim, spriteFrame),
+          anchor,
+        );
+        return {
+          key: layer.key,
+          src: srcOf(layer),
+          rect: layer.outRect,
+          dim: layer.dim,
+          // 世界层要裁到场景框；边框与 UI 不裁（见 PreviewSceneLayer 的说明）
+          clipWithScene: true,
+          transform: style?.transform,
+          transformOrigin: style?.transformOrigin,
+          opacity: style?.opacity,
+        };
+      })
       .filter((item) => item.src);
 
     const uiItems = geometry.layers
@@ -445,8 +607,9 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
     return [...worldItems, borderItem, ...uiItems];
     // frameSize 由 videoWidth/videoHeight 派生，依赖里写原始值更直观
+    // spriteFrame 进依赖：播放时每帧都要重算各元素的动画样式（geometry 本身不变）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geometry, sceneImages, sizes, videoWidth, videoHeight]);
+  }, [geometry, sceneImages, sizes, videoWidth, videoHeight, spriteFrame, selectedRecord]);
 
   return (
     <div className="preview-container">
@@ -465,13 +628,31 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         {viewMode === "effect" && (
           <button
             type="button"
-            className={playback.playing ? "active" : ""}
-            onClick={() => (playback.playing ? playback.stop() : playback.play())}
-            disabled={!isAnimatedCamera(selectedRecord.camera)}
+            className={`${playback.playing ? "active" : ""}${
+              hasPlayableAnimation ? "" : " is-inactive"
+            }`.trim()}
+            onClick={() => {
+              // 没有动画时播放不会改变任何画面：给一段说明，而不是让按钮"点了没反应"
+              if (!hasPlayableAnimation) {
+                setPlayHint(
+                  "这条记录没有镜头动画，也没有立绘/图片动画，所以播放不会有任何变化。" +
+                    "去「立绘」或「临时图片」页签加一个动画（或到「摄像机」模式把终点镜头挪一下）再播。",
+                );
+                return;
+              }
+              setPlayHint(null);
+              if (playback.playing) {
+                playback.stop();
+              } else {
+                playback.play();
+              }
+            }}
+            aria-disabled={!hasPlayableAnimation}
+            aria-describedby={playHint ? "preview-play-hint" : undefined}
             title={
-              isAnimatedCamera(selectedRecord.camera)
-                ? "按记录时长播放一遍镜头（DOM 近似，台词不参与动画）"
-                : "这条记录的镜头不会动：去「摄像机」模式把终点挪一下"
+              hasPlayableAnimation
+                ? `播放一遍这条记录（共 ${playback.totalFrames} 帧；镜头 + 立绘/图片动画，DOM 近似；台词不参与动画）`
+                : "这条记录的镜头与立绘都不会动：点一下会告诉你为什么"
             }
           >
             {playback.playing ? "⏹ 停止" : "▶ 播放"}
@@ -488,6 +669,12 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
           🎥 摄像机
         </button>
       </div>
+      {/* 没有动画时点 ▶ 的说明：写在按钮下方而不是弹窗，不打断编辑 */}
+      {playHint && (
+        <div className="preview-play-hint" id="preview-play-hint" role="status">
+          {playHint}
+        </div>
+      )}
       <div
         className={`preview-image${playback.playing ? " is-playing" : ""}`}
         ref={containerRef}

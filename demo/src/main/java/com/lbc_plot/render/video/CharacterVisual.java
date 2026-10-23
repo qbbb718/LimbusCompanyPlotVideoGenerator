@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.RenderOfImage;
+import com.lbc_plot.render.video.anim.SpriteAnimation;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
 import com.lbc_plot.resource.service.CharacterService;
@@ -52,6 +53,13 @@ public class CharacterVisual extends VisualElement {
     private float scale;
     // 是否压暗，默认true；说话人false
     private boolean dim;
+    /**
+     * 移动动画装备（预设 + 关键帧）；null = 不动，渲染走原来的路径、逐像素不变。
+     *
+     * <p>语义见 {@code docs/立绘动画设计.md}：动画是**相对摆位**的增量，
+     * 不会覆盖用户拖出来的 posX/posY，也不会覆盖用户缩放。
+     */
+    private SpriteAnimation anim;
     @JsonIgnore
     private BufferedImage color_Name_Image; // 人设界面预览用，然后可以直接用到剧情渲染里
 
@@ -257,6 +265,27 @@ public class CharacterVisual extends VisualElement {
         this.dim = dim;
     }
 
+    /** 移动动画装备；null 表示不动（旧工程全部是 null） */
+    @JsonProperty
+    public SpriteAnimation getAnim() {
+        return anim;
+    }
+
+    public void setAnim(SpriteAnimation anim) {
+        this.anim = anim;
+    }
+
+    /**
+     * 这个立绘是否真的会动。
+     *
+     * <p>渲染端据此决定要不要走"逐帧重画 + 仿射绘制"的路径：不会动就走原来的单次绘制，
+     * 这样老工程和没配动画的记录导出耗时与像素都不变。
+     */
+    @JsonIgnore
+    public boolean isAnimated() {
+        return anim != null && anim.isAnimated();
+    }
+
     /**
      * 获取角色ID（便捷方法）
      */
@@ -286,6 +315,7 @@ public class CharacterVisual extends VisualElement {
         this.adjY = builder.adjY;
         this.scale = builder.scale;
         this.dim = builder.dim;
+        this.anim = builder.anim;
         this.image = builder.image;
 
         updatePos();
@@ -315,6 +345,10 @@ public class CharacterVisual extends VisualElement {
         private float scale = DEFAULT_SCALE;
         @JsonProperty
         private boolean dim = DEFAULT_DIM;
+
+        /** 移动动画装备；旧工程没有该字段时为 null（= 不动） */
+        @JsonProperty
+        private SpriteAnimation anim;
 
         @JsonIgnore
         private transient BufferedImage image; // 不序列化
@@ -381,6 +415,12 @@ public class CharacterVisual extends VisualElement {
 
         public Builder dim(boolean dim) {
             this.dim = dim;
+            return this;
+        }
+
+        /** 设置移动动画（null = 不动） */
+        public Builder anim(SpriteAnimation anim) {
+            this.anim = anim;
             return this;
         }
 

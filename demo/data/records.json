@@ -25,7 +25,8 @@
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.25,
-    "dim" : false
+    "dim" : false,
+    "anim" : null
   } ],
   "audioCommands" : [ {
     "type" : "BGM_ACTIVE",
@@ -101,6 +102,8 @@
   },
   "effects" : [ {
     "type" : "CROSS_DISSOLVE",
+    "amplitude" : null,
+    "periodFrames" : null,
     "enabled" : true
   } ],
   "isDirty" : false,
@@ -132,7 +135,44 @@
     "adjX" : -640,
     "adjY" : 0,
     "scale" : 1.0,
-    "dim" : false
+    "dim" : false,
+    "anim" : {
+      "version" : 1,
+      "timebase" : {
+        "unit" : "frame",
+        "fps" : 30
+      },
+      "enabled" : null,
+      "anchor" : null,
+      "clips" : [ {
+        "id" : "bounce-mvl6931s-3",
+        "kind" : "preset",
+        "enabled" : null,
+        "startFrame" : 0,
+        "endFrame" : null,
+        "durationFrames" : 60,
+        "loop" : "once",
+        "iterations" : null,
+        "timeScale" : null,
+        "preset" : "bounce",
+        "params" : {
+          "amplitude" : 24,
+          "periodFrames" : 18,
+          "iterations" : 2,
+          "decay" : 0.55,
+          "stretch" : 0
+        },
+        "channels" : null,
+        "keys" : null,
+        "blend" : null,
+        "priority" : 0,
+        "fadeInFrames" : 0,
+        "fadeOutFrames" : 6,
+        "onEnd" : "reset",
+        "sourcePresetId" : null,
+        "sourcePresetVersion" : null
+      } ]
+    }
   }, {
     "chara" : {
       "characterID" : "char_1791800699958",
@@ -161,7 +201,8 @@
     "adjX" : 0,
     "adjY" : 0,
     "scale" : 1.0,
-    "dim" : false
+    "dim" : false,
+    "anim" : null
   } ],
   "bg" : [ {
     "background" : {
@@ -248,7 +289,75 @@
     "adjX" : -640,
     "adjY" : 0,
     "scale" : 1.0,
-    "dim" : false
+    "dim" : false,
+    "anim" : {
+      "version" : 1,
+      "timebase" : {
+        "unit" : "frame",
+        "fps" : 30
+      },
+      "enabled" : null,
+      "anchor" : null,
+      "clips" : [ {
+        "id" : "keyframes-mvl68aob-1",
+        "kind" : "keyframes",
+        "enabled" : null,
+        "startFrame" : 0,
+        "endFrame" : null,
+        "durationFrames" : 3,
+        "loop" : "once",
+        "iterations" : null,
+        "timeScale" : null,
+        "preset" : null,
+        "params" : null,
+        "channels" : [ "x", "y" ],
+        "keys" : [ {
+          "f" : 0,
+          "v" : {
+            "x" : 0.0,
+            "y" : 0.0,
+            "scale" : null,
+            "rotate" : null,
+            "alpha" : null,
+            "empty" : false
+          },
+          "ease" : "easeInOut",
+          "hold" : false
+        } ],
+        "blend" : null,
+        "priority" : 0,
+        "fadeInFrames" : 0,
+        "fadeOutFrames" : 6,
+        "onEnd" : "reset",
+        "sourcePresetId" : null,
+        "sourcePresetVersion" : null
+      }, {
+        "id" : "shake-mvl698lk-4",
+        "kind" : "preset",
+        "enabled" : null,
+        "startFrame" : 0,
+        "endFrame" : null,
+        "durationFrames" : 60,
+        "loop" : "once",
+        "iterations" : null,
+        "timeScale" : null,
+        "preset" : "shake",
+        "params" : {
+          "amplitude" : 6,
+          "periodFrames" : 2,
+          "rotateAmplitude" : 0
+        },
+        "channels" : null,
+        "keys" : null,
+        "blend" : null,
+        "priority" : 0,
+        "fadeInFrames" : 0,
+        "fadeOutFrames" : 6,
+        "onEnd" : "reset",
+        "sourcePresetId" : null,
+        "sourcePresetVersion" : null
+      } ]
+    }
   }, {
     "chara" : {
       "characterID" : "char_1791800699958",
@@ -277,7 +386,8 @@
     "adjX" : 0,
     "adjY" : 0,
     "scale" : 1.0,
-    "dim" : false
+    "dim" : false,
+    "anim" : null
   } ],
   "bg" : [ {
     "background" : {

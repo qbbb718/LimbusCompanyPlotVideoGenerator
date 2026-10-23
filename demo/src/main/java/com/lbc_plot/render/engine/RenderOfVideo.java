@@ -29,6 +29,7 @@ import com.lbc_plot.render.engine.manager.FontLoader;
 import com.lbc_plot.render.engine.model.TextAlignment;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.render.video.Camera;
+import com.lbc_plot.render.video.CameraShake;
 import com.lbc_plot.plot.model.Record;
 import com.lbc_plot.render.engine.BatchVideoProcessor.RenderResult;
 import com.lbc_plot.render.video.StartTransition;
@@ -97,6 +98,26 @@ public class RenderOfVideo {
             int frameRate,
             String layerType,
             Record previousRecord) throws Exception {
+        return exportRecordVideoStreaming(record, plot, width, height, outputPath, frameRate, layerType,
+                previousRecord, ProjectConfig.DEFAULT_STAY_FRAMES);
+    }
+
+    /**
+     * 高质量流式视频导出（带「结尾停留帧数」）。
+     *
+     * @param stayFrames 每条记录结尾的停留帧数（工程级设置）。它参与时长计算，
+     *                   所以预览/时长查询必须用同一个值，否则"预览说 315 帧、成片 240 帧"
+     */
+    public static RenderResult exportRecordVideoStreaming(
+            Record record,
+            boolean plot,
+            int width,
+            int height,
+            String outputPath,
+            int frameRate,
+            String layerType,
+            Record previousRecord,
+            int stayFrames) throws Exception {
 
         logger.info("开始高质量流式视频导出: {} (layerType={}, transparent={})", outputPath, layerType,
                 isTransparentLayer(layerType));
@@ -118,7 +139,7 @@ public class RenderOfVideo {
         switch (transition) {
             case PREVIOUS_FRAME:
                 if (previousRecord != null) {
-                    transitionOverlay = renderLastFrame(previousRecord, plot, width, height, layerType);
+                    transitionOverlay = renderLastFrame(previousRecord, plot, width, height, layerType, stayFrames);
                     logger.info("记录 {} 启用交叉溶解：叠加记录 {} 的最后一帧，前 {} 帧不透明度 100%→0%",
                             record.getUuid(), previousRecord.getUuid(), StartTransition.FRAMES);
                 } else {
@@ -146,24 +167,30 @@ public class RenderOfVideo {
             logger.info("使用编码方式: {}", exporter.getEncodingMethod());
 
             // 1. 计算总帧数
-            int requiredFrames = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
+            int requiredFrames = RecordDurationCalculator.calculateDurationFrames(record, frameRate, plot, stayFrames);
             logger.info("需要渲染 {} 帧 (约 {} 秒)",
                     requiredFrames, String.format("%.2f", requiredFrames / (double) frameRate));
 
             // 2. 静态层
             //
-            //    镜头不动（绝大多数记录）→ 整段只渲一次，后面逐帧只叠文字；
-            //    镜头会动（C2 起止镜头）→ **每帧按当时的取景重渲一次场景**。
+            //    场景不动（绝大多数记录）→ 整段只渲一次，后面逐帧只叠文字；
+            //    镜头会动（C2 起止镜头）/ 立绘或临时图片有移动动画 → **每帧按当时的取景与变换重渲一次场景**。
             //    没有做"整段先渲成一张更大的图再裁"的优化：那需要按镜头路径的最宽取景开画布，
             //    内存和重采样误差都不划算；逐帧重渲只是慢，画面与单帧渲染逐像素一致。
             Camera camera = record.getCamera();
             boolean cameraAnimated = camera != null && camera.isAnimated();
-            logger.debug("渲染静态背景 (layerType={}, 镜头{})", layerType,
-                    cameraAnimated ? "会动：逐帧重渲" : "静止");
+            // 立绘 / 临时图片的移动动画：与"镜头在动"同类，都会让每帧画面不同
+            boolean spriteAnimated = RecordAnimation.hasAnimatedSprites(record, plot);
+            boolean sceneChanges = cameraAnimated || spriteAnimated;
+            logger.debug("渲染静态背景 (layerType={}, 镜头{}, 精灵动画{})", layerType,
+                    cameraAnimated ? "会动" : "静止", spriteAnimated ? "有" : "无");
             if (cameraAnimated) {
                 logger.info("这条记录的镜头会动，需要逐帧重渲场景层（{} 帧，比静止镜头慢）", requiredFrames);
             }
-            BufferedImage staticBackground = cameraAnimated
+            if (spriteAnimated) {
+                logger.info("这条记录有立绘/图片移动动画，需要逐帧重渲场景层（{} 帧）", requiredFrames);
+            }
+            BufferedImage staticBackground = sceneChanges
                     ? null
                     : renderStaticLayer(record, plot, width, height, layerType);
 
@@ -185,16 +212,36 @@ public class RenderOfVideo {
             BufferedImage reusableFrame = null;
             String reusableText = null;
 
+            //    场景层自己的"定格复用"：动画播完（比如弹跳弹够了次数、once 的关键帧跑完了）之后，
+            //    后面几百帧的变换完全一样，没必要每帧重画一遍整个场景。
+            //    用"动画签名"判断：镜头 + 每个动画元素在该帧的变换都相同 → 画面必然相同。
+            BufferedImage reusableScene = null;
+            String reusableSceneSignature = null;
+
             for (int frameIndex = 0; frameIndex < requiredFrames; frameIndex++) {
                 boolean hasOverlay = transitionOverlay != null && StartTransition.opacityAt(frameIndex) > 0f;
                 BufferedImage frame;
 
-                // 镜头会动：这一帧的静态层要按当时的运镜进度重新取景渲染
-                BufferedImage base = staticBackground;
-                if (cameraAnimated) {
+                // 场景会变：这一帧的静态层要按当时的镜头与动画重新渲染
+                BufferedImage base;
+                if (!sceneChanges) {
+                    base = staticBackground;
+                } else {
                     // 运镜只占前 moveFrames 帧（默认 24），走完就停住等台词播完
-                    float t = Camera.progressAt(frameIndex, camera.getMoveFramesSafe());
-                    base = renderStaticLayer(record, plot, width, height, layerType, Camera.at(camera, t));
+                    Camera frameCamera = cameraAnimated
+                            ? Camera.at(camera, Camera.progressAt(frameIndex, camera.getMoveFramesSafe()))
+                            : camera;
+                    // 镜头摇动（特效）：只改"看世界的那台相机"的取景中心，
+                    // 所以背景/立绘/临时图片会晃，而对话框/地点牌/名片/暗角画在设计画布上、不受影响
+                    frameCamera = CameraShake.apply(frameCamera, record, frameIndex);
+                    String signature = RecordAnimation.sceneSignature(record, plot, frameCamera, frameIndex);
+                    if (reusableScene != null && signature.equals(reusableSceneSignature)) {
+                        base = reusableScene;
+                    } else {
+                        base = renderStaticLayer(record, plot, width, height, layerType, frameCamera, frameIndex);
+                        reusableScene = base;
+                        reusableSceneSignature = signature;
+                    }
                 }
 
                 if (hasOverlay) {
@@ -206,8 +253,8 @@ public class RenderOfVideo {
                     StartTransition.apply(frame, transitionOverlay, frameIndex);
                     overlayFrames++;
                 } else if (frameTexts == null) {
-                    // 纯静态分层：镜头不动时整段画面相同，只复制一次；镜头会动时每帧都是新的
-                    if (cameraAnimated) {
+                    // 纯静态分层：场景不动时整段画面相同，只复制一次；场景会变时每帧都是新的
+                    if (sceneChanges) {
                         frame = base;
                     } else {
                         if (reusableFrame == null) {
@@ -217,8 +264,8 @@ public class RenderOfVideo {
                     }
                 } else {
                     String text = frameTexts[frameIndex];
-                    if (cameraAnimated) {
-                        // 镜头在动，底图每帧都不同，"定格复用"不再成立
+                    if (sceneChanges) {
+                        // 场景每帧都在变（镜头或立绘在动），底图每帧都不同，"定格复用"不再成立
                         frame = renderSingleFrame(base, text, record.getDialogue(), width, height);
                     } else {
                         if (reusableFrame == null || !text.equals(reusableText)) {
@@ -292,9 +339,24 @@ public class RenderOfVideo {
      */
     public static BufferedImage renderLastFrame(Record record, boolean plot, int width, int height, String layerType)
             throws IOException {
-        // 淡出用的是这一条的**最后一帧**，所以取 t=1 的镜头（镜头会动时，起点和终点画面并不一样）
+        return renderLastFrame(record, plot, width, height, layerType, ProjectConfig.DEFAULT_STAY_FRAMES);
+    }
+
+    /**
+     * 渲染"最后一帧"（带结尾停留帧数）。
+     *
+     * <p>停留帧数会改变记录总帧数，也就改变了"最后一帧"是哪一帧——立绘动画在末帧的变换
+     * 与第 0 帧不同，所以交叉溶解的叠加层必须按真实末帧号渲染。
+     */
+    public static BufferedImage renderLastFrame(Record record, boolean plot, int width, int height, String layerType,
+            int stayFrames) throws IOException {
+        // 淡出用的是这一条的**最后一帧**，所以取 t=1 的镜头（镜头会动时，起点和终点画面并不一样）；
+        // 立绘动画同理：最后一帧的变换与第 0 帧不同，必须按记录总帧数取真实末帧号。
+        int frameCount = RecordDurationCalculator.calculateDurationFrames(record, ProjectConfig.FRAME_RATE, plot,
+                stayFrames);
+        int lastFrameIndex = Math.max(0, frameCount - 1);
         BufferedImage staticLayer = renderStaticLayer(record, plot, width, height, layerType,
-                Camera.at(record.getCamera(), 1f));
+                Camera.at(record.getCamera(), 1f), lastFrameIndex);
         if (!usesTextAnimation(layerType)) {
             return staticLayer;
         }
@@ -320,13 +382,23 @@ public class RenderOfVideo {
      */
     private static BufferedImage renderStaticLayer(Record record, boolean plot, int width, int height,
             String layerType) throws IOException {
-        return renderStaticLayer(record, plot, width, height, layerType, record.getCamera());
+        return renderStaticLayer(record, plot, width, height, layerType, record.getCamera(), 0);
     }
 
     /** 指定镜头渲染静态层（动态镜头逐帧出片时，每帧调用一次） */
     private static BufferedImage renderStaticLayer(Record record, boolean plot, int width, int height,
             String layerType, Camera camera) throws IOException {
-        BufferedImage layer = renderStaticLayerArgb(record, plot, width, height, layerType, camera);
+        return renderStaticLayer(record, plot, width, height, layerType, camera, 0);
+    }
+
+    /**
+     * 指定镜头 + 帧号渲染静态层（立绘/临时图片有移动动画时，每帧调用一次）。
+     *
+     * @param frameIndex 记录内的帧号；没有动画时它不影响任何像素
+     */
+    private static BufferedImage renderStaticLayer(Record record, boolean plot, int width, int height,
+            String layerType, Camera camera, int frameIndex) throws IOException {
+        BufferedImage layer = renderStaticLayerArgb(record, plot, width, height, layerType, camera, frameIndex);
         return isTransparentLayer(layerType) ? layer : toBgr(layer);
     }
 
@@ -351,25 +423,25 @@ public class RenderOfVideo {
 
     /** 按分层类型渲染静态层的原始（ARGB）结果。 */
     private static BufferedImage renderStaticLayerArgb(Record record, boolean plot, int width, int height,
-            String layerType, Camera camera) throws IOException {
+            String layerType, Camera camera, int frameIndex) throws IOException {
         switch (layerType) {
             case LAYER_FULL:
             case LAYER_BG_CHARACTERS:
                 // 完整背景: 背景 + 角色立绘 + 临时图片 + 边框 + UI背景(无对话文本)
-                return RenderOfImage.renderPreExceptDialogue(record, plot, width, height, camera);
+                return RenderOfImage.renderPreExceptDialogue(record, plot, width, height, camera, frameIndex);
             case LAYER_UI_ONLY:
                 // 仅UI背景: UI元素(对话框、说话人、地点) + 0.8缩放后的border位置效果
-                // 镜头不影响 UI，这里不需要传
+                // 镜头不影响 UI，这里不需要传；立绘动画也不在 UI 层里
                 return renderUIOnlyStaticBackground(record, plot, width, height);
             case LAYER_BACKGROUND_ONLY:
-                // 仅背景
+                // 仅背景（背景目前不支持移动动画）
                 return RenderOfImage.renderBackgroundOnly(record, plot, width, height, camera);
             case LAYER_CHARACTERS_ONLY:
-                // 仅角色立绘
-                return RenderOfImage.renderCharactersOnly(record, width, height, camera);
+                // 仅角色立绘（含立绘移动动画）
+                return RenderOfImage.renderCharactersOnly(record, width, height, camera, frameIndex);
             default:
                 logger.warn("未知的分层类型: {}, 回退到完整渲染", layerType);
-                return RenderOfImage.renderPreExceptDialogue(record, plot, width, height, camera);
+                return RenderOfImage.renderPreExceptDialogue(record, plot, width, height, camera, frameIndex);
         }
     }
 

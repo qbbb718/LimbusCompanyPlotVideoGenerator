@@ -1,7 +1,9 @@
 package com.lbc_plot.render.engine.manager;
 
+import java.awt.AlphaComposite;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -124,6 +126,36 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
         BufferedImage scaledImage = RenderQualityUtils.scaleImageHighQuality(image, targetWidth, targetHeight,
                 keepAspectRatio);
         addImageLayer(scaledImage, x, y);
+    }
+
+    /**
+     * 添加一个**带仿射变换与透明度**的图像图层（立绘 / 临时图片的移动动画用）。
+     *
+     * <p>变换的坐标系是「合成画布」的坐标系，作用在**图像自身的像素坐标**上：
+     * {@code transform} 把原图 (0,0) 映射到它在画布上的位置，并附带旋转/缩放。
+     * 调用方负责把"缩放 + 平移"也编进同一个 {@link AffineTransform} 里（见
+     * {@code RenderOfImage.renderSingleCharacter}）——**不要**先 {@code drawImage} 再 {@code g.rotate}，
+     * 那会变成"绕画布原点旋转"，是最经典的实现事故。
+     *
+     * <p>刻意**不让画布变大**：变换后的包围盒不该撑大画布（合成画布尺寸由
+     * {@code FrameComposerService#setOutputSize} 锁定，超出部分就地裁掉）。
+     *
+     * @param image     已经预缩放好的图（缩放由调用方做，可走 {@code SpriteImageCache}）
+     * @param transform 原图像素 → 画布像素的完整变换；null 时退回普通贴图（便于调用方统一入口）
+     * @param alpha     不透明度 0~1
+     */
+    public void addImageLayerTransformed(BufferedImage image, AffineTransform transform, float alpha) {
+        if (image == null) {
+            return;
+        }
+        if (transform == null) {
+            addImageLayer(image, 0, 0);
+            return;
+        }
+        LayerInfo layer = new LayerInfo(image, 0, 0, image.getWidth(), image.getHeight(), -1, -1,
+                image.getWidth(), image.getHeight(), transform, alpha);
+        layers.add(layer);
+        logger.debug("添加变换图层: alpha={}, 变换={}", alpha, transform);
     }
 
     /**
@@ -252,7 +284,19 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
      * 绘制单个图层
      */
     private void drawSingleLayer(Graphics2D g2d, LayerInfo layer, int layerIndex) {
-        if (layer.originalWidth == layer.targetWidth && layer.originalHeight == layer.targetHeight) {
+        if (layer.transform != null) {
+            // 有变换：用**子 Graphics** 承载变换，避免污染后续图层的图形状态
+            Graphics2D g = (Graphics2D) g2d.create();
+            try {
+                g.transform(layer.transform);
+                if (layer.alpha < 1f) {
+                    g.setComposite(AlphaComposite.SrcOver.derive(clampAlpha(layer.alpha)));
+                }
+                g.drawImage(layer.image, 0, 0, null);
+            } finally {
+                g.dispose();
+            }
+        } else if (layer.originalWidth == layer.targetWidth && layer.originalHeight == layer.targetHeight) {
             // 原样绘制
             g2d.drawImage(layer.image, layer.x, layer.y, null);
         } else {
@@ -264,6 +308,13 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
             logger.trace("绘制图层{}: 位置({},{}), 尺寸{}x{}",
                     layerIndex, layer.x, layer.y, layer.targetWidth, layer.targetHeight);
         }
+    }
+
+    private static float clampAlpha(float alpha) {
+        if (!Float.isFinite(alpha)) {
+            return 1f;
+        }
+        return Math.min(1f, Math.max(0f, alpha));
     }
 
     /**
@@ -306,9 +357,19 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
         final int targetHeight;
         final float scaleX;
         final float scaleY;
+        /** 原图像素 → 画布像素的完整变换；非 null 时忽略 x/y/尺寸，改用变换绘制（动画图层） */
+        final AffineTransform transform;
+        /** 不透明度 0~1（仅变换图层使用） */
+        final float alpha;
 
         LayerInfo(BufferedImage image, int x, int y, int targetWidth, int targetHeight,
                 float scaleX, float scaleY, int explicitWidth, int explicitHeight) {
+            this(image, x, y, targetWidth, targetHeight, scaleX, scaleY, explicitWidth, explicitHeight, null, 1f);
+        }
+
+        LayerInfo(BufferedImage image, int x, int y, int targetWidth, int targetHeight,
+                float scaleX, float scaleY, int explicitWidth, int explicitHeight,
+                AffineTransform transform, float alpha) {
             this.image = image;
             this.x = x;
             this.y = y;
@@ -318,6 +379,8 @@ public class ImageLayerManager extends BaseLayerManager implements ImageLayerInt
             this.targetHeight = targetHeight;
             this.scaleX = scaleX;
             this.scaleY = scaleY;
+            this.transform = transform;
+            this.alpha = alpha;
         }
     }
 

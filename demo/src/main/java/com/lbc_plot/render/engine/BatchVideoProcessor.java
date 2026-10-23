@@ -120,6 +120,31 @@ public class BatchVideoProcessor {
             ProgressListener progress,
             String layerType,
             boolean keepTempFiles) throws Exception {
+        processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, progress, layerType,
+                keepTempFiles, ProjectConfig.DEFAULT_STAY_FRAMES);
+    }
+
+    /**
+     * 带「结尾停留帧数」的版本（工程级设置，随导出请求传入）。
+     *
+     * <p>它参与每条记录的时长（{@code max(文字, 音频, 动画) + stayFrames}），也进片段缓存指纹——
+     * 少了指纹这一环，"改了停留帧数再导出"会复用老长度的片段，音画直接错位。
+     *
+     * @param keepTempFiles 是否保留中间文件（便于下次导出跳过未修改的 Record）
+     * @param stayFrames    每条记录结尾的停留帧数
+     */
+    public static void processRecordList(
+            List<Record> records,
+            String outputPath,
+            String tempDir,
+            boolean plot,
+            int width,
+            int height,
+            int frameRate,
+            ProgressListener progress,
+            String layerType,
+            boolean keepTempFiles,
+            int stayFrames) throws Exception {
 
         logger.info("开始处理 {} 个Record", records.size());
         long totalStartTime = System.currentTimeMillis();
@@ -153,14 +178,21 @@ public class BatchVideoProcessor {
                 videoPaths.add(videoPath);
 
                 File tempVideoFile = new File(videoPath);
+                // 时长指纹：工程级设置（剧情类型/分辨率/帧率/停留帧数）变了也要重渲，
+                // 否则会拿老设置渲出来的片段冒充新设置（成片时长会不对）
+                String clipFingerprint = ClipCacheFingerprint.of(plot, width, height, frameRate,
+                        stayFrames, layerType);
+                File clipFingerprintFile = ClipCacheFingerprint.sidecarOf(videoPath);
                 // 勾了交叉溶解的记录不从缓存复用：它开头叠的是"上一条记录的最后一帧"，
                 // 上一条被修改、或者记录被拖动换了位置，缓存里的叠化画面就过期了，
                 // 而缓存文件名只认自己的 uuid，分辨不出这些变化。这类记录重渲一次即可保证正确。
                 // 黑屏/白屏转场只叠纯色、不依赖别的记录，未修改时照常复用缓存。
-                boolean reuseCachedClip = canReuseRenderedClip(record, tempVideoFile.exists());
+                boolean reuseCachedClip = canReuseRenderedClip(record, tempVideoFile.exists(),
+                        clipFingerprint, clipFingerprintFile);
                 if (reuseCachedClip) {
                     // Record 未修改且临时视频已存在 → 跳过渲染
-                    int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
+                    int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate, plot,
+                            stayFrames);
                     logger.info("跳过未修改的Record {}/{}, uuid={}, 帧数={} (复用已有视频)",
                             i + 1, records.size(), record.getUuid(), frameCount);
 
@@ -181,7 +213,10 @@ public class BatchVideoProcessor {
                     long recordStartTime = System.currentTimeMillis();
 
                     RenderResult recordResult = RenderOfVideo.exportRecordVideoStreaming(
-                            record, plot, width, height, videoPath, frameRate, layerType, previousRecord);
+                            record, plot, width, height, videoPath, frameRate, layerType, previousRecord, stayFrames);
+
+                    // 渲完立刻记下这次用的设置指纹，供下次判断能否复用
+                    ClipCacheFingerprint.write(clipFingerprintFile, clipFingerprint);
 
                     long recordDuration = System.currentTimeMillis() - recordStartTime;
 
@@ -323,10 +358,36 @@ public class BatchVideoProcessor {
      * @return 可以跳过渲染、直接复用旧片段时返回 true
      */
     static boolean canReuseRenderedClip(Record record, boolean clipExists) {
+        return canReuseRenderedClip(record, clipExists, null, null);
+    }
+
+    /**
+     * 带「时长指纹」的复用判断。
+     *
+     * <p>{@code isDirty} 只能反映"记录本身改没改"，反映不了工程级/全局设置（剧情类型、分辨率、
+     * 帧率、结尾停留帧数）的变化。用户改了这些再导出时，旧片段会被误复用，成片还是老设置渲的。
+     * 指纹旁文件就是为了堵这个口子（见 {@link ClipCacheFingerprint}）。
+     *
+     * @param expectedFingerprint 期望的指纹；null = 不做指纹校验（兼容旧调用）
+     * @param sidecar             片段旁边的指纹文件
+     */
+    static boolean canReuseRenderedClip(Record record, boolean clipExists, String expectedFingerprint,
+            File sidecar) {
         if (!clipExists || record.isDirty()) {
             return false;
         }
-        return !StartTransition.isCrossDissolve(record);
+        if (StartTransition.isCrossDissolve(record)) {
+            return false;
+        }
+        if (expectedFingerprint != null) {
+            String actual = ClipCacheFingerprint.read(sidecar);
+            if (!expectedFingerprint.equals(actual)) {
+                logger.info("片段指纹不一致，重渲: uuid={}, 期望={}, 实际={}",
+                        record.getUuid(), expectedFingerprint, actual);
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -521,10 +582,26 @@ public class BatchVideoProcessor {
             int height,
             int frameRate,
             com.lbc_plot.render.service.AsyncRenderService asyncService) throws Exception {
+        processRecordListAsync(records, outputPath, tempDir, plot, width, height, frameRate, asyncService,
+                ProjectConfig.DEFAULT_STAY_FRAMES);
+    }
+
+    /** 异步版（带结尾停留帧数），语义与同步版一致 */
+    public static void processRecordListAsync(
+            List<Record> records,
+            String outputPath,
+            String tempDir,
+            boolean plot,
+            int width,
+            int height,
+            int frameRate,
+            com.lbc_plot.render.service.AsyncRenderService asyncService,
+            int stayFrames) throws Exception {
 
         if (asyncService == null) {
             // 回退到同步方式
-            processRecordList(records, outputPath, tempDir, plot, width, height, frameRate);
+            processRecordList(records, outputPath, tempDir, plot, width, height, frameRate, null,
+                    RenderOfVideo.LAYER_FULL, false, stayFrames);
             return;
         }
 
@@ -547,6 +624,8 @@ public class BatchVideoProcessor {
         List<java.util.concurrent.CompletableFuture<RenderResult>> futures = new ArrayList<>();
         List<String> videoPaths = new ArrayList<>();
         List<FrameInfo> frameInfos = new ArrayList<>();
+        // 每条记录渲完之后要补写的指纹旁文件（[路径, 指纹]）
+        List<String[]> clipFingerprints = new ArrayList<>();
 
         int currentFrame = 0;
 
@@ -558,8 +637,13 @@ public class BatchVideoProcessor {
             videoPaths.add(videoPath);
 
             File tempVideoFile = new File(videoPath);
-            if (!record.isDirty() && tempVideoFile.exists()) {
-                int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate);
+            String clipFingerprint = ClipCacheFingerprint.of(plot, width, height, frameRate,
+                    stayFrames, RenderOfVideo.LAYER_FULL);
+            File clipFingerprintFile = ClipCacheFingerprint.sidecarOf(videoPath);
+            clipFingerprints.add(new String[] { clipFingerprintFile.getAbsolutePath(), clipFingerprint });
+            if (canReuseRenderedClip(record, tempVideoFile.exists(), clipFingerprint, clipFingerprintFile)) {
+                int frameCount = RecordDurationCalculator.calculateDurationFrames(record, frameRate, plot,
+                        stayFrames);
                 logger.info("跳过未修改的Record(异步) {}/{}, uuid={}, 帧数={}",
                         i + 1, records.size(), record.getUuid(), frameCount);
                 futures.add(CompletableFuture.completedFuture(
@@ -575,6 +659,11 @@ public class BatchVideoProcessor {
         for (int i = 0; i < futures.size(); i++) {
             RenderResult result = futures.get(i).get();
             Record record = records.get(i);
+            // 渲完补写指纹（复用的条目也会写一遍，幂等且能自愈旧缓存）
+            if (i < clipFingerprints.size()) {
+                String[] entry = clipFingerprints.get(i);
+                ClipCacheFingerprint.write(new File(entry[0]), entry[1]);
+            }
             FrameInfo frameInfo = new FrameInfo(record.getUuid(), currentFrame, result.getFrameCount());
             frameInfos.add(frameInfo);
             currentFrame += result.getFrameCount();
