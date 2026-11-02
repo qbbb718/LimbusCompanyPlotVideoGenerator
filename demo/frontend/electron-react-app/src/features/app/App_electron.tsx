@@ -167,10 +167,9 @@ function AppElectron() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case "editor":
-        log.info(
-          "[App_electron] 渲染编辑器页面，记录数:",
-          workspace.records?.length || 0,
-        );
+        // 注意：这里以前每次渲染都会 log.info(...)，而 electron-log 的 console 传输是
+        // 同步写。编辑器里每敲一个字都会触发 App 渲染 → 一次日志写入，
+        // 打字越快堆得越多，输入框就表现为"跟不上手、像卡住了"。渲染函数里不要有副作用。
         return (
           <RecordEditor
             projectSettings={projectSettings}

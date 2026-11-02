@@ -319,8 +319,10 @@ public class PortraitController {
         try {
             logger.info("设置默认立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId);
 
-            // 使用事务更新默认立绘
-            jdbi.inTransaction(handle -> {
+            // 事务里只做数据库操作。名片渲染要 1s 量级，以前是在事务内部同步跑的，
+            // 等于"占着数据库连接等 AWT 画面合成完"——请求线程和连接都被拖住。
+            // 现在把渲染挪到事务外面，并交给后台队列（见下面的 requestRefresh）。
+            MyCharacter character = jdbi.inTransaction(handle -> {
                 PortraitDAO dao = handle.attach(PortraitDAO.class);
                 CharacterDAO characterDao = handle.attach(CharacterDAO.class);
 
@@ -339,8 +341,8 @@ public class PortraitController {
                 }
 
                 // 更新角色的默认立绘ID
-                MyCharacter character = characterDao.findById(characterId).orElse(null);
-                if (character == null) {
+                MyCharacter found = characterDao.findById(characterId).orElse(null);
+                if (found == null) {
                     logger.warning("角色不存在，ID: " + characterId);
                     throw new RuntimeException("角色不存在");
                 }
@@ -351,17 +353,17 @@ public class PortraitController {
                 dao.ensureCharacterPortrait(characterId, portraitId);
                 dao.setDefaultPortrait(characterId, portraitId);
 
-                // 重新生成名片图片
-                try {
-                    characterCardImageCache.clearCache(characterId);
-                    characterCardImageCache.getCharacterCardImage(character);
-                    logger.info("已重新生成名片图片");
-                } catch (Exception e) {
-                    logger.warning("生成名片图片失败: " + e.getMessage());
-                }
-
-                return null;
+                return found;
             });
+
+            // 事务提交后再排后台刷新名片：接口立即返回，前端请求名片时会等到后台画好的图。
+            // 以前这里是 clearCache + getCharacterCardImage 同步渲染，等于"设个默认立绘要卡 1s"。
+            try {
+                characterCardImageCache.requestRefresh(character);
+                logger.info("已排队重新生成名片图片，角色ID: " + characterId);
+            } catch (Exception e) {
+                logger.warning("排队生成名片图片失败（不影响默认立绘设置）: " + e.getMessage());
+            }
 
             logger.info("成功设置默认立绘，角色ID: " + characterId + ", 立绘ID: " + portraitId);
         } catch (Exception e) {

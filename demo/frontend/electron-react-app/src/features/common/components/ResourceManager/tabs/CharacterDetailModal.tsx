@@ -36,6 +36,7 @@ import {
   createCroppedImageFromElement,
   loadImageElement,
 } from "@features/common/utils/imageUtils";
+import { describeApiError } from "@features/common/utils/apiError";
 
 /** 批量导入时挑出来的一张图 */
 interface PickedPortraitFile {
@@ -137,6 +138,13 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   // 文件输入引用，用于触发文件选择
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ---- 保存状态 ----
+  // 只用来置灰「保存」按钮 + 显示"保存中…"，**不**用来禁用/重建表单控件：
+  // 受控输入框一旦被 disabled 或 remount 就会丢焦点，用户会以为"输入框坏了"。
+  const [saving, setSaving] = useState(false);
+  // 保存失败的提示（就地显示，不用 alert：alert 会抢走焦点，关掉后输入框就没法接着打字了）
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // ---- 立绘批量操作（批量套用默认立绘裁剪 / 批量导入立绘）----
   const [batchProgress, setBatchProgress] =
     useState<PortraitBatchProgress | null>(null);
@@ -144,6 +152,28 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     useState<PortraitBatchMessage | null>(null);
   // 缩略图版本号：批量重新生成缩略图后 +1，让立绘列表里的 <img> 重新取图
   const [thumbnailVersion, setThumbnailVersion] = useState(0);
+
+  /**
+   * 批量进度上报节流。
+   *
+   * <p>一次批量导入 42 张立绘时，如果每张都 setState，整个弹窗（含几十张卡片）就要
+   * 重渲染 42 次，主线程被 React 渲染 + 图片解码占满，输入框就会表现为"打字没反应"。
+   * 这里限制为最多约 10 次/秒，最后一张强制上报一次，进度条依然平滑。
+   */
+  const lastProgressAtRef = useRef(0);
+  const reportBatchProgress = (progress: PortraitBatchProgress | null) => {
+    if (progress === null) {
+      lastProgressAtRef.current = 0;
+      setBatchProgress(null);
+      return;
+    }
+    const now = Date.now();
+    const isLast = progress.done + 1 >= progress.total;
+    if (isLast || now - lastProgressAtRef.current >= 100) {
+      lastProgressAtRef.current = now;
+      setBatchProgress(progress);
+    }
+  };
 
   // 默认立绘及其裁剪参数（批量动作的目标）
   const defaultPortrait = useMemo(
@@ -345,12 +375,12 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     }
 
     // 读尺寸期间先置忙，避免用户连点两次弹出两个确认框
-    setBatchProgress({ kind: "crop", done: 0, total: targets.length });
+    reportBatchProgress({ kind: "crop", done: 0, total: targets.length });
     // 按比例换算必须先知道默认立绘自己的原图尺寸（库里只存了像素值）
     const defaultImageSize = await loadPortraitImageSize(
       defaultPortrait.imagePath,
     );
-    setBatchProgress(null);
+    reportBatchProgress(null);
     const defaultRatio = toCropRatio(defaultPortraitCrop, defaultImageSize);
     const modeText = defaultRatio
       ? `按默认立绘「${defaultPortrait.portName}」的比例套用（头部框占原图宽度 ${formatCropPercent(
@@ -374,7 +404,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
 
     for (let index = 0; index < targets.length; index++) {
       const portrait = targets[index];
-      setBatchProgress({ kind: "crop", done: index, total: targets.length });
+      reportBatchProgress({ kind: "crop", done: index, total: targets.length });
 
       // 先按"图片尺寸未知"取一份兜底值（原图读不到时至少让数值一致）
       let rect: CropRect | null = resolveDefaultCropRect({
@@ -442,7 +472,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       });
     }
 
-    setBatchProgress(null);
+    reportBatchProgress(null);
 
     if (updatedPortraits.size > 0) {
       setEditingCharacter((prev) =>
@@ -551,7 +581,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     setBatchMessage(null);
 
     for (let index = 0; index < pickedFiles.length; index++) {
-      setBatchProgress({
+      reportBatchProgress({
         kind: "import",
         done: index,
         total: pickedFiles.length,
@@ -636,7 +666,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       }
     }
 
-    setBatchProgress(null);
+    reportBatchProgress(null);
 
     if (importedPortraits.length > 0) {
       setEditingCharacter((prev) =>
@@ -773,7 +803,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   }, [character, portraits]);
 
   const handleSave = async () => {
-    if (!editingCharacter) return;
+    if (!editingCharacter || saving) return;
 
     console.log("[CharacterDetailModal] 保存角色详情", {
       characterName: editingCharacter.characterName,
@@ -784,6 +814,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       portraitIds: editingCharacter.portraits?.map((p) => p.portraitID) || [],
     });
 
+    setSaving(true);
+    setSaveError(null);
     try {
       let savedCharacter;
       if (!characterPersisted) {
@@ -802,7 +834,10 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       onClose();
     } catch (error) {
       console.error("保存角色失败:", error);
-      alert("保存角色失败，请重试");
+      // 就地提示，不弹 alert：弹窗会抢焦点，用户关掉后输入框就"打不了字"了
+      setSaveError(describeApiError(error, "保存角色失败"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -841,8 +876,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
               : `编辑角色: ${editingCharacter.characterName}`}
           </h2>
           <div className="header-actions">
-            <button className="btn-primary" onClick={handleSave}>
-              保存
+            <button className="btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? "保存中…" : "保存"}
             </button>
             <button className="btn-secondary" onClick={handleClose}>
               取消
@@ -860,6 +895,21 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* 保存失败提示：就地显示，不抢焦点（以前是 alert，关掉后输入框会失去焦点） */}
+        {saveError && (
+          <div className="inline-error" role="alert">
+            <span>{saveError}</span>
+            <button
+              type="button"
+              className="inline-error-close"
+              onClick={() => setSaveError(null)}
+              aria-label="关闭提示"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* 内容区：独立滚动，标题栏不跟着滚 */}
         <div className="modal-body">

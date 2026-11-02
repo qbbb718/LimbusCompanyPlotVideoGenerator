@@ -892,4 +892,41 @@
   }
 }
 
+/*
+ * 就地错误提示（保存失败等）。
+ *
+ * 以前这些失败都是 alert()：Electron 里 alert 会抢走焦点，关掉之后
+ * 输入框就不再接收键盘输入，用户看到的现象就是"输入框变成无法输入的状态"。
+ * 换成这条不抢焦点的横幅后，用户可以接着改、接着保存。
+ */
+.inline-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  color: #a8071a;
+  flex-shrink: 0;
+}
+
+.inline-error > span {
+  flex: 1;
+  word-break: break-word;
+}
+
+.inline-error-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
 

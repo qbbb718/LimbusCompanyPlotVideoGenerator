@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.lbc_plot.resource.dao.BackgroundDAO;
 import com.lbc_plot.resource.model.Background;
+import com.lbc_plot.resource.service.AssetPathNormalizer;
 import com.lbc_plot.resource.service.ResourceTransferService;
 import com.lbc_plot.resource.service.StorageService;
 
@@ -211,6 +212,10 @@ public class BackgroundController {
             }
 
             return saveBackgroundToDatabase(background);
+        } catch (IllegalArgumentException e) {
+            // 参数/表结构问题：交给 GlobalExceptionHandler 回 400 并带上原因，
+            // 前端能立刻看到"到底哪里不对"，不用靠"保存失败，请重试"反复盲试。
+            throw e;
         } catch (Exception e) {
             logger.error("添加背景失败: " + e.getMessage());
             e.printStackTrace();
@@ -253,6 +258,9 @@ public class BackgroundController {
                     ", 缩略图路径=" + background.getThumbnailPath());
 
             return saveBackgroundToDatabase(background);
+        } catch (IllegalArgumentException e) {
+            // 参数/表结构问题：回 400 + 具体原因，前端直接显示，不引导无意义的重试
+            throw e;
         } catch (Exception e) {
             logger.error("更新背景失败: " + e.getMessage());
             e.printStackTrace();
@@ -377,40 +385,116 @@ public class BackgroundController {
 
     /**
      * 将背景保存到数据库的通用方法
+     *
+     * <p>入库前会把 path / thumbnailPath 规范成站内路径（{@code /assets/...}）：
+     * 前端编辑背景时提交回的是被补全过的 {@code http://localhost:8081/assets/...}，
+     * 存进数据库后文件校验、预览渲染、删除都会失效（见 {@link AssetPathNormalizer}）。
+     *
+     * <p>表结构兜底：如果部署库缺少 {@code thumbnail_path} 列（历史版本遗留），
+     * 这里会自动补列并重试一次，而不是把 SQLITE_ERROR 直接抛给前端让它反复重试。
      */
     private Background saveBackgroundToDatabase(Background background) {
+        normalizeAssetPaths(background);
         try {
-            logger.info("保存背景到数据库: " + background.getName());
-            logger.info("背景对象详细信息: UUID=" + background.getUuid() +
-                    ", 名称=" + background.getName() +
-                    ", 路径=" + background.getPath() +
-                    ", 缩略图路径=" + background.getThumbnailPath());
-
-            return jdbi.withExtension(BackgroundDAO.class, dao -> {
-                // 先检查是否已存在
-                Background existingBg = dao.getById(background.getUuid());
-                if (existingBg != null) {
-                    // 更新现有记录
-                    boolean updateResult = dao.updateBackground(background);
-                    if (updateResult) {
-                        logger.info("背景已更新到数据库");
-                        return dao.getById(background.getUuid());
-                    } else {
-                        logger.warn("更新背景到数据库失败");
-                        return existingBg;
-                    }
-                } else {
-                    // 添加新记录
-                    dao.addBackground(background);
-                    logger.info("背景已添加到数据库");
-                    return dao.getById(background.getUuid());
-                }
-            });
-        } catch (Exception e) {
-            logger.error("保存背景到数据库失败: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("保存背景到数据库失败: " + e.getMessage());
+            return saveBackgroundToDatabaseOnce(background);
+        } catch (RuntimeException e) {
+            if (!ensureThumbnailPathColumn(e)) {
+                // 不是"缺列"问题：给前端一句能看懂的话（HTTP 400），不要甩 500 堆栈
+                logger.error("保存背景到数据库失败: " + e.getMessage());
+                throw new IllegalArgumentException(
+                        "保存背景失败：" + rootMessage(e) + "（背景：" + background.getName() + "）", e);
+            }
+            logger.warn("检测到 backgrounds 表缺少 thumbnail_path 列，已自动补列，重试保存");
+            return saveBackgroundToDatabaseOnce(background);
         }
+    }
+
+    /** 规范化背景对象里的资源路径（原图 + 缩略图）。 */
+    private void normalizeAssetPaths(Background background) {
+        String originalPath = background.getPath();
+        String originalThumb = background.getThumbnailPath();
+
+        String normalizedPath = AssetPathNormalizer.toAssetPath(originalPath);
+        String normalizedThumb = AssetPathNormalizer.toAssetPath(originalThumb);
+
+        background.setPath(normalizedPath);
+        background.setThumbnailPath(normalizedThumb);
+
+        if (originalPath != null && !originalPath.equals(normalizedPath)) {
+            logger.info("背景原图路径已规范化: " + originalPath + " -> " + normalizedPath);
+        }
+        if (originalThumb != null && !originalThumb.equals(normalizedThumb)) {
+            logger.info("背景缩略图路径已规范化: " + originalThumb + " -> " + normalizedThumb);
+        }
+    }
+
+    /** 真正写库的一步（拆出来是为了"补列后重试一次"）。 */
+    private Background saveBackgroundToDatabaseOnce(Background background) {
+        logger.info("保存背景到数据库: " + background.getName());
+        return jdbi.withExtension(BackgroundDAO.class, dao -> {
+            // 先检查是否已存在
+            Background existingBg = dao.getById(background.getUuid());
+            if (existingBg != null) {
+                // 更新现有记录
+                boolean updateResult = dao.updateBackground(background);
+                if (updateResult) {
+                    logger.info("背景已更新到数据库");
+                    return dao.getById(background.getUuid());
+                } else {
+                    logger.warn("更新背景到数据库失败");
+                    return existingBg;
+                }
+            } else {
+                // 添加新记录
+                dao.addBackground(background);
+                logger.info("背景已添加到数据库");
+                return dao.getById(background.getUuid());
+            }
+        });
+    }
+
+    /**
+     * 如果异常是"backgrounds 表没有 thumbnail_path 列"，就地补列。
+     *
+     * <p>{@code DatabaseInitializer} 在启动时已经会加这一列；这里是运行期兜底：
+     * 用户可能用旧库直接升级、或用外部工具改过 schema，此时保存不该变成
+     * "点一次报一次错、怎么重试都失败"的死循环。
+     *
+     * @param error 保存时抛出的异常
+     * @return true 表示已补列，调用方应重试一次
+     */
+    private boolean ensureThumbnailPathColumn(RuntimeException error) {
+        String message = rootMessage(error);
+        if (message == null
+                || !message.contains("thumbnail_path")
+                || !(message.contains("no column named") || message.contains("has no column"))) {
+            return false;
+        }
+        try {
+            jdbcTemplate.execute("ALTER TABLE backgrounds ADD COLUMN thumbnail_path TEXT");
+            logger.warn("已为 backgrounds 表补上 thumbnail_path 列");
+            return true;
+        } catch (Exception e) {
+            // 并发补列时可能已经有人加好了（duplicate column）；再试一次保存
+            if (rootMessage(e) != null && rootMessage(e).contains("duplicate column")) {
+                return true;
+            }
+            logger.error("补 thumbnail_path 列失败: " + rootMessage(e));
+            return false;
+        }
+    }
+
+    /** 取异常链上最内层的信息（SQLite 的真实报错在 cause 里）。 */
+    private static String rootMessage(Throwable error) {
+        Throwable current = error;
+        String message = error != null ? error.getMessage() : null;
+        while (current != null) {
+            if (current.getMessage() != null && !current.getMessage().isEmpty()) {
+                message = current.getMessage();
+            }
+            current = current.getCause();
+        }
+        return message;
     }
 
     /**

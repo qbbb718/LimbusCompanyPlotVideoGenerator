@@ -41,6 +41,14 @@ public class CharacterCardController {
 
     /**
      * 获取角色名片图片
+     *
+     * <p>保存角色的接口只把名片"排进后台刷新队列"（见
+     * {@link CharacterCardImageCache#requestRefresh(MyCharacter)}），接口本身立即返回。
+     * 所以这里先等一下后台那张图：前端保存完立刻请求名片时，直接拿后台渲染好的结果，
+     * 不会在 HTTP 线程里再同步渲染一遍（以前就是保存接口里同步渲染，1s 起步）。
+     *
+     * <p>等待有上限（{@link CharacterCardImageCache#REFRESH_WAIT_DEFAULT_MS}）：没有待刷新的
+     * 任务、或者后台渲染太慢时返回 null，回退到原来的同步渲染路径，功能不受影响。
      */
     @GetMapping("/character-card/{characterId}")
     public ResponseEntity<Resource> getCharacterCard(@PathVariable String characterId) {
@@ -67,7 +75,16 @@ public class CharacterCardController {
             }
 
             long startTime = System.currentTimeMillis();
-            BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
+            // 1) 后台刚排下的刷新：等它的结果，避免同一张名片被渲染两遍
+            BufferedImage cardImage = characterCardImageCache.awaitRefresh(
+                    characterId, CharacterCardImageCache.REFRESH_WAIT_DEFAULT_MS);
+            long waited = System.currentTimeMillis() - startTime;
+            if (cardImage != null) {
+                logger.info("使用后台刷新好的名片，角色ID: " + characterId + ", 等待=" + waited + " ms");
+            } else {
+                // 2) 没有待刷新的任务（或后台太慢）：走原来的"缓存命中/同步生成"
+                cardImage = characterCardImageCache.getCharacterCardImage(character);
+            }
             long endTime = System.currentTimeMillis();
 
             if (cardImage == null) {

@@ -49,6 +49,19 @@ public final class ImageCache {
     /** 默认缓存上限（MB）。 */
     public static final int DEFAULT_MAX_MB = 192;
 
+    /**
+     * 缓存最多占用可用堆内存的几分之一。
+     *
+     * <p>192MB 的固定上限在默认堆（通常 1~4GB）上没问题，但如果用户/打包脚本把
+     * {@code -Xmx} 调到 512MB，光缓存就吃掉 37%，再加上预览图渲染时的 1920x1080 画布、
+     * 立绘缩放副本，就很容易被 GC 拖住——表现出来又是"界面卡、打字没反应"。
+     * 所以上限取 {@code min(配置值, 堆/4)}，并保留 32MB 的下限。
+     */
+    private static final int HEAP_FRACTION = 4;
+
+    /** 低于这个值时缓存没有意义（连一张 1080p 图都放不下），作为下限。 */
+    private static final int MIN_HEAP_BUDGET_MB = 32;
+
     /** 单张图最多占缓存上限的几分之一。 */
     private static final int SINGLE_IMAGE_BUDGET_DIVISOR = 4;
 
@@ -280,6 +293,15 @@ public final class ImageCache {
         if (mb <= 0) {
             logger.info("图片内存缓存已关闭（{}={}）", MAX_MB_PROPERTY, raw);
             return 0;
+        }
+
+        // 按堆大小收敛：上限配置得再大也不能把堆吃光
+        long maxHeapMb = Runtime.getRuntime().maxMemory() / (1024 * 1024);
+        long heapBudgetMb = Math.max(MIN_HEAP_BUDGET_MB, maxHeapMb / HEAP_FRACTION);
+        if (heapBudgetMb < mb) {
+            logger.info("图片内存缓存上限收敛为 {}MB（配置 {}MB，堆上限 {}MB 的 1/{}）",
+                    heapBudgetMb, mb, maxHeapMb, HEAP_FRACTION);
+            mb = (int) heapBudgetMb;
         }
         logger.info("图片内存缓存上限: {}MB", mb);
         return (long) mb * 1024 * 1024;

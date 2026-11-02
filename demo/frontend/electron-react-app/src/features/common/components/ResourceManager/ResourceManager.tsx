@@ -147,17 +147,21 @@ const ResourceManager: React.FC = () => {
     }
   };
 
+  const search = searchTerm.trim().toLowerCase();
+  // 名称可能是 null（老数据/导入的资源包缺字段）：直接 .toLowerCase() 会抛异常，
+  // 而渲染期抛异常会让整棵组件树被卸载 —— 页面看起来"还在，但点不动、输入框打不了字"。
+  const matches = (value: string | undefined | null) =>
+    (value ?? "").toLowerCase().includes(search);
+
   const filteredCharacters = characters.filter((character) =>
-    character.characterName.toLowerCase().includes(searchTerm.toLowerCase()),
+    matches(character.characterName),
   );
 
   const filteredBackgrounds = backgrounds.filter((background) =>
-    background.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    matches(background.name),
   );
 
-  const filteredAudios = audios.filter((audio) =>
-    audio.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredAudios = audios.filter((audio) => matches(audio.name));
 
   if (isLoading) {
     return <div className="loading">加载中...</div>;

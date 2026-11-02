@@ -26,11 +26,61 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     // helper to log which database file is being used
     private void logDatabaseUrl() {
-        try {
-            String url = jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
+        // 注意：这里必须自己关连接。以前是 jdbcTemplate.getDataSource().getConnection() 直接取
+        // 元数据、从不 close —— 换成连接池之后，每启动一次就会永久占掉池里的一个连接。
+        try (java.sql.Connection connection = jdbcTemplate.getDataSource().getConnection()) {
+            String url = connection.getMetaData().getURL();
             logger.info("使用的数据库 URL: {}", url);
         } catch (Exception e) {
             logger.warn("无法获取数据库 URL", e);
+        }
+    }
+
+    /**
+     * 把数据库切到 WAL 模式，并把连接级参数打到日志里。
+     *
+     * <h2>为什么用 WAL</h2>
+     * 默认的 rollback journal 模式下一个写事务会阻塞所有读：本项目里
+     * "保存角色/背景" 与 "预览渲染顺手读资源、前端每秒好几次拉角色列表" 是同时发生的，
+     * 阻塞表现出来就是界面突然卡一下、请求偶尔慢一大截。WAL 模式下读写互不阻塞，
+     * 这也是 SQLite 官方推荐的并发配置。
+     *
+     * <h2>为什么放在启动时做、而不是每个连接都做</h2>
+     * {@code journal_mode} 是<b>跟着数据库文件走</b>的持久属性：设置一次一直生效，
+     * 之后每个连接都自动是 WAL。如果把它塞进 Hikari 的 {@code connection-init-sql}，
+     * 每个新连接都会尝试改一次模式，反而可能在并发建连时拿到 {@code SQLITE_BUSY}。
+     *
+     * <h2>失败怎么办</h2>
+     * 失败只记 warning，程序继续跑（比如数据库放在不支持共享内存的网络盘上时，
+     * WAL 会返回 {@code delete}）。这种情况下行为与改动前完全一致，不会因为
+     * "开不了 WAL" 就起不来。
+     *
+     * <p>注意：{@code synchronous} 保持默认的 {@code FULL}——WAL + FULL 只是每次提交多一次
+     * 刷盘，本项目写操作很小（一次保存几十行），拿这点代价换"掉电不丢最近一次保存"值得。
+     */
+    private void configureSqlitePragmas() {
+        try {
+            String currentMode = jdbcTemplate.queryForObject("PRAGMA journal_mode", String.class);
+            if ("wal".equalsIgnoreCase(currentMode)) {
+                logger.info("SQLite journal_mode 已是 WAL（读写互不阻塞）");
+            } else {
+                String switched = jdbcTemplate.queryForObject("PRAGMA journal_mode=WAL", String.class);
+                if ("wal".equalsIgnoreCase(switched)) {
+                    logger.info("SQLite 已切换到 WAL 模式（原模式: {}），读写互不阻塞", currentMode);
+                } else {
+                    // 常见原因：数据库在只读/网络盘上，或另一个进程正独占着它
+                    logger.warn("SQLite 无法切换到 WAL（当前: {}，尝试结果: {}），继续使用原模式——"
+                            + "功能不受影响，只是并发读写会互相等待", currentMode, switched);
+                }
+            }
+
+            // busy_timeout 是连接级参数，正常应由连接池的 datasource 属性带上；
+            // 这里再查一次是为了把"实际生效值"记进日志，排查锁等待时用得上。
+            Integer busyTimeout = jdbcTemplate.queryForObject("PRAGMA busy_timeout", Integer.class);
+            logger.info("SQLite busy_timeout={} ms（并发写时的等锁上限）",
+                    busyTimeout == null ? -1 : busyTimeout);
+        } catch (Exception e) {
+            logger.warn("配置 SQLite pragma 失败（不影响使用，继续用默认 journal 模式）: {}", e.getMessage());
         }
     }
 
@@ -41,6 +91,9 @@ public class DatabaseInitializer implements CommandLineRunner {
         try {
             // log which database we're connected to
             logDatabaseUrl();
+
+            // 先调连接级/库级参数，再动表结构：WAL 模式下建表、加列的并发行为更接近预期
+            configureSqlitePragmas();
 
             // 检查数据库中是否已有表
             Integer tableCount = jdbcTemplate.queryForObject(

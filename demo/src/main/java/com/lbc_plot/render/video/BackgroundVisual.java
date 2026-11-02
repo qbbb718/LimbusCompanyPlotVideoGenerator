@@ -45,9 +45,12 @@ public class BackgroundVisual extends VisualElement {
      * <p>上限比立绘/临时图片的 3.0 大：背景要能「铺满画面」，
      * 9:16 的竖图要盖住 16:9 取景框约需 3.16 倍，卡在 3.0 会差 100 多像素铺不满。
      * 前端对应 constant 是 visualCoordinates.MAX_BACKGROUND_SCALE。
+     *
+     * <p>公开成常量是为了让测试/诊断直接引用"契约值"，而不是在断言里再抄一遍数字
+     * （历史上这两个数字各改过一次，测试里写死的 3.0 就这样漂了）。
      */
-    private static final float MIN_SCALE = 0.1f;
-    private static final float MAX_SCALE = 4.0f;
+    public static final float MIN_SCALE = 0.1f;
+    public static final float MAX_SCALE = 4.0f;
 
     /**
      * 构造函数

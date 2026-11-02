@@ -67,6 +67,9 @@ const PortraitThumbnail = memo(
       <img
         src={thumbnailUrl}
         alt={portrait.portName}
+        // 一次批量导入几十张立绘：让浏览器按需解码，避免同时占用主线程
+        loading="lazy"
+        decoding="async"
         onLoad={() => onLoadRef.current?.(portrait.portraitID, thumbnailUrl)}
         onError={(event) => onErrorRef.current?.(portrait.portraitID, event)}
       />

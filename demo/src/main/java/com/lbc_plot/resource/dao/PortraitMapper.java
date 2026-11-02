@@ -11,7 +11,12 @@ import com.lbc_plot.resource.model.Portrait;
 public class PortraitMapper implements RowMapper<Portrait> {
     @Override
     public Portrait map(ResultSet rs, StatementContext ctx) throws SQLException {
+        // skipImageLoad()：这里只是把数据库行映射成元数据，不解码原图。
+        // 以前 build() 会 ImageIO 读一遍每个立绘文件，于是"取角色列表"这种纯读接口
+        // 在几十张立绘时要 3~4 秒（运行日志里 20/20 次都是如此），还白白占住内存。
+        // 真正要像素的渲染路径仍走 Portrait.getImage() 的懒加载。
         Portrait.Builder builder = Portrait.builder(rs.getString("image_path"))
+                .skipImageLoad()
                 .portraitID(rs.getString("portrait_id"))
                 .characterID(rs.getString("character_id"))
                 .portName(rs.getString("port_name"))

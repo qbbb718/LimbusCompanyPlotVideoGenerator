@@ -63,6 +63,10 @@ demo/jre/
 /release
 demo/data/project.db
 
+# SQLite WAL 模式的伴生文件（应用/测试运行数据库时自动生成，属于运行期数据）
+*.db-wal
+*.db-shm
+
 # 一次性清理出来的构建产物/旧日志暂存区（确认没问题后整个目录删掉即可）
 /_to-delete/
 

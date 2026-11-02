@@ -37,6 +37,7 @@ import com.lbc_plot.common.util.json.RecordsIO;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
 import com.lbc_plot.plot.parser.PlainTextRecordsParser;
+import com.lbc_plot.plot.preview.PreviewRenderCoalescer;
 import com.lbc_plot.render.audio.model.AudioCommand;
 import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.CharacterVisual;
@@ -90,15 +91,24 @@ public class RecordController {
     private static final String PREVIEW_CACHE_VERSION = "v11";
 
     /**
-     * 正在渲染中的预览图：key = 缓存文件名，value = 渲染结果。
+     * 同时渲染的预览图上限。
      *
-     * <p>同一张图被并发请求时（例如预览面板重新挂载、反复点同一条记录），后到的请求
-     * 直接等前一个的结果，不用把同样的画面渲染两遍。只对 {@code forceRefresh=false}
-     * 的请求生效：带 forceRefresh 的调用方是在说"记录内容变了，别拿旧的"，
-     * 此时不能把别人的在途结果当成自己的。
+     * <p>以前没限制：一次编辑风暴可以让 10 个 Tomcat 工作线程同时渲染 1920x1080 的完整画面，
+     * 每个 120~350ms 的 CPU，机器直接被占满，前端主线程跟着卡（输入框打字没反应）。
+     * 现在最多 2 张同时在渲，其余排队；画面并不因此错过——排队期间内容相同的请求已经被
+     * {@link PreviewRenderCoalescer} 合并掉了。
      */
-    private static final java.util.concurrent.ConcurrentHashMap<String, CompletableFuture<byte[]>> PREVIEW_IN_FLIGHT =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int PREVIEW_MAX_CONCURRENT_RENDERS = 2;
+
+    /**
+     * 预览图渲染合并器：同一条记录在合并窗口内的多次请求只渲染最后一次。
+     *
+     * <p>运行日志里出现过同一条记录 60 秒内被渲染 101 次、单个 uuid 整份日志渲染 114 次
+     * （97% 是纯重复渲染）的情况，本机 CPU 与 HTTP 线程几乎全耗在重复渲染上。
+     * 合并规则见 {@link PreviewRenderCoalescer}。
+     */
+    private final PreviewRenderCoalescer<PreviewRenderInput> previewCoalescer =
+            new PreviewRenderCoalescer<>(PREVIEW_MAX_CONCURRENT_RENDERS, this::renderPreviewBytes);
 
     /**
      * 文件名里不允许出现的字符（Windows 限制最严，跨平台按这一套过滤即可）：
@@ -370,9 +380,16 @@ public class RecordController {
     }
 
     /**
-     * 渲染单条记录的预览图（支持磁盘缓存）
+     * 渲染单条记录的预览图（支持磁盘缓存 + 并发合并）
      * 接收 Record JSON，调用 RenderOfImage.renderPre() 渲染为 PNG 图片返回。
      * 缓存文件: projects/temp/previews/preview_{版本}_{uuid}_{width}x{height}_{模式}.png
+     *
+     * <p>三档处理：
+     * <ol>
+     *   <li>不是强制刷新且缓存文件在 → 直接返回（快路径，不排队）</li>
+     *   <li>否则进 {@link PreviewRenderCoalescer}：同一张图在 200ms 内的多次请求合并成一次渲染</li>
+     *   <li>渲染过程受 {@link #PREVIEW_MAX_CONCURRENT_RENDERS} 限制，不会把 CPU 占满</li>
+     * </ol>
      *
      * @param record       要渲染的 Record 对象（JSON body）
      * @param width        预览图宽度，默认 1920
@@ -394,92 +411,95 @@ public class RecordController {
                 record.getUuid(), width, height, forceRefresh, plot);
 
         try {
-            // 构建缓存路径（锚定到数据根目录，不随 JVM 工作目录变化）
-            Path cacheDir = RuntimePaths.getTempDir().resolve("previews");
-            if (!Files.exists(cacheDir)) {
-                Files.createDirectories(cacheDir);
-            }
             // 缓存键必须带上 plot：同一 uuid/分辨率下，剧情模式与人格故事的画面并不相同，
             // 只按 uuid+分辨率缓存会让切换剧情类型后的预览图一直显示旧样式。
-            String cacheFileName = String.format("preview_%s_%s_%dx%d_%s.png",
-                    PREVIEW_CACHE_VERSION, record.getUuid(), width, height, plot ? "plot" : "plain");
-            Path cacheFile = cacheDir.resolve(cacheFileName);
+            String cacheFileName = previewCacheFileName(record.getUuid(), width, height, plot);
+            Path cacheDir = previewCacheDir();
 
             // 非强制刷新且缓存存在 → 直接返回
-            if (!forceRefresh && Files.exists(cacheFile)) {
-                byte[] cachedBytes = Files.readAllBytes(cacheFile);
-                long elapsed = System.currentTimeMillis() - startTime;
-                logger.debug("预览图缓存命中: uuid={}, 大小={} bytes, 耗时={} ms",
-                        record.getUuid(), cachedBytes.length, elapsed);
-                return pngResponse(cachedBytes);
-            }
-
-            // 同一张图正在渲染时直接复用结果（仅限未声明"内容已变"的请求）。
-            // forceRefresh=true 的调用方是在说"记录内容变了"，不能把别人的在途结果当成自己的。
-            CompletableFuture<byte[]> mine = new CompletableFuture<>();
-            CompletableFuture<byte[]> running = forceRefresh ? null : PREVIEW_IN_FLIGHT.putIfAbsent(cacheFileName, mine);
-            if (running != null) {
-                try {
-                    byte[] shared = running.join();
-                    logger.debug("预览图复用并发渲染结果: uuid={}, 耗时={} ms",
-                            record.getUuid(), System.currentTimeMillis() - startTime);
-                    return pngResponse(shared);
-                } catch (Exception e) {
-                    // 抢先渲染的那个失败了：退化为"本请求自己渲染一次"，不要把异常抛给用户
-                    logger.debug("并发渲染失败，改为独立渲染: {}", e.getMessage());
+            if (!forceRefresh) {
+                Path cacheFile = cacheDir.resolve(cacheFileName);
+                if (Files.exists(cacheFile)) {
+                    byte[] cachedBytes = Files.readAllBytes(cacheFile);
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    logger.debug("预览图缓存命中: uuid={}, 大小={} bytes, 耗时={} ms",
+                            record.getUuid(), cachedBytes.length, elapsed);
+                    return pngResponse(cachedBytes);
                 }
             }
-            // registered=true 表示这次渲染结果要负责交给等待者；false 表示退化路径（不登记）
-            final boolean registered = running == null;
 
-            try {
-                // 渲染
-                BufferedImage previewImage = RenderOfImage.renderPre(record, plot, width, height);
-                long renderDone = System.currentTimeMillis();
+            // 走合并渲染：同一条记录在合并窗口内的多次请求只会真正渲染最后一次
+            byte[] imageBytes = previewCoalescer.render(cacheFileName,
+                    new PreviewRenderInput(record, width, height, plot));
 
-                // 编码：预览图是不透明画面，用快速 PNG 编码器（比 ImageIO.write 快一倍多且文件更小）
-                byte[] imageBytes = com.lbc_plot.common.util.io.PreviewPngWriter.toBytes(previewImage, true);
-
-                // 保存到磁盘缓存（临时文件 + 原子改名，避免半截文件被当成有效缓存长期返回）
-                writeCacheAtomically(cacheFile, imageBytes);
-
-                // 顺手清掉同一 uuid+分辨率的旧版（无版本号）缓存：它是修复前渲染的坏图，
-                // 留着只会占地方、并让人误以为问题还在。失败不影响本次返回。
-                Path legacyCacheFile = cacheDir.resolve(String.format("preview_%s_%dx%d.png",
-                        record.getUuid(), width, height));
-                try {
-                    if (Files.deleteIfExists(legacyCacheFile)) {
-                        logger.debug("已清理旧版预览图缓存: {}", legacyCacheFile.getFileName());
-                    }
-                } catch (Exception ex) {
-                    logger.debug("清理旧版预览图缓存失败: {}", ex.getMessage());
-                }
-
-                long elapsed = System.currentTimeMillis() - startTime;
-                logger.info("预览图渲染完成: uuid={}, 尺寸={}x{}, 大小={} bytes, 渲染={} ms, 编码={} ms, 总耗时={} ms",
-                        record.getUuid(), width, height, imageBytes.length,
-                        renderDone - startTime, System.currentTimeMillis() - renderDone, elapsed);
-
-                if (registered) {
-                    mine.complete(imageBytes);
-                }
-                return pngResponse(imageBytes);
-            } catch (Exception e) {
-                if (registered) {
-                    mine.completeExceptionally(e);
-                }
-                throw e;
-            } finally {
-                if (registered) {
-                    PREVIEW_IN_FLIGHT.remove(cacheFileName, mine);
-                }
-            }
+            long elapsed = System.currentTimeMillis() - startTime;
+            logger.debug("预览图请求完成: uuid={}, 总耗时={} ms（含合并等待）", record.getUuid(), elapsed);
+            return pngResponse(imageBytes);
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - startTime;
             logger.error("预览图渲染失败: uuid={}, 耗时={} ms, 错误={}",
                     record.getUuid(), elapsed, e.getMessage(), e);
             throw new RuntimeException("渲染预览图失败: " + e.getMessage());
         }
+    }
+
+    /** 预览图磁盘缓存目录（锚定到数据根目录，不随 JVM 工作目录变化）。 */
+    private static Path previewCacheDir() throws IOException {
+        Path cacheDir = RuntimePaths.getTempDir().resolve("previews");
+        if (!Files.exists(cacheDir)) {
+            Files.createDirectories(cacheDir);
+        }
+        return cacheDir;
+    }
+
+    /** 预览图缓存文件名：版本 + uuid + 分辨率 + 剧情模式。 */
+    private static String previewCacheFileName(String uuid, int width, int height, boolean plot) {
+        return String.format("preview_%s_%s_%dx%d_%s.png",
+                PREVIEW_CACHE_VERSION, uuid, width, height, plot ? "plot" : "plain");
+    }
+
+    /**
+     * 真正渲染一张预览图并写入磁盘缓存。由 {@link PreviewRenderCoalescer} 调用，
+     * 因此这里拿到的 {@code input} 已经是"这一批请求里最新的内容"。
+     *
+     * <p>注意：这里<b>不做</b>磁盘缓存读取。缓存命中在 {@link #renderPreview} 的快路径里
+     * 就返回了；如果这里再读缓存，批次里后到的请求可能拿到上一轮渲染的旧画面。
+     */
+    private byte[] renderPreviewBytes(String cacheFileName, PreviewRenderInput input) throws IOException {
+        Path cacheDir = previewCacheDir();
+        Path cacheFile = cacheDir.resolve(cacheFileName);
+
+        long renderStart = System.currentTimeMillis();
+        BufferedImage previewImage = RenderOfImage.renderPre(input.record(), input.plot(),
+                input.width(), input.height());
+        long renderDone = System.currentTimeMillis();
+
+        // 编码：预览图是不透明画面，用快速 PNG 编码器（比 ImageIO.write 快一倍多且文件更小）
+        byte[] imageBytes = com.lbc_plot.common.util.io.PreviewPngWriter.toBytes(previewImage, true);
+
+        // 保存到磁盘缓存（临时文件 + 原子改名，避免半截文件被当成有效缓存长期返回）
+        writeCacheAtomically(cacheFile, imageBytes);
+
+        // 顺手清掉同一 uuid+分辨率的旧版（无版本号）缓存：它是修复前渲染的坏图，
+        // 留着只会占地方、并让人误以为问题还在。失败不影响本次返回。
+        Path legacyCacheFile = cacheDir.resolve(String.format("preview_%s_%dx%d.png",
+                input.record().getUuid(), input.width(), input.height()));
+        try {
+            if (Files.deleteIfExists(legacyCacheFile)) {
+                logger.debug("已清理旧版预览图缓存: {}", legacyCacheFile.getFileName());
+            }
+        } catch (Exception ex) {
+            logger.debug("清理旧版预览图缓存失败: {}", ex.getMessage());
+        }
+
+        logger.info("预览图渲染完成: uuid={}, 尺寸={}x{}, 大小={} bytes, 渲染={} ms, 编码={} ms",
+                input.record().getUuid(), input.width(), input.height(), imageBytes.length,
+                renderDone - renderStart, System.currentTimeMillis() - renderDone);
+        return imageBytes;
+    }
+
+    /** 一次预览渲染的入参：合并器会把同一条记录的多份入参折叠成最后一份。 */
+    private record PreviewRenderInput(Record record, int width, int height, boolean plot) {
     }
 
     /** 把预览图字节包装成 PNG 响应。 */

@@ -7,6 +7,8 @@ import {
   describeTransferError,
   zipFileName,
 } from "@features/common/utils/resourceTransfer";
+import { toAssetPath } from "@features/common/utils/assetPath";
+import { describeApiError, isRetryableError } from "@features/common/utils/apiError";
 import "../ResourceManager.css";
 import "./BackgroundsTab.css";
 import BackgroundCard from "./BackgroundCard";
@@ -61,6 +63,12 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   const selectAllRef = useRef<HTMLInputElement>(null);
   // 导入/导出进行中：按钮置灰，避免重复点击打出多个包
   const [transferring, setTransferring] = useState(false);
+
+  // 背景保存中 / 上次保存失败的原因。
+  // 只用来置灰「保存」按钮 + 就地显示错误：不再无条件 alert（alert 会抢焦点，
+  // 关掉之后表单输入框就"打不了字"了），也不会让弹窗停在"看起来还在加载"的状态。
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // 当前可见的背景（搜索过滤后的结果）：多选与"没勾选就导出全部"都以它为准
   const filteredBackgrounds = backgrounds.filter((background) =>
@@ -259,13 +267,23 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   };
 
   const handleSaveBackground = async () => {
-    if (!editingBackground) return;
+    if (!editingBackground || saving) return;
 
+    setSaving(true);
+    setSaveError(null);
     try {
       log("保存背景", editingBackground.name);
       log("编辑中的背景对象", editingBackground);
 
-      const backgroundToSave: Background = { ...editingBackground };
+      // 关键：提交给后端的必须是站内路径（/assets/...）。
+      // 列表里的 path 为了让 <img> 能显示，已经被补成 http://localhost:8081/assets/...，
+      // 如果原样提交回去，数据库里就会存进绝对 URL —— 之后后端按磁盘校验一律失败、
+      // 预览渲染找不到背景退回黑底、删除还会拼出 ...\assets\http:\localhost:8081\... 这种非法路径。
+      const backgroundToSave: Background = {
+        ...editingBackground,
+        path: toAssetPath(editingBackground.path) ?? "",
+        thumbnailPath: toAssetPath(editingBackground.thumbnailPath) ?? "",
+      };
 
       // 若未填名字，尝试用文件名或时间戳兜底
       if (
@@ -306,14 +324,14 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
         } catch (error) {
           console.error("背景原图上传失败:", error);
           log("背景原图上传失败", error);
-          alert("背景原图上传失败，请检查后端日志后重试");
+          setSaveError(describeApiError(error, "背景原图上传失败"));
           return;
         }
       }
 
       // 确保 path 不为空：如果用户没选文件，又没填 path，则无法保存
       if (!backgroundToSave.path || backgroundToSave.path.trim() === "") {
-        alert("请先选择背景图片文件再保存");
+        setSaveError("请先选择背景图片文件再保存");
         return;
       }
 
@@ -405,10 +423,20 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
       setBackgroundFile(null);
       setBackgroundPreview(null);
       setCroppedImage(null);
+      setSaveError(null);
     } catch (error) {
       console.error("保存背景失败:", error);
       log("背景保存失败", error);
-      alert("保存背景失败，请重试");
+      // 把后端原话显示出来（例如"数据库缺少 thumbnail_path 列"），并说明要不要重试；
+      // 以前只是一句"保存失败，请重试"，用户反复点也修不好。
+      const message = describeApiError(error, "保存背景失败");
+      setSaveError(
+        isRetryableError(error)
+          ? message
+          : `${message}（这个错误重试不会解决，请按提示处理）`,
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -669,6 +697,9 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
           isEditing={isEditing}
           editingBackground={editingBackground}
           backgroundPreview={backgroundPreview}
+          saving={saving}
+          error={saveError}
+          onDismissError={() => setSaveError(null)}
           onCancel={handleCancelEditBackground}
           onSave={handleSaveBackground}
           onBackgroundChange={setEditingBackground}

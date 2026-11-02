@@ -31,13 +31,20 @@ spring:
   datasource:
     # SQLite 用绝对路径，由 DatabaseConfig 从 RuntimePaths 计算后作为该占位符的默认值提供，
     # 避免不同 JVM 工作目录打开不同的库（旧配置为 ./data/project.db）。
+    #
+    # 数据源由 SpringBootConfig#dataSource 构建成 HikariCP 连接池（旧的 DriverManagerDataSource
+    # 每条 withHandle 都新建物理连接，直接把 GET /api/characters 拖到 3~4 秒）。
+    # 这里的 url / driver-class-name 仍然保留，用于 --spring.datasource.url 之类的覆盖与排障。
     url: ${lbc.datasource.url}
     driver-class-name: org.sqlite.JDBC
     hikari:
-      maximum-pool-size: 10
+      # SQLite 同一时刻只允许一个写者，池子开大没有收益，只会让锁等待更难排查。
+      maximum-pool-size: 8
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      # 并发写时让驱动等锁，而不是立刻抛 SQLITE_BUSY（默认值偏短）。
+      busy-timeout: 8000
   data:
     jdbc:
       dialect: sqlite

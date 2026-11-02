@@ -5,6 +5,11 @@ interface BackgroundModalProps {
   isEditing: boolean;
   editingBackground: Background | null;
   backgroundPreview: string | null;
+  /** 保存中：只置灰「保存」按钮，输入框保持可编辑（禁用/重建输入框会让它丢焦点） */
+  saving?: boolean;
+  /** 上次保存失败的原因（就地显示，不弹 alert） */
+  error?: string | null;
+  onDismissError?: () => void;
   onCancel: () => void;
   onSave: () => void;
   onBackgroundChange: (background: Background) => void;
@@ -15,6 +20,9 @@ const BackgroundModal: React.FC<BackgroundModalProps> = ({
   isEditing,
   editingBackground,
   backgroundPreview,
+  saving = false,
+  error = null,
+  onDismissError,
   onCancel,
   onSave,
   onBackgroundChange,
@@ -59,6 +67,21 @@ const BackgroundModal: React.FC<BackgroundModalProps> = ({
           </button>
         </div>
         <div className="modal-content">
+          {error && (
+            <div className="inline-error" role="alert">
+              <span>{error}</span>
+              {onDismissError && (
+                <button
+                  type="button"
+                  className="inline-error-close"
+                  onClick={onDismissError}
+                  aria-label="关闭提示"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
           <div className="form-group">
             <label>背景名称</label>
             <input
@@ -114,8 +137,8 @@ const BackgroundModal: React.FC<BackgroundModalProps> = ({
           <button className="btn-secondary" onClick={onCancel}>
             取消
           </button>
-          <button className="btn-primary" onClick={onSave}>
-            保存
+          <button className="btn-primary" onClick={onSave} disabled={saving}>
+            {saving ? "保存中…" : "保存"}
           </button>
         </div>
       </div>

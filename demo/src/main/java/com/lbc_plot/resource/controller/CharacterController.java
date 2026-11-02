@@ -2,11 +2,13 @@ package com.lbc_plot.resource.controller;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.awt.Color;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
+import org.jdbi.v3.core.mapper.RowMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +26,9 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import com.lbc_plot.resource.character.CharacterCardImageCache;
 import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.dao.CharacterMapper;
+import com.lbc_plot.resource.dao.MyCharacterMapper;
 import com.lbc_plot.resource.dao.PortraitDAO;
+import com.lbc_plot.resource.dao.PortraitMapper;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
 import com.lbc_plot.resource.service.CharacterFolderService;
@@ -60,17 +64,7 @@ public class CharacterController {
     public List<MyCharacter> getCharacters() {
         logger.info("获取所有角色");
         try {
-            logger.info("获取所有角色");
-
-            // 使用自定义的CharacterMapper，确保加载关联的立绘信息
-            List<MyCharacter> characters = jdbi.withHandle(handle -> {
-                // 注册自定义的CharacterMapper
-                handle.registerRowMapper(new CharacterMapper(jdbi));
-                // 查询所有角色
-                return handle.createQuery("SELECT * FROM characters ORDER BY character_name")
-                        .mapTo(MyCharacter.class)
-                        .list();
-            });
+            List<MyCharacter> characters = loadCharactersWithPortraits();
 
             logger.info("成功获取 " + characters.size() + " 个角色");
 
@@ -85,6 +79,98 @@ public class CharacterController {
             logger.severe("获取角色失败: " + e.getMessage());
             e.printStackTrace();
             return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 一次连接、两次查询加载"全部角色 + 全部立绘"。
+     *
+     * <p>旧实现用 {@link CharacterMapper} 逐行映射，而它在 {@code map()} 里又对每个角色
+     * 调一次 {@code jdbi.withExtension(PortraitDAO...)}。本项目的 DataSource 是
+     * {@code DriverManagerDataSource}（没有连接池），每次 {@code withExtension} 都会
+     * <b>新开一条 SQLite 连接</b>，于是角色数 N 就多 N 次建连。运行日志里
+     * {@code GET /api/characters} 对 2 个角色稳定耗时 3~4 秒（20/20 次全部如此），
+     * 这就是典型的 N+1（N+1 次建连）。
+     *
+     * <p>现在固定两条 SQL、共用同一条连接：先查角色，再一次性查出所有立绘并按
+     * characterId 分组挂回去。立绘的排序（默认立绘在前、其余按名称）与
+     * {@code PortraitDAO.findByCharacterId} 保持一致，前端看到的顺序不变。
+     */
+    private List<MyCharacter> loadCharactersWithPortraits() {
+        return jdbi.withHandle(handle -> {
+            RowMapper<MyCharacter> characterMapper = (rs, ctx) -> {
+                MyCharacter character = new MyCharacterMapper().map(rs, ctx);
+                // folder_name 是后加的列，老库在迁移完成前可能没有它；读不到就留空
+                try {
+                    character.setFolderName(rs.getString("folder_name"));
+                } catch (Exception ignored) {
+                    // 列不存在：不阻塞角色列表
+                }
+                return character;
+            };
+
+            List<MyCharacter> characters = handle
+                    .createQuery("SELECT * FROM characters ORDER BY character_name")
+                    .map(characterMapper)
+                    .list();
+            if (characters.isEmpty()) {
+                return characters;
+            }
+
+            // 一次查出所有立绘（含 is_default 标记），按 characterId 分组
+            Map<String, List<Portrait>> portraitsByCharacter = new HashMap<>();
+            handle.createQuery("""
+                    SELECT p.*, COALESCE(cp.is_default, 0) AS is_default
+                    FROM portraits p
+                    LEFT JOIN character_portraits cp
+                        ON cp.portrait_id = p.portrait_id AND cp.character_id = p.character_id
+                    ORDER BY COALESCE(cp.is_default, 0) DESC, p.port_name
+                    """)
+                    .map(new PortraitMapper())
+                    .list()
+                    .forEach(portrait -> portraitsByCharacter
+                            .computeIfAbsent(portrait.getCharacterID(), key -> new ArrayList<>())
+                            .add(portrait));
+
+            for (MyCharacter character : characters) {
+                character.setPortraits(portraitsByCharacter.getOrDefault(
+                        character.getCharacterID(), new ArrayList<>()));
+            }
+            return characters;
+        });
+    }
+
+    /**
+     * 为角色登记名片图片路径，并把"真正画名片"排进后台队列（<b>立即返回</b>）。
+     *
+     * <p>保存角色接口以前在这里同步调用 {@code getCharacterCardImage()} 渲染名片
+     * （一次约 1s），接口响应时间全被渲染时长决定。现在只做两件很快的事：
+     * 写一行 {@code character_card_image_path}、作废旧缓存并排一个后台任务；
+     * 前端随后请求 {@code /api/character-card/{id}} 时会拿到后台画好的图。
+     *
+     * @param character 刚保存的角色
+     */
+    private void markCardImagePath(MyCharacter character) {
+        if (character == null || character.getCharacterID() == null
+                || character.getCharacterID().isEmpty()) {
+            return;
+        }
+        String characterId = character.getCharacterID();
+        String cardImagePath = "/api/character-card/" + characterId;
+        character.setCharacterCardImagePath(cardImagePath);
+
+        try {
+            jdbi.useExtension(CharacterDAO.class,
+                    dao -> dao.updateCardImagePath(characterId, cardImagePath));
+        } catch (Exception e) {
+            // 路径只是给前端一个地址，写失败不影响名片生成（接口仍会按 ID 返回图片）
+            logger.warning("保存名片图片路径失败（不影响名片生成）: " + e.getMessage());
+        }
+
+        try {
+            characterCardImageCache.requestRefresh(character);
+        } catch (Exception e) {
+            logger.warning("排队生成名片图片失败（不影响角色保存）: " + e.getMessage());
         }
     }
 
@@ -143,43 +229,10 @@ public class CharacterController {
                 logger.warning("创建角色目录失败（不影响角色创建）: " + e.getMessage());
             }
 
-            // 生成名片图片
-            logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() +
-                    ", 角色名称: " + character.getCharacterName());
-            try {
-                BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
-                if (cardImage != null) {
-                    // 设置名片图片路径
-                    String cardImagePath = "/api/character-card/" + character.getCharacterID();
-                    character.setCharacterCardImagePath(cardImagePath);
-
-                    // 更新数据库中的名片图片路径
-                    logger.info("更新名片图片路径到数据库，角色ID: " + character.getCharacterID() +
-                            ", 路径: " + cardImagePath);
-                    jdbi.useExtension(CharacterDAO.class, dao -> {
-                        boolean updated = dao.updateCardImagePath(character.getCharacterID(), cardImagePath);
-                        logger.info("名片图片路径已保存到数据库，更新结果: " + updated);
-
-                        // 验证更新是否成功
-                        MyCharacter updatedCharacter = dao.findById(character.getCharacterID()).orElse(null);
-                        if (updatedCharacter != null) {
-                            logger.info("验证更新结果 - 角色ID: " + updatedCharacter.getCharacterID() +
-                                    ", 名片路径: " + updatedCharacter.getCharacterCardImagePath());
-                        } else {
-                            logger.warning("无法找到更新后的角色信息");
-                        }
-                    });
-
-                    logger.info("名片图片生成成功: " + cardImagePath);
-                    // 上面 getCharacterCardImage() 生成时已经把新图写进内存+磁盘缓存，
-                    // 这里不要再 clearCache：那会把刚生成的名片删掉，导致首次请求还要重新渲染。
-                } else {
-                    logger.warning("名片图片生成失败");
-                }
-            } catch (Exception e) {
-                logger.severe("生成名片图片时出错: " + e.getMessage());
-            }
-
+            // 名片图片：只登记路径 + 排后台生成，绝不在请求线程里渲染。
+            // 以前这里是 getCharacterCardImage() 同步渲染（约 1s），保存角色的接口要等
+            // 名片画完才返回，前端「保存」按钮长时间无响应，容易被当成卡死。
+            markCardImagePath(character);
             logger.info("成功添加角色: " + character.getCharacterName());
             return character;
         } catch (Exception e) {
@@ -315,46 +368,10 @@ public class CharacterController {
 
             // 角色ID不变，目录名（=characterId）不变，无需重命名目录
 
-            // 生成名片图片
-            logger.info("开始生成名片图片，角色ID: " + character.getCharacterID() +
-                    ", 角色名称: " + character.getCharacterName());
-            try {
-                // 必须先清缓存再生成。顺序反过来的话 getCharacterCardImage() 会直接命中
-                // 旧缓存、把旧图返回给前端，紧接着 clearCache() 又把这张旧图删掉，
-                // 结果就是「改完角色得重启应用才能看到新名片」。
-                characterCardImageCache.clearCache(character.getCharacterID());
-                logger.info("已清除名片缓存，角色ID: " + character.getCharacterID());
-
-                BufferedImage cardImage = characterCardImageCache.getCharacterCardImage(character);
-                if (cardImage != null) {
-                    // 设置名片图片路径
-                    String cardImagePath = "/api/character-card/" + character.getCharacterID();
-                    character.setCharacterCardImagePath(cardImagePath);
-
-                    // 更新数据库中的名片图片路径
-                    logger.info("更新名片图片路径到数据库，角色ID: " + character.getCharacterID() +
-                            ", 路径: " + cardImagePath);
-                    jdbi.useExtension(CharacterDAO.class, dao -> {
-                        boolean updated = dao.updateCardImagePath(character.getCharacterID(), cardImagePath);
-                        logger.info("名片图片路径已保存到数据库，更新结果: " + updated);
-
-                        // 验证更新是否成功
-                        MyCharacter updatedCharacter = dao.findById(character.getCharacterID()).orElse(null);
-                        if (updatedCharacter != null) {
-                            logger.info("验证更新结果 - 角色ID: " + updatedCharacter.getCharacterID() +
-                                    ", 名片路径: " + updatedCharacter.getCharacterCardImagePath());
-                        } else {
-                            logger.warning("无法找到更新后的角色信息");
-                        }
-                    });
-
-                    logger.info("名片图片生成成功: " + cardImagePath);
-                } else {
-                    logger.warning("名片图片生成失败");
-                }
-            } catch (Exception e) {
-                logger.severe("生成名片图片时出错: " + e.getMessage());
-            }
+            // 名片：作废旧图 + 排后台重新生成，接口立即返回。
+            // 以前这里先 clearCache() 再 getCharacterCardImage() 同步渲染（约 1s），
+            // 保存接口的响应时间被名片渲染时长直接绑架。
+            markCardImagePath(character);
 
             logger.info("成功更新角色: " + character.getCharacterName());
             return character;

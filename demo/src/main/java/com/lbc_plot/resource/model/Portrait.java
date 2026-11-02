@@ -359,7 +359,21 @@ public class Portrait {
         @JsonProperty
         private String thumbnailPath;
         @JsonProperty
-        private boolean defaultPortrait;
+        private boolean defaultPortrait;    
+        /**
+         * 构建时是否跳过"读原图"。
+         *
+         * <p>默认 false（老行为）：{@link #build()} 会把原图解码进内存。
+         * 从数据库按行映射（{@link com.lbc_plot.resource.dao.PortraitMapper}）时应该置为 true：
+         * 那里的 Portrait 只是元数据，解码出来的 {@code image} 既不会被序列化给前端，
+         * 也会被同一个 BufferedImage 长期占住内存。
+         *
+         * <p>为什么这件事很要紧：日志里 {@code GET /api/characters} 对 2 个角色稳定要 3~4 秒，
+         * 因为每映射一行立绘就整图解码一次（一个角色几十张立绘时就是几十次 PNG 解码）。
+         * 跳过之后，真正需要像素的渲染路径仍会通过 {@link Portrait#getImage()} 懒加载。
+         */
+        @JsonIgnore
+        private boolean skipImageLoad;
 
         // 无参构造器（JSON反序列化必需）
         public Builder() {
@@ -457,6 +471,16 @@ public class Portrait {
         }
 
         /**
+         * 构建时不解码原图，只保留路径（真正要像素时由 {@link Portrait#getImage()} 懒加载）。
+         *
+         * <p>给"从数据库映射元数据"的调用方用（{@code PortraitMapper}）。
+         */
+        public Builder skipImageLoad() {
+            this.skipImageLoad = true;
+            return this;
+        }
+
+        /**
          * 构建Portrait对象
          * 路径从chara开始
          */
@@ -466,7 +490,11 @@ public class Portrait {
             // 尝试在构建时加载图像。图片文件不存在时不阻塞构建（如删除角色后查询、
             // 文件丢失等场景），只记录警告，image 保持 null，
             // 后续 getImage() 调用时会尝试重新加载（有 try-catch 容错）。
-            if (this.imagePath != null && !this.imagePath.trim().isEmpty()) {
+            //
+            // 注意：从数据库按行映射时不要解码（skipImageLoad）——解码几十张原图会让
+            // "查询角色列表"这种纯读接口卡上好几秒。
+            if (!this.skipImageLoad
+                    && this.imagePath != null && !this.imagePath.trim().isEmpty()) {
                 try {
                     this.image = ImageReader.readCharacters(this.imagePath);
                     if (this.image == null) {
