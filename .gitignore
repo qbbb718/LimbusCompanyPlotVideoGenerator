@@ -45,7 +45,6 @@ hs_err_pid*
 *.mp3
 *.ogg
 *.wav
-*.png
 
 # ====== Specific Files ======
 # 特定编译产物
