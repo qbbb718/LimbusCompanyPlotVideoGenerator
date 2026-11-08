@@ -36,7 +36,7 @@ const ResourceTabs: React.FC<ResourceTabsProps> = ({
       <button
         className={activeTab === "animation-clips" ? "active" : ""}
         onClick={() => setActiveTab("animation-clips")}
-        title="序列帧动画：导入帧序列、摆好代表帧，供剧情编辑里的立绘选用"
+        title="序列帧动画：导入帧序列、摆好缩略图，供剧情编辑里的立绘选用"
       >
         序列帧动画
       </button>

@@ -166,13 +166,43 @@ export function isSampleVisible(sample: SequenceSample): boolean {
 }
 
 /**
- * 代表帧的采样结果：**静止画面**显示的那一帧与它的透明度。
+ * 第 `imageIndex` 张图在一轮里的**首帧局部帧号**。
+ *
+ * <p>素材上的缩略图（代表帧）序号存的是**图片序号**（0 起，见
+ * `AnimationClipAsset.Poster.frame` / `AnimationClipPoster.frame`），而 {@link posterSample}
+ * 要的是**局部帧号**（`[0, 总帧数-1]`）。每张图停 N 帧时两者并不相等，
+ * 直接把图片序号当局部帧传进去会指回前面的图：
+ * `holds = [2, 3]` 时挑第 2 张（图片序号 1）会算成局部帧 1 → 仍然落在第 1 张上，
+ * 于是"缩略图换了、预览却没变"。
+ *
+ * @param imageIndex 图片序号；越界会被夹到 `[0, 图片数-1]`
+ * @returns `[0, totalFrames)`；没有帧时 {@link NO_FRAME}
+ */
+export function localFrameOfImage(
+  frameHolds: readonly number[] | null | undefined,
+  imageIndex: number,
+): number {
+  if (!frameHolds || frameHolds.length === 0) return NO_FRAME;
+  const total = totalFrames(frameHolds);
+  if (total <= 0) return NO_FRAME;
+  const requested = Number.isFinite(imageIndex) ? Math.round(imageIndex) : 0;
+  const clamped = Math.min(Math.max(0, requested), frameHolds.length - 1);
+  let local = 0;
+  for (let i = 0; i < clamped; i += 1) {
+    local += frameHolds[i] > 0 ? frameHolds[i] : 1;
+  }
+  return Math.min(Math.max(0, local), total - 1);
+}
+
+/**
+ * 代表帧（缩略图）的采样结果：**静止画面**显示的那一帧与它的透明度。
  *
  * <p>与后端 `EmotionAnim.posterImageIndex()` / `posterAlpha()` 逐行对应。
  * 为什么静止时要专门算一次而不是直接用第 0 帧：带淡入的动画第 0 帧是全透明的，
  * 编辑器里会看起来"素材没导入成功"。
  *
- * @param posterFrame 用户挑的代表帧序号（会被夹到 `[0, totalFrames-1]`）
+ * @param posterFrame 用户挑的代表帧的**局部帧号**（会被夹到 `[0, totalFrames-1]`）。
+ *                    素材上存的是**图片序号**，传进来之前要先过 {@link localFrameOfImage}
  */
 export function posterSample(
   frameHolds: readonly number[] | null | undefined,

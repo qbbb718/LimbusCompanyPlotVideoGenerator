@@ -1,41 +1,80 @@
 /**
  * @module 资源管理 · 序列帧动画子页面样式
  *
- * 左侧列表 + 右侧编辑器（设置 / 预览两栏）。配色跟资源管理其它 tab 保持一致（浅色 + 橄榄绿点缀）。
+ * 布局：左侧素材列表 + 右侧编辑器（设置 / 预览两栏）。
+ * 配色跟资源管理其它 tab 保持一致（浅色 + 橄榄绿点缀）。
+ *
+ * <h3>响应式</h3>
+ * 一律用**容器查询**按子页面自身宽度（不是窗口宽度）切换，配合 grid / flex 的
+ * `minmax(0, 1fr)` 与 `min-width: 0`：任何一栏都不会把邻居挤爆，控件不会被裁掉。
+ * - ≥ 1181px：三栏并排（列表 240 / 设置 300~420 / 预览吃掉剩余宽度）；
+ * - ≤ 1180px：列表收窄、设置栏收窄，预览仍是整块（16:9 舞台自己等比缩）；
+ * - ≤ 900px：设置与预览**上下堆叠**（预览在上、参数在下），整列可滚动；
+ * - ≤ 720px：左侧素材列表也叠到上方，变成可横向滚动的一行卡片。
+ * 各可滚动区块都留了 min-height：挤不下就滚动，绝不把控件压扁。
  */
 
+/* ==================== 容器（容器查询的参照） ==================== */
+
+/* 所有子页面区块的样式都在这里：容器自身的尺寸不能用 `@container` 判断，所以多包一层 */
+.sprite-anim-page {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  container-type: inline-size;
+  container-name: sprite-anim;
+}
+
 .sprite-anim-tab {
-  display: flex;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
-  min-height: 560px;
-  height: calc(100vh - 260px);
+  height: 100%;
+  /* 窗口再矮也不把控件压成一条：装不下就让外层（.resource-content）滚动 */
+  min-height: 520px;
+  min-width: 0;
 }
 
 /* ==================== 左侧列表 ==================== */
 
 .sprite-anim-list {
-  width: 260px;
-  flex: 0 0 260px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid #e3e6cc;
   padding-right: 10px;
 }
 
-.sprite-anim-list-head input {
+.sprite-anim-list-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sprite-anim-search {
   width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
+  font-size: 13px;
 }
 
 .sprite-anim-list-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  min-width: 0;
 }
 
 .sprite-anim-list-actions button {
   font-size: 12px;
   padding: 3px 8px;
+  white-space: nowrap;
 }
 
 /* 「按文件名编号推算时长」开关 */
@@ -43,23 +82,34 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   font-size: 12px;
   color: #55603c;
   cursor: pointer;
 }
 
+.sprite-anim-auto-holds span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sprite-anim-list-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-right: 2px;
 }
 
 .sprite-anim-card {
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
   padding: 6px;
   border: 1px solid #e3e6cc;
   border-radius: 6px;
@@ -103,10 +153,18 @@
   white-space: nowrap;
 }
 
+.sprite-anim-card-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sprite-anim-message {
+  flex: 0 0 auto;
   font-size: 12px;
   color: #3f6b2c;
   padding: 4px 0;
+  overflow-wrap: anywhere;
 }
 
 .sprite-anim-message.is-error {
@@ -116,28 +174,36 @@
 /* ==================== 右侧编辑器 ==================== */
 
 .sprite-anim-editor {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .sprite-anim-editor-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .sprite-anim-name {
-  flex: 1;
+  /* 名称是唯一需要"尽量长"的输入框：给了最小宽度，窄了就换行而不是挤没按钮 */
+  flex: 1 1 200px;
   min-width: 120px;
+  max-width: 100%;
+  box-sizing: border-box;
   font-size: 15px;
   font-weight: 600;
   padding: 4px 6px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
 }
 
 .sprite-anim-save {
+  flex: 0 0 auto;
   font-size: 12px;
   color: #7a8465;
   min-width: 56px;
@@ -151,20 +217,34 @@
   color: #3f6b2c;
 }
 
-.sprite-anim-columns {
-  flex: 1;
-  min-height: 0;
+.sprite-anim-editor-actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+  min-width: 0;
 }
 
+.sprite-anim-columns {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ==================== 设置栏 ==================== */
+
 .sprite-anim-settings {
-  width: 420px;
-  flex: 0 0 420px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  /* 参数多、窗口矮时自己滚，不要把预览挤没 */
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
 
@@ -173,17 +253,128 @@
   border-radius: 6px;
   padding: 8px;
   background: #fdfef7;
+  min-width: 0;
 }
 
 .sprite-anim-settings h4 {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 13px;
   color: #55603c;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.sprite-anim-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+/* 行容器：一"组"= 标签 + 它的输入框；宽度不够时**整组换行**，
+   而不是把标签和输入框拆到两行（那会让用户对不上谁是谁） */
+.sprite-anim-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.sprite-anim-row:last-child {
+  margin-bottom: 0;
+}
+
+.sprite-anim-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 带滑块的那一组吃掉整行剩余宽度（滑块本身还能缩） */
+.sprite-anim-field.is-grow {
+  flex: 1 1 240px;
+}
+
+.sprite-anim-label {
+  flex: 0 0 auto;
+  min-width: 3.6em;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sprite-anim-field > select {
+  flex: 0 1 140px;
+  min-width: 92px;
+  max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.sprite-anim-field > input[type="number"] {
+  flex: 0 0 72px;
+  width: 72px;
+  min-width: 56px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* 滑块：留得下就占满，留不下就换行（min-width 保证还拖得动） */
+.sprite-anim-field.is-grow > input[type="range"] {
+  flex: 1 1 110px;
+  min-width: 90px;
+  margin: 0;
+}
+
+/* 跟在控件后面的说明文字 */
+.sprite-anim-note {
+  flex: 1 1 160px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7a8465;
+  overflow-wrap: anywhere;
+}
+
+.sprite-anim-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1px solid #c8cf9d;
+  border-radius: 4px;
+  background: #fff;
+  color: #3f4a2a;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sprite-anim-btn:hover {
+  background: #f7f9ea;
+}
+
+/* 说明文字：**允许换行**（本来就长），别用省略号把关键信息藏掉 */
 .sprite-anim-readonly {
   font-size: 12px;
   color: #7a8465;
+  line-height: 1.5;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sprite-anim-warn {
@@ -191,12 +382,39 @@
   color: #b2621c;
 }
 
+/* 单行省略 + 悬浮看全文（title 由组件带上） */
+.sprite-anim-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sprite-anim-tab .global-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7a8465;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+
+/* ==================== 帧序列与缩略图选择 ==================== */
+
 .sprite-anim-holds {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
   gap: 6px;
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
+  padding: 4px;
+}
+
+/* 待选态：整块列表用一个不占位的虚线框圈出来（outline 不改变布局，进出不跳） */
+.sprite-anim-holds.is-picking {
+  outline: 1px dashed #b8c46a;
+  outline-offset: 1px;
+  border-radius: 6px;
+  background: #fbfdf0;
 }
 
 .sprite-anim-hold {
@@ -204,11 +422,27 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  min-width: 0;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+/* 角标行：当前缩略图显示"缩略图"，其它帧留空（每格等高，网格不会跳） */
+.sprite-anim-hold-flag {
+  max-width: 100%;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 600;
+  color: #a1801c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sprite-anim-hold img {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   border: 1px solid #e3e6cc;
   border-radius: 3px;
@@ -216,37 +450,185 @@
 }
 
 .sprite-anim-hold input {
-  width: 44px;
+  width: 52px;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
+  font-size: 12px;
   text-align: center;
 }
 
-.sprite-anim-preview {
-  flex: 1;
-  min-width: 0;
+/* 当前缩略图：金边框 + 底色 + 角标，一眼能认出来 */
+.sprite-anim-hold.is-poster {
+  border-color: #d9c05a;
+  background: #fffbe8;
 }
 
-/* ==================== 预览舞台 ==================== */
+.sprite-anim-hold.is-poster img {
+  border-color: #d9c05a;
+  box-shadow: 0 0 0 2px rgba(217, 192, 90, 0.35);
+}
+
+/* 待选态：每帧都是可点目标 */
+.sprite-anim-hold.is-pickable {
+  cursor: pointer;
+  border-color: #dfe4c4;
+  background: #fff;
+}
+
+.sprite-anim-hold.is-pickable:hover,
+.sprite-anim-hold.is-pickable:focus-visible {
+  border-color: #b8c46a;
+  background: #f2f7dd;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(184, 196, 106, 0.35);
+}
+
+.sprite-anim-hold.is-pickable.is-poster {
+  border-color: #d9c05a;
+  background: #fffbe8;
+}
+
+/* 待选态下时长输入框不可编辑：整格是一个"点选目标"，别让点输入框变成打字 */
+.sprite-anim-hold input:disabled {
+  opacity: 0.55;
+  cursor: inherit;
+}
+
+/* 「选择缩略图」按钮 */
+.sprite-anim-pick {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1px solid #c8cf9d;
+  border-radius: 14px;
+  background: #fff;
+  color: #55603c;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sprite-anim-pick:hover:not(:disabled) {
+  border-color: #b8c46a;
+  background: #f7f9ea;
+}
+
+.sprite-anim-pick.is-active {
+  border-color: #a9801c;
+  background: #fff3c9;
+  color: #7a5c0b;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(217, 192, 90, 0.35);
+}
+
+.sprite-anim-pick:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 待选态提示条 */
+.sprite-anim-pick-hint {
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border: 1px solid #e6d28a;
+  border-radius: 4px;
+  background: #fff3c9;
+  color: #7a5c0b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sprite-anim-holds-section.is-picking {
+  border-color: #d9c05a;
+  box-shadow: inset 0 0 0 1px rgba(217, 192, 90, 0.45);
+}
+
+/* 缩略图摆放：帧列表下面的一小段（不再单独占一个"缩略图"区块） */
+.sprite-anim-place {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e3e6cc;
+}
+
+.sprite-anim-place .sprite-anim-row:last-child {
+  margin-bottom: 0;
+}
+
+.sprite-anim-place-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #55603c;
+}
+
+/* ==================== 预览区 ==================== */
+
+/* 预览列：空间不够时滚动（舞台自己按 16:9 缩，不会变形） */
+.sprite-anim-preview {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
 
 .sprite-preview {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  height: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 .sprite-preview-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
+  min-width: 0;
   font-size: 12px;
   color: #55603c;
 }
 
-.sprite-preview-toolbar label {
+.sprite-preview-toolbar button {
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid #c8cf9d;
+  border-radius: 4px;
+  background: #fff;
+  color: #3f4a2a;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sprite-preview-toolbar button:hover:not(:disabled) {
+  background: #f7f9ea;
+}
+
+.sprite-preview-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sprite-preview-field {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 角色/背景名可能很长：单行省略 + 悬浮看全名（title 在组件上） */
+.sprite-preview-field select {
+  min-width: 0;
+  max-width: 150px;
+  padding: 3px 4px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
+  font-size: 12px;
+  text-overflow: ellipsis;
 }
 
 /* 播放控制条 */
@@ -254,42 +636,114 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
+  min-width: 0;
   font-size: 12px;
   color: #55603c;
 }
 
 .sprite-preview-transport button {
+  flex: 0 0 auto;
   font-size: 12px;
-  padding: 3px 10px;
+  padding: 4px 10px;
+  border: 1px solid #c8cf9d;
+  border-radius: 4px;
+  background: #fff;
+  color: #3f4a2a;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sprite-preview-transport button:hover:not(:disabled) {
+  background: #f7f9ea;
+}
+
+.sprite-preview-transport button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 播放/停止合并成的单键双态：未播放=播放（绿），播放中=停止（橙） */
+.sprite-preview-transport .sprite-preview-play {
+  border-color: #b8c46a;
+  background: #f4f7e2;
+  font-weight: 600;
+}
+
+.sprite-preview-transport .sprite-preview-play[aria-pressed="true"] {
+  border-color: #c47a2c;
+  background: #fdeedd;
+  color: #8a4a10;
 }
 
 .sprite-preview-loop {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+/* 帧号 + "16:9"角标作为一组一起换行（宽度够时角标贴在帧号右边） */
+.sprite-preview-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 170px;
+  min-width: 0;
 }
 
 .sprite-preview-frame {
+  flex: 1 1 auto;
+  min-width: 0;
   color: #7a8465;
 }
 
+.sprite-preview-ratio {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #eef1dc;
+  color: #6b7550;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* 视口：多余空间留白，舞台在中间（舞台尺寸由 JS 按 16:9 算成 px） */
+.sprite-preview-viewport {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  /* 窗口被压得很矮时先保住 150px，再不够就让 .sprite-anim-preview 滚 */
+  min-height: 150px;
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f2f4e9;
+}
+
+/* 舞台：固定 16:9（宽高由 fitStage 算出，量不到时退回 CSS 的 aspect-ratio） */
 .sprite-preview-stage {
   position: relative;
-  width: 100%;
+  flex: 0 0 auto;
   background: #000;
   border-radius: 6px;
   overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(120, 130, 80, 0.35);
   user-select: none;
   touch-action: none;
 }
 
+/* 底板已经是 16:9 的输出尺寸，contain 是"万一尺寸不符也只留黑边、不拉伸"的保险 */
 .sprite-preview-raster {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: contain;
   display: block;
 }
 
@@ -299,11 +753,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px;
+  box-sizing: border-box;
+  text-align: center;
   color: #c9cfae;
   font-size: 13px;
 }
 
-/* 代表帧：可拖拽的框 */
+/* 缩略图：可拖拽的框 */
 .sprite-preview-handle {
   position: absolute;
   cursor: move;
@@ -366,6 +823,7 @@
   border-radius: 4px;
   background: rgba(160, 40, 30, 0.85);
   color: #fff;
+  overflow-wrap: anywhere;
 }
 
 .sprite-preview-error.is-bottom {
@@ -374,7 +832,121 @@
 }
 
 .sprite-preview-hint {
+  /* 空间不够时先压这段说明（内部滚动），把高度让给画面 */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 34%;
+  overflow-y: auto;
   font-size: 12px;
   color: #7a8465;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ==================== 容器查询：按子页面自身宽度切换 ==================== */
+
+/* 中等宽度：列表与设置栏都收窄，把剩下的宽度全留给预览 */
+@container sprite-anim (max-width: 1180px) {
+  .sprite-anim-tab {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .sprite-anim-columns {
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  }
+
+  .sprite-anim-holds {
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  }
+}
+
+/* 窄：设置与预览**上下堆叠**（预览在上，参数在下），整列可滚动 */
+@container sprite-anim (max-width: 900px) {
+  .sprite-anim-columns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+  }
+
+  .sprite-anim-preview {
+    order: -1;
+    flex: 0 0 auto;
+    height: clamp(300px, 46vh, 480px);
+    /* 堆叠后工具栏/说明可能放不进这一块：允许滚动，别把内容裁掉 */
+    overflow: auto;
+  }
+
+  .sprite-anim-settings {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .sprite-anim-holds {
+    max-height: 320px;
+  }
+
+  /* 上下堆叠时高度紧张：说明掐成两行（悬浮看全文），把高度让给画面 */
+  .sprite-preview-hint {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    flex: 0 0 auto;
+    max-height: none;
+    overflow: hidden;
+  }
+}
+
+/* 很窄：左侧素材列表也叠到上面，卡片横向排一行（可左右滚） */
+@container sprite-anim (max-width: 720px) {
+  .sprite-anim-tab {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .sprite-anim-list {
+    max-height: 210px;
+    border-right: none;
+    border-bottom: 1px solid #e3e6cc;
+    padding: 0 0 8px;
+  }
+
+  .sprite-anim-list-top {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .sprite-anim-search {
+    flex: 1 1 160px;
+    width: auto;
+    min-width: 120px;
+  }
+
+  .sprite-anim-list-body {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+  }
+
+  .sprite-anim-card {
+    flex: 0 0 190px;
+  }
+
+  .sprite-anim-columns {
+    gap: 8px;
+  }
+
+  .sprite-anim-preview {
+    height: clamp(280px, 44vh, 420px);
+  }
+
+  /* 很窄时"16:9"角标先让位：把这一行的宽度留给播放按钮与帧号 */
+  .sprite-preview-ratio {
+    display: none;
+  }
 }

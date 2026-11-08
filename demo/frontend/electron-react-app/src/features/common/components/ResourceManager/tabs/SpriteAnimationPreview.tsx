@@ -1,13 +1,31 @@
 /**
- * @component 序列帧动画 —— 代表帧摆放 + 播放预览
+ * @component 序列帧动画 —— 缩略图摆放 + 播放预览
  *
  * 两个用途合在一个舞台上：
- * 1. **摆代表帧**（停止/暂停时）：拖动平移、滚轮缩放，结果存成"相对头部区域"的偏移与缩放倍率；
- * 2. **播放预览**：播放/暂停/停止 + 循环开关，按每帧持续帧数与淡入淡出真实地播一遍，
+ * 1. **摆缩略图**（停止/暂停时）：拖动平移、滚轮缩放，结果存成"相对头部区域"的偏移与缩放倍率；
+ * 2. **播放预览**：播放/停止（单键双态）+ 暂停 + 循环开关，按每帧持续帧数与淡入淡出真实地播一遍，
  *    用来验证节奏与透明度补间。
  *
  * 合成底板由后端渲（`POST /api/records/preview`，与成片同一条管线），所以背景 + 立绘 + UI
- * 的层叠关系天然正确；代表帧/序列帧是盖在最上面的 DOM 层，位置与大小实时算、不发请求。
+ * 的层叠关系天然正确；缩略图/序列帧是盖在最上面的 DOM 层，位置与大小实时算、不发请求。
+ *
+ * <h3>舞台为什么固定长宽比</h3>
+ * 底板是 1280 × 720（16:9）。舞台按"能放进视口的最大 16:9 矩形"算成 px（见 `stageFit.ts`），
+ * 居中显示、四周留白：窗口怎么拉，画面都只等比缩放，**不会拉伸变形**，叠层的百分比坐标系
+ * 也永远与图片一致。纯 CSS 的 `aspect-ratio + max-width/max-height` 在两个方向同时受限时
+ * 会破比例（被 clamp 的轴不会反推另一轴），所以这里实测容器像素自己算。
+ *
+ * <h3>播放按钮为什么只有一个</h3>
+ * 播放与停止是同一个状态的两种取值，拆成两个按钮必然会有一帧"两个都亮/都不亮"的窗口期。
+ * 所以只留一个切换键：`播放中 → 显示"⏹ 停止"，点击后停止并回到初始状态（显示缩略图）`；
+ * 暂停是独立的第二键（只在播放中可用），用来把画面定在某帧上继续编辑摆放。
+ *
+ * <h3>播放到末尾的行为（明确定义）</h3>
+ * <ul>
+ *   <li>勾选「循环播放」：播到末尾从头再播一遍（淡入淡出每轮重演，正好验证补间）；</li>
+ *   <li>不勾：播到末尾**自动停止并回到初始状态**（显示缩略图，变换解锁），不会停在半路。</li>
+ * </ul>
+ * 素材本身是 `loop` / `pingpong` 且设了次数时，"末尾"= 总帧数 × 次数。
  *
  * <h3>播放时为什么禁用变换</h3>
  * 播放中每一帧的 `src` 都在变，鼠标拖拽的视觉反馈会和逐帧刷新打架（用户拖的是"某一帧"的图，
@@ -24,6 +42,7 @@ import log from "electron-log";
 import ApiService from "@services/ApiService";
 import type { Background, CharacterVisual, MyCharacter } from "@types";
 import { buildPortraitImageUrl } from "@features/common/utils/portraitUtils";
+import { useElementSize } from "@features/record/preview/useElementSize";
 import { useImageSizes } from "@features/record/preview/useImageSizes";
 import {
   DEFAULT_CAMERA,
@@ -36,6 +55,7 @@ import {
 import type { LoopMode } from "@features/record/animation/animationTypes";
 import {
   NO_FRAME,
+  localFrameOfImage,
   posterSample,
   sampleSequence,
   spriteRect,
@@ -43,6 +63,7 @@ import {
 } from "@features/record/animation/sequenceTiming";
 import type { SequenceSample } from "@features/record/animation/sequenceTiming";
 import type { AnimationClipDto, AnimationClipPoster } from "@features/record/animation/animationClipAsset";
+import { fitStage } from "./stageFit";
 import "./SpriteAnimationsTab.css";
 
 /** 播放参数（来自编辑器草稿，改了立刻在预览里生效） */
@@ -62,19 +83,24 @@ interface SpriteAnimationPreviewProps {
   onPosterChange: (next: AnimationClipPoster) => void;
   /** 播放状态变化（上层据此禁用/恢复数字输入框） */
   onPlayingChange?: (playing: boolean) => void;
+  /** 递增这个值 → 立刻停止播放（"选缩略图"是静态动作，边播边选看不清） */
+  stopRequest?: number;
   characters: MyCharacter[];
   /** **原始路径**的背景列表（不要传补成绝对 URL 的展示值：后端会把 URL 当文件名拼） */
   backgrounds: Background[];
 }
 
-/** 预览渲染的输出尺寸（不跟成片走：这里只求"看得清、渲得快"） */
+/** 预览渲染的输出尺寸（不跟成片走：这里只求"看得清、渲得快"；16:9 与成片一致） */
 const PREVIEW_WIDTH = 1280;
 const PREVIEW_HEIGHT = 720;
+
+/** 舞台的固定长宽比（CSS 兜底用；量到视口尺寸后由 `fitStage` 算出 px） */
+const PREVIEW_ASPECT = `${PREVIEW_WIDTH} / ${PREVIEW_HEIGHT}`;
 
 /** 播放时钟的帧率：与全项目 timebase 一致 */
 const PLAY_FPS = 30;
 
-/** 播放状态：停止 = 显示代表帧；播放/暂停 = 显示序列 */
+/** 播放状态：停止 = 显示缩略图；播放/暂停 = 显示序列 */
 type Phase = "stopped" | "playing" | "paused";
 
 const clamp = (value: number, min: number, max: number) =>
@@ -92,6 +118,7 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   playback,
   onPosterChange,
   onPlayingChange,
+  stopRequest = 0,
   characters,
   backgrounds,
 }) => {
@@ -105,18 +132,35 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; offsetX: number; offsetY: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const { ref: viewportRef, size: viewportSize } = useElementSize<HTMLDivElement>();
 
   /* ==================== 播放 ==================== */
   const [phase, setPhase] = useState<Phase>("stopped");
   const [loopPreview, setLoopPreview] = useState(true);
   const [elapsedFrames, setElapsedFrames] = useState(0);
   const elapsedRef = useRef(0);
+  /** 已经处理过的 `stopRequest`：只对"新的一次请求"生效，重渲染不会反复停 */
+  const stopRequestRef = useRef(stopRequest);
 
   const holds = clip.frameHolds ?? [];
   const total = totalFrames(holds);
   const loopMode: LoopMode = playback.loop ?? "once";
   const loopingAsset = loopMode === "loop" || loopMode === "pingpong";
   const transformEnabled = phase !== "playing";
+  const playing = phase === "playing";
+
+  /**
+   * 这一遍播放总共要走的帧数。
+   *
+   * <p>`loop` / `pingpong` 一旦设了循环次数，素材只会播 `总帧数 × 次数` 帧，
+   * 之后序列本身就"没有画"了——预览也必须停在那里，不能空转。
+   */
+  const playUntil = useMemo(() => {
+    if (total <= 0) return 0;
+    const iterations = playback.iterations ?? 0;
+    if (loopingAsset && iterations > 0) return total * iterations;
+    return total;
+  }, [total, loopingAsset, playback.iterations]);
 
   // 换素材时把播放状态收回去
   useEffect(() => {
@@ -126,11 +170,20 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   }, [clip.id]);
 
   useEffect(() => {
-    onPlayingChange?.(phase === "playing");
-  }, [phase, onPlayingChange]);
+    onPlayingChange?.(playing);
+  }, [playing, onPlayingChange]);
+
+  // 上层请求停止（例如进入"选择缩略图"）：直接回到初始状态
+  useEffect(() => {
+    if (stopRequest <= stopRequestRef.current) return;
+    stopRequestRef.current = stopRequest;
+    elapsedRef.current = 0;
+    setElapsedFrames(0);
+    setPhase("stopped");
+  }, [stopRequest]);
 
   useEffect(() => {
-    if (phase !== "playing" || total <= 0) return undefined;
+    if (!playing || total <= 0 || playUntil <= 0) return undefined;
     const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
     let last = now();
     const timer = setInterval(() => {
@@ -138,48 +191,54 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
       const deltaFrames = Math.max(0, ((current - last) / 1000) * PLAY_FPS);
       last = current;
       const next = elapsedRef.current + deltaFrames;
-      if (!loopingAsset && next >= total) {
+      if (next >= playUntil) {
         if (loopPreview) {
           // 循环预览：回到开头再播一遍（淡入淡出每轮都会重演，正好用来验证补间）
-          elapsedRef.current = next % total;
-        } else {
-          // 不循环：停在最后一帧，按"暂停"处理（可以继续编辑）
-          elapsedRef.current = Math.max(0, total - 1);
+          elapsedRef.current = next % playUntil;
           setElapsedFrames(elapsedRef.current);
-          setPhase("paused");
           return;
         }
-      } else {
-        elapsedRef.current = next;
+        // 不循环：播到末尾**停止并回到初始状态**（显示缩略图，变换解锁）
+        elapsedRef.current = 0;
+        setElapsedFrames(0);
+        setPhase("stopped");
+        return;
       }
-      setElapsedFrames(elapsedRef.current);
+      elapsedRef.current = next;
+      setElapsedFrames(next);
     }, Math.round(1000 / PLAY_FPS));
     return () => clearInterval(timer);
-  }, [phase, total, loopingAsset, loopPreview]);
+  }, [playing, total, playUntil, loopPreview]);
 
-  const handlePlay = () => {
+  /** 单键双态：播放中 → 停止（回初始状态）；未播放 → 播放/继续 */
+  const handleTogglePlay = () => {
     if (total <= 0) return;
+    if (playing) {
+      elapsedRef.current = 0;
+      setElapsedFrames(0);
+      setPhase("stopped");
+      return;
+    }
     if (phase === "stopped") {
+      // 从初始状态开始：一定从第 0 帧起（暂停后继续则接着走）
       elapsedRef.current = 0;
       setElapsedFrames(0);
     }
     setPhase("playing");
   };
+
   const handlePause = () => setPhase((current) => (current === "playing" ? "paused" : current));
-  const handleStop = () => {
-    elapsedRef.current = 0;
-    setElapsedFrames(0);
-    setPhase("stopped");
-  };
 
   /** 这一帧要显示第几张图、多透明 */
   const sample: SequenceSample = useMemo(() => {
     if (total <= 0) return { imageIndex: NO_FRAME, localFrame: NO_FRAME, alpha: 0 };
     if (phase === "stopped") {
-      // 静止 = 代表帧（与剧情编辑里的栅格预览同一口径）
+      // 静止 = 缩略图（与剧情编辑里的栅格预览同一口径）。
+      // poster.frame 是**图片序号**，posterSample 要的是**局部帧号**：每张停多帧时二者不等，
+      // 必须先换算，否则"缩略图换了、预览却没变"。
       return posterSample(
         holds,
-        poster.frame,
+        localFrameOfImage(holds, poster.frame),
         loopMode,
         playback.fadeInFrames,
         playback.fadeOutFrames,
@@ -403,7 +462,7 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
 
   const output = { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT };
 
-  /** 立绘矩形（世界）→ 脸框中心 → 头部边长 → 代表帧矩形（输出像素） */
+  /** 立绘矩形（世界）→ 脸框中心 → 头部边长 → 缩略图矩形（输出像素） */
   const geometry = useMemo(() => {
     if (!characterVisual || !portraitSize) return null;
     const rect = characterWorldRect(characterVisual, portraitSize);
@@ -429,9 +488,24 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
     return { out, headOut, headWorld: head, faceCenter };
   }, [characterVisual, portraitSize, clip.canvasWidth, clip.canvasHeight, poster, output.width, output.height]);
 
+  /** 舞台 = 视口里能放下的最大 16:9 矩形（px）。量不到时退回 CSS 兜底 */
+  const stageSize = useMemo(
+    () =>
+      fitStage(
+        { width: viewportSize.width, height: viewportSize.height },
+        { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT },
+      ),
+    [viewportSize.width, viewportSize.height],
+  );
+
   /** 当前要显示的帧图 */
-  const currentFrameIndex = sample.imageIndex === NO_FRAME ? 0 : sample.imageIndex;
-  const frameUrl = ApiService.getAnimationClipFrameUrl(clip.id, currentFrameIndex);
+  const frameIndex = sample.imageIndex === NO_FRAME ? 0 : sample.imageIndex;
+  const frameUrl = ApiService.getAnimationClipFrameUrl(clip.id, frameIndex);
+  /** 缩略图是第几张（图片序号；素材上存的就是图片序号） */
+  const posterIndex = Math.min(
+    Math.max(0, Math.round(poster.frame ?? 0)),
+    Math.max(0, holds.length - 1),
+  );
 
   /* ==================== 拖拽 / 缩放 ==================== */
 
@@ -474,7 +548,7 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
     setDragging(false);
   };
 
-  /** 滚轮缩放（以代表帧中心为基准；播放中禁用） */
+  /** 滚轮缩放（以缩略图中心为基准；播放中禁用） */
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     if (!geometry || !transformEnabled) return;
     event.preventDefault();
@@ -494,16 +568,22 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
 
   const canPreview = usableCharacters.length > 0 && backgrounds.length > 0;
   const visible = sample.imageIndex !== NO_FRAME && sample.alpha > 1e-4;
+  const shownFrame = Math.floor(Math.min(elapsedFrames, Math.max(0, total - 1))) + 1;
+  const frameReadout =
+    phase === "stopped"
+      ? `缩略图 第 ${posterIndex + 1} / ${Math.max(1, holds.length)} 张`
+      : `第 ${shownFrame} / ${total} 帧`;
 
   return (
     <div className="sprite-preview">
       <div className="sprite-preview-toolbar">
-        <label>
+        <label className="sprite-preview-field">
           角色
           <select
             value={characterId}
             onChange={(e) => setCharacterId(e.target.value)}
             aria-label="预览角色"
+            title={usableCharacters.find((item) => item.characterID === characterId)?.characterName}
           >
             {usableCharacters.length === 0 && <option value="">（还没有带立绘的角色）</option>}
             {usableCharacters.map((item) => (
@@ -513,12 +593,13 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
             ))}
           </select>
         </label>
-        <label>
+        <label className="sprite-preview-field">
           背景
           <select
             value={backgroundId}
             onChange={(e) => setBackgroundId(e.target.value)}
             aria-label="预览背景"
+            title={background?.name}
           >
             {backgrounds.length === 0 && <option value="">（还没有背景）</option>}
             {backgrounds.map((item) => (
@@ -535,7 +616,7 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
           type="button"
           onClick={() => onPosterChange({ ...poster, offsetX: 0, offsetY: 0 })}
           disabled={!transformEnabled}
-          title="把代表帧移回脸框中心"
+          title="把缩略图移回脸框中心"
         >
           居中
         </button>
@@ -549,88 +630,121 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
         </button>
       </div>
 
-      {/* 播放控制 */}
-      <div className="sprite-preview-transport">
-        <button type="button" onClick={handlePlay} disabled={phase === "playing" || total <= 0}>
-          ▶ 播放
+      {/* 播放控制：播放/停止合并成单键双态，暂停独立 */}
+      <div className="sprite-preview-transport" role="group" aria-label="播放控制">
+        <button
+          type="button"
+          className={`sprite-preview-play${playing ? " is-playing" : ""}`}
+          onClick={handleTogglePlay}
+          disabled={total <= 0}
+          aria-pressed={playing}
+          title={
+            playing
+              ? "停止播放并回到初始状态（显示缩略图）"
+              : "按每帧持续帧数与淡入淡出真实播放一遍"
+          }
+        >
+          {playing ? "⏹ 停止" : "▶ 播放"}
         </button>
-        <button type="button" onClick={handlePause} disabled={phase !== "playing"}>
+        <button
+          type="button"
+          onClick={handlePause}
+          disabled={!playing}
+          title="定在这一帧，方便对着某一帧调缩略图摆放"
+        >
           ⏸ 暂停
         </button>
-        <button type="button" onClick={handleStop} disabled={phase === "stopped"}>
-          ⏹ 停止
-        </button>
-        <label className="sprite-preview-loop">
+        <label
+          className="sprite-preview-loop"
+          title="勾选：播到末尾从头再播一遍；不勾：播到末尾自动停止并回到缩略图"
+        >
           <input
             type="checkbox"
             checked={loopPreview}
             onChange={(e) => setLoopPreview(e.target.checked)}
             aria-label="循环播放"
           />
-          循环播放
+          <span>循环播放</span>
         </label>
-        <span className="sprite-preview-frame">
-          {phase === "stopped"
-            ? `代表帧 第 ${(poster.frame ?? 0) + 1} / ${holds.length} 张`
-            : `第 ${Math.floor(Math.min(elapsedFrames, Math.max(0, total - 1))) + 1} / ${total} 帧`}
-          {phase === "playing" ? "（播放中：变换已锁定）" : ""}
+        {/* 帧号与"16:9"角标是一组：宽度不够时整组换行，角标不会被单独甩到下一行 */}
+        <span className="sprite-preview-readout">
+          <span className="sprite-preview-frame sprite-anim-ellipsis" title={frameReadout}>
+            {frameReadout}
+            {playing ? "（播放中：变换已锁定）" : ""}
+          </span>
+          <span className="sprite-preview-ratio" title="预览图固定 16:9，窗口缩放时只等比缩放、不变形">
+            16:9
+          </span>
         </span>
       </div>
 
-      <div
-        className="sprite-preview-stage"
-        ref={stageRef}
-        style={{ aspectRatio: `${PREVIEW_WIDTH} / ${PREVIEW_HEIGHT}` }}
-        onWheel={handleWheel}
-      >
-        {rasterUrl ? (
-          <img className="sprite-preview-raster" src={rasterUrl} alt="合成预览" draggable={false} />
-        ) : (
-          <div className="sprite-preview-placeholder">
-            {canPreview ? (rendering ? "渲染中…" : "预览不可用") : "需要一个带立绘的角色和一张背景"}
-          </div>
-        )}
+      {/* 视口：多余空间留白，舞台居中 */}
+      <div className="sprite-preview-viewport" ref={viewportRef}>
+        <div
+          className="sprite-preview-stage"
+          ref={stageRef}
+          style={
+            stageSize
+              ? { width: `${stageSize.width}px`, height: `${stageSize.height}px` }
+              : { width: "100%", aspectRatio: PREVIEW_ASPECT }
+          }
+          onWheel={handleWheel}
+        >
+          {rasterUrl ? (
+            <img className="sprite-preview-raster" src={rasterUrl} alt="合成预览" draggable={false} />
+          ) : (
+            <div className="sprite-preview-placeholder">
+              {canPreview ? (rendering ? "渲染中…" : "预览不可用") : "需要一个带立绘的角色和一张背景"}
+            </div>
+          )}
 
-        {geometry && visible && (
-          <div
-            className={`sprite-preview-handle${dragging ? " is-dragging" : ""}${
-              transformEnabled ? "" : " is-locked"
-            }`}
-            style={{ ...stageStyle(geometry.out), opacity: sample.alpha }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
-            title={
-              transformEnabled
-                ? "拖动移动；滚轮缩放（以中心为基准）"
-                : "播放中锁定变换，暂停或停止后可编辑"
-            }
-            role="presentation"
-          >
-            <img src={frameUrl} alt="序列帧" draggable={false} />
-            <span className="sprite-preview-handle-badge">
-              {phase === "stopped" ? "代表帧" : "序列帧"}
-            </span>
-          </div>
-        )}
+          {geometry && visible && (
+            <div
+              className={`sprite-preview-handle${dragging ? " is-dragging" : ""}${
+                transformEnabled ? "" : " is-locked"
+              }`}
+              style={{ ...stageStyle(geometry.out), opacity: sample.alpha }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              title={
+                transformEnabled
+                  ? "拖动移动；滚轮缩放（以中心为基准）"
+                  : "播放中锁定变换，暂停或停止后可编辑"
+              }
+              role="presentation"
+            >
+              <img src={frameUrl} alt="缩略图" draggable={false} />
+              <span className="sprite-preview-handle-badge">
+                {phase === "stopped" ? "缩略图" : "序列帧"}
+              </span>
+            </div>
+          )}
 
-        {rendering && rasterUrl && <div className="sprite-preview-chip">刷新中…</div>}
-        {bgError && (
-          <div className="sprite-preview-error" role="alert">
-            {bgError}
-          </div>
-        )}
-        {loadError && (
-          <div className="sprite-preview-error is-bottom" role="alert">
-            {loadError}
-          </div>
-        )}
+          {rendering && rasterUrl && <div className="sprite-preview-chip">刷新中…</div>}
+          {bgError && (
+            <div className="sprite-preview-error" role="alert">
+              {bgError}
+            </div>
+          )}
+          {loadError && (
+            <div className="sprite-preview-error is-bottom" role="alert">
+              {loadError}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="sprite-preview-hint">
-        拖动代表帧可平移，滚轮可缩放（<strong>以代表帧中心为基准</strong>）；播放中锁定、暂停/停止后可编辑。
+      {/* 说明：窗口窄/矮时由 CSS 掐成两行并省略（悬浮看全文），把高度让给画面 */}
+      <div
+        className="sprite-preview-hint"
+        title="拖动缩略图可平移、滚轮可缩放（以缩略图中心为基准），播放中锁定、暂停/停止后可编辑；位置与大小按“相对头部区域”保存，换角色也落在同一相对位置。播放到末尾：勾选「循环播放」会从头再播一遍，不勾则自动停止并回到缩略图（初始状态）。"
+      >
+        拖动缩略图可平移，滚轮可缩放（<strong>以缩略图中心为基准</strong>）；播放中锁定、暂停/停止后可编辑。
         位置与大小存成<strong>相对头部区域</strong>的偏移（头长的倍数）与缩放倍率，换个角色也落在同一个相对位置。
+        <br />
+        播放到末尾：勾选「循环播放」会从头再播一遍，不勾则<strong>自动停止并回到缩略图</strong>（初始状态）。
         当前：横向 {(poster.offsetX ?? 0).toFixed(2)} 个头宽、纵向 {(poster.offsetY ?? 0).toFixed(2)} 个头宽、
         缩放 {Math.round((poster.scale ?? 1) * 100)}%
         {geometry ? `（头部方框约 ${Math.round(geometry.headOut)}px）` : ""}。

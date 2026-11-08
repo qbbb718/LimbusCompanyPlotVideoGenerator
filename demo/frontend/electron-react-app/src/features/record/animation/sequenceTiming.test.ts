@@ -22,6 +22,7 @@ import {
   frameUrl,
   headSize,
   localFrame,
+  localFrameOfImage,
   posterSample,
   sampleSequence,
   spriteRect,
@@ -221,6 +222,37 @@ describe("代表帧（静止画面）采样", () => {
     const sample = posterSample([], 0, "once", 0, 0, 1);
     expect(sample.imageIndex).toBe(NO_FRAME);
     expect(sample.alpha).toBe(0);
+  });
+});
+
+describe("缩略图的图片序号 → 局部帧号", () => {
+  test("每张停多帧时，图片序号不能当局部帧用", () => {
+    const holds = [2, 3]; // 第 1 张占局部帧 0-1，第 2 张占 2-4
+    expect(localFrameOfImage(holds, 0)).toBe(0);
+    expect(localFrameOfImage(holds, 1)).toBe(2);
+    // 反例：直接把图片序号 1 当局部帧传进去，落回的还是第 1 张图
+    expect(frameIndexAt(holds, 1)).toBe(0);
+    expect(frameIndexAt(holds, localFrameOfImage(holds, 1))).toBe(1);
+  });
+
+  test("越界序号夹到首尾，不会指到不存在的帧", () => {
+    const holds = [1, 4, 2];
+    expect(localFrameOfImage(holds, -3)).toBe(0);
+    expect(localFrameOfImage(holds, 99)).toBe(5); // 最后一张的首帧局部帧号
+    expect(localFrameOfImage(holds, 99)).toBeLessThanOrEqual(totalFrames(holds) - 1);
+  });
+
+  test("空序列不给帧号", () => {
+    expect(localFrameOfImage([], 0)).toBe(NO_FRAME);
+    expect(localFrameOfImage(null, 0)).toBe(NO_FRAME);
+  });
+
+  test("与 posterSample 组合：挑第几张就画第几张（每张停多帧也成立）", () => {
+    const holds = [3, 1, 4];
+    for (let image = 0; image < holds.length; image += 1) {
+      const sample = posterSample(holds, localFrameOfImage(holds, image), "once", 0, 0, 1);
+      expect(sample.imageIndex).toBe(image);
+    }
   });
 });
 
