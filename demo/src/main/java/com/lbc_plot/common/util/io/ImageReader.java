@@ -221,7 +221,7 @@ public class ImageReader {
         if (raw == null || raw.isBlank()) {
             return candidates;
         }
-        String value = raw.trim().replace('\\', '/');
+        String value = stripUrlEnvelope(raw.trim().replace('\\', '/'));
         String normalized = stripAssetPrefixes(value);
 
         if (isRealFileSystemPath(value)) {
@@ -239,6 +239,45 @@ public class ImageReader {
         addIfAbsent(candidates, value);
         addIfAbsent(candidates, normalized);
         return candidates;
+    }
+
+    /**
+     * 剥掉绝对 URL 的"外壳"（scheme + host + port），只留 path。
+     *
+     * <h2>为什么必须有这一步</h2>
+     * 资源管理页会把后端返回的 {@code /assets/backgrounds/x.png} 补成
+     * {@code http://localhost:8081/assets/backgrounds/x.png} 以便放进 {@code <img src>}。
+     * 一旦这份被补过的路径被当成"记录里的素材路径"存下来（历史上确实发生过：
+     * 编辑背景后保存、以及前端把展示用的对象直接塞进合成预览的请求体），
+     * 渲染端就会拼出 {@code .../assets/backgrounds/http://localhost:8081/assets/backgrounds/x.png}
+     * 这种非法路径，**背景静默变成黑底**。
+     * 运行日志里表现为：
+     * {@code 背景图片未找到: http://localhost:8081/assets/... (尝试路径: ...\backgrounds\http:\localhost:8081\...)}。
+     *
+     * <p>规则与 {@code resource.service.AssetPathNormalizer#toAssetPath} 一致，
+     * 但**刻意不直接依赖它**：{@code common.utils} 是被整个项目共用的底层工具，
+     * 反过来依赖 {@code resource.service} 会形成循环的分层依赖。
+     * 改这里的前缀规则时，记得同步那个类（两者处理的是同一件事的两种入口：
+     * 这个管"读盘怎么找"，那个管"写库怎么存"）。
+     *
+     * @param value 已统一成正斜杠的原始路径
+     * @return 去掉 scheme://host:port 之后的路径；不是绝对 URL 时原样返回
+     */
+    private static String stripUrlEnvelope(String value) {
+        int schemeEnd = value.indexOf("://");
+        if (schemeEnd <= 0) {
+            return value;
+        }
+        // scheme 里不允许出现 '/'（否则是 "a/b://c" 这种非 URL 文本，别乱切）
+        if (value.substring(0, schemeEnd).indexOf('/') >= 0) {
+            return value;
+        }
+        int pathStart = value.indexOf('/', schemeEnd + 3);
+        if (pathStart < 0) {
+            return value;
+        }
+        String stripped = value.substring(pathStart);
+        return stripped.isEmpty() ? value : stripped;
     }
 
     /**

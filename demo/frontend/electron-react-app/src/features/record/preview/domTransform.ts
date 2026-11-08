@@ -87,14 +87,19 @@ export function spriteDomStyle(
  *
  * <h2>为什么需要它</h2>
  * 情绪动画等"子级"元素在 DOM 里是立绘的**兄弟节点**（都绝对定位在同一个场景层里），
- * 想让子级跟着父级一起旋转/缩放，就必须给子级套**同一个** transform 字符串。
+ * 想让子级跟着父级一起旋转/缩放，就必须让两者的旋转中心落在**同一个绝对点**上。
  * 但 `transform-origin` 是相对各自盒子计算的——如果子级直接抄父级的百分比，
  * 旋转中心就会变成子元素自己的对应位置，表现为"立绘在抖、汗滴绕着画面中心甩出去"。
  *
  * <p>正确做法：把父级锚点这个**绝对点 A** 分别换算到两个元素的盒子里，
  * 于是 `O + T(p − O)` 中的 `O` 都是同一个 A，两个兄弟节点等价于父子节点。
  *
- * @param parentRect 父元素矩形（与子元素同一坐标系）
+ * <h2>⚠ 光有 origin 还不够</h2>
+ * `translate` 的**百分比基准是元素自己的盒子**，所以子级**不能**直接复用父级的 transform 字符串
+ * （那样位移量会按比例缩放）。位移百分比必须按子元素自己的宽高换算——
+ * 用 {@link childSpriteDomStyle} 一次性生成，别手工拼。
+ *
+ * @param parentRect 父元素矩形（与子元素同一坐标系；世界坐标即可，比例会自动抵消）
  * @param anchor     父元素锚点（0~1）
  * @param childRect  子元素矩形（同一坐标系）
  * @returns 子元素盒子里的百分比原点（允许 &lt;0 或 &gt;1，CSS 支持）
@@ -113,6 +118,49 @@ export function sharedTransformOrigin(
     x: (anchorX - childRect.x) / childRect.w,
     y: (anchorY - childRect.y) / childRect.h,
   };
+}
+
+/**
+ * 子级元素（情绪动画序列帧）的动画样式：与父级**同一个绝对变换**，原点落在父级的锚点上。
+ *
+ * <p>与 {@link spriteDomStyle} 的唯一差别是位移百分比的基准：这里用**子元素自己的**宽高。
+ * 数学上要的是"子级像素点 p 变成 `A + t + R·S·(p − A)`"，与后端
+ * {@code RenderOfImage.renderEmotionAnim} 组装的那个矩阵严格一致。
+ *
+ * @param transform  父级的动画变换（同一帧）
+ * @param childRect  子元素自身的世界矩形（只用到 w/h）
+ * @param origin     共同原点（子元素盒子里的百分比，由 {@link sharedTransformOrigin} 算出）
+ * @param extraAlpha 子元素自带的不透明度（序列帧的淡入淡出），会与父级 alpha 相乘
+ */
+export function childSpriteDomStyle(
+  transform: TransformState | null | undefined,
+  childRect: SizeLike,
+  origin: { x: number; y: number },
+  extraAlpha = 1,
+): SpriteDomStyle | null {
+  if (childRect.w <= 0 || childRect.h <= 0) {
+    return null;
+  }
+  const precision = (value: number): number => Math.round(value * 10000) / 10000;
+  const combinedAlpha = clamp01((transform?.alpha ?? 1) * (Number.isFinite(extraAlpha) ? extraAlpha : 1));
+
+  // 完全没有父级变换、子级也不透明 → 不需要任何 style（DOM 与栅格图逐像素一致）
+  if ((!transform || isIdentityTransform(transform)) && Math.abs(combinedAlpha - 1) <= 1e-4) {
+    return null;
+  }
+
+  const style: SpriteDomStyle = {
+    transform:
+      `translate(${precision(((transform?.x ?? 0) / childRect.w) * 100)}%, ` +
+      `${precision(((transform?.y ?? 0) / childRect.h) * 100)}%) ` +
+      `rotate(${precision(transform?.rotate ?? 0)}deg) ` +
+      `scale(${precision(transform?.scale ?? 1)})`,
+    transformOrigin: `${precision(origin.x * 100)}% ${precision(origin.y * 100)}%`,
+  };
+  if (Math.abs(combinedAlpha - 1) > 1e-4) {
+    style.opacity = Math.round(combinedAlpha * 1000) / 1000;
+  }
+  return style;
 }
 
 function clamp01(value: number): number {

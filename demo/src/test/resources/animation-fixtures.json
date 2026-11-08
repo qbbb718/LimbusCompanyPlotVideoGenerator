@@ -1575,5 +1575,887 @@
         }
       ]
     }
-  ]
+  ],
+  "sequenceTiming": [
+    {
+      "name": "once/holds[3,1,2]/f0",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "once/holds[3,1,2]/f2",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 2,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 2,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "once/holds[3,1,2]/f3",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 3,
+      "expect": {
+        "imageIndex": 1,
+        "localFrame": 3,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "once/holds[3,1,2]/f5",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 5,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "once/holds[3,1,2]/f6-ended",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 6,
+      "expect": {
+        "imageIndex": -1,
+        "localFrame": -1,
+        "alpha": 0
+      }
+    },
+    {
+      "name": "loop/holds[3,1,2]/f6-wrap",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "loop",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 6,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "loop/holds[3,1,2]/f8",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "loop",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 8,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 2,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "loop/holds[3,1,2]/f9",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "loop",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 9,
+      "expect": {
+        "imageIndex": 1,
+        "localFrame": 3,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "loop/holds[3,1,2]/f17",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "loop",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 17,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "hold/holds[3,1,2]/f100",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "hold",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 100,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "pingpong/f0",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "pingpong/f5",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 5,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "pingpong/f6-turn",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 6,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "pingpong/f7",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 7,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "pingpong/f11",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 11,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 1,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "pingpong/f12-wrap",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 12,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "startFrame/f9-before",
+      "frameHolds": [
+        1,
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 10,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 9,
+      "expect": {
+        "imageIndex": -1,
+        "localFrame": -1,
+        "alpha": 0
+      }
+    },
+    {
+      "name": "startFrame/f10-start",
+      "frameHolds": [
+        1,
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 10,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 10,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "startFrame/f11",
+      "frameHolds": [
+        1,
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 10,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 11,
+      "expect": {
+        "imageIndex": 1,
+        "localFrame": 1,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "startFrame/f12-ended",
+      "frameHolds": [
+        1,
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 10,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 12,
+      "expect": {
+        "imageIndex": -1,
+        "localFrame": -1,
+        "alpha": 0
+      }
+    },
+    {
+      "name": "iterations=2/f11",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "loop",
+      "iterations": 2,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 11,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "iterations=2/f12-ended",
+      "frameHolds": [
+        3,
+        1,
+        2
+      ],
+      "loop": "loop",
+      "iterations": 2,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 12,
+      "expect": {
+        "imageIndex": -1,
+        "localFrame": -1,
+        "alpha": 0
+      }
+    },
+    {
+      "name": "fadeIn=3/f0",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 3,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 0
+      }
+    },
+    {
+      "name": "fadeIn=3/f1",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 3,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 1,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 1,
+        "alpha": 0.333333
+      }
+    },
+    {
+      "name": "fadeIn=3/f3",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 3,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 3,
+      "expect": {
+        "imageIndex": 1,
+        "localFrame": 3,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "fadeOut=4/f5-last",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 4,
+      "opacity": 1,
+      "frame": 5,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 5,
+        "alpha": 0
+      }
+    },
+    {
+      "name": "fadeOut=4/f4",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 4,
+      "opacity": 1,
+      "frame": 4,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 4,
+        "alpha": 0.25
+      }
+    },
+    {
+      "name": "fadeOut=4/f3",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 4,
+      "opacity": 1,
+      "frame": 3,
+      "expect": {
+        "imageIndex": 1,
+        "localFrame": 3,
+        "alpha": 0.5
+      }
+    },
+    {
+      "name": "fadeOut=4/f1",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 4,
+      "opacity": 1,
+      "frame": 1,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 1,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "loop-ignores-fadeOut/f4",
+      "frameHolds": [
+        2,
+        2,
+        2
+      ],
+      "loop": "loop",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 4,
+      "opacity": 1,
+      "frame": 4,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 4,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "opacity=0.5/single-frame",
+      "frameHolds": [
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 0.5,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 0.5
+      }
+    },
+    {
+      "name": "opacity-clamp-1/single-frame",
+      "frameHolds": [
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 2,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "single-frame-ignores-fades",
+      "frameHolds": [
+        1
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 3,
+      "fadeOutFrames": 3,
+      "opacity": 1,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "degenerate-holds/f0",
+      "frameHolds": [
+        0,
+        -1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 0,
+      "expect": {
+        "imageIndex": 0,
+        "localFrame": 0,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "degenerate-holds/f1",
+      "frameHolds": [
+        0,
+        -1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 1,
+      "expect": {
+        "imageIndex": 1,
+        "localFrame": 1,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "degenerate-holds/f3",
+      "frameHolds": [
+        0,
+        -1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 3,
+      "expect": {
+        "imageIndex": 2,
+        "localFrame": 3,
+        "alpha": 1
+      }
+    },
+    {
+      "name": "degenerate-holds/f4-ended",
+      "frameHolds": [
+        0,
+        -1,
+        2
+      ],
+      "loop": "once",
+      "iterations": null,
+      "startFrame": 0,
+      "fadeInFrames": 0,
+      "fadeOutFrames": 0,
+      "opacity": 1,
+      "frame": 4,
+      "expect": {
+        "imageIndex": -1,
+        "localFrame": -1,
+        "alpha": 0
+      }
+    }
+  ],
+  "emotionPlacement": {
+    "headSize": [
+      {
+        "name": "len=183/scale=1",
+        "length": 183,
+        "renderScale": 1,
+        "expect": 183
+      },
+      {
+        "name": "len=366/scale=0.5(裁剪框被归一化)",
+        "length": 366,
+        "renderScale": 0.5,
+        "expect": 183
+      },
+      {
+        "name": "len=200/scale=2(用户放大2倍)",
+        "length": 200,
+        "renderScale": 2,
+        "expect": 400
+      },
+      {
+        "name": "len=0/scale=NaN(非法值兜底)",
+        "length": 0,
+        "renderScale": null,
+        "expect": 1
+      }
+    ],
+    "faceOffset": [
+      {
+        "name": "faceX=100/len=183/scale=1",
+        "face": 100,
+        "length": 183,
+        "renderScale": 1,
+        "expect": 191.5
+      },
+      {
+        "name": "faceX=0/len=366/scale=0.5",
+        "face": 0,
+        "length": 366,
+        "renderScale": 0.5,
+        "expect": 91.5
+      },
+      {
+        "name": "faceX=100/len=183/userScale=2",
+        "face": 100,
+        "length": 183,
+        "renderScale": 2,
+        "expect": 383
+      },
+      {
+        "name": "faceY=40/len=200/scale=0.915",
+        "face": 40,
+        "length": 200,
+        "renderScale": 0.915,
+        "expect": 128.1
+      }
+    ],
+    "spriteRect": [
+      {
+        "name": "center/600x600/scale=1/offset=0",
+        "faceCenterX": 960,
+        "faceCenterY": 540,
+        "headSize": 183,
+        "canvasWidth": 600,
+        "canvasHeight": 600,
+        "scale": 1,
+        "userScale": 1,
+        "offsetX": 0,
+        "offsetY": 0,
+        "expect": {
+          "x": 660,
+          "y": 240,
+          "w": 600,
+          "h": 600
+        }
+      },
+      {
+        "name": "offset=0.25头右/0.15头上",
+        "faceCenterX": 960,
+        "faceCenterY": 540,
+        "headSize": 200,
+        "canvasWidth": 600,
+        "canvasHeight": 600,
+        "scale": 1,
+        "userScale": 1,
+        "offsetX": 0.25,
+        "offsetY": -0.15,
+        "expect": {
+          "x": 710,
+          "y": 210,
+          "w": 600,
+          "h": 600
+        }
+      },
+      {
+        "name": "offset同前+素材缩放0.5",
+        "faceCenterX": 960,
+        "faceCenterY": 540,
+        "headSize": 200,
+        "canvasWidth": 600,
+        "canvasHeight": 600,
+        "scale": 0.5,
+        "userScale": 1,
+        "offsetX": 0.25,
+        "offsetY": -0.15,
+        "expect": {
+          "x": 860,
+          "y": 360,
+          "w": 300,
+          "h": 300
+        }
+      },
+      {
+        "name": "userScale=2/头也放大2倍(偏移跟着放大)",
+        "faceCenterX": 960,
+        "faceCenterY": 540,
+        "headSize": 366,
+        "canvasWidth": 600,
+        "canvasHeight": 600,
+        "scale": 1,
+        "userScale": 2,
+        "offsetX": 0.25,
+        "offsetY": 0,
+        "expect": {
+          "x": 451.5,
+          "y": -60,
+          "w": 1200,
+          "h": 1200
+        }
+      },
+      {
+        "name": "non-square-canvas",
+        "faceCenterX": 960,
+        "faceCenterY": 221,
+        "headSize": 183,
+        "canvasWidth": 400,
+        "canvasHeight": 200,
+        "scale": 1.5,
+        "userScale": 1,
+        "offsetX": 0,
+        "offsetY": 0,
+        "expect": {
+          "x": 660,
+          "y": 71,
+          "w": 600,
+          "h": 300
+        }
+      }
+    ]
+  }
 }

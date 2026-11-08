@@ -1153,6 +1153,46 @@ ipcMain.handle("dialog:saveProjectFile", async (event, defaultPath, data) => {
   }
 });
 
+// 情绪动画（序列帧）素材：选一个动画文件导入（.lcaf 本质是 zip）
+ipcMain.handle("dialog:openAnimationClip", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: "导入动画文件",
+    buttonLabel: "导入",
+    properties: ["openFile"],
+    filters: [
+      { name: "动画文件 (lcaf / zip)", extensions: ["lcaf", "zip"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+  if (canceled || !filePaths || filePaths.length === 0) {
+    return { canceled: true };
+  }
+  return { canceled: false, filePath: filePaths[0], filePaths };
+});
+
+/**
+ * 只选一个"保存到哪里"，不写文件。
+ *
+ * <p>情绪动画导出是**后端**直接写盘（与视频导出同一个模式：不把几十 MB 字节流搬过 IPC），
+ * 所以这里只需要把用户选的绝对路径交给后端，不能顺手写一个空文件占位。
+ */
+ipcMain.handle("dialog:chooseSavePath", async (event, options) => {
+  const opts = options && typeof options === "object" ? options : {};
+  const filters = Array.isArray(opts.filters) && opts.filters.length > 0
+    ? opts.filters
+    : [{ name: "All Files", extensions: ["*"] }];
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: opts.title || "保存",
+    buttonLabel: opts.buttonLabel || "保存",
+    defaultPath: opts.defaultPath,
+    filters,
+  });
+  if (canceled || !filePath) {
+    return { canceled: true };
+  }
+  return { canceled: false, filePath };
+});
+
 // 通知
 ipcMain.handle("notification:show", (event, title, body) => {
   if (Notification.isSupported()) {
@@ -1193,6 +1233,39 @@ ipcMain.handle("file:read", async (event, filePath) => {
 // 由后端按 config 保存到 {characters}/{characterId}/thumbnails/ 下，路径集中管理。
 
 // 目录选择对话框
+// 情绪动画（序列帧）素材：选一个文件夹，把里面的图片全部导入。
+// 只取**这一层**的图片、不递归：AE 导出的 PNG 序列就在一个平层目录里，
+// 递归反而会把用户顺手放进去的其它素材一起吞掉。
+ipcMain.handle("dialog:openImageFolder", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: "选择序列帧文件夹",
+    buttonLabel: "导入",
+    properties: ["openDirectory"],
+  });
+  if (canceled || !filePaths || filePaths.length === 0) {
+    return { canceled: true };
+  }
+  const dir = filePaths[0];
+  const extensions = [".png", ".jpg", ".jpeg", ".webp", ".bmp"];
+  let entries = [];
+  try {
+    entries = fs
+      .readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((name) => extensions.includes(path.extname(name).toLowerCase()));
+  } catch (error) {
+    console.error("读取序列帧文件夹失败:", error);
+    return { canceled: false, error: String((error && error.message) || error), filePaths: [] };
+  }
+  if (entries.length === 0) {
+    return { canceled: false, error: "这个文件夹里没有图片（PNG/JPG）", filePaths: [] };
+  }
+  // 顺序交给后端按文件名自然排序（frame_9 在 frame_10 之前），这里只做稳定排序便于日志阅读
+  entries.sort();
+  return { canceled: false, dir, filePaths: entries.map((name) => path.join(dir, name)) };
+});
+
 ipcMain.handle("dialog:selectDirectory", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ["openDirectory"],

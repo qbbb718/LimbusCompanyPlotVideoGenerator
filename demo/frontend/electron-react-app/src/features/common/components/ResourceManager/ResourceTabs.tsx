@@ -1,9 +1,12 @@
 import React from "react";
 import "./ResourceManager.css";
 
+/** 资源管理的子页面；新增子页面时**只改这里**（联合类型 + 一个按钮） */
+export type ResourceTabKey = "characters" | "backgrounds" | "audios" | "animation-clips";
+
 interface ResourceTabsProps {
-  activeTab: "characters" | "backgrounds" | "audios";
-  setActiveTab: (tab: "characters" | "backgrounds" | "audios") => void;
+  activeTab: ResourceTabKey;
+  setActiveTab: (tab: ResourceTabKey) => void;
 }
 
 const ResourceTabs: React.FC<ResourceTabsProps> = ({
@@ -29,6 +32,13 @@ const ResourceTabs: React.FC<ResourceTabsProps> = ({
         onClick={() => setActiveTab("audios")}
       >
         音效
+      </button>
+      <button
+        className={activeTab === "animation-clips" ? "active" : ""}
+        onClick={() => setActiveTab("animation-clips")}
+        title="序列帧动画：导入帧序列、摆好代表帧，供剧情编辑里的立绘选用"
+      >
+        序列帧动画
       </button>
     </div>
   );

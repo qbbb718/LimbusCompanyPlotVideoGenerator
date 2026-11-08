@@ -541,6 +541,142 @@ resources_<时间戳>.zip
 
 ---
 
+## 10. 情绪动画素材 (Animation Clips)
+
+情绪动画（序列帧）的素材库。一套素材 = 磁盘上 `{dataRoot}/assets/animation-clips/<id>/`
+下的 `clip.json` + `frames/0001.png …`，**可跨记录复用**（多条记录的立绘都能引用同一个 id）。
+
+记录里只存**引用 + 时序快照**（`CharacterVisual.emotionAnim`），帧图按 id 从这里取；
+素材被删除时渲染只是"不画"，不会让工程打不开。
+
+### 列出全部素材
+- **URL**: `GET /animation-clips`
+- **响应**: 素材数组（按创建时间倒序）
+```json
+[
+  {
+    "id": "flow_a1b2c3d4",
+    "name": "花开",
+    "canvasWidth": 600,
+    "canvasHeight": 600,
+    "fps": 30,
+    "frameCount": 3,
+    "totalFrames": 6,
+    "frameHolds": [3, 1, 2],
+    "createdAt": 1731000000000,
+    "frameBaseUrl": "/assets/animation-clips/flow_a1b2c3d4/frames/",
+    "coverUrl": "/assets/animation-clips/flow_a1b2c3d4/frames/0001.png",
+    "framesOnDisk": 3,
+    "missingFrames": false
+  }
+]
+```
+- `frameCount` 是**图有几张**，`totalFrames` 是**一轮播完多少帧**（Σ `frameHolds`）
+- `framesOnDisk` 是磁盘上真实存在的张数；`missingFrames: true` 表示素材被人删了一部分
+
+### 获取单个素材
+- **URL**: `GET /animation-clips/{id}`
+- **响应**: 同上单个对象；不存在返回 `404`
+
+### 从图片序列导入
+- **URL**: `POST /animation-clips/import`
+- **请求**: `multipart/form-data`
+  - `files`：图片（字段名可重复，PNG/JPG 等；顺序由后端按**文件名自然排序**决定）
+  - `name`：（可选）素材名；不传则从文件名推导
+  - `inferHolds`：（可选，缺省 `true`）是否**按文件名编号自动推算每帧持续帧数**
+  - `maxGapFrames`：（可选，缺省 `60`）单张时长上限（帧），超过会被截断并提示
+- **响应**:
+```json
+{ "asset": { "...": "同上" }, "warnings": ["各帧尺寸不一致，已统一居中贴到 1920×1080 的透明画布上"] }
+```
+- **约束**: 帧数 ≤ 240、单边 ≤ 2048、总时长（Σ `frameHolds`）≤ 900 帧；不满足返回 `400` 并给出中文原因
+- 帧图一律**重编码成 PNG** 并居中贴到公共画布；导入要么整套成功，要么什么也不留下（临时目录 + 原子改名）
+
+#### 按文件名编号推算时长（`inferHolds`）
+同一批文件名共享相同的前后缀模板（只编号不同）、编号可解析为整数且**严格递增**时启用：
+
+```
+xxx_1.png  时长 = 2-1 = 1
+xxx_2.png  时长 = 3-2 = 1
+xxx_3.png  时长 = 7-3 = 4
+xxx_7.png  时长 = 9-7 = 2
+xxx_9.png  时长 = 默认（1 帧，最后一张没有后继编号）
+```
+
+| 情况 | 行为 | 是否给 warning |
+|---|---|---|
+| 正常推算 | 用差值；最后一张用默认 1 帧 | ✅ 说明"已按编号推算 + 最后一张按默认" |
+| 没有编号 / 单张图 | 不推算，每张 1 帧 | ❌（正常情况，不打扰） |
+| 重复编号 / 编号逆序 | 不推算，每张 1 帧 | ✅ |
+| 前缀不一致（不属于同一序列） | 不推算，每张 1 帧 | ✅ |
+| 差值 > `maxGapFrames` | 截断到上限 | ✅ |
+| 推算总时长 > 900 帧 | 整体回落每张 1 帧 | ✅ |
+
+> 任何异常都**不会阻断导入**，最坏结果就是回到"每张 1 帧"。
+> 推算值落在 `frameHolds` 里，导入后仍可用 `PUT /animation-clips/{id}` 逐张改。
+
+### 从压缩包导入
+- **URL**: `POST /animation-clips/import-zip`
+- **请求**: `multipart/form-data`，字段 `file`（`.lcaf` 或图片序列 zip），可选 `name` / `inferHolds` / `maxGapFrames`
+- **说明**: 包里有 `clip.json` 时，其中的 `frameHolds` / `name` 会被还原（导出再导入完全等价），
+  **不再按文件名推算**；包里没带时序（普通图片序列 zip）时才按上面的规则推算
+
+### 改名 / 改每帧持续帧数 / 改播放参数与代表帧摆放
+- **URL**: `PUT /animation-clips/{id}`
+- **请求体**（只传要改的字段，未出现的保持原样）:
+```json
+{
+  "name": "花开-长版",
+  "frameHolds": [5, 1, 2],
+  "loop": "hold",
+  "iterations": 0,
+  "startFrame": 0,
+  "fadeInFrames": 3,
+  "fadeOutFrames": 0,
+  "opacity": 0.9,
+  "poster": { "frame": 1, "offsetX": 0.2, "offsetY": -0.3, "scale": 0.5 }
+}
+```
+- **响应**: 更新后的素材对象
+- **`poster` 的单位**: `offsetX` / `offsetY` 是**相对头部区域**的偏移，单位 = 头部长度
+  （`1.0` = 一个头宽；`-0.3` = 脸框中心往上 0.3 个头宽），`scale` 是缩放倍率（1 = 素材原始像素）。
+  头部方框跨角色恒为 `183 × 用户缩放` 场景像素，所以同一份配置换任何角色都落在相同的相对位置。
+  序号/偏移/缩放都会被服务端夹到合法范围。
+- **说明**: `frameHolds` 的个数必须等于帧数，否则 `400`；这些配置的**编辑入口在
+  「资源管理 → 序列帧动画」**（剧情编辑页只选素材、不编辑）。改名/改配置**不会**同步到已引用它的记录
+  （记录存的是内联快照，改素材不该让老工程画面变样），需要同步由用户在立绘面板上点「从素材同步」
+
+### 删除素材
+- **URL**: `DELETE /animation-clips/{id}`
+- **响应**: `{ "success": true }`
+- **说明**: 删整个目录。**不动任何记录**：引用它的立绘下次渲染时找不到帧就不画，工程文件不会因此打不开
+
+### 导出动画文件
+- **URL**: `POST /animation-clips/{id}/export`
+- **请求体**:
+```json
+{ "targetPath": "D:/share/花开.lcaf" }
+```
+- **响应**: `{ "success": true, "filePath": "...", "frameCount": 3, "bytes": 164459 }`
+- **说明**: 由**后端直接写盘**（与视频导出同一模式，不把几十 MB 字节流搬过 IPC）；
+  前端只负责先弹系统保存框拿到路径。目标目录不存在返回 `400`
+
+### 动画文件结构（`.lcaf`）
+```
+花开.lcaf                 (本质是 zip，可以直接用资源管理器打开)
+├─ clip.json              元数据：name / canvasWidth / canvasHeight / frameHolds / fps
+└─ frames/
+   ├─ 0001.png            第 0 张（文件名从 1 开始补零到 4 位）
+   └─ 0002.png
+```
+
+### 取帧图
+- **URL**: `GET /assets/animation-clips/{id}/frames/{n}.png`
+- **说明**: 走已有的 `/assets/**` 静态映射，无需新代码；`n` 从 `0001` 开始，缓存 1 小时。
+  重新导入会生成**新 id**，因此不会出现"编辑器还在播上一版帧图"
+
+---
+
 ## 通用响应格式
 
 ### 成功响应

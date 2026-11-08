@@ -828,6 +828,145 @@ class ApiService {
     }
   }
 
+  // ===== 情绪动画（序列帧）素材库 =====
+
+  /**
+   * 素材列表（按创建时间倒序）。
+   *
+   * <p>素材是跨记录复用的：多条记录的立绘可以引用同一套帧序列。
+   */
+  async listAnimationClips(): Promise<any[]> {
+    try {
+      const response = await apiClient.get('/animation-clips');
+      return response.data ?? [];
+    } catch (error) {
+      // 列表拿不到不该让编辑器打不开：界面上退化成"没有素材"即可
+      console.warn('[ApiService] 获取动画素材列表失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 从一批图片导入（多选 / 文件夹里全选都走这里）。
+   *
+   * <p>顺序由后端按文件名**自然排序**决定（`frame_9` 在 `frame_10` 前面），
+   * 前端不需要自己排——两边各排一次只会多一处可能不一致的地方。
+   *
+   * @param options.inferHolds   是否按文件名编号自动推算每帧持续帧数（缺省 true）
+   * @param options.maxGapFrames 单张时长上限（帧），超过会被截断并提示
+   */
+  async importAnimationClips(
+    files: File[],
+    name?: string,
+    options: { inferHolds?: boolean; maxGapFrames?: number } = {},
+  ): Promise<{ asset: any; warnings: string[] }> {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      if (name && name.trim()) formData.append('name', name.trim());
+      // 开关与上限都要显式发：后端默认开，但用户关掉时必须传 false（缺省不能靠后端猜）
+      formData.append('inferHolds', options.inferHolds === false ? 'false' : 'true');
+      if (typeof options.maxGapFrames === 'number' && Number.isFinite(options.maxGapFrames)) {
+        formData.append('maxGapFrames', String(Math.round(options.maxGapFrames)));
+      }
+      const response = await apiClient.post('/animation-clips/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      console.log('[ApiService] 动画素材导入成功:', response.data?.asset?.id);
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 导入动画素材失败:', error);
+      throw error;
+    }
+  }
+
+  /** 从一个 zip（图片序列 zip 或本功能导出的 .lcaf）导入 */
+  async importAnimationClipZip(
+    file: File,
+    name?: string,
+    options: { inferHolds?: boolean; maxGapFrames?: number } = {},
+  ): Promise<{ asset: any; warnings: string[] }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (name && name.trim()) formData.append('name', name.trim());
+      formData.append('inferHolds', options.inferHolds === false ? 'false' : 'true');
+      if (typeof options.maxGapFrames === 'number' && Number.isFinite(options.maxGapFrames)) {
+        formData.append('maxGapFrames', String(Math.round(options.maxGapFrames)));
+      }
+      const response = await apiClient.post('/animation-clips/import-zip', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 导入动画压缩包失败:', error);
+      throw error;
+    }
+  }
+
+  /** 改名 / 改每帧持续帧数（只传要改的字段） */
+  async updateAnimationClip(
+    id: string,
+    patch: { name?: string; frameHolds?: number[] },
+  ): Promise<any> {
+    try {
+      const response = await apiClient.put(
+        `/animation-clips/${encodeURIComponent(id)}`,
+        patch,
+      );
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 更新动画素材失败:', error);
+      throw error;
+    }
+  }
+
+  /** 删除素材（不动任何记录；引用它的立绘只是"找不到帧，不画"） */
+  async deleteAnimationClip(id: string): Promise<{ success: boolean }> {
+    try {
+      const response = await apiClient.delete(`/animation-clips/${encodeURIComponent(id)}`);
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 删除动画素材失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 导出动画文件（`.lcaf`，本质是 zip）。
+   *
+   * <p>前端先弹系统保存框拿到绝对路径，再由后端直接写盘
+   * ——与视频导出同一个模式，不把几十 MB 字节流来回搬过 IPC。
+   */
+  async exportAnimationClip(
+    id: string,
+    targetPath: string,
+  ): Promise<{ success: boolean; filePath: string; frameCount: number; bytes: number }> {
+    try {
+      const response = await apiClient.post(
+        `/animation-clips/${encodeURIComponent(id)}/export`,
+        { targetPath },
+      );
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 导出动画素材失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 第 index 张帧图（0 起）的可直接用于 `<img src>` 的绝对地址。
+   *
+   * <p>文件名从 1 开始补零到 4 位，与后端 `AnimationClipStore.frameFile` 一致。
+   */
+  getAnimationClipFrameUrl(clipId: string, index: number): string {
+    if (!clipId) return '';
+    const fileNumber = Math.max(0, Math.floor(index)) + 1;
+    return `${BASE_URL}/assets/animation-clips/${encodeURIComponent(
+      clipId,
+    )}/frames/${String(fileNumber).padStart(4, '0')}.png`;
+  }
+
   // 删除背景（默认连同磁盘文件一起删除）
   async deleteBackground(id: string, deleteFiles: boolean = true) {
     try {

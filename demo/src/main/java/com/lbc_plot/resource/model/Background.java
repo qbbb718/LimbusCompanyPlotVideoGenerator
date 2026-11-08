@@ -77,6 +77,12 @@ public class Background {
      */
     private void loadImage() {
         try {
+            // 数据里有"绝对 URL"形式的路径时（前端把展示用的地址存回了记录/库），
+            // 解析会失败并静默变成黑底。这里先告警，让日志能直接指到账。
+            if (path != null && path.contains("://")) {
+                logger.warn("背景路径里存了绝对 URL（应为 /assets/... 站内路径），已按站内路径解析；"
+                        + "建议在资源管理→背景里重新保存一次以修正数据: {}", path);
+            }
             // 磁盘上已经是完整绝对路径（数据库里既有绝对路径，也有 /assets/xxx URL 形式，
             // 还有历史遗留的裸文件名）时直接读盘，其余交给 readBackGround 按候选路径解析。
             File resolved = ImageReader.resolveBackgroundFile(path);

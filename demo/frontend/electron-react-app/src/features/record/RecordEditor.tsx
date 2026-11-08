@@ -75,12 +75,20 @@ interface RecordEditorProps {
    * 详见 useProjectWorkspace.ts。
    */
   workspace: ProjectWorkspace;
+  /**
+   * 跳转到「资源管理 → 序列帧动画」。
+   *
+   * <p>序列帧动画的**制作**（导入帧序列、每帧时长、代表帧摆放）收口在资源管理，
+   * 剧情编辑页只保留"选哪一段 + 一键跳过去"。不传则不显示跳转按钮（测试里常见）。
+   */
+  onOpenAnimationLibrary?: () => void;
 }
 
 const RecordEditor: React.FC<RecordEditorProps> = ({
   projectSettings,
   setProjectSettings,
   workspace,
+  onOpenAnimationLibrary,
 }) => {
   const {
     records,
@@ -937,6 +945,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             previewFrame={previewFrame}
             onSeekFrame={handleSeekPreview}
             lineFrames={lineFrames}
+            // 情绪动画的制作入口在资源管理，这里只给一个跳转
+            onOpenAnimationLibrary={onOpenAnimationLibrary}
           />
         );
       case "tempImages":

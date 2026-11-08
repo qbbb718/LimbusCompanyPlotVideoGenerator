@@ -1,4 +1,4 @@
-import type { SpriteAnimation } from "../../record/animation/animationTypes";
+import type { EmotionAnim, SpriteAnimation } from "../../record/animation/animationTypes";
 
 // 对话对齐方式
 export enum DialogueAlign {
@@ -226,6 +226,14 @@ export interface CharacterVisual {
    * 不会覆盖 posX/posY，也不会覆盖用户缩放。
    */
   anim?: SpriteAnimation;
+  /**
+   * 情绪动画（序列帧）。缺省/`null` = 没有，渲染走原路径、逐像素不变。
+   *
+   * <p>它是立绘的**子级**：以脸框中心为锚点，跟着立绘一起位移/旋转/缩放。
+   * 时序（每张图占几帧）随记录内联保存，只有像素按 `clipId` 去
+   * `assets/animation-clips/<id>/frames/` 取。
+   */
+  emotionAnim?: EmotionAnim;
 }
 
 // 临时图片视觉元素（NPC、道具等）

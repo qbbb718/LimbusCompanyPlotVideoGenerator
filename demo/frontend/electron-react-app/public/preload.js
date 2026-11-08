@@ -37,6 +37,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readFile: (filePath) => ipcRenderer.invoke("file:read", filePath),
   selectDirectory: () => ipcRenderer.invoke("dialog:selectDirectory"),
 
+  // 情绪动画（序列帧）：导入动画文件 / 只选保存路径（由后端写盘）
+  openAnimationClip: () => ipcRenderer.invoke("dialog:openAnimationClip"),
+  chooseSavePath: (options) => ipcRenderer.invoke("dialog:chooseSavePath", options),
+  // 情绪动画：选一个文件夹，把里面的图片全部导入
+  openImageFolder: () => ipcRenderer.invoke("dialog:openImageFolder"),
+
   // 保存工程：更新已关联的工程文件（Ctrl+S，不弹对话框）
   writeFile: (filePath, data) =>
     ipcRenderer.invoke("file:write", filePath, data),

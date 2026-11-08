@@ -86,9 +86,12 @@ public class RecordController {
      * <p>v10：四周的黑色渐变遮罩改成按原作帧反解出来的宽暗角
      * （见 {@code RenderOfImage.buildBorderMask}），画面边缘明显变柔和，旧缓存作废。
      *
+     * <p>v12：情绪动画（序列帧）会画进预览图，且缓存键新增「情绪动画签名」一段；
+     * 文件名形状变了，旧缓存自然不再命中，这里顺手把版本也 +1 以示区分。
+     *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v11";
+    private static final String PREVIEW_CACHE_VERSION = "v12";
 
     /**
      * 同时渲染的预览图上限。
@@ -413,7 +416,10 @@ public class RecordController {
         try {
             // 缓存键必须带上 plot：同一 uuid/分辨率下，剧情模式与人格故事的画面并不相同，
             // 只按 uuid+分辨率缓存会让切换剧情类型后的预览图一直显示旧样式。
-            String cacheFileName = previewCacheFileName(record.getUuid(), width, height, plot);
+            // 也必须带上情绪动画签名：动画是"贴上去的第二层"，改了素材/偏移/代表帧时
+            // 记录里其它字段可能一个都没变，只按 uuid 缓存的话预览图会一直显示旧动画。
+            String cacheFileName = previewCacheFileName(record.getUuid(), width, height, plot,
+                    emotionAnimSignature(record));
             Path cacheDir = previewCacheDir();
 
             // 非强制刷新且缓存存在 → 直接返回
@@ -452,10 +458,54 @@ public class RecordController {
         return cacheDir;
     }
 
-    /** 预览图缓存文件名：版本 + uuid + 分辨率 + 剧情模式。 */
-    private static String previewCacheFileName(String uuid, int width, int height, boolean plot) {
-        return String.format("preview_%s_%s_%dx%d_%s.png",
-                PREVIEW_CACHE_VERSION, uuid, width, height, plot ? "plot" : "plain");
+    /** 预览图缓存文件名：版本 + uuid + 分辨率 + 剧情模式 + 情绪动画签名。 */
+    private static String previewCacheFileName(String uuid, int width, int height, boolean plot,
+            String emotionSignature) {
+        return String.format("preview_%s_%s_%dx%d_%s_%s.png",
+                PREVIEW_CACHE_VERSION, uuid, width, height, plot ? "plot" : "plain", emotionSignature);
+    }
+
+    /**
+     * 情绪动画的缓存签名：只把"影响画面"的字段编成一串再加哈希。
+     *
+     * <p>为什么要单独签名：动画是贴在立绘上的第二层，改素材/偏移/缩放/代表帧时，
+     * 记录里其它字段可能一个都没变（uuid、文本、立绘都没动），只按 uuid 缓存的话
+     * 预览图会一直显示旧动画，用户会以为"改了没生效"。
+     *
+     * <p>没有任何情绪动画时返回固定串 {@code "none"}：这类记录的缓存键形状与本次改动前
+     * 完全一致（除版本号），不会因为这次功能而额外失效一次。
+     */
+    private static String emotionAnimSignature(com.lbc_plot.plot.model.Record record) {
+        if (record == null || record.getCharacters() == null) {
+            return "none";
+        }
+        StringBuilder raw = new StringBuilder();
+        for (com.lbc_plot.render.video.CharacterVisual character : record.getCharacters()) {
+            if (character == null || !character.hasEmotionAnim()) {
+                continue;
+            }
+            com.lbc_plot.render.video.anim.EmotionAnim emo = character.getEmotionAnim();
+            raw.append(emo.getClipId()).append('|')
+                    .append(emo.getCanvasWidth()).append('x').append(emo.getCanvasHeight()).append('|')
+                    .append(emo.getFrameHolds()).append('|')
+                    .append(emo.getLoop()).append('|').append(emo.getIterations()).append('|')
+                    .append(emo.getStartFrame()).append('|')
+                    .append(emo.getOffsetX()).append(',').append(emo.getOffsetY()).append('|')
+                    .append(emo.getScale()).append('|')
+                    .append(emo.getFadeInFrames()).append('/').append(emo.getFadeOutFrames()).append('|')
+                    .append(emo.getOpacity()).append('|')
+                    .append(emo.getPosterFrame()).append(';');
+        }
+        if (raw.length() == 0) {
+            return "none";
+        }
+        // FNV-1a：只为"变了就换文件名"，不需要抗碰撞强度的密码学哈希
+        int hash = 0x811c9dc5;
+        for (int i = 0; i < raw.length(); i++) {
+            hash ^= raw.charAt(i);
+            hash *= 0x01000193;
+        }
+        return String.format("%08x", hash);
     }
 
     /**
@@ -470,7 +520,9 @@ public class RecordController {
         Path cacheFile = cacheDir.resolve(cacheFileName);
 
         long renderStart = System.currentTimeMillis();
-        BufferedImage previewImage = RenderOfImage.renderPre(input.record(), input.plot(),
+        // 静态预览用 renderPreviewStill：情绪动画固定画用户挑的「代表帧」，
+        // 其余元素仍按第 0 帧（镜头/立绘移动动画的起点）。
+        BufferedImage previewImage = RenderOfImage.renderPreviewStill(input.record(), input.plot(),
                 input.width(), input.height());
         long renderDone = System.currentTimeMillis();
 

@@ -1,0 +1,380 @@
+/**
+ * @module 资源管理 · 序列帧动画子页面样式
+ *
+ * 左侧列表 + 右侧编辑器（设置 / 预览两栏）。配色跟资源管理其它 tab 保持一致（浅色 + 橄榄绿点缀）。
+ */
+
+.sprite-anim-tab {
+  display: flex;
+  gap: 12px;
+  min-height: 560px;
+  height: calc(100vh - 260px);
+}
+
+/* ==================== 左侧列表 ==================== */
+
+.sprite-anim-list {
+  width: 260px;
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 1px solid #e3e6cc;
+  padding-right: 10px;
+}
+
+.sprite-anim-list-head input {
+  width: 100%;
+}
+
+.sprite-anim-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sprite-anim-list-actions button {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+/* 「按文件名编号推算时长」开关 */
+.sprite-anim-auto-holds {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #55603c;
+  cursor: pointer;
+}
+
+.sprite-anim-list-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sprite-anim-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #e3e6cc;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.sprite-anim-card:hover {
+  border-color: #c8cf9d;
+  background: #f9fbef;
+}
+
+.sprite-anim-card.is-selected {
+  border-color: #b8c46a;
+  box-shadow: inset 3px 0 0 #b8c46a;
+  background: #f7f9ea;
+}
+
+.sprite-anim-card img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  background: repeating-conic-gradient(#f2f4e8 0% 25%, #ffffff 0% 50%) 50% / 10px 10px;
+}
+
+.sprite-anim-card-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 12px;
+  color: #7a8465;
+}
+
+.sprite-anim-card-meta strong {
+  color: #333a22;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sprite-anim-message {
+  font-size: 12px;
+  color: #3f6b2c;
+  padding: 4px 0;
+}
+
+.sprite-anim-message.is-error {
+  color: #b3352c;
+}
+
+/* ==================== 右侧编辑器 ==================== */
+
+.sprite-anim-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sprite-anim-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sprite-anim-name {
+  flex: 1;
+  min-width: 120px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 4px 6px;
+}
+
+.sprite-anim-save {
+  font-size: 12px;
+  color: #7a8465;
+  min-width: 56px;
+}
+
+.sprite-anim-save.is-error {
+  color: #b3352c;
+}
+
+.sprite-anim-save.is-saved {
+  color: #3f6b2c;
+}
+
+.sprite-anim-columns {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+
+.sprite-anim-settings {
+  width: 420px;
+  flex: 0 0 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.sprite-anim-settings section {
+  border: 1px solid #e3e6cc;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fdfef7;
+}
+
+.sprite-anim-settings h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #55603c;
+}
+
+.sprite-anim-readonly {
+  font-size: 12px;
+  color: #7a8465;
+}
+
+.sprite-anim-warn {
+  font-size: 12px;
+  color: #b2621c;
+}
+
+.sprite-anim-holds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.sprite-anim-hold {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sprite-anim-hold img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border: 1px solid #e3e6cc;
+  border-radius: 3px;
+  background: repeating-conic-gradient(#f2f4e8 0% 25%, #ffffff 0% 50%) 50% / 10px 10px;
+}
+
+.sprite-anim-hold input {
+  width: 44px;
+  text-align: center;
+}
+
+.sprite-anim-preview {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ==================== 预览舞台 ==================== */
+
+.sprite-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+}
+
+.sprite-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #55603c;
+}
+
+.sprite-preview-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 播放控制条 */
+.sprite-preview-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #55603c;
+}
+
+.sprite-preview-transport button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.sprite-preview-loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sprite-preview-frame {
+  color: #7a8465;
+}
+
+.sprite-preview-stage {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+
+.sprite-preview-raster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+}
+
+.sprite-preview-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c9cfae;
+  font-size: 13px;
+}
+
+/* 代表帧：可拖拽的框 */
+.sprite-preview-handle {
+  position: absolute;
+  cursor: move;
+  border: 1px dashed rgba(255, 220, 90, 0.9);
+  background: rgba(255, 220, 90, 0.06);
+  touch-action: none;
+}
+
+.sprite-preview-handle.is-dragging {
+  border-color: #ffe14d;
+  background: rgba(255, 225, 77, 0.14);
+}
+
+/* 播放中锁定变换：光标与边框都换成"不可动"的样式 */
+.sprite-preview-handle.is-locked {
+  cursor: default;
+  border-style: solid;
+  border-color: rgba(255, 225, 77, 0.55);
+}
+
+.sprite-preview-handle img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  pointer-events: none;
+}
+
+.sprite-preview-handle-badge {
+  position: absolute;
+  left: 0;
+  top: -18px;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(255, 225, 77, 0.92);
+  color: #3a3510;
+  white-space: nowrap;
+}
+
+.sprite-preview-chip {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.sprite-preview-error {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(160, 40, 30, 0.85);
+  color: #fff;
+}
+
+.sprite-preview-error.is-bottom {
+  top: auto;
+  bottom: 8px;
+}
+
+.sprite-preview-hint {
+  font-size: 12px;
+  color: #7a8465;
+  line-height: 1.5;
+}

@@ -47,6 +47,7 @@ import {
   normalizeBackgroundScale,
   normalizeScale,
 } from "../properties/visualCoordinates";
+import { faceOffset, headSize } from "../animation/sequenceTiming";
 
 /** 记录里的摄像机类型（定义在 @types，这里转出让预览模块不必都去 import @types） */
 export type { RecordCamera } from "@types";
@@ -274,6 +275,71 @@ export function characterWorldRect(
     w: Math.max(1, Math.round(imageSize.width * renderScale)),
     h: Math.max(1, Math.round(imageSize.height * renderScale)),
   };
+}
+
+/**
+ * 立绘的最终缩放（= 裁剪框推导的缩放 × 用户缩放）。
+ *
+ * <p>与 {@link characterWorldRect} 内部用的是同一个式子；单独立出来是因为情绪动画
+ * 要用它把自己的素材尺寸按"用户缩放"放大——**必须是用户缩放那一层**，
+ * 不能是 renderScale 的全部（那样特效会被裁剪框一起缩放两次）。
+ *
+ * @returns `{ renderScale, userScale }`：renderScale 含裁剪推导，userScale 只有用户滑杆
+ */
+export function characterScales(character: CharacterVisual): {
+  renderScale: number;
+  userScale: number;
+} {
+  const length =
+    finite(character?.portrait?.length, 0) > 0
+      ? finite(character.portrait.length, CHARACTER_HEAD_LENGTH)
+      : CHARACTER_HEAD_LENGTH;
+  const userScale = normalizeScale(character?.scale);
+  return {
+    renderScale: (CHARACTER_HEAD_LENGTH / length) * userScale,
+    userScale,
+  };
+}
+
+/**
+ * 脸框中心的**世界坐标**（= 立绘矩形左上角 + (face + length/2) · renderScale）。
+ *
+ * <p>与后端 `EmotionAnimPlacement.faceOffset` 同源；两者靠夹具
+ * `animation-fixtures.json` 的 `emotionPlacement` 段对拍。
+ *
+ * @param rect 立绘的世界矩形（{@link characterWorldRect} 的结果）
+ */
+export function characterFaceCenter(
+  character: CharacterVisual,
+  rect: PreviewRect,
+): { x: number; y: number } {
+  const length =
+    finite(character?.portrait?.length, 0) > 0
+      ? finite(character.portrait.length, CHARACTER_HEAD_LENGTH)
+      : CHARACTER_HEAD_LENGTH;
+  const faceX = Math.max(0, finite(character?.portrait?.faceX, 0));
+  const faceY = Math.max(0, finite(character?.portrait?.faceY, 0));
+  const { renderScale } = characterScales(character);
+  return {
+    x: rect.x + faceOffset(faceX, length, renderScale),
+    y: rect.y + faceOffset(faceY, length, renderScale),
+  };
+}
+
+/**
+ * 头部方框在场景里的边长（像素）= `length · renderScale`。
+ *
+ * <p>由于 `renderScale = 183 / length · 用户缩放`，结果恒为 `183 · 用户缩放`
+ * ——**与角色身高、站位、裁剪框大小无关**。情绪动画的偏移量以它为长度单位，
+ * 所以同一套配置换任何角色都落在相同的相对位置。
+ */
+export function characterHeadSize(character: CharacterVisual): number {
+  const length =
+    finite(character?.portrait?.length, 0) > 0
+      ? finite(character.portrait.length, CHARACTER_HEAD_LENGTH)
+      : CHARACTER_HEAD_LENGTH;
+  const { renderScale } = characterScales(character);
+  return headSize(length, renderScale);
 }
 
 /**

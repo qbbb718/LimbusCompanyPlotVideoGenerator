@@ -115,6 +115,63 @@ export interface SpriteAnimation {
   clips: AnimationClip[];
 }
 
+/**
+ * 情绪动画（序列帧）：挂在**一个立绘**身上的帧序列特效。
+ *
+ * <p>与 {@link SpriteAnimation} 正交：`anim` 决定立绘"怎么动"，本类型决定"脸上额外画一段动画"。
+ * 后者是前者的子级，会跟着立绘一起位移/旋转/缩放。
+ *
+ * <p><b>时序是内联快照</b>：`frameHolds` 存的是"每张图占几帧"，从素材复制过来之后就与素材脱钩
+ * （改素材不会回溯老工程，这是刻意的：画面稳定性优先）。理由与预设套用=内联快照完全一致，
+ * 见 `presetFile.ts` 的说明。
+ *
+ * <p>与后端 `com.lbc_plot.render.video.anim.EmotionAnim` 一一对应。
+ */
+export interface EmotionAnim {
+  version?: number;
+  /** 素材 id（决定帧图目录） */
+  clipId: string;
+  /** 素材显示名（快照；素材缺失时靠它提示"丢了哪个动画"） */
+  name?: string;
+  /** 素材画布宽（快照；决定绘制尺寸） */
+  canvasWidth: number;
+  /** 素材画布高（快照） */
+  canvasHeight: number;
+  /** 每帧持续帧数（快照，时序的唯一权威） */
+  frameHolds: number[];
+  /** once / hold / loop / pingpong；缺省 once */
+  loop?: LoopMode;
+  /** 循环次数；缺省 / null = 无限（仅 loop / pingpong 有意义） */
+  iterations?: number | null;
+  /** 延迟启动（帧，相对记录开头） */
+  startFrame?: number;
+  /** 相对脸框中心的水平偏移（场景画布像素） */
+  offsetX?: number;
+  /** 相对脸框中心的垂直偏移（场景画布像素） */
+  offsetY?: number;
+  /** 素材整体缩放倍率（1 = 原始尺寸） */
+  scale?: number;
+  /** 淡入帧数（序列局部时间） */
+  fadeInFrames?: number;
+  /** 淡出帧数；loop / pingpong 下会被强制视为 0 */
+  fadeOutFrames?: number;
+  /** 整体不透明度乘子（1 = 不透明） */
+  opacity?: number;
+  /** 代表帧：静止预览（栅格图）显示第几张；缺省 0 */
+  posterFrame?: number;
+}
+
+/** 情绪动画是否可用（有素材 id + 有帧）。不可用就完全跳过，保证没挂动画的记录逐像素不变 */
+export function isEmotionAnimUsable(anim: EmotionAnim | null | undefined): boolean {
+  return (
+    !!anim &&
+    typeof anim.clipId === "string" &&
+    anim.clipId.trim() !== "" &&
+    Array.isArray(anim.frameHolds) &&
+    anim.frameHolds.length > 0
+  );
+}
+
 /** 项目帧率（与 ProjectConfig.FRAME_RATE、useCameraPlayback.FRAME_RATE 一致） */
 export const ANIMATION_FPS = 30;
 

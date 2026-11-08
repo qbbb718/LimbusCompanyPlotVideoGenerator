@@ -19,6 +19,7 @@ import {
   RecordCamera,
 } from "@types";
 import { generateUUID } from "./utils";
+import type { EmotionAnim } from "./animation/animationTypes";
 import {
   keepKnownGroups,
   readGroups,
@@ -309,7 +310,7 @@ export const normalizeRecord = (raw: any): Record => {
       freeTextY: asNumber(dialogue.freeTextY, 0),
     },
     bg: Array.isArray(source.bg) ? source.bg : [],
-    chars: Array.isArray(source.chars) ? source.chars : [],
+    chars: Array.isArray(source.chars) ? source.chars.map(normalizeCharacterVisual) : [],
     tempImages: Array.isArray(source.tempImages) ? source.tempImages : [],
     effects: Array.isArray(source.effects) ? source.effects : [],
     // 摄像机：旧工程没有这个字段 → undefined = 恒等，渲染与旧版一致
@@ -317,6 +318,77 @@ export const normalizeRecord = (raw: any): Record => {
     audioCommands: Array.isArray(source.audioCommands)
       ? source.audioCommands.map(normalizeAudioCommand)
       : [],
+  };
+};
+
+/**
+ * 归一化一个立绘视觉元素。
+ *
+ * <p>目前只处理 `emotionAnim`（序列帧）：它是唯一一个"结构复杂到手写工程 JSON 很容易写坏"的字段，
+ * 而预览/渲染两端都会直接读它，写坏的后果是**编辑器整块崩掉**而不是"这条不生效"。
+ * 其余字段保持原样 —— 立绘的坐标/缩放本来就由后端在用，前端不该悄悄改它们的语义。
+ */
+const normalizeCharacterVisual = (raw: any): any => {
+  if (!raw || typeof raw !== "object") return raw;
+  const emotionAnim = normalizeEmotionAnim(raw.emotionAnim);
+  return emotionAnim ? { ...raw, emotionAnim } : { ...raw, emotionAnim: undefined };
+};
+
+/** 情绪的循环模式白名单（与后端 LoopMode 一致；写错一律回落 once） */
+const LOOP_MODES = ["once", "hold", "loop", "pingpong"];
+
+/** 数字收敛到 [min, max] */
+const clampNumber = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+
+/**
+ * 归一化情绪动画（序列帧）。
+ *
+ * <p>兜底风格照抄 `normalizeCamera`：非数字回落、越界收敛、缺省不炸。
+ * 任何一项不合法都只影响"这一项"，不会让整条记录打不开。
+ */
+const normalizeEmotionAnim = (raw: any): EmotionAnim | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const clipId = typeof raw.clipId === "string" ? raw.clipId.trim() : "";
+  if (!clipId) return undefined;
+
+  // 每帧持续帧数：至少 1 帧；长度为 0 就等于没有动画
+  const holds = Array.isArray(raw.frameHolds)
+    ? raw.frameHolds.map((hold: unknown) => Math.max(1, Math.round(asNumber(hold, 1))))
+    : [];
+  if (holds.length === 0) return undefined;
+
+  const loop =
+    typeof raw.loop === "string" && LOOP_MODES.indexOf(raw.loop) >= 0
+      ? (raw.loop as EmotionAnim["loop"])
+      : "once";
+  const iterations =
+    typeof raw.iterations === "number" && Number.isFinite(raw.iterations) && raw.iterations > 0
+      ? Math.round(raw.iterations)
+      : undefined;
+
+  return {
+    version: asNumber(raw.version, 1),
+    clipId,
+    name: typeof raw.name === "string" ? raw.name : undefined,
+    canvasWidth: Math.max(1, Math.round(asNumber(raw.canvasWidth, 1))),
+    canvasHeight: Math.max(1, Math.round(asNumber(raw.canvasHeight, 1))),
+    frameHolds: holds,
+    loop,
+    iterations: iterations ?? null,
+    startFrame: Math.max(0, Math.round(asNumber(raw.startFrame, 0))),
+    // 偏移单位是**头部长度**（1.0 = 一个头宽），限制在 ±20 个头以内：
+    // 够摆到画面任何角落，又能挡住手写 JSON 里把画面甩到天边的天文数字
+    offsetX: clampNumber(asNumber(raw.offsetX, 0), -20, 20),
+    offsetY: clampNumber(asNumber(raw.offsetY, 0), -20, 20),
+    scale: clampNumber(asNumber(raw.scale, 1), 0.01, 20),
+    fadeInFrames: Math.max(0, Math.round(asNumber(raw.fadeInFrames, 0))),
+    fadeOutFrames: Math.max(0, Math.round(asNumber(raw.fadeOutFrames, 0))),
+    opacity: clampNumber(asNumber(raw.opacity, 1), 0, 1),
+    posterFrame: Math.min(
+      holds.length - 1,
+      Math.max(0, Math.round(asNumber(raw.posterFrame, 0))),
+    ),
   };
 };
 

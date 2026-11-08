@@ -9,16 +9,36 @@ import {
   zipFileName,
 } from "@features/common/utils/resourceTransfer";
 import ResourceTabs from "./ResourceTabs";
+import type { ResourceTabKey } from "./ResourceTabs";
 import CharactersTab from "./tabs/CharactersTab";
 import BackgroundsTab from "./tabs/BackgroundsTab";
 import AudiosTab from "./tabs/AudiosTab";
+import SpriteAnimationsTab from "./tabs/SpriteAnimationsTab";
 
-const ResourceManager: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<
-    "characters" | "backgrounds" | "audios"
-  >("characters");
+interface ResourceManagerProps {
+  /**
+   * 初始子页面。
+   *
+   * <p>剧情编辑页的「前往资源管理编辑动画」按钮会带着 `animation-clips` 跳进来，
+   * 所以这里必须支持**外部指定初始页签**（之后再点别的页签由本组件自己管）。
+   */
+  initialTab?: ResourceTabKey;
+}
+
+const ResourceManager: React.FC<ResourceManagerProps> = ({ initialTab = "characters" }) => {
+  const [activeTab, setActiveTab] = useState<ResourceTabKey>(initialTab);
   const [characters, setCharacters] = useState<MyCharacter[]>([]);
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
+  /**
+   * 背景的**原始**列表（路径还是后端存的样子，如 `/assets/backgrounds/x.png`）。
+   *
+   * <p>为什么还要留一份：`backgrounds` 被补成了绝对 URL，那是给 `<img src>` 用的展示值。
+   * 一旦把展示值当成"记录里的素材路径"发给后端（序列帧动画的合成预览要这么做），
+   * 后端就会把它当文件名去拼，于是背景静默变黑——
+   * 运行日志里是"背景图片未找到: http://localhost:8081/assets/... "。
+   * 凡是"要写进记录 / 发给后端渲染"的地方一律用这一份。
+   */
+  const [rawBackgrounds, setRawBackgrounds] = useState<Background[]>([]);
   const [audios, setAudios] = useState<Audio[]>([]);
   const [selectedCharacter, setSelectedCharacter] =
     useState<MyCharacter | null>(null);
@@ -67,12 +87,15 @@ const ResourceManager: React.FC = () => {
         path: normalize(bg.path),
       }));
       setBackgrounds(normalizedBackgrounds);
+      // 原始路径另存一份：写给后端的记录必须用它（见 rawBackgrounds 的说明）
+      setRawBackgrounds(backgroundsData);
       setAudios(audiosData);
     } catch (error) {
       console.error("获取资源失败:", error);
       // 如果API失败，使用空数组作为后备
       setCharacters([]);
       setBackgrounds([]);
+      setRawBackgrounds([]);
       setAudios([]);
     } finally {
       if (!silent) {
@@ -233,6 +256,15 @@ const ResourceManager: React.FC = () => {
             setSearchTerm={setSearchTerm}
             openResourceFolder={openResourceFolder}
             setAudios={setAudios}
+          />
+        )}
+        {activeTab === "animation-clips" && (
+          <SpriteAnimationsTab
+            characters={characters}
+            // 用原始路径的那一份：合成预览会把它写进"假记录"发给后端渲染
+            backgrounds={rawBackgrounds}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
           />
         )}
       </div>

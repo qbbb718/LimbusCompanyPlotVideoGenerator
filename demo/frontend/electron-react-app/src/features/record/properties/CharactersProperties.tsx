@@ -14,6 +14,7 @@ import CharacterSelect, {
 } from "./CharacterSelect";
 import NumberField from "./NumberField";
 import CharacterAnimationPanel from "./CharacterAnimationPanel";
+import EmotionAnimPicker from "./EmotionAnimPicker";
 import {
   DESIGN_CANVAS_WIDTH,
   MAX_VISUAL_SCALE,
@@ -71,6 +72,13 @@ interface CharactersPropertiesProps {
   onSeekFrame?: (recordFrame: number) => void;
   /** 一句台词本身的长度（max(语音, 文字) 帧）；关键帧动画默认按它铺满 */
   lineFrames?: number;
+  /**
+   * 跳转到「资源管理 → 序列帧动画」。
+   *
+   * <p>情绪动画的**制作入口在资源管理**，这里只保留"选哪一段"和一个跳转按钮。
+   * 不传则不显示跳转按钮（独立测试里常见）。
+   */
+  onOpenAnimationLibrary?: () => void;
 }
 
 const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
@@ -84,6 +92,7 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   previewFrame,
   onSeekFrame,
   lineFrames,
+  onOpenAnimationLibrary,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -451,6 +460,15 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                 onSeekFrame={onSeekFrame}
                 lineFrames={lineFrames}
                 onChange={(next) => updateCharacter(index, "anim", next)}
+              />
+
+              {/* 情绪动画：这里只负责"选哪一段"，编排在「资源管理 → 序列帧动画」 */}
+              <EmotionAnimPicker
+                emotionAnim={char.emotionAnim}
+                elementLabel={char.chara?.characterName ?? `立绘 ${index + 1}`}
+                plot={plot}
+                onOpenAnimationLibrary={onOpenAnimationLibrary}
+                onChange={(next) => updateCharacter(index, "emotionAnim", next)}
               />
             </div>
           </div>

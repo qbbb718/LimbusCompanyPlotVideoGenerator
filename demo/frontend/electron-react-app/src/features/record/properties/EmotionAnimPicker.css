@@ -1,0 +1,55 @@
+/**
+ * @module 情绪动画选择器样式
+ *
+ * 与 `CharacterAnimationPanel.css` 同一套浅色主题（同一张卡片里一上一下两块面板）。
+ * 这里只保留"选择器 + 只读摘要"需要的那几条。
+ */
+
+.emotion-picker {
+  margin-top: 8px;
+  border: 1px solid #e3e6cc;
+  border-radius: 6px;
+  padding: 6px 8px 8px;
+  background: #fdfef7;
+}
+
+.emotion-picker-body {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emotion-picker-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #55603c;
+  line-height: 1.6;
+}
+
+.emotion-picker-summary img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  border: 1px solid #e3e6cc;
+  border-radius: 4px;
+  /* 透明底用棋盘格，避免"透明当白底"看不出来 */
+  background: repeating-conic-gradient(#f2f4e8 0% 25%, #ffffff 0% 50%) 50% / 12px 12px;
+}
+
+.emotion-picker-warn {
+  font-size: 12px;
+  color: #b2621c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.emotion-picker-warn button {
+  padding: 1px 6px;
+  font-size: 12px;
+}

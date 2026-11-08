@@ -8,6 +8,7 @@ import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.TempImageVisual;
 import com.lbc_plot.render.video.anim.AnimationClip;
 import com.lbc_plot.render.video.anim.LoopMode;
+import com.lbc_plot.render.video.anim.SequenceTiming;
 import com.lbc_plot.render.video.anim.SpriteAnimation;
 import com.lbc_plot.render.video.anim.SpriteAnimator;
 import com.lbc_plot.render.video.anim.TransformState;
@@ -71,7 +72,13 @@ public final class RecordAnimation {
             List<CharacterVisual> characters = record.getCharacters();
             if (characters != null) {
                 for (CharacterVisual character : characters) {
-                    if (character != null && character.isAnimated()) {
+                    if (character == null) {
+                        continue;
+                    }
+                    // 情绪动画（序列帧）也会让每帧画面不同，必须一起判进"逐帧重渲"。
+                    // 漏了这一条 → 场景层整段只渲一次 → 动画在成片里**永远停在第 1 张图**
+                    // （而编辑器预览里却在动，是最难查的一类不一致）。
+                    if (character.isAnimated() || character.hasEmotionAnim()) {
                         return true;
                     }
                 }
@@ -110,10 +117,18 @@ public final class RecordAnimation {
             if (characters != null) {
                 for (int i = 0; i < characters.size(); i++) {
                     CharacterVisual character = characters.get(i);
-                    if (character == null || !character.isAnimated()) {
+                    if (character == null) {
                         continue;
                     }
-                    appendTransform(signature, 'c', i, transformOf(character, frameIndex));
+                    if (character.isAnimated()) {
+                        appendTransform(signature, 'c', i, transformOf(character, frameIndex));
+                    }
+                    // 情绪动画：**帧号与透明度都要进签名**。
+                    // 只按"有没有挂动画"判断会让复用逻辑把上一帧整段复制过去（动画冻住）；
+                    // 只算帧号不算 alpha，淡入淡出那几帧的签名不变，也会被误复用。
+                    if (character.hasEmotionAnim()) {
+                        appendEmotionAnim(signature, i, character, frameIndex);
+                    }
                 }
             }
         }
@@ -137,6 +152,21 @@ public final class RecordAnimation {
     }
 
     /**
+     * 情绪动画的签名分量：帧号 + 最终透明度。
+     *
+     * <p>精度与 {@link #appendTransform} 一致（alpha 取 4 位）：远低于肉眼阈值，又能吃掉浮点噪声。
+     * 动画播完（{@code imageIndex == NO_FRAME}）之后签名会稳定下来，后面几百帧就能继续复用
+     * ——这正是"加了序列帧以后导出没有变慢太多"的原因。
+     */
+    private static void appendEmotionAnim(StringBuilder signature, int index, CharacterVisual character,
+            int frameIndex) {
+        SequenceTiming.Sample sample = character.getEmotionAnim().sampleAt(frameIndex);
+        signature.append('e').append(index).append(':')
+                .append(sample.imageIndex()).append(',')
+                .append(String.format("%.4f", sample.alpha())).append(';');
+    }
+
+    /**
      * 动画把记录"撑"到第几帧（0 = 没有动画参与时长计算）。
      *
      * <p>参与规则（与前端 {@code durationEndFrameOf} 一致，见 docs/立绘动画设计.md §2.1）：
@@ -151,6 +181,11 @@ public final class RecordAnimation {
      * <p>可见性门禁：{@code plot=false}（人格故事）时不渲染立绘，所以**立绘动画一律不算**；
      * 临时图片两种模式都渲染，照常计入。这条必须与 {@link #hasAnimatedSprites} 保持一致，
      * 否则会出现"动画看不见但记录变长了"的幽灵时长。
+     *
+     * <p><b>情绪动画（序列帧）一律不参与时长</b>（产品决策）：素材可能长达几十秒，
+     * 一旦让它撑长记录，用户导入一个循环背景动画就会把每条记录都拉长到几十秒。
+     * 所以它播到记录结束就截断，绝不会反过来定义记录长度。改这条之前先想清楚：
+     * 一旦参与，{@code hasAnimatedSprites} 也必须同步，否则"看不见却变长"会立刻复现。
      */
     public static int animationEndFrame(Record record, boolean plot) {
         if (record == null) {

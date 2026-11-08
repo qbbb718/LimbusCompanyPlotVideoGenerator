@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.RenderOfImage;
+import com.lbc_plot.render.video.anim.EmotionAnim;
 import com.lbc_plot.render.video.anim.SpriteAnimation;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
@@ -60,6 +61,14 @@ public class CharacterVisual extends VisualElement {
      * 不会覆盖用户拖出来的 posX/posY，也不会覆盖用户缩放。
      */
     private SpriteAnimation anim;
+    /**
+     * 情绪动画（序列帧）：贴在这张立绘脸上的帧序列特效；null = 没有，渲染走原路径、逐像素不变。
+     *
+     * <p>与 {@link #anim} 是**正交**的两件事：{@code anim} 决定这张立绘"怎么动"（位移/缩放/旋转/透明度），
+     * {@code emotionAnim} 决定"脸上额外画一段动画"。后者是前者的**子级**，会跟着立绘一起动
+     * （见 {@code RenderOfImage.renderEmotionAnim}）。
+     */
+    private EmotionAnim emotionAnim;
     @JsonIgnore
     private BufferedImage color_Name_Image; // 人设界面预览用，然后可以直接用到剧情渲染里
 
@@ -102,6 +111,18 @@ public class CharacterVisual extends VisualElement {
     @JsonIgnore
     public float getRenderScale() {
         return portraitScale() * userScale();
+    }
+
+    /**
+     * 用户手动缩放（1.0 = 未缩放），**不含**裁剪框推导出的那部分缩放。
+     *
+     * <p>情绪动画要用它：贴脸的特效必须跟着用户缩放到同样倍数，否则"立绘放大 2 倍、
+     * 汗滴还是原来那么大"。不能直接用 {@link #getRenderScale()}——那里面还混着
+     * {@code 183 / length} 的裁剪缩放，与"用户在界面上拖的滑杆"不是一回事。
+     */
+    @JsonIgnore
+    public float getUserScale() {
+        return userScale();
     }
 
     /**
@@ -286,6 +307,28 @@ public class CharacterVisual extends VisualElement {
         return anim != null && anim.isAnimated();
     }
 
+    /** 情绪动画装备；null 表示没有（旧工程全部是 null） */
+    @JsonProperty
+    public EmotionAnim getEmotionAnim() {
+        return emotionAnim;
+    }
+
+    public void setEmotionAnim(EmotionAnim emotionAnim) {
+        this.emotionAnim = emotionAnim;
+    }
+
+    /**
+     * 这张立绘上是否**真的会画出一段序列帧**。
+     *
+     * <p>判定必须保守：{@code clipId} 为空、{@code frameHolds} 为空、总帧数为 0 都算"没有"。
+     * 渲染端两条判断（{@code RecordAnimation.hasAnimatedSprites} 与 {@code sceneSignature}）
+     * 都靠它，判漏会让动画在成片里**静止不动**（不逐帧重渲），判重会让每条记录都白重画。
+     */
+    @JsonIgnore
+    public boolean hasEmotionAnim() {
+        return emotionAnim != null && emotionAnim.isUsable() && emotionAnim.totalFrames() > 0;
+    }
+
     /**
      * 获取角色ID（便捷方法）
      */
@@ -316,6 +359,7 @@ public class CharacterVisual extends VisualElement {
         this.scale = builder.scale;
         this.dim = builder.dim;
         this.anim = builder.anim;
+        this.emotionAnim = builder.emotionAnim;
         this.image = builder.image;
 
         updatePos();
@@ -349,6 +393,10 @@ public class CharacterVisual extends VisualElement {
         /** 移动动画装备；旧工程没有该字段时为 null（= 不动） */
         @JsonProperty
         private SpriteAnimation anim;
+
+        /** 情绪动画（序列帧）；旧工程没有该字段时为 null（= 不画） */
+        @JsonProperty
+        private EmotionAnim emotionAnim;
 
         @JsonIgnore
         private transient BufferedImage image; // 不序列化
@@ -421,6 +469,12 @@ public class CharacterVisual extends VisualElement {
         /** 设置移动动画（null = 不动） */
         public Builder anim(SpriteAnimation anim) {
             this.anim = anim;
+            return this;
+        }
+
+        /** 设置情绪动画（null = 不画） */
+        public Builder emotionAnim(EmotionAnim emotionAnim) {
+            this.emotionAnim = emotionAnim;
             return this;
         }
 

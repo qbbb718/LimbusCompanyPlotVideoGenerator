@@ -3,7 +3,8 @@ import { Record } from "@types";
 import ApiService from "@services/ApiService";
 import "./RecordEditor.css";
 import "./preview/preview.css";
-import { buildPreviewGeometry, sceneToOutput, DESIGN_HEIGHT, DESIGN_WIDTH } from "./preview/previewLayout";
+import { buildPreviewGeometry, sceneToOutput, worldToScene, DESIGN_HEIGHT, DESIGN_WIDTH } from "./preview/previewLayout";
+import { characterFaceCenter, characterHeadSize, characterScales } from "./preview/previewLayout";
 import type { PreviewLayer } from "./preview/previewLayout";
 import { readLayerPosition } from "./preview/previewDrag";
 import type { DragPoint } from "./preview/previewDrag";
@@ -28,8 +29,11 @@ import type { RecordCamera } from "@types";
 import { useTimelinePlayback } from "./preview/useTimelinePlayback";
 import { anchorOf, durationEndFrameOf, isAnimated } from "./animation/spriteAnimator";
 import { evaluate as evaluateSpriteAnim } from "./animation/spriteAnimator";
-import { spriteDomStyle } from "./preview/domTransform";
+import { childSpriteDomStyle, sharedTransformOrigin, spriteDomStyle } from "./preview/domTransform";
 import type { SpriteAnimation } from "./animation/animationTypes";
+import { isEmotionAnimUsable } from "./animation/animationTypes";
+import { isSampleVisible, posterSample, sampleSequence, spriteRect } from "./animation/sequenceTiming";
+import { preloadClipFrames } from "./animation/framePreloader";
 
 interface RecordPreviewProps {
   selectedRecord: Record;
@@ -433,6 +437,21 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
   const { sizes } = useImageSizes(imageUrls);
 
+  /**
+   * 情绪动画帧图预热。
+   *
+   * <p>播放时是"每帧换一次 `<img src>`"，没预热过的话开头几轮会闪白（浏览器要现拉现解码）。
+   * 这里在记录变化时把挂在立绘上的素材帧图都拉一遍，之后切帧只是命中 HTTP 缓存。
+   */
+  useEffect(() => {
+    (selectedRecord.chars ?? []).forEach((character) => {
+      const emo = character?.emotionAnim;
+      if (isEmotionAnimUsable(emo)) {
+        preloadClipFrames(emo!.clipId, emo!.frameHolds.length);
+      }
+    });
+  }, [selectedRecord.chars]);
+
   /** 播放用的镜头（t 时刻）：「最终效果」里摇镜预览就是每帧重算几何 */
   const playbackCamera =
     playback.frame !== null
@@ -556,9 +575,87 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       return null;
     };
 
+    /**
+     * 情绪动画（序列帧）子级图层：挂在某个立绘脸上、跟着它一起动的帧序列。
+     *
+     * <p>三件事必须与后端 `RenderOfImage.renderEmotionAnim` 严格一致：
+     * ① 位置用 `spriteRect`（脸框中心 + 偏移 × 头宽 + 跟随用户缩放）；
+     * ② 变换用**父级的同一个绝对变换**，但 `transform-origin` 换算成子元素盒子里的百分比、
+     *    `translate` 的百分比基准换成**子元素自己的**宽高（见 `childSpriteDomStyle` 的说明）；
+     * ③ 不透明度 = 序列自带的 alpha × 父级 alpha。
+     *
+     * <p>**没在播放时画的是「代表帧」而不是第 0 帧**（`posterSample`），
+     * 与后端静态预览（`renderPreviewStill`）同一份口径：带淡入的动画第 0 帧是全透明的，
+     * 若这里画第 0 帧，拖动立绘的瞬间嵌图会"闪一下没了"。
+     *
+     * <p>返回 `null` 表示这一帧没东西可画（还没开始 / 已播完 / 淡到全透明）。
+     */
+    const emotionItemOf = (layer: PreviewLayer): SceneLayerItem | null => {
+      if (layer.kind !== "character") return null;
+      const character = selectedRecord.chars?.[layer.index];
+      const emo = character?.emotionAnim;
+      if (!character || !isEmotionAnimUsable(emo)) return null;
+
+      const sample =
+        playback.frame === null
+          ? // 静止（含拖动立绘时）：代表帧，与后端栅格图一致
+            posterSample(
+              emo!.frameHolds,
+              emo!.posterFrame ?? 0,
+              emo!.loop ?? "once",
+              emo!.fadeInFrames ?? 0,
+              emo!.fadeOutFrames ?? 0,
+              emo!.opacity ?? 1,
+            )
+          : sampleSequence(
+              emo!.frameHolds,
+              emo!.loop ?? "once",
+              emo!.iterations ?? null,
+              emo!.startFrame ?? 0,
+              emo!.fadeInFrames ?? 0,
+              emo!.fadeOutFrames ?? 0,
+              emo!.opacity ?? 1,
+              spriteFrame,
+            );
+      if (!isSampleVisible(sample)) return null;
+
+      const { userScale } = characterScales(character);
+      const faceCenter = characterFaceCenter(character, layer.baseRect);
+      const spriteWorld = spriteRect(
+        faceCenter.x,
+        faceCenter.y,
+        characterHeadSize(character),
+        emo!.canvasWidth,
+        emo!.canvasHeight,
+        emo!.scale ?? 1,
+        userScale,
+        emo!.offsetX ?? 0,
+        emo!.offsetY ?? 0,
+      );
+      // 与父级同一条投影链（世界 → 场景取景 → 0.8 场景 → 输出像素）
+      const outRect = sceneToOutput(worldToScene(spriteWorld, sceneCamera), frameSize);
+
+      const transformState = evaluateSpriteAnim(character.anim, spriteFrame);
+      const anchor = anchorOf(character.anim, 0.5, 1);
+      // 共同原点的比例在等比投影下不变，所以直接用世界矩形算即可
+      const origin = sharedTransformOrigin(layer.baseRect, anchor, spriteWorld);
+      const style = childSpriteDomStyle(transformState, spriteWorld, origin, sample.alpha);
+
+      return {
+        key: `${layer.key}:emotion`,
+        src: ApiService.getAnimationClipFrameUrl(emo!.clipId, sample.imageIndex),
+        rect: outRect,
+        dim: character.dim === true,
+        clipWithScene: true,
+        transform: style?.transform,
+        transformOrigin: style?.transformOrigin,
+        opacity: style?.opacity,
+      };
+    };
+
     const worldItems = geometry.layers
       .filter((layer) => layer.space === "world")
-      .map((layer) => {
+      .flatMap((layer) => {
         const anim = animOf(layer);
         // 锚点缺省：立绘脚底（弹跳/摇摆的自然支点）、临时图片中心
         const anchor = anchorOf(
@@ -572,7 +669,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
           evaluateSpriteAnim(anim, spriteFrame),
           anchor,
         );
-        return {
+        const item: SceneLayerItem = {
           key: layer.key,
           src: srcOf(layer),
           rect: layer.outRect,
@@ -583,6 +680,10 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
           transformOrigin: style?.transformOrigin,
           opacity: style?.opacity,
         };
+        // 情绪动画必须紧跟父立绘（同一渲染循环内、后画 = 盖在立绘上），
+        // 所以插在父图层之后而不是单独一批追加到末尾。
+        const emotion = item.src ? emotionItemOf(layer) : null;
+        return emotion ? [item, emotion] : [item];
       })
       .filter((item) => item.src);
 
@@ -608,8 +709,10 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     return [...worldItems, borderItem, ...uiItems];
     // frameSize 由 videoWidth/videoHeight 派生，依赖里写原始值更直观
     // spriteFrame 进依赖：播放时每帧都要重算各元素的动画样式（geometry 本身不变）
+    // sceneCamera 进依赖：情绪动画要按当前取景重算自己的矩形
+    // playback.frame 进依赖：null ↔ 0 的切换决定"画代表帧还是画序列帧"
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geometry, sceneImages, sizes, videoWidth, videoHeight, spriteFrame, selectedRecord]);
+  }, [geometry, sceneImages, sizes, videoWidth, videoHeight, spriteFrame, sceneCamera, playback.frame, selectedRecord]);
 
   return (
     <div className="preview-container">

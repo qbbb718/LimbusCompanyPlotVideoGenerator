@@ -32,11 +32,16 @@ import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.TempImageVisual;
+import com.lbc_plot.render.video.anim.EmotionAnim;
+import com.lbc_plot.render.video.anim.EmotionAnimPlacement;
+import com.lbc_plot.render.video.anim.SequenceTiming;
 import com.lbc_plot.render.video.anim.TransformState;
+import com.lbc_plot.render.video.emotion.AnimationClipStore;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
 import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.model.MyCharacter;
+import com.lbc_plot.resource.model.Portrait;
 import com.lbc_plot.resource.service.CharacterService;
 
 /**
@@ -270,6 +275,25 @@ public class RenderOfImage {
      */
     public static BufferedImage renderPre(Record record, boolean plot, int width, int height, Camera camera,
             int frameIndex) throws IOException {
+        return renderPreInternal(record, plot, width, height, camera, frameIndex, false);
+    }
+
+    /**
+     * 静态预览图（编辑器里那张不动的栅格图）。
+     *
+     * <p>与 {@link #renderPre} 只差一件事：情绪动画固定画**代表帧**。
+     * 理由：静态图只有一张，如果按第 0 帧画，带淡入的动画（第 0 帧 alpha=0）会整块透明——
+     * 用户会以为"素材没导入成功"。所以让用户自己挑一帧最能代表这个动画的画面。
+     *
+     * <p>其余元素（立绘移动动画、镜头）仍按第 0 帧处理：那条时间轴上的画面本来就该是起点。
+     */
+    public static BufferedImage renderPreviewStill(Record record, boolean plot, int width, int height)
+            throws IOException {
+        return renderPreInternal(record, plot, width, height, record.getCamera(), 0, true);
+    }
+
+    private static BufferedImage renderPreInternal(Record record, boolean plot, int width, int height,
+            Camera camera, int frameIndex, boolean emotionPoster) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("开始渲染预览图: plot={}, 请求尺寸={}x{}, 记录 uuid={}", plot, width, height,
                     record.getUuid());
@@ -283,7 +307,7 @@ public class RenderOfImage {
             // 第一趟：场景层（全部在 1080p 设计画布上，与请求的输出分辨率无关）
             renderBackground(composer, record, camera);
             if (plot) {
-                renderCharacters(composer, record, camera, frameIndex);
+                renderCharacters(composer, record, camera, frameIndex, emotionPoster);
             }
             renderTempImages(composer, record, camera, frameIndex);
             composer.addImageLayer(border, 0, 0);
@@ -501,6 +525,15 @@ public class RenderOfImage {
      */
     private static void renderCharacters(FrameComposerService composer, Record record, Camera camera,
             int frameIndex) {
+        renderCharacters(composer, record, camera, frameIndex, false);
+    }
+
+    /**
+     * @param emotionPoster true = 情绪动画固定画「代表帧」（编辑器静态预览用），
+     *                      false = 按 {@code frameIndex} 正常求值（出片用）
+     */
+    private static void renderCharacters(FrameComposerService composer, Record record, Camera camera,
+            int frameIndex, boolean emotionPoster) {
         List<CharacterVisual> chars = record.getCharacters();
         if (chars == null || chars.isEmpty()) {
             logger.debug("记录中没有角色立绘信息");
@@ -516,7 +549,7 @@ public class RenderOfImage {
                 continue;
 
             try {
-                renderSingleCharacter(composer, chara, camera, frameIndex);
+                renderSingleCharacter(composer, chara, camera, frameIndex, emotionPoster);
             } catch (Exception e) {
                 logger.error("添加角色图层失败: {}", chara.getChara().getCharacterName(), e);
             }
@@ -552,6 +585,14 @@ public class RenderOfImage {
      */
     private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara, Camera camera,
             int frameIndex) {
+        renderSingleCharacter(composer, chara, camera, frameIndex, false);
+    }
+
+    /**
+     * @param emotionPoster true = 情绪动画固定画「代表帧」（编辑器静态预览用）
+     */
+    private static void renderSingleCharacter(FrameComposerService composer, CharacterVisual chara, Camera camera,
+            int frameIndex, boolean emotionPoster) {
         BufferedImage charImage = chara.getImage();
         // 实际缩放 = 裁剪推导的缩放 × 用户手动缩放（剧情编辑 → 立绘 → 缩放），
         // 与 CharacterVisual.updatePos() 里计算 posX/posY 用的是同一个值。
@@ -574,11 +615,126 @@ public class RenderOfImage {
         drawSprite(composer, image, x, y, scaled, transform,
                 RecordAnimation.CHARACTER_ANCHOR_X, RecordAnimation.CHARACTER_ANCHOR_Y, zoom);
 
+        // 情绪动画：画在立绘**之后**（同一个渲染循环内），自动继承 camera / 0.8 场景缩放 /
+        // 边框暗角 / 场景裁剪，不需要手算任何一层（见 docs/立绘动画设计.md 附录 A）。
+        // 立绘的预缩放尺寸从缓存里取（drawSprite 刚算过，这里是同一张，命中缓存无额外开销）：
+        // 情绪动画的锚点必须挂在"立绘最终像素矩形"上，与立绘用的必须是同一个尺寸。
+        BufferedImage scaledPortrait = SpriteImageCache.scaled(image, scaled);
+        renderEmotionAnim(composer, chara, x, y, scaled,
+                scaledPortrait.getWidth(), scaledPortrait.getHeight(),
+                transform, zoom, frameIndex, emotionPoster);
+
         if (logger.isDebugEnabled()) {
             logger.debug("添加角色图层: {} at ({},{}), 动画={}, 压暗={}",
                     chara.getChara().getCharacterName(), x, y,
                     transform.isIdentity() ? "无" : transform, chara.isDim());
         }
+    }
+
+    /**
+     * 画立绘脸上的**序列帧动画**（情绪动画）。
+     *
+     * <h2>画在哪一层</h2>
+     * 在 {@code renderCharacters} 的循环内、紧跟父立绘之后。所以它天然拿到
+     * camera（{@code x/y/scaled} 已经是取景后的值）、剧情模式的 0.8 缩放、边框暗角与场景裁剪，
+     * **一处都不用手算**。旧设计稿 {@code docs/情绪动画设计.md} §5.2 手算 0.8 的写法已作废。
+     *
+     * <h2>怎么跟着立绘动（全仿射继承）</h2>
+     * 父立绘的移动动画矩阵先在场景坐标里算出来，序列帧的"原图→目标矩形"变换再嵌进它的内层：
+     * <pre>M = Rigid · T(rect.left, rect.top) · S(kx, ky)</pre>
+     * 其中 {@code Rigid = T(A+d)·R(θ)·S(s)·T(−A)}，A = 立绘锚点（脚底），d = 动画位移 × zoom。
+     * 与前端 {@code domTransform.sharedTransformOrigin} 的做法**严格等价**：
+     * 前端给子元素套同一个 transform 字符串、只换 {@code transform-origin} 到同一个绝对点 A。
+     * （两边都取"全仿射"而不是旧文档里的 rigid 模式：汗滴/花瓣跟着放大观感更自然，
+     * 而且 DOM 侧只需要一个 CSS 属性，不会出现两种继承模式各错一半。）
+     *
+     * @param portraitW 预缩放后的立绘像素宽（与 {@code drawSprite} 内部同一张图，命中缓存无额外开销）
+     * @param portraitH 预缩放后的立绘像素高
+     */
+    private static void renderEmotionAnim(FrameComposerService composer, CharacterVisual chara,
+            int x, int y, float renderScale, int portraitW, int portraitH,
+            TransformState portraitTransform, float zoom, int frameIndex, boolean emotionPoster) {
+        EmotionAnim emo = chara.getEmotionAnim();
+        if (emo == null || !chara.hasEmotionAnim()) {
+            return;
+        }
+        Portrait portrait = chara.getPortrait();
+        if (portrait == null) {
+            return;
+        }
+
+        // 1) 这一帧画第几张图、多透明。
+        //    「代表帧」模式只看 poster*，与 frameIndex 无关（静态预览只有一张图）。
+        final int imageIndex;
+        final double sequenceAlpha;
+        if (emotionPoster) {
+            imageIndex = emo.posterImageIndex();
+            sequenceAlpha = emo.posterAlpha();
+        } else {
+            SequenceTiming.Sample sample = emo.sampleAt(frameIndex);
+            imageIndex = sample.imageIndex();
+            sequenceAlpha = sample.alpha();
+        }
+        if (imageIndex == SequenceTiming.NO_FRAME || sequenceAlpha <= 1e-4) {
+            return;
+        }
+
+        // 2) 取帧图。缺图（素材被删/拷漏）时静默跳过：不能让一张图毁掉整条视频
+        BufferedImage frame = AnimationClipStore.frameImage(emo.getClipId(), imageIndex);
+        if (frame == null) {
+            logger.debug("情绪动画缺帧: clipId={}, index={}", emo.getClipId(), imageIndex);
+            return;
+        }
+        if (chara.isDim()) {
+            // 立绘被压暗时特效也要压暗，否则"人物暗着、汗滴亮着"
+            frame = SpriteImageCache.darkened(frame, 0.5f);
+        }
+
+        // 3) 脸框中心 = 立绘矩形左上角 + (face + length/2) · renderScale
+        double faceCenterX = x + EmotionAnimPlacement.faceOffset(portrait.getFaceX(), portrait.getLength(),
+                renderScale);
+        double faceCenterY = y + EmotionAnimPlacement.faceOffset(portrait.getFaceY(), portrait.getLength(),
+                renderScale);
+        // 头部方框边长（跨角色恒定 = 183 × 用户缩放），代表帧的偏移以它为长度单位
+        double headSize = EmotionAnimPlacement.headSize(portrait.getLength(), renderScale);
+
+        // 4) 目标矩形：以脸框中心对齐素材中心，尺寸吃用户缩放（跟着立绘一起变大变小）
+        EmotionAnimPlacement.Rect rect = EmotionAnimPlacement.spriteRect(faceCenterX, faceCenterY,
+                headSize, emo.getCanvasWidth(), emo.getCanvasHeight(), emo.safeScale(),
+                chara.getUserScale(), emo.getOffsetX(), emo.getOffsetY());
+        if (rect.w() <= 0 || rect.h() <= 0) {
+            return;
+        }
+
+        // 5) 立绘锚点（脚底）在场景里的像素位置——与 drawSprite 里的换算完全同一套
+        double anchorPixelX = x + RecordAnimation.CHARACTER_ANCHOR_X * portraitW;
+        double anchorPixelY = y + RecordAnimation.CHARACTER_ANCHOR_Y * portraitH;
+
+        // 6) 组装矩阵：**先写最外层**（Java 的 translate/rotate/scale 是右乘，
+        //    所以代码顺序与"从右往左作用到像素上"相反：立绘动画在前、摆位在后）
+        AffineTransform matrix = new AffineTransform();
+        if (portraitTransform != null && !portraitTransform.isIdentity()) {
+            double deltaX = portraitTransform.getX() * zoom;
+            double deltaY = portraitTransform.getY() * zoom;
+            matrix.translate(anchorPixelX + deltaX, anchorPixelY + deltaY);
+            matrix.rotate(Math.toRadians(portraitTransform.getRotate()));
+            matrix.scale(portraitTransform.getScale(), portraitTransform.getScale());
+            matrix.translate(-anchorPixelX, -anchorPixelY);
+        }
+        matrix.translate(rect.x(), rect.y());
+        matrix.scale(rect.w() / frame.getWidth(), rect.h() / frame.getHeight());
+
+        // 7) 不透明度 = 序列自带（含淡入淡出与用户设的整体不透明度）× 立绘移动动画的 alpha
+        double portraitAlpha = portraitTransform == null ? 1d : portraitTransform.getAlpha();
+        float alpha = (float) Math.min(1d, Math.max(0d, sequenceAlpha * portraitAlpha));
+        if (alpha <= 1e-4) {
+            return;
+        }
+
+        composer.addImageLayerTransformed(frame, matrix, alpha);
+        logger.debug("情绪动画: {} 第{}张图 alpha={} 目标矩形={}x{}@({},{})",
+                emo.getClipId(), imageIndex, alpha, Math.round(rect.w()), Math.round(rect.h()),
+                Math.round(rect.x()), Math.round(rect.y()));
     }
 
     /**

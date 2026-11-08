@@ -14,6 +14,15 @@ function AppElectron() {
   const [activeTab, setActiveTab] = useState<
     "editor" | "resources" | "settings" | "textToRecords"
   >("editor");
+  /**
+   * 资源管理打开时默认停在哪个子页面。
+   *
+   * <p>剧情编辑页的「前往资源管理编辑动画」会把它设成 `animation-clips` 再切页，
+   * 其它入口（顶部导航）保持默认的「角色」。
+   */
+  const [resourceTab, setResourceTab] = useState<
+    "characters" | "backgrounds" | "audios" | "animation-clips"
+  >("characters");
   const [appInitialized, setAppInitialized] = useState(false);
   const [projectSettings, setProjectSettings] = useState<IProjectSettings>(() =>
     loadSettings(),
@@ -175,10 +184,15 @@ function AppElectron() {
             projectSettings={projectSettings}
             setProjectSettings={setProjectSettings}
             workspace={workspace}
+            onOpenAnimationLibrary={() => {
+              // 情绪动画的制作入口在资源管理：切页并停到「序列帧动画」子页面
+              setResourceTab("animation-clips");
+              setActiveTab("resources");
+            }}
           />
         );
       case "resources":
-        return <ResourceManager />;
+        return <ResourceManager initialTab={resourceTab} />;
       case "settings":
         return (
           <ProjectSettingsUI

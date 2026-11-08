@@ -87,6 +87,17 @@ public final class RuntimePaths {
         return getAssetsDir().resolve("thumbnails");
     }
 
+    /**
+     * 情绪动画（序列帧）素材根目录，即 {@code {dataRoot}/assets/animation-clips}。
+     * 对应 URL 前缀 {@code /assets/animation-clips/<id>/frames/<n>.png}。
+     *
+     * <p>放在 assets 下而不是 projects 下：这些是**可跨记录复用**的素材库条目
+     * （和角色立绘、背景同级别），不是某条记录私有的临时图片。
+     */
+    public static Path getAnimationClipsDir() {
+        return getAssetsDir().resolve("animation-clips");
+    }
+
     /** 数据目录（存放 SQLite 库），即 {@code {dataRoot}/data}。 */
     public static Path getDataDir() {
         return DATA_ROOT.resolve("data");
