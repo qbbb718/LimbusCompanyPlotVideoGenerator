@@ -129,6 +129,14 @@
   color: #888;
 }
 
+/* 对话内容下方的"支持换行"说明 + 行数 / 字数统计 */
+.dialogue-text-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #888;
+}
+
 /* 自由文本：文字颜色选择 */
 .free-text-color {
   margin-top: 8px;

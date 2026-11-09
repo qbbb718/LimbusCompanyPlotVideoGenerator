@@ -1,21 +1,12 @@
 package com.lbc_plot.render.engine.manager;
 
-import java.awt.BasicStroke;
-import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Shape;
 import java.awt.font.FontRenderContext;
-import java.awt.font.LineBreakMeasurer;
-import java.awt.font.TextAttribute;
-import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.text.AttributedCharacterIterator;
-import java.text.AttributedString;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +14,6 @@ import com.lbc_plot.common.util.RenderQualityUtils;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.contract.TextLayerOperations;
 import com.lbc_plot.render.engine.model.TextAlignment;
-import com.lbc_plot.plot.model.Dialogue;
 
 // TextLayerManager.java - 专门处理文字图层
 public class TextLayerManager extends BaseLayerManager implements TextLayerOperations {
@@ -178,116 +168,50 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
         // 使用中文字体进行尺寸计算（加粗/斜体要使用同一套样式字体，否则测量与绘制不一致）
         Font chineseFont = FontLoader.getChineseFont(fontStyle, fontSize);
 
-        // 创建临时Graphics获取FontMetrics
+        // 创建临时Graphics获取字体渲染上下文
         BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
         Graphics2D tempG = tempImage.createGraphics();
         RenderQualityUtils.setupUltraQualityRendering(tempG); // 设置高质量渲染
         tempG.setFont(chineseFont);
-        FontMetrics metrics = tempG.getFontMetrics();
         FontRenderContext frc = tempG.getFontRenderContext();
 
-        if (maxWidth > 0) {
-            // 对于需要换行的文本，计算实际尺寸
-            LineBreakMeasurer measurer = new LineBreakMeasurer(
-                    new AttributedString(text).getIterator(), frc);
+        // 排版规则与绘制完全一致（同一个 TextLineBreaker）：对话内容里的换行是硬换行，
+        // 超宽时再自动折行，空行占一行行高——测量和绘制的行数/行高必须对得上，
+        // 否则居中、画布撑大都会算偏。
+        List<TextLineBreaker.Line> lines = TextLineBreaker.layout(text, chineseFont, frc, maxWidth);
+        float totalHeight = TextLineBreaker.totalHeight(lines);
+        float maxLineWidth = TextLineBreaker.maxAdvance(lines);
 
-            float totalHeight = 0;
-            float maxLineWidth = 0;
+        // 根据对齐方式计算边界
+        int left, top, right, bottom;
 
-            while (measurer.getPosition() < text.length()) {
-                TextLayout layout = measurer.nextLayout(maxWidth);
-                maxLineWidth = Math.max(maxLineWidth, layout.getAdvance());
-                totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
-            }
-
-            // 根据对齐方式计算边界
-            int left, top, right, bottom;
-
-            if (alignment == TextAlignment.CENTER) {
-                // 居中：锚点在文本中心
-                left = (int) (x - maxLineWidth / 2);
-                top = (int) (y - totalHeight / 2);
-                right = (int) (x + maxLineWidth / 2);
-                bottom = (int) (y + totalHeight / 2);
-            } else if (alignment == TextAlignment.RIGHT) {
-                // 右对齐：锚点在文本右上角
-                left = (int) (x - maxLineWidth);
-                top = y;
-                right = x;
-                bottom = (int) (y + totalHeight);
-            } else {
-                // 左对齐：锚点在文本左上角（默认）
-                left = x;
-                top = y;
-                right = (int) (x + maxLineWidth);
-                bottom = (int) (y + totalHeight);
-            }
-
-            // 未锁定画布尺寸时才撑大画布（固定尺寸下超出的文字在合成时被裁掉）
-            growCanvasTo(right, bottom);
-
+        if (alignment == TextAlignment.CENTER) {
+            // 居中：锚点在文本中心
+            left = (int) (x - maxLineWidth / 2);
+            top = (int) (y - totalHeight / 2);
+            right = (int) (x + maxLineWidth / 2);
+            bottom = (int) (y + totalHeight / 2);
+        } else if (alignment == TextAlignment.RIGHT) {
+            // 右对齐：锚点在文本右上角
+            left = (int) (x - maxLineWidth);
+            top = y;
+            right = x;
+            bottom = (int) (y + totalHeight);
         } else {
-            // 单行文本
-            int textWidth = metrics.stringWidth(text);
-            int textHeight = metrics.getHeight();
-
-            int left, top, right, bottom;
-
-            if (alignment == TextAlignment.CENTER) {
-                // 居中：锚点在文本中心
-                left = x - textWidth / 2;
-                top = y - textHeight / 2;
-                right = x + textWidth / 2;
-                bottom = y + textHeight / 2;
-            } else if (alignment == TextAlignment.RIGHT) {
-                // 右对齐：锚点在文本右上角
-                left = x - textWidth;
-                top = y;
-                right = x;
-                bottom = y + textHeight;
-            } else {
-                // 左对齐：锚点在文本左上角（默认）
-                left = x;
-                top = y;
-                right = x + textWidth;
-                bottom = y + textHeight;
-            }
-
-            // 未锁定画布尺寸时才撑大画布（固定尺寸下超出的文字在合成时被裁掉）
-            growCanvasTo(right, bottom);
+            // 左对齐：锚点在文本左上角（默认）
+            left = x;
+            top = y;
+            right = (int) (x + maxLineWidth);
+            bottom = (int) (y + totalHeight);
         }
+
+        // 未锁定画布尺寸时才撑大画布（固定尺寸下超出的文字在合成时被裁掉）
+        growCanvasTo(right, bottom);
 
         tempG.dispose();
 
-        logger.debug("添加文字图层: '{}', 位置({},{}), 对齐{}, 字号{}, 颜色{}",
-                text, x, y, alignment, fontSize, color);
-    }
-
-    /**
-     * 文本换行辅助方法
-     */
-    private String[] wrapText(String text, FontMetrics metrics, int maxWidth) {
-        List<String> lines = new ArrayList<>();
-        String[] words = text.split(" ");
-        StringBuilder currentLine = new StringBuilder();
-
-        for (String word : words) {
-            String testLine = currentLine.toString() + (currentLine.length() > 0 ? " " : "") + word;
-            if (metrics.stringWidth(testLine) <= maxWidth) {
-                currentLine.append(currentLine.length() > 0 ? " " : "").append(word);
-            } else {
-                if (currentLine.length() > 0) {
-                    lines.add(currentLine.toString());
-                }
-                currentLine = new StringBuilder(word);
-            }
-        }
-
-        if (currentLine.length() > 0) {
-            lines.add(currentLine.toString());
-        }
-
-        return lines.toArray(new String[0]);
+        logger.debug("添加文字图层: '{}', 位置({},{}), 对齐{}, 字号{}, 颜色{}, 行数{}",
+                text, x, y, alignment, fontSize, color, lines.size());
     }
 
     public void drawTextLayers(Graphics2D g2d) {
@@ -318,14 +242,15 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         if (textLayer.hasShadow) {
-            // 先绘制投影
-            g2d.setColor(textLayer.shadowColor);
-            drawTextContent(g2d, textLayer, textLayer.shadowOffsetX, textLayer.shadowOffsetY, textLayer.bold);
+            // 先绘制投影（颜色必须显式传：Graphics2D 上残留的颜色是上一个图层留下的，
+            // 改造前这里只 setColor 不传参，正文颜色靠 AttributedString 的 FOREGROUND 属性，
+            // 现在排版与颜色解耦，颜色只能由调用方给出）
+            drawTextContent(g2d, textLayer, textLayer.shadowOffsetX, textLayer.shadowOffsetY,
+                    textLayer.shadowColor, textLayer.bold);
         }
 
         // 再绘制主文字
-        g2d.setColor(textLayer.color);
-        drawTextContent(g2d, textLayer, 0, 0, textLayer.bold);
+        drawTextContent(g2d, textLayer, 0, 0, textLayer.color, textLayer.bold);
 
         // 恢复原始变换
         g2d.setTransform(originalTransform);
@@ -340,237 +265,20 @@ public class TextLayerManager extends BaseLayerManager implements TextLayerOpera
     /**
      * 绘制文字内容（支持偏移）
      *
-     * @param bold 是否用轮廓描边模拟加粗（当前字体没有独立 Bold 字重）
-     */
-    private void drawTextContent(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY, boolean bold) {
-        if (textLayer.maxWidth > 0) {
-            // 需要换行的文本
-            drawWrappedTextWithOffset(g2d, textLayer, offsetX, offsetY, bold);
-        } else {
-            // 单行文本
-            drawSingleLineWithOffset(g2d, textLayer, offsetX, offsetY, bold);
-        }
-    }
-
-    /**
-     * 绘制带偏移的单行文本
-     */
-    private void drawSingleLineWithOffset(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY,
-            boolean bold) {
-        int textWidth = g2d.getFontMetrics().stringWidth(textLayer.text);
-        int drawX = textLayer.x + offsetX;
-        int drawY = textLayer.y + offsetY + getTextBaseline(g2d);
-
-        if (textLayer.alignment == TextAlignment.CENTER) {
-            drawX = textLayer.x - textWidth / 2 + offsetX;
-        } else if (textLayer.alignment == TextAlignment.RIGHT) {
-            drawX = textLayer.x - textWidth + offsetX;
-        }
-
-        if (!bold) {
-            g2d.drawString(textLayer.text, drawX, drawY);
-            return;
-        }
-
-        // 当前中文字体没有独立的 Bold 字重（deriveFont(Font.BOLD) 不改变字形），
-        // 因此用"填充 + 轮廓描边"模拟加粗；线宽随字号缩放，低分辨率导出时也保持一致观感。
-        TextLayout layout = new TextLayout(textLayer.text, g2d.getFont(), g2d.getFontRenderContext());
-        Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, drawY));
-        g2d.setStroke(boldStroke(textLayer.fontSize));
-        g2d.fill(outline);
-        g2d.draw(outline);
-    }
-
-    /**
-     * 绘制带偏移的换行文本
+     * <p>与 {@link #addTextLayer} 用同一套排版（{@link TextLineBreaker}）：
+     * 对话内容里的换行是硬换行，超宽再自动折行；对齐方式与投影偏移的语义与改造前一致。
      *
-     * @param bold 是否用轮廓描边模拟加粗
+     * @param color 文字颜色（投影传投影色，正文传图层色）
+     * @param bold  是否用轮廓描边模拟加粗（当前字体没有独立 Bold 字重）
      */
-    private void drawWrappedTextWithOffset(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY,
-            boolean bold) {
-        AttributedString attributedString = new AttributedString(textLayer.text);
-        attributedString.addAttribute(TextAttribute.FONT, g2d.getFont());
-        attributedString.addAttribute(TextAttribute.FOREGROUND, g2d.getColor());
-
-        AttributedCharacterIterator characterIterator = attributedString.getIterator();
-        FontRenderContext frc = g2d.getFontRenderContext();
-        LineBreakMeasurer measurer = new LineBreakMeasurer(characterIterator, frc);
-
-        float wrapWidth = textLayer.maxWidth;
-        float anchorX = textLayer.x + offsetX;
-        float anchorY = textLayer.y + offsetY;
-
-        // 先测量总高度
-        List<TextLayout> layouts = new ArrayList<>();
-        float totalHeight = 0;
-
-        while (measurer.getPosition() < characterIterator.getEndIndex()) {
-            TextLayout layout = measurer.nextLayout(wrapWidth);
-            layouts.add(layout);
-            totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
-        }
-
-        // 重新测量
-        measurer.setPosition(characterIterator.getBeginIndex());
-
-        float currentY;
-        if (textLayer.alignment == TextAlignment.CENTER) {
-            currentY = anchorY - totalHeight / 2;
-        } else {
-            currentY = anchorY;
-        }
-
-        for (TextLayout layout : layouts) {
-            float drawX;
-            float lineWidth = layout.getAdvance();
-
-            if (textLayer.alignment == TextAlignment.CENTER) {
-                drawX = anchorX - lineWidth / 2;
-            } else if (textLayer.alignment == TextAlignment.RIGHT) {
-                drawX = anchorX - lineWidth;
-            } else {
-                drawX = anchorX;
-            }
-
-            currentY += layout.getAscent();
-            if (!bold) {
-                layout.draw(g2d, drawX, currentY);
-            } else {
-                // 与单行文字一致：填充 + 轮廓描边模拟加粗
-                Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, currentY));
-                g2d.setStroke(boldStroke(textLayer.fontSize));
-                g2d.fill(outline);
-                g2d.draw(outline);
-            }
-            currentY += layout.getDescent() + layout.getLeading();
-        }
-    }
-
-    /**
-     * 模拟加粗时的描边宽度：随字号线性缩放（28px 设计字号约 1.4px），
-     * 这样预览（1080p 设计画布）与低分辨率视频导出的观感一致。
-     */
-    private static BasicStroke boldStroke(int fontSize) {
-        float width = Math.max(0.6f, fontSize * 0.05f);
-        return new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-    }
-
-    /**
-     * 绘制自动换行文本 - 根据对齐方式处理
-     */
-    private void drawWrappedText(Graphics2D g2d, TextLayerInfo textLayer, Font font) {
-        AttributedString attributedString = new AttributedString(textLayer.text);
-        attributedString.addAttribute(TextAttribute.FONT, font);
-        attributedString.addAttribute(TextAttribute.FOREGROUND, textLayer.color);
-
-        AttributedCharacterIterator characterIterator = attributedString.getIterator();
-        FontRenderContext frc = g2d.getFontRenderContext();
-        LineBreakMeasurer measurer = new LineBreakMeasurer(characterIterator, frc);
-
-        float wrapWidth = textLayer.maxWidth;
-        float anchorX = textLayer.x;
-        float anchorY = textLayer.y;
-
-        // 先测量总高度和所有行的布局
-        List<TextLayout> layouts = new ArrayList<>();
-        float totalHeight = 0;
-
-        while (measurer.getPosition() < characterIterator.getEndIndex()) {
-            TextLayout layout = measurer.nextLayout(wrapWidth);
-            layouts.add(layout);
-            totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
-        }
-
-        // 重新测量（重置measurer）
-        measurer.setPosition(characterIterator.getBeginIndex());
-
-        float currentY;
-
-        if (textLayer.alignment == TextAlignment.CENTER) {
-            // 居中：锚点在文本垂直中心
-            currentY = anchorY - totalHeight / 2;
-        } else {
-            // 左对齐或右对齐：锚点在文本顶部
-            currentY = anchorY;
-        }
-
-        for (TextLayout layout : layouts) {
-            // 计算当前行的起始X坐标
-            float drawX;
-            float lineWidth = layout.getAdvance();
-
-            if (textLayer.alignment == TextAlignment.CENTER) {
-                drawX = anchorX - lineWidth / 2; // 水平居中
-            } else if (textLayer.alignment == TextAlignment.RIGHT) {
-                drawX = anchorX - lineWidth; // 右对齐
-            } else {
-                drawX = anchorX; // 左对齐
-            }
-
-            // 绘制当前行
-            currentY += layout.getAscent();
-            layout.draw(g2d, drawX, currentY);
-            currentY += layout.getDescent() + layout.getLeading();
-        }
-    }
-
-    /**
-     * 获取文字基线位置（确保文字正确垂直对齐）
-     */
-    private int getTextBaseline(Graphics2D g2d) {
-        FontMetrics metrics = g2d.getFontMetrics();
-        return metrics.getAscent(); // 返回字体的 ascent 作为基线
-    }
-
-    /**
-     * 检查文字是否超出边界（锚点居中版本）
-     */
-    private boolean isTextOutOfBounds(TextLayerInfo textLayer) {
-        // 创建临时 Graphics 来获取正确的字体度量
-        BufferedImage tempImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D tempG = tempImage.createGraphics();
-
-        // 使用中文字体
-        Font font = FontLoader.getChineseFont(textLayer.fontSize);
-        tempG.setFont(font);
-        FontMetrics metrics = tempG.getFontMetrics();
-        FontRenderContext frc = tempG.getFontRenderContext();
-
-        int textWidth;
-        int textHeight;
-
-        if (textLayer.maxWidth > 0) {
-            // 对于换行文本，计算实际尺寸
-            LineBreakMeasurer measurer = new LineBreakMeasurer(
-                    new AttributedString(textLayer.text).getIterator(), frc);
-
-            float totalHeight = 0;
-            float maxLineWidth = 0;
-
-            while (measurer.getPosition() < textLayer.text.length()) {
-                TextLayout layout = measurer.nextLayout(textLayer.maxWidth);
-                maxLineWidth = Math.max(maxLineWidth, layout.getAdvance());
-                totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
-            }
-
-            textWidth = (int) maxLineWidth;
-            textHeight = (int) totalHeight;
-        } else {
-            // 单行文本
-            textWidth = metrics.stringWidth(textLayer.text);
-            textHeight = metrics.getHeight();
-        }
-
-        tempG.dispose();
-
-        // 计算文本边界（锚点居中）
-        int left = textLayer.x - textWidth / 2;
-        int top = textLayer.y - textHeight / 2;
-        int right = textLayer.x + textWidth / 2;
-        int bottom = textLayer.y + textHeight / 2;
-
-        // 检查边界
-        return left < 0 || top < 0 || right > width || bottom > height;
+    private void drawTextContent(Graphics2D g2d, TextLayerInfo textLayer, int offsetX, int offsetY,
+            Color color, boolean bold) {
+        List<TextLineBreaker.Line> lines = TextLineBreaker.layout(
+                textLayer.text, FontLoader.getChineseFont(textLayer.fontStyle, textLayer.fontSize),
+                g2d.getFontRenderContext(), textLayer.maxWidth);
+        TextLineBreaker.drawLines(g2d, lines,
+                textLayer.x + offsetX, textLayer.y + offsetY,
+                textLayer.alignment, color, bold, textLayer.fontSize);
     }
 
     public void clear() {

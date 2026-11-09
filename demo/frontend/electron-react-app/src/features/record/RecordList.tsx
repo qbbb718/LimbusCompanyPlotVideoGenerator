@@ -8,6 +8,7 @@ import {
   MoveTarget,
   RecordGroup,
 } from "./recordGroups";
+import { dialogueTextSummary } from "./utils";
 
 interface RecordListProps {
   records: Record[];
@@ -961,8 +962,8 @@ const RecordList: React.FC<RecordListProps> = ({
                       : record.dialogue.speakerName || "旁白"}
                   </td>
                   <td>
-                    {record.dialogue.text.substring(0, 30) +
-                      (record.dialogue.text.length > 30 ? "..." : "")}
+                    {/* 台词支持换行：列表里只显示一行摘要，换行压成空格，避免把行高撑开 */}
+                    {dialogueTextSummary(record.dialogue.text, 30)}
                   </td>
                   <td>
                     <button

@@ -23,6 +23,7 @@ import {
 import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
+import { dialogueTextStats } from "../utils";
 import { PROPERTY_FOCUS_FLASH_MS } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest, TextFocusField } from "../preview/previewTargets";
 import "../RecordEditor.css";
@@ -140,6 +141,8 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
   const dialogue = selectedRecord.dialogue;
   const isFreeText = dialogue.freeText === true;
   const currentSpeaker = dialogue.speakerC?.[0];
+  // 对话内容支持换行：提示里显示当前行数 / 字数（去掉末尾空白后再数，与后端保存口径一致）
+  const dialogueStats = dialogueTextStats(dialogue.text);
 
   // 旁白：说话人不上屏（即使 speakerC 里残留角色），也不显示阵营与说话人名字输入框。
   // 判断必须与后端 Dialogue.isNarrator() 一致（按 speakerName），不能只看 speakerC。
@@ -565,11 +568,20 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
         className={"form-group" + flashClass("dialogue")}
       >
         <label>对话内容</label>
+        {/* 台词支持换行：Enter 换行，预览图与成片都会按换行分段（后端 TextLineBreaker 排版）。
+            所以这里原样写回 text，不做 trim / 替换 —— 换行是有效内容。 */}
         <textarea
           value={dialogue.text}
           onChange={(e) => updateDialogue("text", e.target.value)}
           rows={5}
+          aria-label="对话内容"
+          placeholder="输入台词；按 Enter 换行"
         />
+        <div className="dialogue-text-hint">
+          支持换行：Enter 换行，预览与成片按换行分段
+          {dialogueStats.chars > 0 &&
+            `（共 ${dialogueStats.lines} 行 / ${dialogueStats.chars} 字）`}
+        </div>
       </div>
 
       {isFreeText && (

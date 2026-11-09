@@ -89,9 +89,12 @@ public class RecordController {
      * <p>v12：情绪动画（序列帧）会画进预览图，且缓存键新增「情绪动画签名」一段；
      * 文件名形状变了，旧缓存自然不再命中，这里顺手把版本也 +1 以示区分。
      *
+     * <p>v13：对话内容支持换行（按 '\n' 硬换行排版，见 {@code TextLineBreaker}），
+     * 同一段文字的画面与旧版不同（旧版把换行整个吞掉），旧缓存必须作废。
+     *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v12";
+    private static final String PREVIEW_CACHE_VERSION = "v13";
 
     /**
      * 同时渲染的预览图上限。

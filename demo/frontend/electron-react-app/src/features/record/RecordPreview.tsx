@@ -33,6 +33,7 @@ import type { SpriteAnimation } from "./animation/animationTypes";
 import { isEmotionAnimUsable } from "./animation/animationTypes";
 import { isSampleVisible, posterSample, sampleSequence, spriteRect } from "./animation/sequenceTiming";
 import { preloadClipFrames } from "./animation/framePreloader";
+import { dialogueTextSummary } from "./utils";
 
 interface RecordPreviewProps {
   selectedRecord: Record;
@@ -967,7 +968,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
             <div
               key={record.uuid}
               className={`timeline-block ${index === selectedRecordIndex ? "active" : ""}`}
-              title={`#${index + 1} ${record.dialogue.freeText ? "自由文本" : record.dialogue.speakerName || "旁白"}: ${record.dialogue.text.substring(0, 20)}`}
+              title={`#${index + 1} ${record.dialogue.freeText ? "自由文本" : record.dialogue.speakerName || "旁白"}: ${dialogueTextSummary(record.dialogue.text, 20)}`}
               onClick={() => setSelectedRecordIndex(index)}
               style={{ width: `${100 / records.length}%` }}
             >

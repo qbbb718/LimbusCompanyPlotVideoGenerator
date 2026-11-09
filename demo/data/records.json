@@ -2,7 +2,7 @@
   "uuid" : "b7254978-73be-4e82-8211-5b2afa2539e1",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "这所以，一段文字。",
+    "text" : "属性面板-文本-说话人-自由文本，与章节开头的文字是相同样式",
     "location" : "办公室",
     "speakerC" : [ ],
     "speakerName" : "自由文本",
@@ -35,7 +35,15 @@
     "fadeDuration" : null
   } ],
   "camera" : null,
-  "effects" : [ ],
+  "effects" : [ {
+    "type" : "CROSS_DISSOLVE",
+    "amplitude" : null,
+    "periodFrames" : null,
+    "durationFrames" : null,
+    "fadeInFrames" : null,
+    "fadeOutFrames" : null,
+    "enabled" : true
+  } ],
   "isDirty" : false,
   "chars" : [ ],
   "bg" : [ {
@@ -54,17 +62,10 @@
   "uuid" : "96497792-85b3-45b7-b982-462eedb3ce2b",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "这是怎么回事",
+    "text" : "属性面板-文本-说话人-旁白\n属性面板-特效，有转场效果",
     "location" : "办公室",
-    "speakerC" : [ {
-      "characterID" : "char_1792296094464",
-      "characterName" : "新角色",
-      "height" : 170,
-      "faction" : "未设定",
-      "colorBg" : "#69350B",
-      "colorText" : "#FBDBB3"
-    } ],
-    "speakerName" : "新角色",
+    "speakerC" : [ ],
+    "speakerName" : "旁白",
     "faction" : "未设定",
     "align" : "LEFT",
     "speed" : 3,
@@ -89,14 +90,7 @@
     "centerX" : 960.0,
     "centerY" : 540.0,
     "zoom" : 1.0,
-    "to" : {
-      "centerX" : 439.1039,
-      "centerY" : 378.0192,
-      "zoom" : 2.8576512,
-      "to" : null,
-      "easing" : "easeOut",
-      "moveFrames" : 24
-    },
+    "to" : null,
     "easing" : "easeOut",
     "moveFrames" : 24
   },
@@ -104,6 +98,9 @@
     "type" : "CROSS_DISSOLVE",
     "amplitude" : null,
     "periodFrames" : null,
+    "durationFrames" : null,
+    "fadeInFrames" : null,
+    "fadeOutFrames" : null,
     "enabled" : true
   } ],
   "isDirty" : false,
@@ -136,80 +133,15 @@
     "adjY" : 0,
     "scale" : 1.0,
     "dim" : false,
-    "anim" : {
-      "version" : 1,
-      "timebase" : {
-        "unit" : "frame",
-        "fps" : 30
-      },
-      "enabled" : null,
-      "anchor" : null,
-      "clips" : [ {
-        "id" : "bounce-mvl6931s-3",
-        "kind" : "preset",
-        "enabled" : null,
-        "startFrame" : 0,
-        "endFrame" : null,
-        "durationFrames" : 60,
-        "loop" : "once",
-        "iterations" : null,
-        "timeScale" : null,
-        "preset" : "bounce",
-        "params" : {
-          "amplitude" : 24,
-          "periodFrames" : 18,
-          "iterations" : 2,
-          "decay" : 0.55,
-          "stretch" : 0
-        },
-        "channels" : null,
-        "keys" : null,
-        "blend" : null,
-        "priority" : 0,
-        "fadeInFrames" : 0,
-        "fadeOutFrames" : 6,
-        "onEnd" : "reset",
-        "sourcePresetId" : null,
-        "sourcePresetVersion" : null
-      } ]
-    }
-  }, {
-    "chara" : {
-      "characterID" : "char_1791800699958",
-      "characterName" : "新角色",
-      "height" : 170,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    },
-    "portrait" : {
-      "portraitID" : "portrait_1791800709646",
-      "characterID" : "char_1791800699958",
-      "imagePath" : "char_1791800699958/portrait_1791800709646.webp",
-      "portName" : "巴里-default",
-      "emotion" : "normal",
-      "faceX" : 423,
-      "faceY" : 108,
-      "length" : 176,
-      "adjX" : 0,
-      "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1791800699958/thumbnails/thumbnail_portrait_1791800709646.png",
-      "defaultPortrait" : true
-    },
-    "posX" : 520,
-    "posY" : 121,
-    "adjX" : 0,
-    "adjY" : 0,
-    "scale" : 1.0,
-    "dim" : false,
-    "anim" : null
+    "anim" : null,
+    "emotionAnim" : null
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "bg_1792301526450",
-      "path" : "/assets/backgrounds/办公室_1792301537868.png",
+      "uuid" : "bg_1794154907498",
+      "path" : "/assets/backgrounds/办公室_1794154914085.png",
       "name" : "办公室",
-      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1792301526450_1792301538082.png"
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1794154907498_1794154914342.png"
     },
     "posX" : 0,
     "posY" : 0,
@@ -357,6 +289,24 @@
         "sourcePresetId" : null,
         "sourcePresetVersion" : null
       } ]
+    },
+    "emotionAnim" : {
+      "version" : 1,
+      "clipId" : "exclamation_7c73e018",
+      "name" : "惊讶",
+      "canvasWidth" : 512,
+      "canvasHeight" : 512,
+      "frameHolds" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 87 ],
+      "loop" : "once",
+      "iterations" : null,
+      "startFrame" : 0,
+      "offsetX" : -0.7371691846137363,
+      "offsetY" : -0.291650781547846,
+      "scale" : 0.35021317,
+      "fadeInFrames" : 0,
+      "fadeOutFrames" : 40,
+      "opacity" : 1.0,
+      "posterFrame" : 13
     }
   }, {
     "chara" : {
@@ -387,7 +337,8 @@
     "adjY" : 0,
     "scale" : 1.0,
     "dim" : false,
-    "anim" : null
+    "anim" : null,
+    "emotionAnim" : null
   } ],
   "bg" : [ {
     "background" : {

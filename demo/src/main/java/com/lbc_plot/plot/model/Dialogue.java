@@ -73,7 +73,8 @@ public class Dialogue {
     }
 
     public void setText(String text) {
-        this.text = (text == null || text.trim().isEmpty()) ? DEFAULT_TEXT : text.trim();
+        String normalized = normalizeText(text);
+        this.text = (normalized == null || normalized.isEmpty()) ? DEFAULT_TEXT : normalized;
     }
 
     public String getLocation() {
@@ -439,11 +440,34 @@ public class Dialogue {
     }
 
     /**
+     * 规范化对话内容：统一换行符为 '\n'，去掉首尾空白，<b>保留内部换行</b>。
+     *
+     * <p>"对话内容"支持用户手打换行（剧情编辑 → 文本 → 对话内容），渲染端按 '\n' 分段。
+     * 这里必须做两件事：
+     * <ol>
+     *   <li><b>统一换行符</b>：前端 textarea 提交的本来就是 '\n'，但工程文件可能是外部工具存的
+     *       CRLF。渲染只认 '\n'，不统一的话 '\r' 会变成一个"看不见的字符"——打字动画多停一帧，
+     *       个别字体下还可能画成方块；</li>
+     *   <li><b>只去掉首尾空白</b>：内部换行是用户的有效内容，不能被压掉；开头/结尾的空行
+     *       对画面没有意义（且会让文字块莫名偏上），顺带在这里清掉。</li>
+     * </ol>
+     */
+    private static String normalizeText(String text) {
+        if (text == null) {
+            return null;
+        }
+        return text.replace("\r\n", "\n").replace('\r', '\n').trim();
+    }
+
+    /**
      * 应用智能默认值逻辑
      */
     private void applySmartDefaults() {
         // 文本和地点默认值
-        this.text = (text == null || text.trim().isEmpty()) ? DEFAULT_TEXT : text.trim();
+        this.text = normalizeText(this.text);
+        if (this.text == null || this.text.isEmpty()) {
+            this.text = DEFAULT_TEXT;
+        }
         this.location = (location == null || location.trim().isEmpty()) ? DEFAULT_LOCATION : location.trim();
 
         // 说话人列表默认值

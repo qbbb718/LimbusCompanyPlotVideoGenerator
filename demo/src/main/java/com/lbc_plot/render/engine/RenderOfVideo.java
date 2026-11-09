@@ -1,22 +1,10 @@
 package com.lbc_plot.render.engine;
 
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.Shape;
-import java.awt.font.FontRenderContext;
-import java.awt.font.LineBreakMeasurer;
-import java.awt.font.TextAttribute;
-import java.awt.font.TextLayout;
-import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.text.AttributedCharacterIterator;
-import java.text.AttributedString;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -26,6 +14,7 @@ import com.lbc_plot.common.util.RecordDurationCalculator;
 import com.lbc_plot.common.util.RenderQualityUtils;
 import com.lbc_plot.config.ProjectConfig;
 import com.lbc_plot.render.engine.manager.FontLoader;
+import com.lbc_plot.render.engine.manager.TextLineBreaker;
 import com.lbc_plot.render.engine.model.TextAlignment;
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.render.video.Camera;
@@ -659,6 +648,10 @@ public class RenderOfVideo {
     /**
      * 绘制带有高级功能的文字（换行、对齐、锚点等）
      *
+     * <p>排版与绘制都交给 {@link TextLineBreaker}：它与预览/静态图路径共用同一套
+     * "按 '\n' 硬换行 + 超宽自动折行"的规则，所以同一条台词在成片与预览里逐像素一致
+     * （对话内容支持用户手打换行，见剧情编辑 → 文本 → 对话内容）。
+     *
      * @param fontSize  字号；为浮点数以便按输出分辨率等比换算设计字号
      * @param fontStyle 字体样式（{@link Font#PLAIN} / {@link Font#BOLD} / {@link Font#ITALIC} 组合）
      */
@@ -673,155 +666,23 @@ public class RenderOfVideo {
         // 设置字体
         Font font = FontLoader.getChineseFont(fontStyle, fontSize);
         g2d.setFont(font);
-        g2d.setColor(color);
 
         // 当前中文字体没有独立 Bold 字重，deriveFont(Font.BOLD) 不改变字形，
         // 因此用"填充 + 轮廓描边"模拟加粗；由于字号已按输出分辨率换算，线宽要跟着字号缩放。
         boolean bold = (fontStyle & Font.BOLD) != 0;
 
+        // 只排版一次：投影与正文共用同一份逐行结果（颜色由 drawLines 决定，排版与颜色无关）
+        List<TextLineBreaker.Line> lines = TextLineBreaker.layout(
+                text, font, g2d.getFontRenderContext(), maxWidth);
+
         // 绘制阴影（如果需要；阴影不重复加粗）
         if (hasShadow && shadowColor != null) {
-            drawTextWithOffset(g2d, text, x, y, alignment, maxWidth,
-                    shadowOffsetX, shadowOffsetY, shadowColor, false, fontSize);
+            TextLineBreaker.drawLines(g2d, lines, x + shadowOffsetX, y + shadowOffsetY,
+                    alignment, shadowColor, false, fontSize);
         }
 
         // 绘制主文字
-        drawTextWithOffset(g2d, text, x, y, alignment, maxWidth, 0, 0, color, bold, fontSize);
-    }
-
-    /**
-     * 绘制带偏移的文字（支持换行和对齐）
-     *
-     * @param bold 是否模拟加粗
-     */
-    private static void drawTextWithOffset(Graphics2D g2d, String text, int x, int y,
-            TextAlignment alignment, int maxWidth,
-            int offsetX, int offsetY, Color drawColor, boolean bold, float fontSize) {
-        if (maxWidth > 0) {
-            // 需要换行的文本
-            drawWrappedTextWithOffset(g2d, text, x + offsetX, y + offsetY,
-                    alignment, maxWidth, drawColor, bold, fontSize);
-        } else {
-            // 单行文本
-            drawSingleLineWithOffset(g2d, text, x + offsetX, y + offsetY,
-                    alignment, drawColor, bold, fontSize);
-        }
-    }
-
-    /**
-     * 绘制带偏移的单行文本（修正居中对齐）
-     */
-    private static void drawSingleLineWithOffset(Graphics2D g2d, String text, int x, int y,
-            TextAlignment alignment, Color color, boolean bold, float fontSize) {
-        FontMetrics metrics = g2d.getFontMetrics();
-        int textWidth = metrics.stringWidth(text);
-        int textHeight = metrics.getHeight(); // 总高度
-        int drawX = x;
-        int drawY;
-
-        if (alignment == TextAlignment.CENTER) {
-            // 🔥 修正：文本框中心在(x,y)
-            drawX = x - textWidth / 2; // 水平居中：中心在x
-            drawY = y - textHeight / 2 + metrics.getAscent(); // 垂直居中：中心在y
-        } else if (alignment == TextAlignment.RIGHT) {
-            // 右对齐：文本基线在y坐标，右边界在x坐标
-            drawX = x - textWidth;
-            drawY = y + metrics.getAscent(); // 基线在y坐标
-        } else {
-            // 左对齐：文本基线在y坐标，左边界在x坐标
-            drawX = x; // 左边界在x坐标
-            drawY = y + metrics.getAscent(); // 基线在y坐标
-        }
-
-        g2d.setColor(color);
-
-        if (!bold) {
-            g2d.drawString(text, drawX, drawY);
-            return;
-        }
-
-        TextLayout layout = new TextLayout(text, g2d.getFont(), g2d.getFontRenderContext());
-        Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, drawY));
-        g2d.setStroke(boldStroke(fontSize));
-        g2d.fill(outline);
-        g2d.draw(outline);
-    }
-
-    /**
-     * 绘制带偏移的换行文本（修正居中对齐）
-     *
-     * @param bold 是否模拟加粗
-     */
-    private static void drawWrappedTextWithOffset(Graphics2D g2d, String text, int x, int y,
-            TextAlignment alignment, int maxWidth, Color color, boolean bold, float fontSize) {
-        // 创建属性字符串
-        AttributedString attributedString = new AttributedString(text);
-        attributedString.addAttribute(TextAttribute.FONT, g2d.getFont());
-        attributedString.addAttribute(TextAttribute.FOREGROUND, color);
-
-        AttributedCharacterIterator characterIterator = attributedString.getIterator();
-        FontRenderContext frc = g2d.getFontRenderContext();
-        LineBreakMeasurer measurer = new LineBreakMeasurer(characterIterator, frc);
-
-        // 🔥 修正：先测量总高度，用于垂直居中计算
-        float totalHeight = 0;
-        List<TextLayout> layouts = new ArrayList<>();
-
-        // 第一次循环：测量总高度
-        while (measurer.getPosition() < characterIterator.getEndIndex()) {
-            TextLayout layout = measurer.nextLayout(maxWidth);
-            layouts.add(layout);
-            totalHeight += layout.getAscent() + layout.getDescent() + layout.getLeading();
-        }
-
-        // 重新开始测量
-        measurer.setPosition(characterIterator.getBeginIndex());
-
-        float currentY;
-        if (alignment == TextAlignment.CENTER) {
-            // 🔥 修正：文本框中心在(x,y)，计算起始Y坐标
-            currentY = y - totalHeight / 2;
-        } else {
-            // 左对齐/右对齐：文本框顶部在y坐标
-            currentY = y;
-        }
-
-        // 第二次循环：实际绘制
-        for (TextLayout layout : layouts) {
-            float lineWidth = layout.getAdvance();
-            float drawX;
-
-            // 根据对齐方式计算X坐标
-            if (alignment == TextAlignment.CENTER) {
-                drawX = x - lineWidth / 2; // 水平居中：行中心在x
-            } else if (alignment == TextAlignment.RIGHT) {
-                drawX = x - lineWidth; // 右对齐：行右边界在x
-            } else {
-                drawX = x; // 左对齐：行左边界在x
-            }
-
-            // 绘制当前行
-            currentY += layout.getAscent();
-            if (!bold) {
-                layout.draw(g2d, drawX, currentY);
-            } else {
-                // 与单行文字一致：填充 + 轮廓描边模拟加粗
-                Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(drawX, currentY));
-                g2d.setStroke(boldStroke(fontSize));
-                g2d.fill(outline);
-                g2d.draw(outline);
-            }
-            currentY += layout.getDescent() + layout.getLeading();
-        }
-    }
-
-    /**
-     * 模拟加粗时的描边宽度：随字号线性缩放（28px 设计字号约 1.4px），
-     * 与预览页保持同一套观感。
-     */
-    private static BasicStroke boldStroke(float fontSize) {
-        float width = Math.max(0.6f, fontSize * 0.05f);
-        return new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+        TextLineBreaker.drawLines(g2d, lines, x, y, alignment, color, bold, fontSize);
     }
 
     // ==================== 工具方法 ====================
