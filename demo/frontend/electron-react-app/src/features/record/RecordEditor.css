@@ -6,6 +6,8 @@
   padding: 0;
   box-sizing: border-box;
   overflow: hidden;
+  /* 视频生成进度条改成浮层（见 .video-progress-overlay），以这里为定位参照 */
+  position: relative;
 }
 
 .editor-top {
@@ -942,6 +944,22 @@ body.record-list-dragging .project-toast {
 .video-progress-bar-container {
   padding: 10px 0;
   flex-shrink: 0;
+}
+
+/* 进度条浮在面板布局上方：不参与停靠布局，生成视频时不会把面板挤小 */
+.video-progress-bar-container.video-progress-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(720px, 92%);
+  padding: 0;
+  z-index: 500;
+  pointer-events: none;
+}
+
+.video-progress-bar-container.video-progress-overlay .video-progress-bar {
+  box-shadow: 0 8px 24px rgba(20, 40, 70, 0.18);
 }
 
 .video-progress-bar {

@@ -1,0 +1,730 @@
+/* ===== 剧情编辑 · 可停靠面板（DockLayout） =====
+   结构：
+   .dock-layout
+   ├── .dock-toolbar            面板菜单 / 重置 / 操作提示
+   └── .dock-surface            停靠表面（isolation 隔离层级，防止面板盖住工具条菜单）
+       ├── .dock-group          主区域页签组（外壳 + 标题栏）
+       ├── .dock-splitter-layer 分割线
+       ├── .dock-float          独立窗口（外壳 + 标题栏 + 缩放边）
+       ├── .dock-empty-state    主区域全空时的提示
+       ├── .dock-panel-host     三块面板内容（始终挂载，只改位置/显隐）
+       └── .dock-drag-layer     拖拽 ghost + 停靠指示器
+*/
+
+.dock-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #eef2f7;
+  container-type: inline-size;
+}
+
+/* ===== 工具条 ===== */
+
+.dock-toolbar {
+  position: relative;
+  /* 必须高于 .dock-surface 内部所有层级：面板菜单不能被面板内容盖住 */
+  z-index: 40;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  background: #f7f9fc;
+  border-bottom: 1px solid #dbe3ee;
+  font-size: 12px;
+  color: #5a6b86;
+  user-select: none;
+}
+
+.dock-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: #3d4d66;
+  white-space: nowrap;
+}
+
+.dock-toolbar-menu-wrap {
+  position: relative;
+}
+
+.dock-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1;
+  color: #42526b;
+  background: #fff;
+  border: 1px solid #d3dce9;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.dock-toolbar-btn:hover {
+  color: #1890ff;
+  border-color: #91caff;
+  background: #f0f8ff;
+}
+
+.dock-toolbar-btn.active {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: #e6f4ff;
+}
+
+.dock-toolbar-hint {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #8a99ad;
+}
+
+.dock-badge {
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #ff7a45;
+  color: #fff;
+  font-size: 10px;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* ===== 面板菜单 ===== */
+
+.dock-panel-menu {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  z-index: 300;
+  min-width: 230px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d6e0ee;
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(20, 40, 70, 0.18);
+}
+
+.dock-panel-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: #33415c;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dock-panel-menu-item:hover {
+  background: #f0f7ff;
+  color: #1668dc;
+}
+
+.dock-menu-icon {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+
+.dock-menu-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-menu-status {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 8px;
+  color: #5a6b86;
+  background: #eef2f7;
+}
+
+.dock-menu-status.docked {
+  color: #1668dc;
+  background: #e6f4ff;
+}
+
+.dock-menu-status.floating {
+  color: #ad6800;
+  background: #fff7e6;
+}
+
+.dock-menu-status.hidden {
+  color: #8a99ad;
+  background: #f2f4f8;
+}
+
+/* ===== 停靠表面 ===== */
+
+.dock-surface {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* 建立层叠上下文：面板/窗口的 z-index 再大也不会盖住工具条 */
+  isolation: isolate;
+  background: #eef2f7;
+}
+
+/* ===== 主区域页签组 ===== */
+
+.dock-group {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 5px;
+}
+
+.dock-group-frame {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #d3dce9;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.dock-group-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  background: linear-gradient(#fbfdff, #f1f5fb);
+  border-bottom: 1px solid #e4ebf5;
+  z-index: 1;
+}
+
+/* ===== 页签（同时是面板标题栏 / 拖拽手柄） ===== */
+
+.dock-tabs {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.dock-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dock-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  min-width: 0;
+  height: 24px;
+  margin: 3px 0;
+  padding: 0 8px;
+  box-sizing: border-box;
+  font-size: 12.5px;
+  line-height: 1;
+  color: #54657f;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  touch-action: none;
+}
+
+.dock-tab:hover {
+  color: #1668dc;
+  background: #eaf3ff;
+}
+
+.dock-tab.active {
+  color: #1668dc;
+  background: #fff;
+  border-color: #c9defa;
+  box-shadow: 0 1px 2px rgba(24, 144, 255, 0.14);
+  font-weight: 600;
+}
+
+.dock-tab-grip {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: #b3bfd0;
+  cursor: grab;
+}
+
+.dock-tab:hover .dock-tab-grip,
+.dock-tab.active .dock-tab-grip {
+  color: #6ba6e8;
+}
+
+.dock-tab-icon {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.dock-tab-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== 标题栏右侧操作 ===== */
+
+.dock-group-actions,
+.dock-float-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dock-action {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #7a8aa3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dock-action:hover {
+  color: #1668dc;
+  background: #e6f4ff;
+}
+
+.dock-action:last-child:hover {
+  color: #cf1322;
+  background: #fff1f0;
+}
+
+/* ===== 分割线 ===== */
+
+.dock-splitter-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.dock-splitter {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.dock-splitter[data-orientation="row"] {
+  cursor: col-resize;
+}
+
+.dock-splitter[data-orientation="column"] {
+  cursor: row-resize;
+}
+
+.dock-splitter::after {
+  content: "";
+  background: #dbe4f0;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.dock-splitter[data-orientation="row"]::after {
+  width: 2px;
+  height: 100%;
+}
+
+.dock-splitter[data-orientation="column"]::after {
+  width: 100%;
+  height: 2px;
+}
+
+.dock-splitter:hover::after,
+.dock-splitter:focus-visible::after,
+body.dock-splitter-dragging .dock-splitter::after {
+  background: #1890ff;
+}
+
+.dock-splitter:focus-visible {
+  outline: none;
+}
+
+/* ===== 面板内容（始终挂载） ===== */
+
+.dock-panel-host {
+  position: absolute;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 0 0 4px 4px;
+  pointer-events: auto;
+}
+
+.dock-panel-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.dock-panel-body > * {
+  min-height: 0;
+}
+
+/* 面板自己已经有外壳了，去掉原来分栏用的内层边框，避免出现双线 */
+.dock-panel-body .preview-container,
+.dock-panel-body .properties-container {
+  border: none;
+}
+
+/* ===== 独立窗口 ===== */
+
+.dock-float {
+  position: absolute;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #b9cee8;
+  border-radius: 6px;
+  box-shadow:
+    0 14px 36px rgba(20, 45, 80, 0.24),
+    0 3px 8px rgba(20, 45, 80, 0.12);
+}
+
+.dock-float-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  background: linear-gradient(#f8fbff, #e9f1fc);
+  border-bottom: 1px solid #d7e3f2;
+  border-radius: 6px 6px 0 0;
+  cursor: move;
+  touch-action: none;
+}
+
+.dock-float-grip {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #8fa2ba;
+  cursor: move;
+}
+
+.dock-float-header .dock-tabs {
+  overflow-x: auto;
+}
+
+.dock-float-header .dock-tab {
+  cursor: pointer;
+}
+
+/* 缩放热区：大部分落在窗口边框外侧，避免被内容层挡住 */
+.dock-resize-handle {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.dock-resize-handle.n {
+  top: -8px;
+  left: 6px;
+  right: 6px;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.dock-resize-handle.s {
+  bottom: -8px;
+  left: 6px;
+  right: 6px;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.dock-resize-handle.w {
+  left: -8px;
+  top: 6px;
+  bottom: 6px;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.dock-resize-handle.e {
+  right: -8px;
+  top: 6px;
+  bottom: 6px;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.dock-resize-handle.nw {
+  left: -8px;
+  top: -8px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+.dock-resize-handle.ne {
+  right: -8px;
+  top: -8px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.dock-resize-handle.sw {
+  left: -8px;
+  bottom: -8px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.dock-resize-handle.se {
+  right: -8px;
+  bottom: -8px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+/* ===== 空状态 ===== */
+
+.dock-empty-state {
+  position: absolute;
+  inset: 12px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: center;
+  color: #5a6b86;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed #c3d3e8;
+  border-radius: 8px;
+}
+
+.dock-empty-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dock-empty-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #3b4d68;
+}
+
+.dock-empty-desc {
+  margin: 0;
+  max-width: 520px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #7d8da6;
+}
+
+.dock-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dock-empty-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #40546f;
+  background: #fff;
+  border: 1px solid #cfdcec;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dock-empty-btn:hover {
+  color: #1668dc;
+  border-color: #91caff;
+  background: #f0f8ff;
+}
+
+.dock-empty-btn.primary {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.dock-empty-btn.primary:hover {
+  color: #fff;
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+
+/* ===== 拖拽预览 / 停靠指示器 ===== */
+
+.dock-drag-layer {
+  position: absolute;
+  inset: 0;
+  /* 必须压过所有独立窗口（窗口 z = 10 + 2×层级，正常远小于这里） */
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.dock-drop-indicator {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(24, 144, 255, 0.14);
+  border: 2px dashed #1890ff;
+  border-radius: 4px;
+}
+
+.dock-drop-indicator[data-zone="center"] {
+  background: rgba(24, 144, 255, 0.16);
+  border-style: solid;
+  box-shadow: inset 0 0 0 1px rgba(24, 144, 255, 0.35);
+}
+
+.dock-drop-indicator-label {
+  max-width: 100%;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0958d9;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(9, 88, 217, 0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dock-drag-ghost {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 210px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  font-size: 12.5px;
+  color: #24405f;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #91caff;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(20, 60, 110, 0.22);
+  transform: rotate(-1deg);
+}
+
+.dock-drag-ghost-grip {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: #7aa9d8;
+}
+
+.dock-drag-ghost-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-drag-ghost-badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: #0958d9;
+  background: #e6f4ff;
+  border-radius: 8px;
+}
+
+/* ===== 拖动中的全局反馈 ===== */
+
+body.dock-panel-dragging,
+body.dock-panel-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+body.dock-splitter-dragging,
+body.dock-splitter-dragging * {
+  user-select: none !important;
+}
+
+body.dock-window-moving,
+body.dock-window-moving * {
+  cursor: move !important;
+  user-select: none !important;
+}
+
+/* ===== 窄窗口自适应 ===== */
+
+@container (max-width: 860px) {
+  .dock-toolbar-hint {
+    display: none;
+  }
+}
+
+@container (max-width: 620px) {
+  .dock-toolbar-title {
+    display: none;
+  }
+
+  .dock-toolbar {
+    gap: 6px;
+    padding: 0 6px;
+  }
+}

@@ -37,7 +37,8 @@ import {
   RecordGroup,
   syncGroupAnchors,
 } from "./recordGroups";
-import ResizablePanel from "./ResizablePanel_updated";
+import DockLayout from "./dock/DockLayout";
+import type { DockPanelDefinition } from "./dock/DockLayout";
 import ExportSuccessDialog from "./ExportSuccessDialog";
 import { ProjectWorkspace } from "./useProjectWorkspace";
 import {
@@ -108,8 +109,6 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     importProject,
     fileName: projectFileName,
   } = workspace;
-
-  const [topPanelHeight, setTopPanelHeight] = useState(400);
 
   /**
    * 预览里选中的元素。
@@ -1074,70 +1073,103 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     }
   };
 
+  /**
+   * 三块可停靠面板。
+   *
+   * <p>「预览 / 属性 / 剧情记录」原来靠 ResizablePanel 固定分栏，现在交给 DockLayout：
+   * 面板可以拖出成独立窗口、按四边分割停靠、或合并成页签，布局会记在 localStorage。
+   *
+   * <p>内容元素由这里创建、作为 props 传进 DockLayout；布局变化时 DockLayout 只移动
+   * 面板的 host 容器，所以这三块组件的内部状态（滚动位置、选中的页签等）不会丢。
+   */
+  const dockPanels: DockPanelDefinition[] = [
+    {
+      id: "preview",
+      title: "预览",
+      icon: "🖼️",
+      content: (
+        <RecordPreview
+          selectedRecord={selectedRecord}
+          videoWidth={projectSettings.videoWidth}
+          videoHeight={projectSettings.videoHeight}
+          plot={plotOf(projectSettings)}
+          records={currentRecords}
+          selectedRecordIndex={selectedRecordIndex}
+          setSelectedRecordIndex={setSelectedRecordIndex}
+          selectedElementKey={previewSelection?.key ?? null}
+          onSelectElement={handlePreviewSelect}
+          onClearSelection={clearPreviewSelection}
+          onElementDragStart={handleElementDragStart}
+          onElementDragMove={handleElementDragMove}
+          onElementDragEnd={handleElementDragEnd}
+          onElementDragCancel={handleElementDragCancel}
+          refreshToken={previewRefreshToken}
+          // 总帧数用上面统一请求到的后端准数（含 stayFrames）；拿不到时预览自己回落近似值
+          durationFrames={durationInfo.frames}
+          // 关键帧时间轴 ↔ 预览：点轴上的帧 → 渲染该帧；反向把当前帧报给时间轴画播放头
+          seekRequest={previewSeek}
+          onFrameChange={setPreviewFrame}
+          // 预览模式跟着页签走：进「摄像机」页签 = 世界视图（可移镜/拖元素），
+          // 其它页签 = 后端渲的成片。镜头与「铺满背景」的控件都在那个页签里，
+          // 两边共用 cameraEditor 这一份状态。
+          viewMode={cameraTabActive ? "camera" : "effect"}
+          cameraEditor={cameraEditor}
+        />
+      ),
+    },
+    {
+      id: "properties",
+      title: "属性",
+      icon: "🎛️",
+      content: (
+        <div className="properties-container">
+          <PropertyTabs
+            activePropertyTab={activePropertyTab}
+            setActivePropertyTab={setActivePropertyTab}
+          />
+          <div className="property-content">{renderPropertyContent()}</div>
+        </div>
+      ),
+    },
+    {
+      id: "records",
+      title: "剧情记录",
+      icon: "📋",
+      content: (
+        <RecordList
+          records={currentRecords}
+          groups={groups}
+          selectedRecordIndex={selectedRecordIndex}
+          setSelectedRecordIndex={setSelectedRecordIndex}
+          createNewRecord={createNewRecord}
+          onCreateGroup={createGroup}
+          onRenameGroup={renameGroup}
+          onToggleGroup={toggleGroup}
+          onDissolveGroup={dissolveGroup}
+          onMoveRecords={handleMoveRecords}
+          onMoveGroup={handleMoveGroup}
+          generateVideo={generateVideo}
+          moveRecord={moveRecord}
+          duplicateRecord={duplicateRecord}
+          deleteRecord={deleteRecord}
+          onSaveProject={saveProject}
+          onImportProject={importProject}
+          projectFileName={projectFileName}
+          isGenerating={isGenerating}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="record-editor">
-      <ResizablePanel
-        direction="vertical"
-        defaultSize={topPanelHeight}
-        minSize={200}
-        className="editor-top-panel"
-        onResize={(size) => setTopPanelHeight(size)}
-      >
-        <div className="editor-top">
-          <ResizablePanel
-            direction="horizontal"
-            defaultSize={600}
-            minSize={200}
-            className="preview-panel"
-          >
-            <RecordPreview
-              selectedRecord={selectedRecord}
-              videoWidth={projectSettings.videoWidth}
-              videoHeight={projectSettings.videoHeight}
-              plot={plotOf(projectSettings)}
-              records={currentRecords}
-              selectedRecordIndex={selectedRecordIndex}
-              setSelectedRecordIndex={setSelectedRecordIndex}
-              selectedElementKey={previewSelection?.key ?? null}
-              onSelectElement={handlePreviewSelect}
-              onClearSelection={clearPreviewSelection}
-              onElementDragStart={handleElementDragStart}
-              onElementDragMove={handleElementDragMove}
-              onElementDragEnd={handleElementDragEnd}
-              onElementDragCancel={handleElementDragCancel}
-              refreshToken={previewRefreshToken}
-              // 总帧数用上面统一请求到的后端准数（含 stayFrames）；拿不到时预览自己回落近似值
-              durationFrames={durationInfo.frames}
-              // 关键帧时间轴 ↔ 预览：点轴上的帧 → 渲染该帧；反向把当前帧报给时间轴画播放头
-              seekRequest={previewSeek}
-              onFrameChange={setPreviewFrame}
-              // 预览模式跟着页签走：进「摄像机」页签 = 世界视图（可移镜/拖元素），
-              // 其它页签 = 后端渲的成片。镜头与「铺满背景」的控件都在那个页签里，
-              // 两边共用 cameraEditor 这一份状态。
-              viewMode={cameraTabActive ? "camera" : "effect"}
-              cameraEditor={cameraEditor}
-            />
-          </ResizablePanel>
-
-          <ResizablePanel
-            direction="horizontal"
-            defaultSize={200}
-            minSize={200}
-            className="properties-panel"
-          >
-            <div className="properties-container">
-              <PropertyTabs
-                activePropertyTab={activePropertyTab}
-                setActivePropertyTab={setActivePropertyTab}
-              />
-              <div className="property-content">{renderPropertyContent()}</div>
-            </div>
-          </ResizablePanel>
-        </div>
-      </ResizablePanel>
+      <DockLayout
+        panels={dockPanels}
+        onNotice={(message) => workspace.showToast("info", message)}
+      />
 
       {isGenerating && videoProgress && (
-        <div className="video-progress-bar-container">
+        <div className="video-progress-bar-container video-progress-overlay">
           <div className="video-progress-bar">
             <div className="progress-header">
               <span className="progress-stage">
@@ -1166,32 +1198,6 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           onClose={() => setExportSuccess(null)}
         />
       )}
-
-      <div className="editor-bottom-panel" style={{ minHeight: "150px" }}>
-        <div className="editor-bottom">
-          <RecordList
-            records={currentRecords}
-            groups={groups}
-            selectedRecordIndex={selectedRecordIndex}
-            setSelectedRecordIndex={setSelectedRecordIndex}
-            createNewRecord={createNewRecord}
-            onCreateGroup={createGroup}
-            onRenameGroup={renameGroup}
-            onToggleGroup={toggleGroup}
-            onDissolveGroup={dissolveGroup}
-            onMoveRecords={handleMoveRecords}
-            onMoveGroup={handleMoveGroup}
-            generateVideo={generateVideo}
-            moveRecord={moveRecord}
-            duplicateRecord={duplicateRecord}
-            deleteRecord={deleteRecord}
-            onSaveProject={saveProject}
-            onImportProject={importProject}
-            projectFileName={projectFileName}
-            isGenerating={isGenerating}
-          />
-        </div>
-      </div>
     </div>
   );
 };
