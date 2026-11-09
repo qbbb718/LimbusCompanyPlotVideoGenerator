@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -12,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -278,6 +281,78 @@ public final class AnimationClipStore {
             return false;
         }
         return !Files.exists(dir);
+    }
+
+    /* ==================== 导出 .lcaf ==================== */
+
+    /**
+     * @function 把一套素材写成 {@code .lcaf}（本质是 zip：{@code clip.json} + {@code frames/*.png}）
+     *
+     * <p>写盘的地方有三处（单个导出、批量导出、全部资源包），共用这一个实现：
+     * 帧图**原样拷贝字节**（不重新编码：无损且快），{@code clip.json} 也原样搬——
+     * "导出再导入完全等价"这条承诺只由这一处保证。
+     *
+     * @param clipId 素材 id
+     * @param target 目标文件（父目录必须已存在；调用方负责校验，好给出"保存目录不存在"这种可读提示）
+     * @return 实际写出的帧数
+     * @throws IllegalArgumentException 素材不存在 / 一张帧图都没有
+     */
+    public static int writeLcaf(String clipId, Path target) throws IOException {
+        if (!isValidId(clipId) || !Files.isRegularFile(indexPath(clipId))) {
+            throw new IllegalArgumentException("动画素材不存在：" + clipId);
+        }
+        int frames = frameFileCount(clipId);
+        if (frames <= 0) {
+            throw new IllegalArgumentException("这个素材没有任何帧图，无法导出");
+        }
+        try (OutputStream out = Files.newOutputStream(target);
+                ZipOutputStream zip = new ZipOutputStream(out)) {
+            // 1) clip.json（内含每帧时长与播放参数，导入时能原样还原）
+            zip.putNextEntry(new ZipEntry(INDEX_FILE));
+            zip.write(Files.readAllBytes(indexPath(clipId)));
+            zip.closeEntry();
+
+            // 2) 帧图（原样拷贝字节）
+            for (int i = 0; i < frames; i++) {
+                File frame = frameFile(clipId, i).toFile();
+                if (!frame.isFile()) {
+                    continue;
+                }
+                zip.putNextEntry(new ZipEntry(FRAMES_DIR + "/" + frame.getName()));
+                Files.copy(frame.toPath(), zip);
+                zip.closeEntry();
+            }
+        }
+        return frames;
+    }
+
+    /**
+     * @function 素材名 → 可当文件名用的名字（不含扩展名）
+     *
+     * <p>素材名是用户随手起的，可能带 {@code / : * ? " < > |} 甚至整段路径；
+     * 直接拼进保存路径就是"导出到不存在的地方"或覆盖掉别的文件。
+     * 这里统一清成 Windows 合法字符，空名退回 id，最后按长度截断（给目标目录留余量）。
+     */
+    public static String safeExportFileName(String name, String fallbackId) {
+        String base = name == null ? "" : name.trim();
+        if (base.isEmpty()) {
+            base = fallbackId == null ? "" : fallbackId;
+        }
+        String cleaned = base.replaceAll("[\\\\/:*?\"<>|\\r\\n\\t]", "_").trim();
+        // 去掉 Windows 不允许的结尾点 / 空格（"花开." 这样的名字建不出文件）
+        cleaned = cleaned.replaceAll("[. ]+$", "");
+        if (cleaned.length() > 80) {
+            cleaned = cleaned.substring(0, 80);
+            // 别把 emoji 之类切成半个代理对（会产生非法字符，建文件直接失败）
+            if (Character.isHighSurrogate(cleaned.charAt(cleaned.length() - 1))) {
+                cleaned = cleaned.substring(0, cleaned.length() - 1);
+            }
+            cleaned = cleaned.replaceAll("[. ]+$", "");
+        }
+        if (cleaned.isEmpty()) {
+            cleaned = "animation";
+        }
+        return cleaned;
     }
 
     /**

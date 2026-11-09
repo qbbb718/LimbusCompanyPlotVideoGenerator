@@ -32,6 +32,39 @@ interface Window {
     /** 取文件选择框所选文件的真实路径（Electron 32 起 File.path 已移除） */
     getPathForFile: (file: File) => string;
     selectDirectory: () => Promise<{ canceled: boolean; path?: string }>;
+    /**
+     * 情绪动画（序列帧）：单选一个动画文件导入（`.lcaf`，本质是 zip）。
+     *
+     * <p>函数名带 `animationClip` 的是**素材文件**对话框，带回用户选的绝对路径；
+     * 真正读文件 / 写文件仍然走 `readFile` 与后端接口。
+     */
+    openAnimationClip: () => Promise<{
+      canceled: boolean;
+      filePath?: string;
+      filePaths?: string[];
+    }>;
+    /** 情绪动画：多选动画文件（批量导入，一个 .lcaf = 一套动画） */
+    openAnimationClips: () => Promise<{ canceled: boolean; filePaths?: string[] }>;
+    /** 只选"保存到哪里"、不写文件（导出由后端直接写盘） */
+    chooseSavePath: (options?: {
+      title?: string;
+      buttonLabel?: string;
+      defaultPath?: string;
+      filters?: { name: string; extensions: string[] }[];
+    }) => Promise<{ canceled: boolean; filePath?: string }>;
+    /** 只选一个目录（批量导出的落点；不写文件） */
+    chooseDirectory: (options?: {
+      title?: string;
+      buttonLabel?: string;
+      defaultPath?: string;
+    }) => Promise<{ canceled: boolean; directory?: string }>;
+    /** 情绪动画：选一个文件夹，把里面的图片全部导入（只取这一层） */
+    openImageFolder: () => Promise<{
+      canceled: boolean;
+      dir?: string;
+      filePaths?: string[];
+      error?: string;
+    }>;
     saveThumbnail: (fileName: string, data: Uint8Array) => Promise<string>;
     getAppVersion: () => Promise<string>;
     getAppPath: () => Promise<string>;

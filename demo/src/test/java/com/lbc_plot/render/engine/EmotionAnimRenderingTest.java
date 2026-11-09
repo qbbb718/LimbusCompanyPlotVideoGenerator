@@ -20,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.lbc_plot.plot.model.Dialogue;
 import com.lbc_plot.plot.model.Record;
+import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.anim.AnimationClipAsset;
 import com.lbc_plot.render.video.anim.EmotionAnim;
@@ -30,13 +31,15 @@ import com.lbc_plot.resource.model.Portrait;
 /**
  * 情绪动画（序列帧）在**真实渲染管线**里的验证：画出来看像素。
  *
- * <p>锁五件事：
+ * <p>锁七件事：
  * <ol>
  *   <li>第 N 帧真的画的是第 N 张图（不是永远第 0 张）；</li>
  *   <li>素材以**脸框中心**为基准对齐（位置算对）；</li>
  *   <li>序列播完之后与"完全没挂动画"逐像素相同（不能留下半透明残影）；</li>
  *   <li>淡入帧的 alpha 真的生效；</li>
- *   <li>静态预览用「代表帧」而不是第 0 帧。</li>
+ *   <li>静态预览用「代表帧」而不是第 0 帧；</li>
+ *   <li>摄像机推近（zoom≠1）时贴脸特效**跟着一起放大**；</li>
+ *   <li>静态预览图（编辑器里那张栅格图）同样受 zoom 影响，与 DOM 层不能两副样子。</li>
  * </ol>
  *
  * <p>用合成图（纯色方块）避免依赖素材库。
@@ -177,6 +180,44 @@ class EmotionAnimRenderingTest {
                 "静态预览必须画代表帧（绿），而不是第 0 帧（蓝），实际 " + color);
     }
 
+    @Test
+    @DisplayName("摄像机 zoom：贴脸特效跟着一起放大（人物放大了、汗滴不能还是原来那么大）")
+    void cameraZoomScalesTheSprite() throws Exception {
+        Camera camera = new Camera(960, 540, 2f);
+        BufferedImage scene = RenderOfImage.renderCharactersOnly(recordWith(emotionAnim(3, 0)),
+                WIDTH, HEIGHT, camera, 0);
+
+        int centerX = camera.screenX(faceCenterX());
+        int centerY = camera.screenY(faceCenterY());
+        assertEquals(FRAME_0.getRGB(), rgbNear(scene, centerX, centerY),
+                "镜头推近后素材中心仍应落在（换算后的）脸框中心上");
+
+        // 素材 200×200 × zoom2 = 400×400（半宽 200）。没乘 zoom 时半宽只有 100，
+        // 所以 "+150" 这个点只有"跟着镜头放大"才有素材颜色，否则露出立绘的红。
+        assertEquals(FRAME_0.getRGB(), rgbNear(scene, centerX + 150, centerY),
+                "镜头推近时素材尺寸必须跟着放大（前端 DOM 层就是这么算的）");
+    }
+
+    @Test
+    @DisplayName("静态预览图：摄像机 zoom 同样作用于贴脸特效（栅格图与 DOM 层不能两副样子）")
+    void staticPreviewRespectsCameraZoom() throws Exception {
+        Record record = recordWith(emotionAnim(3, 0));
+        record.setCamera(new Camera(960, 540, 2f));
+        BufferedImage preview = RenderOfImage.renderPreviewStill(record, true, WIDTH, HEIGHT);
+
+        // 场景画布 → 设计画布：×0.8 再偏移 (192,108)
+        Camera camera = record.getCamera();
+        int centerX = Math.round(192 + camera.screenX(faceCenterX()) * 0.8f);
+        int centerY = Math.round(108 + camera.screenY(faceCenterY()) * 0.8f);
+
+        assertTrue(isSpriteColor(rgbNear(preview, centerX, centerY)),
+                "缩略图中心应当仍是素材颜色（" + FRAME_0 + "）");
+        // 素材在设计画布里的半宽 = 200 × 0.8 = 160；不乘 zoom 时只有 80，所以 +120 处
+        // 只有"跟随镜头放大"才留着素材颜色。该点离上边缘较远，边框暗角的影响可忽略。
+        assertTrue(isSpriteColor(rgbNear(preview, centerX + 120, centerY)),
+                "静态预览里的缩略图必须随镜头放大，否则与拖动时的 DOM 层对不上");
+    }
+
     /* ==================== 数据构造 ==================== */
 
     /** 脸框中心的场景坐标（与 EmotionAnimPlacement 的推导同源） */
@@ -239,6 +280,16 @@ class EmotionAnimRenderingTest {
     }
 
     /* ==================== 像素工具 ==================== */
+
+    /**
+     * 这个像素是不是"素材（蓝）"而不是"立绘（红）"。
+     *
+     * <p>静态预览要过 0.8 缩放与边框暗角，纯色会被压暗、边缘会被插值，所以按通道判定而不是精确相等。
+     */
+    private static boolean isSpriteColor(int rgb) {
+        Color color = new Color(rgb);
+        return color.getBlue() > 120 && color.getRed() < 60 && color.getGreen() < 60;
+    }
 
     /** 取 (x, y) 周围 3×3 的中位颜色，避开缩放/抗锯齿带来的单点噪声 */
     private static int rgbNear(BufferedImage image, int x, int y) {

@@ -62,6 +62,38 @@ it("页面顶部提供全部资源的导入与导出", async () => {
   expect(screen.getByText(/导入全部资源/)).toBeTruthy();
 });
 
+it("「全部资源」把序列帧动画算进去：说明文字、导入回执、逐条警告都要带上", async () => {
+  const importAll = jest.spyOn(ApiService, "importAllResources").mockResolvedValue({
+    characters: 1,
+    backgrounds: 2,
+    audios: 3,
+    animationClips: 4,
+    warnings: ["动画「坏的.lcaf」导入失败：压缩包里没有找到图片"],
+  });
+  // 包里带了动画 → 会顺带刷新动画素材缓存（这里别让它真去发请求）
+  const listClips = jest.spyOn(ApiService, "listAnimationClips").mockResolvedValue([]);
+  const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+  const { container } = await renderManager();
+
+  // 顶栏说明里点明动画也在整库包里（不能只写"角色 + 背景 + 音频"）
+  expect(screen.getByText(/角色 \+ 背景 \+ 音频 \+ 序列帧动画/)).toBeTruthy();
+
+  const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+  fireEvent.change(input, {
+    target: { files: [new File(["zip"], "resources.zip", { type: "application/zip" })] },
+  });
+
+  await waitFor(() => expect(importAll).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+
+  const text = alertSpy.mock.calls[0][0] as string;
+  expect(text).toContain("序列帧动画 4 套");
+  expect(text).toContain("坏的.lcaf");
+
+  // 导入后动画素材列表必须重新拉一次（模块级缓存不随页面切换重置）
+  await waitFor(() => expect(listClips).toHaveBeenCalled());
+});
+
 it("背景标签页支持多选导出与导入", async () => {
   const { container } = await renderManager();
 

@@ -95,6 +95,51 @@
   white-space: nowrap;
 }
 
+/* ==================== 多选导出条 ==================== */
+
+/* 常态与多选态都占同样的内边距：进出选择模式时列表不上下跳 */
+.sprite-anim-selectbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.sprite-anim-selectbar.is-active {
+  background: #f7f9ea;
+  box-shadow: inset 0 0 0 1px #dfe4c4;
+}
+
+.sprite-anim-selectbar-hint {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: #7a8465;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sprite-anim-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #55603c;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sprite-anim-check input {
+  width: auto;
+  flex: none;
+  cursor: pointer;
+}
+
 .sprite-anim-list-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -106,6 +151,7 @@
 }
 
 .sprite-anim-card {
+  position: relative;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -126,6 +172,34 @@
   border-color: #b8c46a;
   box-shadow: inset 3px 0 0 #b8c46a;
   background: #f7f9ea;
+}
+
+/* 多选导出时勾中的卡片：与"当前编辑"用不同的强调方式，避免混淆 */
+.sprite-anim-card.is-checked {
+  border-color: #b8c46a;
+  background: #fbfdf0;
+}
+
+/* 多选态下的勾选框：浮在封面上，**不挤占布局**（进出选择模式时卡片不会重排） */
+.sprite-anim-card-check {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.sprite-anim-card-check input[type="checkbox"] {
+  margin: 0;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
 }
 
 .sprite-anim-card img {
@@ -165,6 +239,9 @@
   color: #3f6b2c;
   padding: 4px 0;
   overflow-wrap: anywhere;
+  /* 批量导入/导出的失败清单可能很长：给个上限自己滚，别把整个素材列表挤没 */
+  max-height: 96px;
+  overflow-y: auto;
 }
 
 .sprite-anim-message.is-error {
@@ -364,8 +441,20 @@
   cursor: pointer;
 }
 
-.sprite-anim-btn:hover {
+.sprite-anim-btn:hover:not(:disabled) {
   background: #f7f9ea;
+}
+
+/* 主按钮（「确认导出」）：与其它小按钮区分开，一眼知道下一步点哪 */
+.sprite-anim-btn.is-primary {
+  border-color: #b8c46a;
+  background: #f4f7e2;
+  font-weight: 600;
+}
+
+.sprite-anim-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* 说明文字：**允许换行**（本来就长），别用省略号把关键信息藏掉 */
@@ -908,7 +997,9 @@
   }
 
   .sprite-anim-list {
-    max-height: 210px;
+    /* 叠到上面以后要留出"搜索 + 4 个导入按钮 + 推算开关 + 多选条"的高度，
+       否则列表本体被挤成一条缝（宽了会换行更占地方，所以给得宽裕些） */
+    max-height: 260px;
     border-right: none;
     border-bottom: 1px solid #e3e6cc;
     padding: 0 0 8px;

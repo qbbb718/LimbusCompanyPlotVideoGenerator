@@ -39,7 +39,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // 情绪动画（序列帧）：导入动画文件 / 只选保存路径（由后端写盘）
   openAnimationClip: () => ipcRenderer.invoke("dialog:openAnimationClip"),
+  // 情绪动画：多选动画文件批量导入（一个 .lcaf = 一套动画）
+  openAnimationClips: () => ipcRenderer.invoke("dialog:openAnimationClips"),
   chooseSavePath: (options) => ipcRenderer.invoke("dialog:chooseSavePath", options),
+  // 选一个目录（批量导出的落点；只返回路径，不写文件）
+  chooseDirectory: (options) => ipcRenderer.invoke("dialog:chooseDirectory", options),
   // 情绪动画：选一个文件夹，把里面的图片全部导入
   openImageFolder: () => ipcRenderer.invoke("dialog:openImageFolder"),
 

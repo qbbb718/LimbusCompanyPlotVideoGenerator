@@ -8,6 +8,7 @@ import {
   describeTransferError,
   zipFileName,
 } from "@features/common/utils/resourceTransfer";
+import { refreshAnimationClips } from "@features/record/animation/useAnimationClipLibrary";
 import ResourceTabs from "./ResourceTabs";
 import type { ResourceTabKey } from "./ResourceTabs";
 import CharactersTab from "./tabs/CharactersTab";
@@ -108,14 +109,14 @@ const ResourceManager: React.FC<ResourceManagerProps> = ({ initialTab = "charact
     void fetchResources();
   }, [fetchResources]);
 
-  /** 导出全部资源（角色 + 背景 + 音频） */
+  /** 导出全部资源（角色 + 背景 + 音频 + 序列帧动画） */
   const handleExportAll = async () => {
     if (isTransferringAll) return;
     setIsTransferringAll(true);
     try {
       const blob = await ApiService.exportAllResources();
       downloadBlob(blob, zipFileName("resources"));
-      alert("成功导出全部资源（角色 + 背景 + 音频）");
+      alert("成功导出全部资源（角色 + 背景 + 音频 + 序列帧动画）");
     } catch (error) {
       console.error("导出全部资源失败:", error);
       alert(describeTransferError(error, "导出全部资源失败，请重试"));
@@ -124,7 +125,13 @@ const ResourceManager: React.FC<ResourceManagerProps> = ({ initialTab = "charact
     }
   };
 
-  /** 导入全部资源包，完成后静默刷新三个列表 */
+  /**
+   * 导入全部资源包，完成后静默刷新各列表。
+   *
+   * <p>序列帧动画不走 `fetchResources`：它们是模块级缓存（`useAnimationClipLibrary`），
+   * 不随页面切换重置。包里带了动画时必须显式 `refreshAnimationClips()`，
+   * 否则切到「序列帧动画」子页面看到的还是导入前那份列表。
+   */
   const handleImportAll = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -133,8 +140,14 @@ const ResourceManager: React.FC<ResourceManagerProps> = ({ initialTab = "charact
     try {
       const result = await ApiService.importAllResources(file);
       await fetchResources(true);
+      if ((result.animationClips ?? 0) > 0) {
+        refreshAnimationClips();
+      }
+      const warnings = result.warnings ?? [];
       alert(
-        `成功导入资源：角色 ${result.characters} 个、背景 ${result.backgrounds} 张、音频 ${result.audios} 个`,
+        `成功导入资源：角色 ${result.characters} 个、背景 ${result.backgrounds} 张、` +
+          `音频 ${result.audios} 个、序列帧动画 ${result.animationClips ?? 0} 套` +
+          (warnings.length ? `\n\n有 ${warnings.length} 项没完全导入：\n${warnings.join("\n")}` : ""),
       );
     } catch (error) {
       console.error("导入全部资源失败:", error);
@@ -192,12 +205,12 @@ const ResourceManager: React.FC<ResourceManagerProps> = ({ initialTab = "charact
 
   return (
     <div className="resource-manager">
-      {/* 页面顶部：全部资源（角色 + 背景 + 音频）一次性导入导出，便于整体迁移 */}
+      {/* 页面顶部：全部资源（角色 + 背景 + 音频 + 序列帧动画）一次性导入导出，便于整体迁移 */}
       <div className="resource-topbar">
         <div className="resource-topbar-info">
           <span className="resource-topbar-title">资源库</span>
           <span className="resource-topbar-hint">
-            全部资源 = 角色 + 背景 + 音频，用于换机 / 备份
+            全部资源 = 角色 + 背景 + 音频 + 序列帧动画，用于换机 / 备份
           </span>
         </div>
         <div className="resource-topbar-actions">
@@ -205,14 +218,14 @@ const ResourceManager: React.FC<ResourceManagerProps> = ({ initialTab = "charact
             className="btn-primary"
             onClick={handleExportAll}
             disabled={isTransferringAll}
-            title="把角色、背景、音频打成一个 ZIP 导出"
+            title="把角色、背景、音频、序列帧动画打成一个 ZIP 导出（动画按套存成 .lcaf）"
           >
             {isTransferringAll ? "⏳ 处理中…" : "📦 导出全部资源"}
           </button>
           <button
             onClick={() => allImportFileRef.current?.click()}
             disabled={isTransferringAll}
-            title="导入角色 + 背景 + 音频的资源包（也支持单一类型的资源包）"
+            title="导入角色 + 背景 + 音频 + 序列帧动画的资源包（也支持单一类型的资源包）"
           >
             📥 导入全部资源
           </button>

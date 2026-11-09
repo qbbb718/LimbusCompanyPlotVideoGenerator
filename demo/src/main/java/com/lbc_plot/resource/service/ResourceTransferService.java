@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -43,12 +44,16 @@ import com.lbc_plot.resource.model.Audio;
 import com.lbc_plot.resource.model.Background;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
+import com.lbc_plot.render.video.anim.AnimationClipAsset;
+import com.lbc_plot.render.video.emotion.AnimationClipImporter;
+import com.lbc_plot.render.video.emotion.AnimationClipStore;
+import com.lbc_plot.render.video.emotion.FrameHoldInference;
 
 /**
  * @module 资源管理模块
  * @function 资源导入导出服务
  *
- * <p>把「角色 / 背景 / 音频」三类资源统一打包成 ZIP 导入导出，供资源管理页面的
+ * <p>把「角色 / 背景 / 音频 / 序列帧动画」四类资源统一打包成 ZIP 导入导出，供资源管理页面的
  * 「多选导出」「导入」以及页面顶部的「全部资源导入导出」共用。
  *
  * <h2>为什么集中在一个服务里</h2>
@@ -58,10 +63,18 @@ import com.lbc_plot.resource.model.Portrait;
  * <ul>
  *   <li>{@link #exportCharacters}/{@link #importCharacters} 等单类型方法：ZIP 根目录放
  *       {@code characters.json}（或 backgrounds/audios.json）+ 素材文件；</li>
- *   <li>{@link #exportAll}/{@link #importAll}：把三类包分别放进 {@code characters/}、
- *       {@code backgrounds/}、{@code audios/} 三个顶级目录，并附一个 {@code manifest.json}。</li>
+ *   <li>{@link #exportAll}/{@link #importAll}：把四类包分别放进 {@code characters/}、
+ *       {@code backgrounds/}、{@code audios/}、{@code animation-clips/} 四个顶级目录，
+ *       并附一个 {@code manifest.json}。</li>
  * </ul>
  * 两类包结构互相兼容：全部资源包是按类型前缀调用同一套单类型实现打包/解包的。
+ *
+ * <h2>序列帧动画为什么以 {@code .lcaf} 入包</h2>
+ * 前三类资源在数据库里有记录，包里放"清单 + 素材文件"就够；序列帧动画**本来就没有数据库**，
+ * 它的素材目录（{@code clip.json + frames/}）压缩成 zip 就是 {@code .lcaf}——
+ * 也就是它自己的交换格式。所以包内直接放 {@code animation-clips/<名字>.lcaf}，
+ * 导入时原样交给 {@code AnimationClipImporter}（与用户手动导入 .lcaf 走同一条代码路径），
+ * 不必为"资源包里的动画"再发明一套半残的格式。
  *
  * <h2>内存与临时文件</h2>
  * 素材动辄几百 MB，"全部资源"包可能上 GB，所以导入导出全程流式处理：
@@ -79,24 +92,40 @@ public class ResourceTransferService {
     public static final String BACKGROUNDS_MANIFEST = "backgrounds.json";
     public static final String AUDIOS_MANIFEST = "audios.json";
 
+    /**
+     * 序列帧动画包内的清单文件名。
+     *
+     * <p>它只是"这个包里有动画 / 各套叫什么"的**说明**：真正导入时以包内的
+     * {@code *.lcaf} 条目为准（清单与文件不一致时也照样导入，不拿清单当权威）。
+     */
+    public static final String ANIMATION_CLIPS_MANIFEST = "animation-clips.json";
+
     /** "全部资源"包内的清单文件名 */
     public static final String BUNDLE_MANIFEST = "manifest.json";
 
-    /** "全部资源"包内的三个顶级目录 */
+    /** "全部资源"包内的四个顶级目录 */
     public static final String CHARACTERS_PREFIX = "characters/";
     public static final String BACKGROUNDS_PREFIX = "backgrounds/";
     public static final String AUDIOS_PREFIX = "audios/";
+    public static final String ANIMATION_CLIPS_PREFIX = "animation-clips/";
+
+    /** 动画素材在包内的后缀（= 它自己的交换格式） */
+    public static final String ANIMATION_CLIP_EXTENSION = ".lcaf";
 
     /**
      * 全部资源包的格式版本。
      * 以后若调整包结构，把这个数字 +1；导入端遇到比它大的版本会直接拒绝，
      * 而不是"导入到一半才发现字段不认识"。
+     *
+     * <p>v2：新增 {@code animation-clips/} 目录。老程序不认识它，会把动画**静默丢掉**——
+     * 这正是需要拒绝而不是"尽力而为"的场景，所以 +1。
      */
-    public static final int BUNDLE_FORMAT_VERSION = 1;
+    public static final int BUNDLE_FORMAT_VERSION = 2;
 
     /** 已知的清单文件名，扫描 ZIP 时顺带读进内存（都是小文件） */
     private static final Set<String> MANIFEST_FILE_NAMES = Set.of(
-            CHARACTERS_MANIFEST, BACKGROUNDS_MANIFEST, AUDIOS_MANIFEST, BUNDLE_MANIFEST);
+            CHARACTERS_MANIFEST, BACKGROUNDS_MANIFEST, AUDIOS_MANIFEST,
+            ANIMATION_CLIPS_MANIFEST, BUNDLE_MANIFEST);
 
     @Autowired
     private AppConfig appConfig;
@@ -106,6 +135,15 @@ public class ResourceTransferService {
 
     @Autowired
     private CharacterFolderService characterFolderService;
+
+    /**
+     * 序列帧动画的导入器。
+     *
+     * <p>直接复用"用户手动导入 .lcaf"那一条链路：重编码 PNG、统一画布、还原每帧时长与
+     * 播放参数、原子落盘、id 冲突换新 id —— 全都在它里面。资源包导入不该另写一份。
+     */
+    @Autowired
+    private AnimationClipImporter animationClipImporter;
 
     // ==================================================================
     // 上传落盘 / 临时文件
@@ -562,32 +600,185 @@ public class ResourceTransferService {
     }
 
     // ==================================================================
-    // 全部资源（角色 + 背景 + 音频）
+    // 序列帧动画（情绪动画素材）
+    // ==================================================================
+
+    /**
+     * @function 导出序列帧动画为临时 ZIP（包内每套动画一个 {@code .lcaf}）
+     *
+     * <p>与前三类的差别：动画**没有数据库**，它的素材目录本身就是交换格式，
+     * 所以这里不写素材文件、也不写"还原用的 JSON 清单"，而是给每套动画打一个
+     * {@code .lcaf}（{@code clip.json + frames/}），再附一个说明用的
+     * {@code animation-clips.json}。
+     *
+     * @param clipIds 要导出的素材 id；为空表示导出全部
+     */
+    public Path exportAnimationClips(List<String> clipIds) throws IOException {
+        List<AnimationClipAsset> clips = loadAnimationClips(clipIds);
+        Path zip = Files.createTempFile("animation_clips_export_", ".zip");
+        int exported = 0;
+
+        try (ZipWriter writer = new ZipWriter(zip)) {
+            List<Map<String, Object>> manifest = new ArrayList<>();
+            Set<String> usedNames = new LinkedHashSet<>();
+            // 每套动画先落成一个临时 .lcaf，再整文件塞进包里：临时文件必须当场删掉，
+            // 不然导出几十套会在系统临时目录里留一堆几十 MB 的垃圾
+            for (AnimationClipAsset clip : clips) {
+                Path lcaf = Files.createTempFile("lcaf_export_", ANIMATION_CLIP_EXTENSION);
+                try {
+                    // 没有帧图的素材 writeLcaf 会抛，进下面那个 catch：跳过它但不毁掉整包
+                    int frames = AnimationClipStore.writeLcaf(clip.getId(), lcaf);
+                    String fileName = uniqueClipFileName(
+                            AnimationClipStore.safeExportFileName(clip.getName(), clip.getId()),
+                            usedNames);
+                    usedNames.add(fileName.toLowerCase(Locale.ROOT));
+                    writer.writeFile(fileName + ANIMATION_CLIP_EXTENSION, lcaf.toFile());
+
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("id", clip.getId());
+                    entry.put("name", clip.getName());
+                    entry.put("file", fileName + ANIMATION_CLIP_EXTENSION);
+                    entry.put("frameCount", frames);
+                    manifest.add(entry);
+                    exported++;
+                } catch (IOException | RuntimeException e) {
+                    // 一套导不出来不该毁掉整包（比如用户手动删了几张帧图）
+                    logger.warn("导出序列帧动画时跳过素材 {}: {}", clip.getId(), e.getMessage());
+                } finally {
+                    deleteQuietly(lcaf);
+                }
+            }
+            writer.writeBytes(ANIMATION_CLIPS_MANIFEST,
+                    createJsonMapper().writeValueAsBytes(manifest));
+        } catch (IOException e) {
+            deleteQuietly(zip);
+            throw e;
+        }
+
+        logger.info("导出序列帧动画完成: {} 套（素材库共 {} 套）", exported, clips.size());
+        return zip;
+    }
+
+    /**
+     * @function 从资源包导入序列帧动画
+     *
+     * <p>包内条目形如 {@code animation-clips/花开.lcaf}（单类型包则是根目录的 {@code *.lcaf}）。
+     * 逐条解到临时文件后交给 {@link AnimationClipImporter#importZip(Path, String, boolean, int)}
+     * ——与"页面上的导入 .lcaf"完全是同一条链路，所以每帧时长、播放参数、缩略图摆放都会原样还原。
+     *
+     * <p>单套失败**不打断整包**（老包里的动画可能来自更早的版本 / 被人手动动过），
+     * 失败原因进 {@link BundleImportResult#getWarnings()}，界面可以逐条显示。
+     *
+     * @return 导入结果（成功数 + 逐条警告）
+     */
+    AnimationClipImportOutcome importAnimationClips(Path zipFile, ZipScan scan, String entryPrefix)
+            throws IOException {
+        List<String> entries = animationClipEntries(scan, entryPrefix);
+        if (entries.isEmpty()) {
+            return new AnimationClipImportOutcome(0, List.of());
+        }
+
+        // 先把命中的 .lcaf 解到临时文件（同一个包要读第二遍，边解边导会嵌套读 zip）
+        Map<String, Path> extracted = new HashMap<>();
+        try {
+            for (String entry : entries) {
+                extracted.put(entry, Files.createTempFile("lcaf_import_", ANIMATION_CLIP_EXTENSION));
+            }
+            restoreZipFiles(zipFile, extracted);
+
+            int imported = 0;
+            List<String> warnings = new ArrayList<>();
+            for (String entry : entries) {
+                Path lcaf = extracted.get(entry);
+                String label = fileNameOf(entry);
+                try {
+                    AnimationClipImporter.ImportResult result = animationClipImporter.importZip(
+                            lcaf, null, true, FrameHoldInference.DEFAULT_MAX_GAP_FRAMES);
+                    imported++;
+                    logger.info("资源包导入序列帧动画: {} → id={}", label, result.asset().getId());
+                } catch (IOException | RuntimeException e) {
+                    String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                    logger.warn("资源包里的动画导入失败: {} ({})", label, reason);
+                    warnings.add("动画「" + label + "」导入失败：" + reason);
+                }
+            }
+            logger.info("导入序列帧动画完成: {} 套（包内 {} 个文件）", imported, entries.size());
+            return new AnimationClipImportOutcome(imported, warnings);
+        } finally {
+            for (Path temp : extracted.values()) {
+                deleteQuietly(temp);
+            }
+        }
+    }
+
+    /** 序列帧动画导入的结果（内部用；对外统一并进 {@link BundleImportResult}） */
+    record AnimationClipImportOutcome(int imported, List<String> warnings) {
+    }
+
+    /** 包内命中前缀的 {@code *.lcaf} 条目；顺序沿用 ZIP 里的顺序，保证结果可复现 */
+    private static List<String> animationClipEntries(ZipScan scan, String entryPrefix) {
+        List<String> entries = new ArrayList<>();
+        for (String entry : scan.fileEntries) {
+            if (!entry.startsWith(entryPrefix) || !isAnimationClipEntry(entry)) {
+                continue;
+            }
+            entries.add(entry);
+        }
+        return entries;
+    }
+
+    /** 条目名是否是一个动画包（后缀 `.lcaf`；说明用的清单不算） */
+    private static boolean isAnimationClipEntry(String entryName) {
+        String lower = entryName.toLowerCase();
+        if (lower.equals(ANIMATION_CLIPS_MANIFEST)) {
+            return false;
+        }
+        return lower.endsWith(ANIMATION_CLIP_EXTENSION);
+    }
+
+    /** 同一包内不允许两套动画同名文件（否则后者会覆盖前者），重名时加 {@code _2}、{@code _3} */
+    private static String uniqueClipFileName(String base, Set<String> usedLowerNames) {
+        if (!usedLowerNames.contains(base.toLowerCase(Locale.ROOT))) {
+            return base;
+        }
+        int suffix = 2;
+        while (usedLowerNames.contains((base + "_" + suffix).toLowerCase(Locale.ROOT))) {
+            suffix++;
+        }
+        return base + "_" + suffix;
+    }
+
+    // ==================================================================
+    // 全部资源（角色 + 背景 + 音频 + 序列帧动画）
     // ==================================================================
 
     /**
      * @function 导出全部资源为临时 ZIP
      *
-     * <p>结构：{@code characters/}、{@code backgrounds/}、{@code audios/} 三个目录，
-     * 各自内部与单类型资源包完全一致；根目录另有一个 {@code manifest.json}。
+     * <p>结构：{@code characters/}、{@code backgrounds/}、{@code audios/}、
+     * {@code animation-clips/} 四个目录，各自内部与单类型资源包完全一致；
+     * 根目录另有一个 {@code manifest.json}。
      */
     public Path exportAll() throws IOException {
         Path charactersZip = null;
         Path backgroundsZip = null;
         Path audiosZip = null;
+        Path animationClipsZip = null;
         Path bundleZip = Files.createTempFile("resources_export_", ".zip");
 
         try {
             charactersZip = exportCharacters(null);
             backgroundsZip = exportBackgrounds(null);
             audiosZip = exportAudios(null);
+            animationClipsZip = exportAnimationClips(null);
 
             try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(bundleZip))) {
-                // 三个子包按前缀拼进同一个包：子包内部结构原样保留，因此导入端可以
+                // 四个子包按前缀拼进同一个包：子包内部结构原样保留，因此导入端可以
                 // 直接把前缀交给同一套单类型解析逻辑
                 copyZipEntries(charactersZip, zos, CHARACTERS_PREFIX);
                 copyZipEntries(backgroundsZip, zos, BACKGROUNDS_PREFIX);
                 copyZipEntries(audiosZip, zos, AUDIOS_PREFIX);
+                copyZipEntries(animationClipsZip, zos, ANIMATION_CLIPS_PREFIX);
 
                 Map<String, Object> manifest = new LinkedHashMap<>();
                 manifest.put("formatVersion", BUNDLE_FORMAT_VERSION);
@@ -604,6 +795,7 @@ public class ResourceTransferService {
             deleteQuietly(charactersZip);
             deleteQuietly(backgroundsZip);
             deleteQuietly(audiosZip);
+            deleteQuietly(animationClipsZip);
         }
 
         logger.info("导出全部资源完成");
@@ -623,10 +815,21 @@ public class ResourceTransferService {
                 || scan.manifests.containsKey(BACKGROUNDS_MANIFEST);
         boolean hasAudios = scan.manifests.containsKey(AUDIOS_PREFIX + AUDIOS_MANIFEST)
                 || scan.manifests.containsKey(AUDIOS_MANIFEST);
+        // 动画没有"记录清单"，只能看包内有没有 .lcaf；带前缀的优先（全部资源包），
+        // 没有前缀时只认"根目录有 animation-clips.json"的单类型动画包——
+        // 否则随便一个 zip 里的同名 .lcaf 都会被当成动画导进来
+        String animationPrefix = null;
+        if (!animationClipEntries(scan, ANIMATION_CLIPS_PREFIX).isEmpty()) {
+            animationPrefix = ANIMATION_CLIPS_PREFIX;
+        } else if (scan.manifests.containsKey(ANIMATION_CLIPS_MANIFEST)
+                && !animationClipEntries(scan, "").isEmpty()) {
+            animationPrefix = "";
+        }
+        boolean hasAnimationClips = animationPrefix != null;
 
-        if (!hasCharacters && !hasBackgrounds && !hasAudios) {
-            throw new IllegalArgumentException(
-                    "无效的资源包：需要包含 characters.json / backgrounds.json / audios.json 之一");
+        if (!hasCharacters && !hasBackgrounds && !hasAudios && !hasAnimationClips) {
+            throw new IllegalArgumentException("无效的资源包：需要包含 characters.json / backgrounds.json /"
+                    + " audios.json 之一，或 animation-clips/ 目录下的 .lcaf 动画文件");
         }
 
         int characters = 0;
@@ -653,8 +856,17 @@ public class ResourceTransferService {
             audios = importAudios(zipFile, prefix, scan).size();
         }
 
-        logger.info("导入全部资源完成: 角色 {} / 背景 {} / 音频 {}", characters, backgrounds, audios);
-        return new BundleImportResult(characters, backgrounds, audios);
+        int animationClips = 0;
+        List<String> warnings = new ArrayList<>();
+        if (hasAnimationClips) {
+            AnimationClipImportOutcome outcome = importAnimationClips(zipFile, scan, animationPrefix);
+            animationClips = outcome.imported();
+            warnings.addAll(outcome.warnings());
+        }
+
+        logger.info("导入全部资源完成: 角色 {} / 背景 {} / 音频 {} / 序列帧动画 {}",
+                characters, backgrounds, audios, animationClips);
+        return new BundleImportResult(characters, backgrounds, audios, animationClips, warnings);
     }
 
     /** 全部资源导入结果（直接序列化给前端展示"导入了几项"） */
@@ -662,11 +874,17 @@ public class ResourceTransferService {
         private final int characters;
         private final int backgrounds;
         private final int audios;
+        private final int animationClips;
+        /** 非致命问题（例如某一套动画坏了）：整体照样算成功，但要告诉用户 */
+        private final List<String> warnings;
 
-        public BundleImportResult(int characters, int backgrounds, int audios) {
+        public BundleImportResult(int characters, int backgrounds, int audios, int animationClips,
+                List<String> warnings) {
             this.characters = characters;
             this.backgrounds = backgrounds;
             this.audios = audios;
+            this.animationClips = animationClips;
+            this.warnings = warnings == null ? List.of() : List.copyOf(warnings);
         }
 
         public int getCharacters() {
@@ -679,6 +897,14 @@ public class ResourceTransferService {
 
         public int getAudios() {
             return audios;
+        }
+
+        public int getAnimationClips() {
+            return animationClips;
+        }
+
+        public List<String> getWarnings() {
+            return warnings;
         }
     }
 
@@ -883,6 +1109,27 @@ public class ResourceTransferService {
             Audio audio = AudioDAO.getById(id);
             if (audio != null) {
                 loaded.add(audio);
+            }
+        }
+        return loaded;
+    }
+
+    /**
+     * 取要导出的动画素材；空 id 列表 = 全部。
+     *
+     * <p>顺序沿用素材库自己的排序（创建时间倒序），导出包里的顺序因此也是稳定的，
+     * 便于人对着资源管理器一眼核对。
+     */
+    private List<AnimationClipAsset> loadAnimationClips(List<String> clipIds) {
+        List<AnimationClipAsset> all = AnimationClipStore.list();
+        if (clipIds == null || clipIds.isEmpty()) {
+            return all;
+        }
+        Set<String> wanted = new LinkedHashSet<>(clipIds);
+        List<AnimationClipAsset> loaded = new ArrayList<>();
+        for (AnimationClipAsset asset : all) {
+            if (wanted.contains(asset.getId())) {
+                loaded.add(asset);
             }
         }
         return loaded;

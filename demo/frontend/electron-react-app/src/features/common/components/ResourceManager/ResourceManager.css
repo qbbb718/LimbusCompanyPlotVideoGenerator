@@ -1,11 +1,22 @@
+/* ===== 资源管理页外壳 =====
+   这一层必须自己"收口"，否则整页会溢出到 .app-main 之外被直接裁掉：
+   - `box-sizing: border-box`：`height: 100%` + `padding: 15px` 在 content-box 下
+     总高变成 100% + 30px，.app-main 是 `overflow: hidden`，底部那 30px（以及右侧 15px）
+     就永远看不到、也滚不到 —— 表现就是"有些控件在窗口里显示不全"。
+   - `overflow: hidden` + `.resource-content` 自己滚：滚动发生在这个盒子**里面**，
+     滚动条不会被外壳裁掉。 */
 .resource-manager {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   padding: 15px;
+  overflow: hidden;
 }
 
-/* ===== 页面顶部：全部资源（角色 + 背景 + 音频）导入导出 =====
+/* ===== 页面顶部：全部资源（角色 + 背景 + 音频 + 序列帧动画）导入导出 =====
    与各标签页里的"按类型导入导出"区分开：这里是整库操作，换机/备份时用。 */
 .resource-topbar {
   display: flex;
@@ -18,6 +29,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   background-color: #fafafa;
+  min-width: 0;
 }
 
 .resource-topbar-info {
@@ -26,6 +38,8 @@
   flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
+  /* 说明文字长：窄窗口时允许换行，别把按钮挤到屏幕外 */
+  flex: 1 1 240px;
 }
 
 .resource-topbar-title {
@@ -36,11 +50,15 @@
 .resource-topbar-hint {
   font-size: 12px;
   color: #888;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .resource-topbar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .resource-topbar-actions button {
@@ -50,6 +68,7 @@
   background-color: #1890ff;
   color: #fff;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .resource-topbar-actions button:hover:not(:disabled) {
@@ -65,6 +84,9 @@
 
 .resource-tabs {
   display: flex;
+  /* 子页面变多 / 窗口变窄时换行，而不是把后面的页签顶出可视区 */
+  flex-wrap: wrap;
+  row-gap: 4px;
   border-bottom: 1px solid #ddd;
   margin-bottom: 15px;
 }
@@ -75,6 +97,7 @@
   background: none;
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
 .resource-tabs button.active {
@@ -83,7 +106,11 @@
 }
 
 .resource-content {
-  flex: 1;
+  /* min-height/min-width: 0 让这个 flex 子项真的能被压缩：否则它会被内容撑大，
+     底部的控件就越过 .resource-manager 的边界（然后被裁掉） */
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
   overflow: auto;
 }
 
@@ -634,4 +661,28 @@
 
 .card-action-btn.card-delete-btn:hover {
   background: #cc3a3a;
+}
+
+/* ===== 窄窗口：外壳的内边距收一点 =====
+   资源管理里最吃宽度的是「序列帧动画」子页面（三栏 + 16:9 预览），
+   窗口只有一千出头时，省下来的 10~14px 正好决定预览还能不能保持整块。 */
+@media (max-width: 1100px) {
+  .resource-manager {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .resource-manager {
+    padding: 8px;
+  }
+
+  .resource-topbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .resource-topbar-actions button {
+    padding: 6px 10px;
+  }
 }

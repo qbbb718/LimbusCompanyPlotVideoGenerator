@@ -497,47 +497,58 @@
 
 ## 9. 资源包 (Resource Bundle)
 
-资源管理页面顶部的「全部资源导入 / 导出」走这里：一次把角色 + 背景 + 音频打成一个 ZIP，
-换机 / 备份时不用分三次导出。后端把三类资源各自按上面单类型包的结构放进三个顶级目录，
+资源管理页面顶部的「全部资源导入 / 导出」走这里：一次把角色 + 背景 + 音频 + 序列帧动画打成一个 ZIP，
+换机 / 备份时不用分四次导出。后端把四类资源各自按上面单类型包的结构放进四个顶级目录，
 因此两类包可以互相兼容（单一类型的资源包也能直接传给「导入全部资源」）。
 
 ### 导出全部资源
 - **URL**: `POST /resources/export`
-- **说明**: 导出角色 + 背景 + 音频
+- **说明**: 导出角色 + 背景 + 音频 + 序列帧动画
 - **请求体**: 无
 - **响应**: ZIP 文件（结构见下）
 
 ### 导入全部资源
 - **URL**: `POST /resources/import`
-- **说明**: 导入「导出全部资源」生成的 ZIP；也接受角色 / 背景 / 音频的单一类型资源包
+- **说明**: 导入「导出全部资源」生成的 ZIP；也接受角色 / 背景 / 音频 / 序列帧动画的单一类型资源包
 - **请求体**: `multipart/form-data`，字段名 `file`
-- **响应**: 各类型实际导入的数量
+- **响应**: 各类型实际导入的数量 + 非致命警告
 ```json
 {
   "characters": 2,
   "backgrounds": 5,
-  "audios": 3
+  "audios": 3,
+  "animationClips": 4,
+  "warnings": ["动画「坏的.lcaf」导入失败：压缩包里没有找到图片"]
 }
 ```
 - **说明**:
-  - 包内格式版本高于当前程序支持的版本时返回 `400`，提示先升级程序
+  - 包内格式版本高于当前程序支持的版本时返回 `400`，提示先升级程序（当前 `formatVersion = 2`，
+    v2 指的是「包里多了 `animation-clips/`」）
   - 所有资源都按"新增"处理：ID 冲突时分配新 ID，不会覆盖本机已有资源
+  - `warnings` 里的条目不阻断整个导入（例如包里某一套动画坏了）：其它资源照常进来
   - 单个文件上限 4GB（`spring.servlet.multipart.max-file-size`），足够装下整库素材
 
 ### 资源包结构
 ```
 resources_<时间戳>.zip
-├─ manifest.json          格式版本（formatVersion）+ 导出时间 + 应用名
+├─ manifest.json              格式版本（formatVersion）+ 导出时间 + 应用名
 ├─ characters/
-│  ├─ characters.json     角色元数据
-│  └─ <角色目录>/         立绘原图与 thumbnails/ 缩略图
+│  ├─ characters.json         角色元数据
+│  └─ <角色目录>/             立绘原图与 thumbnails/ 缩略图
 ├─ backgrounds/
-│  ├─ backgrounds.json    背景元数据
-│  └─ <背景UUID>/         原图与 thumbnails/ 缩略图
-└─ audios/
-   ├─ audios.json         音频元数据
-   └─ <音频UUID>/         音频文件
+│  ├─ backgrounds.json        背景元数据
+│  └─ <背景UUID>/             原图与 thumbnails/ 缩略图
+├─ audios/
+│  ├─ audios.json             音频元数据
+│  └─ <音频UUID>/             音频文件
+└─ animation-clips/
+   ├─ animation-clips.json    说明用清单（id / name / file / frameCount）
+   └─ <动画名>.lcaf           一套动画一个文件（结构与「导出动画文件」完全一致）
 ```
+- 动画为什么是 `.lcaf` 而不是"清单 + 素材文件"：它**没有数据库**，素材目录
+  （`clip.json` + `frames/`）压缩成 zip 就是 `.lcaf`，也就是它自己的交换格式。
+  导入时原样交给与"手动导入 .lcaf"同一条链路，每帧时长 / 播放参数 / 缩略图摆放都会还原。
+- 包内两套动画重名时自动加 `_2`、`_3`，不会互相覆盖。
 
 ---
 
@@ -660,6 +671,32 @@ xxx_9.png  时长 = 默认（1 帧，最后一张没有后继编号）
 - **响应**: `{ "success": true, "filePath": "...", "frameCount": 3, "bytes": 164459 }`
 - **说明**: 由**后端直接写盘**（与视频导出同一模式，不把几十 MB 字节流搬过 IPC）；
   前端只负责先弹系统保存框拿到路径。目标目录不存在返回 `400`
+
+### 批量导出动画文件
+- **URL**: `POST /animation-clips/export-batch`
+- **请求体**:
+```json
+{ "ids": ["flow_a1b2c3d4", "rain_e5f6a7b8"], "targetDir": "D:/share/anim" }
+```
+- **响应**:
+```json
+{
+  "count": 2,
+  "targetDir": "D:/share/anim",
+  "files": [
+    { "id": "flow_a1b2c3d4", "name": "花开", "filePath": "D:/share/anim/花开.lcaf",
+      "frameCount": 3, "bytes": 164459 }
+  ],
+  "failures": [
+    { "id": "rain_e5f6a7b8", "name": "雨滴", "message": "这个素材没有任何帧图，无法导出" }
+  ]
+}
+```
+- **说明**:
+  - 前端只弹**一次**目录选择框（批量场景下逐套弹"存到哪个文件"没法用），写盘仍在后端
+  - 一个目录里两套动画重名时第二套写 `<名字>_2.lcaf`，不会互相覆盖
+  - 单套失败**不打断整批**：成功的照常落盘，失败的逐条进 `failures`
+  - 目录不存在 / 没选动画 → `400`，并在消息里说明原因
 
 ### 动画文件结构（`.lcaf`）
 ```

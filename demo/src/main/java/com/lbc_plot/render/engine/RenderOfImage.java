@@ -698,9 +698,13 @@ public class RenderOfImage {
         // 头部方框边长（跨角色恒定 = 183 × 用户缩放），代表帧的偏移以它为长度单位
         double headSize = EmotionAnimPlacement.headSize(portrait.getLength(), renderScale);
 
-        // 4) 目标矩形：以脸框中心对齐素材中心，尺寸吃用户缩放（跟着立绘一起变大变小）
+        // 4) 目标矩形：以脸框中心对齐素材中心，尺寸吃用户缩放（跟着立绘一起变大变小）。
+        //    素材自身的倍率还要**再乘 zoom**：这个矩形是"场景画布"坐标（x / renderScale / headSize
+        //    都已经过 camera，镜头推近时脸框中心与头宽都放大了），而 canvasWidth/canvasHeight 是
+        //    世界像素 —— 不乘 zoom 就会出现"脸被镜头放大了、贴脸的特效还是原来那么大"。
+        //    与前端 `RecordPreview.emotionItemOf`（世界矩形再经 worldToScene 乘 zoom）逐像素等价。
         EmotionAnimPlacement.Rect rect = EmotionAnimPlacement.spriteRect(faceCenterX, faceCenterY,
-                headSize, emo.getCanvasWidth(), emo.getCanvasHeight(), emo.safeScale(),
+                headSize, emo.getCanvasWidth(), emo.getCanvasHeight(), emo.safeScale() * zoom,
                 chara.getUserScale(), emo.getOffsetX(), emo.getOffsetY());
         if (rect.w() <= 0 || rect.h() <= 0) {
             return;

@@ -3,10 +3,12 @@
  *
  * 本项目没有加载 `@testing-library/jest-dom`，所以只用内置断言。
  *
- * 锁三条（对应重构的验收点）：
+ * 锁五条（对应重构的验收点）：
  * 1. 只能**选**已有动画，选完交出的是一份完整快照；
  * 2. 「新建成/编辑」在资源管理，这里只有一个跳转按钮；
- * 3. 选「不使用」回传 undefined（渲染端回到逐像素不变的原路径）。
+ * 3. 选「不使用」回传 undefined（渲染端回到逐像素不变的原路径）；
+ * 4. 下拉里每一项都带**缩略图**（原生 select 做不到这个，这是换自定义下拉的唯一原因）；
+ * 5. 素材被删后下拉里保留占位项，不能显示成「不使用」骗用户。
  */
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -48,6 +50,12 @@ function mockLibrary(clips: AnimationClipDto[]) {
   });
 }
 
+/** 打开「选用动画」下拉（触发器靠 aria-label 定位，与真实用户点的是同一个按钮） */
+function openDropdown() {
+  fireEvent.click(screen.getByLabelText("罗佳 选用情绪动画"));
+  return screen.getByRole("listbox", { name: "罗佳 情绪动画素材" });
+}
+
 afterEach(() => {
   jest.restoreAllMocks();
 });
@@ -58,8 +66,9 @@ describe("情绪动画选择器", () => {
     const onChange = jest.fn();
     render(<EmotionAnimPicker onChange={onChange} elementLabel="罗佳" />);
 
-    const select = screen.getByLabelText("罗佳 选用情绪动画") as HTMLSelectElement;
-    expect(select.value).toBe("");
+    const trigger = screen.getByLabelText("罗佳 选用情绪动画");
+    expect(trigger.textContent).toContain("不使用");
+    expect(screen.queryByRole("listbox")).toBeNull();
     expect(screen.getByText(/还没有素材/)).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -69,9 +78,8 @@ describe("情绪动画选择器", () => {
     const onChange = jest.fn();
     render(<EmotionAnimPicker onChange={onChange} elementLabel="罗佳" />);
 
-    fireEvent.change(screen.getByLabelText("罗佳 选用情绪动画"), {
-      target: { value: "flow_abcd1234" },
-    });
+    openDropdown();
+    fireEvent.click(screen.getByRole("option", { name: /花开/ }));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange.mock.calls[0][0]).toMatchObject({
@@ -84,6 +92,25 @@ describe("情绪动画选择器", () => {
       offsetY: -0.4,
       scale: 1.2,
     });
+    // 选完自动收起
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  test("下拉里每一项都带缩略图：素材用「代表帧」，不使用的项没有图", () => {
+    mockLibrary([asset]);
+    render(<EmotionAnimPicker onChange={jest.fn()} elementLabel="罗佳" />);
+
+    openDropdown();
+
+    const clipOption = screen.getByRole("option", { name: /花开/ });
+    const thumb = clipOption.querySelector("img");
+    expect(thumb).not.toBeNull();
+    // poster.frame = 1 → 第 2 张，不是第 1 张（缩略图 = 预览图静止时画的那一张）
+    expect(thumb!.getAttribute("src")).toContain("0002.png");
+    // 帧数也写在选项里，光看名字分不出两段"花开"
+    expect(clipOption.textContent).toContain("3 张 / 6 帧");
+
+    expect(screen.getByRole("option", { name: /不使用/ }).querySelector("img")).toBeNull();
   });
 
   test("选「不使用」回传 undefined", () => {
@@ -104,8 +131,22 @@ describe("情绪动画选择器", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("罗佳 选用情绪动画"), { target: { value: "" } });
+    openDropdown();
+    fireEvent.click(screen.getByRole("option", { name: /不使用/ }));
     expect(onChange).toHaveBeenCalledWith(undefined);
+  });
+
+  test("Esc 关闭下拉（不改变当前选择）", () => {
+    mockLibrary([asset]);
+    const onChange = jest.fn();
+    render(<EmotionAnimPicker onChange={onChange} elementLabel="罗佳" />);
+
+    openDropdown();
+    expect(screen.queryByRole("listbox")).not.toBeNull();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test("跳转按钮只在给了回调时出现（这里只负责跳，不负责做）", () => {
@@ -140,6 +181,9 @@ describe("情绪动画选择器", () => {
     );
 
     expect(screen.getByText(/素材已不在资源管理里/)).toBeTruthy();
-    expect(screen.getByText(/素材已删除/)).toBeTruthy();
+    expect(screen.getByLabelText("罗佳 选用情绪动画").textContent).toContain("素材已删除");
+
+    openDropdown();
+    expect(screen.getByRole("option", { name: /素材已删除/ })).toBeTruthy();
   });
 });

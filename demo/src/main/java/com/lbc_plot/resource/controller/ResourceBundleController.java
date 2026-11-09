@@ -19,10 +19,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * @module 资源管理模块
- * @function 全部资源（角色 + 背景 + 音频）导入导出
+ * @function 全部资源（角色 + 背景 + 音频 + 序列帧动画）导入导出
  *
- * <p>资源管理页面顶部的一组按钮走这里：一次把三类资源打成一个 ZIP，方便换机 / 备份时
- * 一步迁移整个资源库，不必分别导出三次。
+ * <p>资源管理页面顶部的一组按钮走这里：一次把四类资源打成一个 ZIP，方便换机 / 备份时
+ * 一步迁移整个资源库，不必分别导出四次。
  *
  * <p>包结构（与单类型资源包的关系见 {@link ResourceTransferService}）：
  * <pre>
@@ -30,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * ├─ manifest.json         格式版本 + 导出时间
  * ├─ characters/           characters.json + 各角色立绘（与导出的角色包完全一致）
  * ├─ backgrounds/          backgrounds.json + 背景原图与缩略图
- * └─ audios/               audios.json + 音频文件
+ * ├─ audios/               audios.json + 音频文件
+ * └─ animation-clips/      animation-clips.json + 每套动画一个 .lcaf
  * </pre>
  *
  * <p>导入同样接受单一类型的资源包：用户把"角色包"丢进"全部资源导入"也能正确识别。
@@ -47,7 +48,7 @@ public class ResourceBundleController {
     /**
      * @api 导出全部资源
      * @endpoint POST /api/resources/export
-     * @return ZIP 文件（角色 + 背景 + 音频）
+     * @return ZIP 文件（角色 + 背景 + 音频 + 序列帧动画）
      */
     @PostMapping("/resources/export")
     public ResponseEntity<StreamingResponseBody> exportAll() {
@@ -69,8 +70,9 @@ public class ResourceBundleController {
     /**
      * @api 导入全部资源
      * @endpoint POST /api/resources/import
-     * @param file 由"导出全部资源"生成的 ZIP（也兼容角色 / 背景 / 音频的单一类型资源包）
-     * @return 各类型实际导入的数量，如 {@code {"characters":2,"backgrounds":5,"audios":3}}
+     * @param file 由"导出全部资源"生成的 ZIP（也兼容角色 / 背景 / 音频 / 序列帧动画的单一类型资源包）
+     * @return 各类型实际导入的数量，如
+     *         {@code {"characters":2,"backgrounds":5,"audios":3,"animationClips":4,"warnings":[]}}
      */
     @PostMapping("/resources/import")
     public ResourceTransferService.BundleImportResult importAll(

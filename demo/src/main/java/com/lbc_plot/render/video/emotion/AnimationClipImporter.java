@@ -183,6 +183,37 @@ public class AnimationClipImporter {
         if (zipFile == null || zipFile.isEmpty()) {
             throw new IllegalArgumentException("压缩包是空的");
         }
+        return importZipStream(zipFile::getInputStream, name, inferHolds, maxGapFrames);
+    }
+
+    /**
+     * @function 从磁盘上的 zip / {@code .lcaf} 导入
+     *
+     * <p>给两类调用方用：① "全部资源"包里的 {@code animation-clips/*.lcaf}（已经在磁盘上，
+     * 没必要再包一层 MultipartFile）；② 想把导入做在服务端、不想把字节流搬过 HTTP 的场景。
+     * 语义与 {@link #importZip(MultipartFile, String, boolean, int)} **完全一致**。
+     */
+    public ImportResult importZip(Path zipFile, String name, boolean inferHolds, int maxGapFrames)
+            throws IOException {
+        if (zipFile == null || !Files.isRegularFile(zipFile)) {
+            throw new IllegalArgumentException("找不到压缩包文件：" + zipFile);
+        }
+        return importZipStream(() -> Files.newInputStream(zipFile), name, inferHolds, maxGapFrames);
+    }
+
+    /** 打开 zip 字节流的来源（MultipartFile 与磁盘文件各一个实现） */
+    @FunctionalInterface
+    private interface ZipStreamSource {
+        InputStream open() throws IOException;
+    }
+
+    /**
+     * 从 zip 导入：真正干活的地方（上面两个入口只负责把"字节从哪来"给我）。
+     *
+     * @param source 每次调用返回一个**新的**输入流（只会被调用一次）
+     */
+    private ImportResult importZipStream(ZipStreamSource source, String name, boolean inferHolds,
+            int maxGapFrames) throws IOException {
         Path temp = createTempDir();
         Path extractDir = temp.resolve("extract");
         Files.createDirectories(extractDir);
@@ -191,7 +222,7 @@ public class AnimationClipImporter {
             List<Path> extracted = new ArrayList<>();
             /** 包里若带 clip.json（就是本功能导出的 .lcaf），用它还原"每张图持续几帧" */
             AnimationClipAsset packaged = null;
-            try (InputStream raw = zipFile.getInputStream();
+            try (InputStream raw = source.open();
                     ZipInputStream zip = new ZipInputStream(raw)) {
                 ZipEntry entry;
                 int guard = 0;

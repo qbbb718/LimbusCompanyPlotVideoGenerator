@@ -539,4 +539,138 @@ describe("资源管理 · 序列帧动画", () => {
     // 过滤只是收窄列表，不该把正在编辑的那条踢掉（否则用户一搜索就丢上下文）
     expect(screen.getByLabelText("动画名称")).toBeTruthy();
   });
+
+  /* ==================== 列表封面 = 缩略图 ==================== */
+
+  describe("左侧列表的封面", () => {
+    test("用「缩略图」那一张图，不是第 0 张", () => {
+      mockLibrary([{ ...asset, poster: { frame: 1, offsetX: 0, offsetY: 0, scale: 1 } }]);
+      const { container } = renderTab();
+
+      const cover = container.querySelector(".sprite-anim-card img") as HTMLImageElement;
+      // 帧文件名从 1 开始补零：poster.frame=1 → 0002.png
+      expect(cover.getAttribute("src")).toContain("/frames/0002.png");
+    });
+
+    test("缩略图序号超过磁盘帧数时夹回有效范围（不显示裂图）", () => {
+      mockLibrary([
+        { ...asset, frameCount: 3, framesOnDisk: 2, poster: { frame: 2, offsetX: 0, offsetY: 0, scale: 1 } },
+      ]);
+      const { container } = renderTab();
+
+      const cover = container.querySelector(".sprite-anim-card img") as HTMLImageElement;
+      expect(cover.getAttribute("src")).toContain("/frames/0002.png");
+    });
+  });
+
+  /* ==================== 批量导入 / 多选导出（.lcaf） ==================== */
+
+  const otherClip: AnimationClipDto = {
+    ...asset,
+    id: "rain_cdef5678",
+    name: "雨滴",
+    frameHolds: [1, 1],
+    totalFrames: 2,
+    poster: { frame: 0, offsetX: 0, offsetY: 0, scale: 1 },
+  };
+
+  test("批量导入 .lcaf：多选后逐个导入，坏的那套只报错、不影响其它", async () => {
+    mockLibrary([]);
+    const importSpy = jest
+      .spyOn(ApiService, "importAnimationClipZip")
+      .mockResolvedValueOnce({ asset: { ...asset, id: "batch_ok" }, warnings: [] } as any)
+      .mockRejectedValueOnce({ response: { data: { message: "压缩包里没有找到图片" } } });
+    const readFile = jest.fn().mockResolvedValue(new ArrayBuffer(8));
+    (window as any).electronAPI = {
+      openAnimationClips: jest.fn().mockResolvedValue({
+        canceled: false,
+        filePaths: ["D:/a/花开.lcaf", "D:/a/坏的.lcaf"],
+      }),
+      readFile,
+    };
+
+    try {
+      renderTab();
+      fireEvent.click(screen.getByText("批量导入 .lcaf"));
+
+      await waitFor(() => expect(importSpy).toHaveBeenCalledTimes(2));
+      // 两套都发过请求：一套成功、一套失败，但流程不中断
+      expect(readFile).toHaveBeenCalledTimes(2);
+
+      const summary = await screen.findByText(/已导入 1 套动画/);
+      expect(summary.textContent).toContain("坏的.lcaf");
+    } finally {
+      delete (window as any).electronAPI;
+    }
+  });
+
+  test("多选导出：勾选 → 只弹一次目录框，把 ids + 目录交给后端批量写 .lcaf", async () => {
+    mockLibrary([asset, otherClip]);
+    const batch = jest.spyOn(ApiService, "exportAnimationClipsBatch").mockResolvedValue({
+      count: 2,
+      targetDir: "D:/share",
+      files: [],
+      failures: [],
+    } as any);
+    const chooseDirectory = jest.fn().mockResolvedValue({ canceled: false, directory: "D:/share" });
+    (window as any).electronAPI = { chooseDirectory };
+
+    try {
+      const { container } = renderTab();
+      // 常态：没有勾选框
+      expect(container.querySelectorAll(".sprite-anim-card-check").length).toBe(0);
+
+      fireEvent.click(screen.getByText("选择导出"));
+      await waitFor(() =>
+        expect(container.querySelectorAll(".sprite-anim-card-check").length).toBe(2),
+      );
+
+      // 单张勾选 + 全选
+      fireEvent.click(screen.getByLabelText("选择导出「花开」"));
+      expect(screen.getByText(/确认导出 \(1\)/)).toBeTruthy();
+      fireEvent.click(screen.getByLabelText("全选动画"));
+      expect(screen.getByText(/确认导出 \(2\)/)).toBeTruthy();
+
+      fireEvent.click(screen.getByText(/确认导出 \(2\)/));
+
+      await waitFor(() =>
+        expect(batch).toHaveBeenCalledWith(["flow_abcd1234", "rain_cdef5678"], "D:/share"),
+      );
+      // 只弹一次目录框：批量导出不该逐个问"存到哪"
+      expect(chooseDirectory).toHaveBeenCalledTimes(1);
+      // 成功后自动退出多选态
+      await waitFor(() =>
+        expect(container.querySelectorAll(".sprite-anim-card-check").length).toBe(0),
+      );
+      expect(await screen.findByText(/已导出 2 套动画/)).toBeTruthy();
+    } finally {
+      delete (window as any).electronAPI;
+    }
+  });
+
+  test("多选态下点卡片 = 勾选它，而不是切换正在编辑的动画", async () => {
+    mockLibrary([asset, otherClip]);
+    jest.spyOn(ApiService, "updateAnimationClip").mockResolvedValue({} as any);
+    renderTab();
+
+    fireEvent.click(screen.getByText("选择导出"));
+    fireEvent.click(screen.getByText("雨滴"));
+
+    // 编辑器里还是「花开」
+    expect((screen.getByLabelText("动画名称") as HTMLInputElement).value).toBe("花开");
+    expect(screen.getByText(/确认导出 \(1\)/)).toBeTruthy();
+  });
+
+  test("取消多选态后勾选清空、列表恢复成「点哪套就编辑哪套」", () => {
+    mockLibrary([asset, otherClip]);
+    renderTab();
+
+    fireEvent.click(screen.getByText("选择导出"));
+    fireEvent.click(screen.getByLabelText("全选动画"));
+    expect(screen.getByText(/确认导出 \(2\)/)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("取消"));
+    fireEvent.click(screen.getByText("选择导出"));
+    expect(screen.getByText(/确认导出 \(0\)/)).toBeTruthy();
+  });
 });

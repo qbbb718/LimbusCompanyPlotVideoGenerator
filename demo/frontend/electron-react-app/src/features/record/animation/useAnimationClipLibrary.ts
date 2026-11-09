@@ -30,6 +30,19 @@ export function invalidateAnimationClips(): void {
   listeners.forEach((listener) => listener());
 }
 
+/**
+ * @function 外部改了素材库（例如"导入全部资源"的资源包里带了动画）→ 丢缓存并**重新拉一次**
+ *
+ * <p>与 {@link invalidateAnimationClips} 的区别：那个只负责"下次挂载时重拉"，
+ * 此刻正开着的面板会看到空列表一直等到重新挂载（hook 的挂载副作用只跑一次）。
+ * 这里把拉取一起做了，拿到结果后统一通知，正在显示的面板直接换成新列表。
+ */
+export function refreshAnimationClips(): void {
+  cache = null;
+  inflight = null;
+  load().then(() => listeners.forEach((listener) => listener()));
+}
+
 /** 仅测试用：把缓存清回初始状态（不动订阅者） */
 export function resetAnimationClipLibraryForTesting(): void {
   cache = null;

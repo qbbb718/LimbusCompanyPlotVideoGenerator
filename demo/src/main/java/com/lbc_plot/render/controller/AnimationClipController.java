@@ -1,18 +1,17 @@
 package com.lbc_plot.render.controller;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +33,7 @@ import com.lbc_plot.render.video.emotion.AnimationClipStore;
 
 /**
  * @module 情绪动画素材库接口
- * 列出 / 导入 / 改名改时序 / 删除 / 导出动画文件。
+ * 列出 / 导入 / 改名改时序 / 删除 / 导出动画文件（单个或整批）。
  *
  * <h2>素材库是可跨记录复用的</h2>
  * 一条记录的立绘引用的是「素材 id」，所以同一套"开心花开"可以被十条记录共用。
@@ -255,32 +254,8 @@ public class AnimationClipController {
             throw new IllegalArgumentException("保存目录不存在：" + parent);
         }
 
-        int frames = AnimationClipStore.frameFileCount(id);
-        if (frames <= 0) {
-            throw new IllegalArgumentException("这个素材没有任何帧图，无法导出");
-        }
-
-        long bytes;
-        try (OutputStream out = Files.newOutputStream(target);
-                ZipOutputStream zip = new ZipOutputStream(out)) {
-            // 1) clip.json（内含每帧时长，导入时能原样还原）
-            zip.putNextEntry(new ZipEntry(AnimationClipStore.INDEX_FILE));
-            zip.write(Files.readAllBytes(AnimationClipStore.indexPath(id)));
-            zip.closeEntry();
-
-            // 2) 帧图（原样拷贝字节，不重新编码：无损且快）
-            for (int i = 0; i < frames; i++) {
-                File frame = AnimationClipStore.frameFile(id, i).toFile();
-                if (!frame.isFile()) {
-                    continue;
-                }
-                zip.putNextEntry(new ZipEntry(AnimationClipStore.FRAMES_DIR + "/"
-                        + frame.getName()));
-                Files.copy(frame.toPath(), zip);
-                zip.closeEntry();
-            }
-        }
-        bytes = Files.size(target);
+        int frames = AnimationClipStore.writeLcaf(id, target);
+        long bytes = Files.size(target);
         logger.info("情绪动画已导出: id={}, 目标={}, {} 帧, {} 字节", id, target, frames, bytes);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -291,7 +266,124 @@ public class AnimationClipController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * @function 批量导出：把选中的几套动画各写成一个 {@code .lcaf} 到同一个目录
+     *
+     * <p>为什么由后端写盘：一次导几十套时，前端"逐个弹保存框"根本没法用；而把几十个
+     * {@code .lcaf} 的字节流搬过 IPC 也不合适（与单套导出同一个理由）。
+     * 前端只弹**一次**目录选择框，把目录交给这里。
+     *
+     * <p>单个素材失败（被人删了帧图之类）**不打断整批**：成功的照常落盘，
+     * 失败的进 {@code failures} 数组，界面可以逐条告诉用户是哪一套、为什么。
+     *
+     * @param body {@code {"ids": ["flow_a1b2c3d4", ...], "targetDir": "D:/share/anim"}}
+     * @return {@code {count, targetDir, files: [...], failures: [...]}}
+     */
+    @PostMapping("/export-batch")
+    public ResponseEntity<Map<String, Object>> exportBatch(@RequestBody Map<String, Object> body) {
+        List<String> ids = toStringList(body.get("ids"));
+        if (ids.isEmpty()) {
+            throw new IllegalArgumentException("没有选择要导出的动画");
+        }
+        String rawDir = body.get("targetDir") instanceof String text ? text : null;
+        if (rawDir == null || rawDir.isBlank()) {
+            throw new IllegalArgumentException("没有指定导出目录");
+        }
+        Path targetDir = Paths.get(rawDir).toAbsolutePath().normalize();
+        if (!Files.isDirectory(targetDir)) {
+            throw new IllegalArgumentException("导出目录不存在：" + targetDir);
+        }
+
+        List<Map<String, Object>> files = new ArrayList<>();
+        List<Map<String, Object>> failures = new ArrayList<>();
+        /** 本批已用过的文件名（小写比较）：两套同名动画不能互相覆盖 */
+        Set<String> usedNames = new LinkedHashSet<>();
+
+        for (String id : ids) {
+            Optional<AnimationClipAsset> existing = AnimationClipStore.find(id);
+            if (existing.isEmpty()) {
+                failures.add(failure(id, id, "素材不存在（可能已被删除）"));
+                continue;
+            }
+            AnimationClipAsset asset = existing.get();
+            String displayName = asset.getName() == null || asset.getName().isBlank()
+                    ? asset.getId()
+                    : asset.getName();
+            try {
+                String fileName = uniqueFileName(
+                        AnimationClipStore.safeExportFileName(displayName, asset.getId()), usedNames);
+                Path target = targetDir.resolve(fileName + EXPORT_EXTENSION);
+                int frames = AnimationClipStore.writeLcaf(asset.getId(), target);
+                usedNames.add(fileName.toLowerCase(Locale.ROOT));
+
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("id", asset.getId());
+                entry.put("name", displayName);
+                entry.put("filePath",
+                        com.lbc_plot.common.util.RuntimePaths.toPortableString(target));
+                entry.put("frameCount", frames);
+                entry.put("bytes", Files.size(target));
+                files.add(entry);
+            } catch (IOException | RuntimeException e) {
+                // 单套失败不影响其它：把原因写进结果，前端逐条展示
+                logger.warn("批量导出时跳过素材 {}: {}", id, e.getMessage());
+                failures.add(failure(asset.getId(), displayName,
+                        e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            }
+        }
+
+        logger.info("情绪动画批量导出完成: 成功 {} 套 / 失败 {} 套, 目录={}",
+                files.size(), failures.size(), targetDir);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("count", files.size());
+        result.put("targetDir", com.lbc_plot.common.util.RuntimePaths.toPortableString(targetDir));
+        result.put("files", files);
+        result.put("failures", failures);
+        return ResponseEntity.ok(result);
+    }
+
     /* ==================== 内部 ==================== */
+
+    private static Map<String, Object> failure(String id, String name, String message) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("id", id);
+        entry.put("name", name);
+        entry.put("message", message);
+        return entry;
+    }
+
+    /**
+     * 同一个目录里不能有两个同名文件：重名时依次加 {@code _2}、{@code _3}…
+     *
+     * <p>只在本批内去重（不查磁盘）：重复导出同一套动画时覆盖上一版是预期行为，
+     * 而"两套不同动画同名"必须都留下来，否则用户永远少一套。
+     */
+    private static String uniqueFileName(String base, Set<String> usedLowerNames) {
+        if (!usedLowerNames.contains(base.toLowerCase(Locale.ROOT))) {
+            return base;
+        }
+        int suffix = 2;
+        while (usedLowerNames.contains((base + "_" + suffix).toLowerCase(Locale.ROOT))) {
+            suffix++;
+        }
+        return base + "_" + suffix;
+    }
+
+    /** body 里的 ids：只认字符串（数字/对象一律忽略，避免拼出奇怪路径） */
+    private static List<String> toStringList(Object value) {
+        List<String> result = new ArrayList<>();
+        if (value instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof String text && !text.isBlank()) {
+                    result.add(text.trim());
+                }
+            }
+        } else if (value instanceof String text && !text.isBlank()) {
+            result.add(text.trim());
+        }
+        return result;
+    }
 
     private Map<String, Object> toImportResponse(AnimationClipImporter.ImportResult result) {
         Map<String, Object> body = new LinkedHashMap<>();

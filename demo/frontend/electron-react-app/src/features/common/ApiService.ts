@@ -564,9 +564,9 @@ class ApiService {
   }
 
   /**
-   * 导出全部资源（角色 + 背景 + 音频）为 ZIP 文件。
+   * 导出全部资源（角色 + 背景 + 音频 + 序列帧动画）为 ZIP 文件。
    *
-   * 资源管理页顶部的「导出全部资源」用它：一次打包整库，换机/备份时不用分三次导出。
+   * 资源管理页顶部的「导出全部资源」用它：一次打包整库，换机/备份时不用分四次导出。
    */
   async exportAllResources(): Promise<Blob> {
     try {
@@ -581,14 +581,19 @@ class ApiService {
   }
 
   /**
-   * 导入全部资源（角色 + 背景 + 音频）。
+   * 导入全部资源（角色 + 背景 + 音频 + 序列帧动画）。
    *
    * 后端也兼容单一类型的资源包（例如把"角色包"直接传到这个接口），
-   * 返回各类型实际导入的数量。
+   * 返回各类型实际导入的数量；`warnings` 里是"整体成功、但有几项没进来"的说明
+   * （例如资源包里某一套动画坏了）。
    */
-  async importAllResources(
-    file: File,
-  ): Promise<{ characters: number; backgrounds: number; audios: number }> {
+  async importAllResources(file: File): Promise<{
+    characters: number;
+    backgrounds: number;
+    audios: number;
+    animationClips?: number;
+    warnings?: string[];
+  }> {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -965,6 +970,33 @@ class ApiService {
     return `${BASE_URL}/assets/animation-clips/${encodeURIComponent(
       clipId,
     )}/frames/${String(fileNumber).padStart(4, '0')}.png`;
+  }
+
+  /**
+   * 批量导出动画：把选中的几套各写成一个 `.lcaf` 到**同一个目录**。
+   *
+   * <p>与单套导出一样由后端直接写盘（不把几十 MB 字节流搬过 IPC），
+   * 前端只弹一次目录选择框。单套失败不影响其它套，失败原因逐条回在 `failures` 里。
+   *
+   * @param ids       要导出的素材 id
+   * @param targetDir 目标目录（绝对路径）
+   */
+  async exportAnimationClipsBatch(
+    ids: string[],
+    targetDir: string,
+  ): Promise<{
+    count: number;
+    targetDir: string;
+    files: { id: string; name: string; filePath: string; frameCount: number; bytes: number }[];
+    failures: { id: string; name: string; message: string }[];
+  }> {
+    try {
+      const response = await apiClient.post('/animation-clips/export-batch', { ids, targetDir });
+      return response.data;
+    } catch (error) {
+      console.error('[ApiService] 批量导出动画失败:', error);
+      throw error;
+    }
   }
 
   // 删除背景（默认连同磁盘文件一起删除）

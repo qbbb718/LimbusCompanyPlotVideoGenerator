@@ -1170,6 +1170,43 @@ ipcMain.handle("dialog:openAnimationClip", async () => {
   return { canceled: false, filePath: filePaths[0], filePaths };
 });
 
+// 情绪动画（序列帧）素材：**多选**动画文件批量导入（一个 .lcaf = 一套动画）
+ipcMain.handle("dialog:openAnimationClips", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: "批量导入动画文件",
+    buttonLabel: "导入",
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      { name: "动画文件 (lcaf / zip)", extensions: ["lcaf", "zip"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+  if (canceled || !filePaths || filePaths.length === 0) {
+    return { canceled: true };
+  }
+  return { canceled: false, filePaths };
+});
+
+/**
+ * 只选一个**目录**（不写文件），返回绝对路径。
+ *
+ * <p>批量导出动画用：一次把几套动画各写成一个 `.lcaf` 到同一个目录，
+ * 所以这里不该弹"保存哪个文件"，而是"存到哪个文件夹"。
+ */
+ipcMain.handle("dialog:chooseDirectory", async (event, options) => {
+  const opts = options && typeof options === "object" ? options : {};
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: opts.title || "选择文件夹",
+    buttonLabel: opts.buttonLabel || "选择",
+    defaultPath: opts.defaultPath,
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (canceled || !filePaths || filePaths.length === 0) {
+    return { canceled: true };
+  }
+  return { canceled: false, directory: filePaths[0] };
+});
+
 /**
  * 只选一个"保存到哪里"，不写文件。
  *

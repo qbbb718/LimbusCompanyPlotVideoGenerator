@@ -17,6 +17,20 @@
  * （高亮 + 提示"请点击某一帧设为缩略图"），点哪张就设哪张，选完自动退出；
  * 再按一次按钮或 Esc 可以原地取消，不改变当前缩略图。
  *
+ * <h3>左侧列表的封面为什么就是"缩略图"</h3>
+ * 列表要让人一眼认出是哪套动画，所以封面直接用缩略图（`poster.frame`）那张图，
+ * 而不是第 0 张——淡入起点的第 0 帧往往全透明，看上去像"素材没导入成功"。
+ * 这样"挑缩略图"同时决定了编辑器里的静止预览与列表里的封面，只有一处需要挑。
+ *
+ * <h3>批量导入导出（.lcaf）</h3>
+ * 一个 `.lcaf` 就是一套动画，所以"批量"天然是"多个文件"：
+ * <ul>
+ *   <li><b>批量导入</b>：多选文件后**逐个**发请求。一套坏了只影响它自己，
+ *       还能顺带显示"3 / 8"的进度；</li>
+ *   <li><b>批量导出</b>：列表进入多选态（勾选 / 全选），确认后只弹**一次**目录选择框，
+ *       由后端把每个勾中的素材各写成一个 `.lcaf` 到那个目录（同名自动加序号）。</li>
+ * </ul>
+ *
  * <h3>响应式</h3>
  * 外层 `.sprite-anim-page` 是**容器查询**的参照（容器自己的样式不能用 `@container`，
  * 所以多包一层）：宽窗口三栏并排，窄了先把"设置 / 预览"上下堆叠，再窄把左侧列表也叠上去。
@@ -83,6 +97,33 @@ type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
 /** 「按文件名编号推算时长」开关的持久化 key（默认开，记住用户的选择） */
 const AUTO_HOLDS_STORAGE_KEY = "lbc.animation.autoHolds";
 
+/**
+ * @function 列表卡片上展示哪张图
+ *
+ * <p>用**缩略图**（`poster.frame`）而不是第 0 张：缩略图是用户在「帧序列」里专门挑出来
+ * 代表这段动画的那一帧，第 0 张可能正好是全透明的淡入起点（看起来像"素材没导入成功"）。
+ *
+ * <p>序号要夹在"素材自己声明的帧数"与"磁盘上真的有几张"之间：素材被人删过帧时
+ * 缩略图序号可能指向不存在的图，直接拼 URL 会得到一张裂图。
+ */
+const clipThumbIndex = (clip: AnimationClipDto): number => {
+  const frameCount = Math.max(1, clip.frameCount ?? 1);
+  const poster = Math.round(clip.poster?.frame ?? 0);
+  const clamped = Math.min(Math.max(0, poster), frameCount - 1);
+  const onDisk = typeof clip.framesOnDisk === "number" && clip.framesOnDisk > 0
+    ? clip.framesOnDisk
+    : clamped + 1;
+  return Math.min(clamped, Math.max(0, onDisk - 1));
+};
+
+/** 取路径里的文件名（批量导入报错时用，"D:/a/花开.lcaf" → "花开.lcaf"） */
+const baseNameOf = (filePath: string): string =>
+  filePath.split(/[\\/]/).pop() || filePath;
+
+/** 从异常里取出能给用户看的一句话 */
+const messageOf = (error: any, fallback: string): string =>
+  error?.response?.data?.message || error?.message || fallback;
+
 /** 读开关：读不到 / localStorage 不可用时按"开启"处理 */
 const loadAutoHolds = (): boolean => {
   try {
@@ -115,6 +156,10 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
   const [bulkHold, setBulkHold] = useState(1);
   /** 是否按文件名编号自动推算每帧时长（默认开；导入时作为参数发给后端） */
   const [autoHolds, setAutoHolds] = useState<boolean>(() => loadAutoHolds());
+  /** 多选导出：打开后每张卡片前出现勾选框，底部出现"确认导出" */
+  const [exportMode, setExportMode] = useState(false);
+  /** 多选导出勾中的素材 id */
+  const [exportSelection, setExportSelection] = useState<Set<string>>(() => new Set());
   /** 预览正在播放：此时锁住缩略图的偏移/缩放输入（拖拽在预览里也已锁） */
   const [previewPlaying, setPreviewPlaying] = useState(false);
   /** 正在"选择缩略图"：帧列表进入待选态，点任意一帧即设为缩略图 */
@@ -146,6 +191,8 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
    * 立刻就能看到自己改的值，不会先闪一下素材库里的旧值。
    */
   const draftCache = useRef<Map<string, ClipDraft>>(new Map());
+  /** 「全选」复选框：用它表达"半选"态（与角色 / 背景 / 音效页签的交互保持一致） */
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const toggleAutoHolds = (next: boolean) => {
     setAutoHolds(next);
@@ -432,6 +479,167 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
     }
   };
 
+  /**
+   * @function 批量导入 .lcaf（多选）
+   *
+   * <p>逐个发请求而不是一次传一批：一套动画坏了只影响它自己，其它照常进来，
+   * 用户还能看到"3/8"的进度。成功的那几套会刷新列表并选中最后导入的一套。
+   */
+  const handleImportFiles = async () => {
+    const api: any = (window as any).electronAPI;
+    if (!api?.openAnimationClips) {
+      setMessage({ kind: "error", text: "当前环境不支持批量导入动画文件" });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const picked = await api.openAnimationClips();
+      if (picked?.canceled || !picked?.filePaths?.length) return;
+
+      const paths: string[] = picked.filePaths;
+      const imported: AnimationClipDto[] = [];
+      const failures: string[] = [];
+      for (let i = 0; i < paths.length; i++) {
+        setMessage({ kind: "info", text: `正在导入 ${i + 1} / ${paths.length}…` });
+        try {
+          const file = await fileOfPath(paths[i]);
+          const result = await ApiService.importAnimationClipZip(file, undefined, {
+            inferHolds: autoHolds,
+          });
+          imported.push(result.asset as AnimationClipDto);
+        } catch (error: any) {
+          failures.push(`${baseNameOf(paths[i])}：${messageOf(error, "导入失败")}`);
+          log.warn("[序列帧动画] 批量导入中有一个失败:", paths[i], error);
+        }
+      }
+
+      if (imported.length > 0) {
+        library.reload();
+        // 选最后导入的那套：列表按创建时间倒序，它就在最上面
+        const latest = imported[imported.length - 1];
+        const next = draftOf(latest);
+        draftCache.current.set(latest.id, next);
+        setSelectedId(latest.id);
+        setDraft(next);
+        setSaveState("idle");
+      }
+
+      const summary = `已导入 ${imported.length} 套动画`;
+      setMessage(
+        failures.length === 0
+          ? { kind: "info", text: summary }
+          : { kind: "error", text: `${summary}；${failures.length} 个失败：${failures.join("；")}` },
+      );
+    } catch (error: any) {
+      setMessage({ kind: "error", text: messageOf(error, "批量导入失败") });
+      log.error("[序列帧动画] 批量导入动画文件失败:", error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* ==================== 多选导出 ==================== */
+
+  /**
+   * 勾中且**仍然存在**的素材。
+   *
+   * <p>用 `clips`（全部）而不是 `filtered`（当前搜索命中的）：勾了 A 之后又搜索去勾 B，
+   * 结果里必须两套都在——"勾了却被悄悄丢掉"比"数量比屏幕上的多"糟得多。
+   * 唯一要剔除的是已经从素材库里消失的 id（删掉之后还留在勾选集合里）。
+   */
+  const selectedForExport = useMemo(
+    () => clips.filter((clip) => exportSelection.has(clip.id)),
+    [clips, exportSelection],
+  );
+
+  const startExportMode = () => {
+    setExportSelection(new Set());
+    setExportMode(true);
+  };
+
+  const cancelExportMode = () => {
+    setExportMode(false);
+    setExportSelection(new Set());
+  };
+
+  const toggleExportItem = (clipId: string) => {
+    setExportSelection((previous) => {
+      const next = new Set(previous);
+      if (next.has(clipId)) {
+        next.delete(clipId);
+      } else {
+        next.add(clipId);
+      }
+      return next;
+    });
+  };
+
+  /** 「全选」作用于**当前列表**（搜索时就是命中的那批），与其它资源页签一致 */
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((clip) => exportSelection.has(clip.id));
+
+  const toggleSelectAll = () => {
+    setExportSelection(
+      allFilteredSelected ? new Set() : new Set(filtered.map((clip) => clip.id)),
+    );
+  };
+
+  /** 全选框的"半选"态：勾了一部分（当前可见的那批里） */
+  useEffect(() => {
+    const checkbox = selectAllRef.current;
+    if (!checkbox) return;
+    const visibleSelected = filtered.filter((clip) => exportSelection.has(clip.id)).length;
+    checkbox.indeterminate = visibleSelected > 0 && visibleSelected < filtered.length;
+  }, [filtered, exportSelection]);
+
+  /**
+   * @function 批量导出：勾中的几套各写成一个 `.lcaf` 到同一个目录
+   *
+   * <p>只弹**一次**目录选择框：逐套弹"保存到哪个文件"在批量场景下没法用。
+   * 写盘由后端做（与单套导出同一套代码），失败的那几套会逐条回显。
+   */
+  const handleExportSelected = async () => {
+    const ids = selectedForExport.map((clip) => clip.id);
+    if (ids.length === 0) {
+      setMessage({ kind: "error", text: "先在列表里勾选要导出的动画" });
+      return;
+    }
+    const api: any = (window as any).electronAPI;
+    if (!api?.chooseDirectory) {
+      setMessage({ kind: "error", text: "当前环境不支持选择导出目录" });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const picked = await api.chooseDirectory({
+        title: "选择动画导出目录",
+        buttonLabel: "导出到此处",
+      });
+      if (picked?.canceled || !picked?.directory) return;
+
+      const result = await ApiService.exportAnimationClipsBatch(ids, picked.directory);
+      const failures = result.failures ?? [];
+      setMessage(
+        failures.length === 0
+          ? { kind: "info", text: `已导出 ${result.count} 套动画到 ${result.targetDir}` }
+          : {
+              kind: "error",
+              text: `已导出 ${result.count} 套到 ${result.targetDir}；${failures.length} 套失败：${
+                failures.map((item) => `${item.name}（${item.message}）`).join("；")
+              }`,
+            },
+      );
+      if (failures.length === 0) cancelExportMode();
+    } catch (error: any) {
+      setMessage({ kind: "error", text: messageOf(error, "批量导出失败") });
+      log.error("[序列帧动画] 批量导出失败:", error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleDelete = async (clip: AnimationClipDto) => {
     if (!window.confirm(`删除动画「${clip.name}」？引用它的记录将不再显示这段动画（记录本身不会损坏）。`)) {
       return;
@@ -516,8 +724,21 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
               <button type="button" disabled={busy} onClick={handleImportFolder}>
                 从文件夹
               </button>
-              <button type="button" disabled={busy} onClick={handleImportFile}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleImportFile}
+                title="导入单个动画文件（.lcaf / 图片序列 zip）"
+              >
                 导入 .lcaf
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleImportFiles}
+                title="一次选多个 .lcaf 批量导入：坏掉的那几套不影响其它套"
+              >
+                批量导入 .lcaf
               </button>
             </div>
             <label
@@ -534,6 +755,49 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
             </label>
           </div>
 
+          {/* 多选导出：常态只有一个入口；进入后换成「全选 / 确认导出 / 取消」 */}
+          <div className={`sprite-anim-selectbar${exportMode ? " is-active" : ""}`}>
+            {exportMode ? (
+              <>
+                <label className="sprite-anim-check" title="把当前列表里能看到的动画全部勾上">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="全选动画"
+                  />
+                  <span>全选</span>
+                </label>
+                <button
+                  type="button"
+                  className="sprite-anim-btn is-primary"
+                  disabled={busy || selectedForExport.length === 0}
+                  onClick={handleExportSelected}
+                  title="勾中的每一套各存成一个 .lcaf，写进同一个目录"
+                >
+                  确认导出 ({selectedForExport.length})
+                </button>
+                <button type="button" className="sprite-anim-btn" onClick={cancelExportMode}>
+                  取消
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="sprite-anim-btn"
+                  disabled={busy || clips.length === 0}
+                  onClick={startExportMode}
+                  title="勾选几套动画，一次各导出一个 .lcaf 到同一个目录"
+                >
+                  选择导出
+                </button>
+                <span className="sprite-anim-selectbar-hint">多选 → 一次导出多个 .lcaf</span>
+              </>
+            )}
+          </div>
+
           <div className="sprite-anim-list-body">
             {library.loading && <div className="global-hint">加载中…</div>}
             {!library.loading && filtered.length === 0 && (
@@ -546,16 +810,42 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
             {filtered.map((clip) => (
               <div
                 key={clip.id}
-                className={`sprite-anim-card${clip.id === selectedId ? " is-selected" : ""}`}
+                className={`sprite-anim-card${clip.id === selectedId ? " is-selected" : ""}${
+                  exportSelection.has(clip.id) ? " is-checked" : ""
+                }`}
                 role="button"
                 tabIndex={0}
-                onClick={() => setSelectedId(clip.id)}
+                aria-pressed={exportMode ? exportSelection.has(clip.id) : undefined}
+                onClick={() =>
+                  exportMode ? toggleExportItem(clip.id) : setSelectedId(clip.id)
+                }
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setSelectedId(clip.id);
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  if (exportMode) {
+                    toggleExportItem(clip.id);
+                  } else {
+                    setSelectedId(clip.id);
+                  }
                 }}
-                title={clip.missingFrames ? "有缺帧，成片里缺的部分不会显示" : clip.name}
+                title={
+                  clip.missingFrames
+                    ? "有缺帧，成片里缺的部分不会显示"
+                    : `${clip.name}（封面 = 缩略图：第 ${clipThumbIndex(clip) + 1} 张）`
+                }
               >
-                <img src={ApiService.getAnimationClipFrameUrl(clip.id, 0)} alt="" />
+                {exportMode && (
+                  <span className="sprite-anim-card-check">
+                    <input
+                      type="checkbox"
+                      checked={exportSelection.has(clip.id)}
+                      onChange={() => toggleExportItem(clip.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`选择导出「${clip.name}」`}
+                    />
+                  </span>
+                )}
+                {/* 封面用**缩略图**（用户在帧序列里挑的那一张），不是第 0 张 */}
+                <img src={ApiService.getAnimationClipFrameUrl(clip.id, clipThumbIndex(clip))} alt="" />
                 <div className="sprite-anim-card-meta">
                   {/* 名字可能是很长的中文串：单行省略 + 悬浮看全名，避免把卡片撑破 */}
                   <strong title={clip.name}>{clip.name}</strong>
