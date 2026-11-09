@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 资源管理 → 序列帧动画子页面的接线测试。
  *
  * 只验"用户操作 → 交给后端的数据 / 界面状态"，不验样式与预览渲染（预览的几何与等比适配
@@ -13,12 +13,14 @@
  * 6. 播放/停止是**单键双态**，状态与播放严格同步，播到末尾不循环时自动回到初始状态。
  */
 import React from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import "@testing-library/jest-dom";
 
 import ApiService from "@services/ApiService";
 import type { AnimationClipDto } from "@features/record/animation/animationClipAsset";
 import * as libraryModule from "@features/record/animation/useAnimationClipLibrary";
 import SpriteAnimationsTab from "./SpriteAnimationsTab";
+import { ConfirmDialogHost } from "@features/common/components/ConfirmDialog";
 
 const asset: AnimationClipDto = {
   id: "flow_abcd1234",
@@ -60,7 +62,11 @@ const librarySpy = () => libraryModule.useAnimationClipLibrary as unknown as jes
 
 const renderTab = () =>
   render(
-    <SpriteAnimationsTab characters={[]} backgrounds={[]} searchTerm="" setSearchTerm={jest.fn()} />,
+    <>
+      <SpriteAnimationsTab characters={[]} backgrounds={[]} searchTerm="" setSearchTerm={jest.fn()} />
+      {/* 删除确认走应用内确认框（原生 window.confirm 会抢走键盘焦点） */}
+      <ConfirmDialogHost />
+    </>,
   );
 
 /** 播放/停止是同一个按钮：按当前显示的文字取 */
@@ -513,15 +519,22 @@ describe("资源管理 · 序列帧动画", () => {
   test("删除要二次确认；取消时什么都不做", async () => {
     mockLibrary([asset]);
     const remove = jest.spyOn(ApiService, "deleteAnimationClip").mockResolvedValue({ success: true } as any);
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+    // 确认框必须是应用内的：原生 window.confirm 关掉后会抢走键盘焦点
+    const confirmSpy = jest.spyOn(window, "confirm");
     renderTab();
 
+    // 第一次点删除 → 弹确认框，取消
     fireEvent.click(screen.getByText("删除"));
-    expect(confirmSpy).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", { name: "删除动画" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "删除动画" })).not.toBeInTheDocument());
     expect(remove).not.toHaveBeenCalled();
+    expect(confirmSpy).not.toHaveBeenCalled();
 
-    confirmSpy.mockReturnValue(true);
+    // 第二次点删除 → 确认
     fireEvent.click(screen.getByText("删除"));
+    const dialog2 = await screen.findByRole("dialog", { name: "删除动画" });
+    fireEvent.click(within(dialog2).getByRole("button", { name: "删除" }));
     await waitFor(() => expect(remove).toHaveBeenCalledWith("flow_abcd1234"));
   });
 
@@ -674,3 +687,4 @@ describe("资源管理 · 序列帧动画", () => {
     expect(screen.getByText(/确认导出 \(0\)/)).toBeTruthy();
   });
 });
+

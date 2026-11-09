@@ -6,6 +6,7 @@ import {
   describeTransferError,
   zipFileName,
 } from "@features/common/utils/resourceTransfer";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import "../ResourceManager.css";
 
 interface AudiosTabProps {
@@ -250,11 +251,15 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     const name = audio?.name || "该音频";
 
     // 整个删除流程只有这一个弹窗：确认后连磁盘上的音频文件一起删除。
-    if (
-      !window.confirm(
-        `确定删除音频「${name}」吗？\n\n将同时删除数据库记录和磁盘中的音频文件。`,
-      )
-    ) {
+    // 用应用内确认框而不是 window.confirm：Electron 的原生对话框关掉后会抢走键盘焦点。
+    const confirmed = await askConfirm({
+      title: "删除音频",
+      message: `确定删除音频「${name}」吗？`,
+      detail: "将同时删除数据库记录和磁盘中的音频文件。",
+      confirmLabel: "删除",
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 

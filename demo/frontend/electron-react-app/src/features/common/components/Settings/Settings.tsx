@@ -11,6 +11,8 @@ import OutputSection from "./sections/OutputSection";
 import StorageLocationSection from "./sections/StorageLocationSection";
 import AssetMaintenanceSection from "./sections/AssetMaintenanceSection";
 import LogExportSection from "./sections/LogExportSection";
+import UpdateSection from "./sections/UpdateSection";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import VersionInfo from "./sections/VersionInfo";
 import ApiService from "@services/ApiService";
 
@@ -65,9 +67,16 @@ const Settings: React.FC<SettingsProps> = ({
     alert("设置已保存！");
   }, [projectSettings]);
 
-  const handleResetSettings = useCallback(() => {
-    if (!window.confirm("确定要重置所有设置为默认值吗？此操作不可撤销。"))
-      return;
+  const handleResetSettings = useCallback(async () => {
+    // 应用内确认框：Electron 的原生 confirm 关掉后会抢走键盘焦点，之后输入框点不进、打不了字
+    const confirmed = await askConfirm({
+      title: "重置设置",
+      message: "确定要重置所有设置为默认值吗？",
+      detail: "此操作不可撤销。",
+      confirmLabel: "重置",
+      danger: true,
+    });
+    if (!confirmed) return;
     setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS });
   }, [setProjectSettings]);
 
@@ -95,6 +104,8 @@ const Settings: React.FC<SettingsProps> = ({
       <AssetMaintenanceSection />
 
       <LogExportSection />
+
+      <UpdateSection />
 
       <div className="settings-section settings-about">
         <h3>关于</h3>

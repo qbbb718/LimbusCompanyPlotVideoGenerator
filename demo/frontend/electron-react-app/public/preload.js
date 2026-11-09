@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onMenuExportVideo: (callback) =>
     ipcRenderer.on("menu-export-video", callback),
   onMenuAbout: (callback) => ipcRenderer.on("menu-about", callback),
+  // 菜单"帮助 → 检查更新"：主进程已经开查了，这里只让界面切到设置页的更新卡片
+  onMenuCheckUpdate: (callback) =>
+    ipcRenderer.on("menu-check-update", callback),
 
   // 移除监听器
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
@@ -70,6 +73,27 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 通知
   showNotification: (title, body) =>
     ipcRenderer.invoke("notification:show", title, body),
+
+  // ---- 自动更新 ----
+  // 状态是"主进程推 + 界面拉"两条路：挂载时先 getUpdateState() 拉一次，
+  // 否则会漏掉"窗口还没打开就已经检查完"的那一次结果（那时还没人在监听 update:status）。
+  // updater 的更新源与安装逻辑全在主进程（public/update-service.js），渲染进程只拿状态。
+  getUpdateState: () => ipcRenderer.invoke("update:get-state"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  /** 用本地安装包更新；confirmed=false 时只校验并返回待确认信息，不安装 */
+  installUpdateFromFile: (filePath, options) =>
+    ipcRenderer.invoke("update:install-from-file", filePath, options),
+  chooseUpdateInstaller: () => ipcRenderer.invoke("update:choose-installer"),
+  /** 打开更新相关的链接（主进程有域名白名单，避免把任意 url 交给系统） */
+  openUpdateLink: (url) => ipcRenderer.invoke("update:open-link", url),
+  /** 订阅更新状态；返回取消订阅函数（别用 removeAllListeners，会连带清掉别的监听） */
+  onUpdateStatus: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("update:status", handler);
+    return () => ipcRenderer.off("update:status", handler);
+  },
 
   // 打开资源文件夹（characters/backgrounds/audios）
   openResourceFolder: (resourceType) =>

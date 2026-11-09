@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Record, Background, BackgroundVisual } from "@types";
 import ApiService from "@services/ApiService";
 import NumberField from "./NumberField";
+import ModalPortal from "./ModalPortal";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
 import {
@@ -352,62 +353,66 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
         </div>
       </div>
 
+      {/* 选择背景弹窗：挂到 body（ModalPortal），否则会被停靠面板的层叠上下文盖住 */}
       {showSelector && (
-        <div className="background-selector">
-          <div className="background-selector-content">
-            <div className="background-selector-header">
-              <h3>选择背景</h3>
-              <button
-                className="cancel-btn"
-                onClick={() => setShowSelector(false)}
-              >
-                取消
-              </button>
+        <ModalPortal
+          label="选择背景"
+          onClose={() => setShowSelector(false)}
+          overlayClassName="background-selector"
+          dialogClassName="background-selector-content"
+        >
+          <div className="background-selector-header">
+            <h3>选择背景</h3>
+            <button
+              className="cancel-btn"
+              onClick={() => setShowSelector(false)}
+            >
+              取消
+            </button>
+          </div>
+          <div className="background-selector-body">
+            <div className="background-search">
+              <input
+                placeholder="搜索背景名称或文件路径..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <div className="background-selector-body">
-              <div className="background-search">
-                <input
-                  placeholder="搜索背景名称或文件路径..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="background-grid">
-                {filteredBackgrounds.map((bg) => (
-                  <div
-                    key={bg.uuid}
-                    className={`background-item ${selectedBackground?.uuid === bg.uuid ? "selected" : ""}`}
-                    onClick={() => setSelectedBackground(bg)}
-                    onDoubleClick={() => handleBackgroundDoubleClick(bg)}
-                    title="双击直接添加该背景"
-                  >
-                    <div className="background-thumbnail">
-                      <img
-                        src={thumbnailSrc(bg)}
-                        alt={bg.name}
-                        onError={(e) => handleThumbnailError(e, bg)}
-                      />
-                    </div>
-                    <div className="background-name">{bg.name}</div>
-                    <div className="background-path">{bg.path}</div>
+            <div className="background-grid">
+              {filteredBackgrounds.map((bg) => (
+                <div
+                  key={bg.uuid}
+                  className={`background-item ${selectedBackground?.uuid === bg.uuid ? "selected" : ""}`}
+                  onClick={() => setSelectedBackground(bg)}
+                  onDoubleClick={() => handleBackgroundDoubleClick(bg)}
+                  title="双击直接添加该背景"
+                >
+                  <div className="background-thumbnail">
+                    <img
+                      src={thumbnailSrc(bg)}
+                      alt={bg.name}
+                      onError={(e) => handleThumbnailError(e, bg)}
+                    />
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="background-selector-footer">
-              <span className="background-selector-hint">
-                双击缩略图可直接添加
-              </span>
-              <button
-                className="confirm-btn"
-                onClick={() => addBackground()}
-                disabled={!selectedBackground}
-              >
-                确认添加
-              </button>
+                  <div className="background-name">{bg.name}</div>
+                  <div className="background-path">{bg.path}</div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+          <div className="background-selector-footer">
+            <span className="background-selector-hint">
+              双击缩略图可直接添加
+            </span>
+            <button
+              className="confirm-btn"
+              onClick={() => addBackground()}
+              disabled={!selectedBackground}
+            >
+              确认添加
+            </button>
+          </div>
+        </ModalPortal>
       )}
     </>
   );

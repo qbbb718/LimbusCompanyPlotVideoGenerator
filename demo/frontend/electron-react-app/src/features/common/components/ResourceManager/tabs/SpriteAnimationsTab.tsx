@@ -52,6 +52,7 @@ import { useAnimationClipLibrary } from "@features/record/animation/useAnimation
 import { preloadClipFrames } from "@features/record/animation/framePreloader";
 import type { LoopMode } from "@features/record/animation/animationTypes";
 import SpriteAnimationPreview from "./SpriteAnimationPreview";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import "./SpriteAnimationsTab.css";
 
 interface SpriteAnimationsTabProps {
@@ -641,7 +642,15 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
   };
 
   const handleDelete = async (clip: AnimationClipDto) => {
-    if (!window.confirm(`删除动画「${clip.name}」？引用它的记录将不再显示这段动画（记录本身不会损坏）。`)) {
+    // 应用内确认框：Electron 的原生 confirm 关掉后会抢走键盘焦点，之后输入框点不进、打不了字
+    const confirmed = await askConfirm({
+      title: "删除动画",
+      message: `删除动画「${clip.name}」？`,
+      detail: "引用它的记录将不再显示这段动画（记录本身不会损坏）。",
+      confirmLabel: "删除",
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
     setBusy(true);

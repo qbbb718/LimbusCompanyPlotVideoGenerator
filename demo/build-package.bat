@@ -273,6 +273,23 @@ echo        3. Antivirus is blocking file operations
 goto :FATAL
 
 :PACK_OK
+REM --- Auto-update payload self-check. ---
+REM Missing any of these makes "check for updates" silently do nothing in the
+REM installed app (the failure is a require() that throws and gets caught):
+REM   - electron-updater in devDependencies  -> not packed into app.asar
+REM   - public/update-service.js not listed in electron-builder.yml "files"
+REM   - public/log-export/zip-writer.js     -> electron.js require() at startup
+REM Fail the build here instead of shipping an installer that can never update
+REM itself - users would only notice as "it never tells me about new versions".
+echo        Verifying auto-update payload...
+powershell -NoProfile -Command "$fe='%FRONTEND_DIR%'; $pkg=Get-Content (Join-Path $fe 'package.json') -Raw | ConvertFrom-Json; if (-not ($pkg.dependencies.PSObject.Properties.Name -contains 'electron-updater')) { Write-Host '[ERROR] electron-updater must be in dependencies, devDependencies are not packaged'; exit 1 }; if (-not (Test-Path (Join-Path $fe 'node_modules\electron-updater'))) { Write-Host '[ERROR] node_modules/electron-updater missing - run npm install'; exit 1 }; foreach ($f in @('public\update-service.js','public\update-manifest.js','public\log-export\zip-writer.js')) { if (-not (Test-Path (Join-Path $fe $f))) { Write-Host ('[ERROR] missing ' + $f); exit 1 } }; $yml=Get-Content (Join-Path $fe 'electron-builder.yml') -Raw; if ($yml -notmatch 'public/\*\.js') { Write-Host '[ERROR] electron-builder.yml files must include public/*.js'; exit 1 }; Write-Host '       auto-update payload ok'"
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Auto-update payload check failed, see the message above.
+    echo         Such an installer could never update itself.
+    goto :FATAL
+)
+
 REM --- Verify the packaged assets before declaring success. ---
 REM ui/ and effects/ are hard requirements for preview rendering and video
 REM export: if they are missing from the payload, the installed app fails at

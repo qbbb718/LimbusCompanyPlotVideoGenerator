@@ -11,7 +11,7 @@
 
 ### 方式一：下载安装包（推荐）
 
-从 [GitHub Releases](../../releases) 下载最新版 `LimbusCompany Plot Video Generator Setup x.x.x.exe`，双击安装。
+从 [GitHub Releases](../../releases) 下载最新版 `LCPx.y.z.exe`（例如 `LCP0.5.1.exe`），双击安装。
 
 - 安装包已包含所有依赖，**无需额外安装 Java、Maven 或 Node.js**
 - 安装完成后桌面自动创建快捷方式，双击即可使用
@@ -23,8 +23,16 @@
 
 ### 更新
 
-- **自动更新**：启动时自动检查 GitHub Releases，发现新版本会弹出通知，点击即可安装
-- **手动更新**：下载新版安装包，覆盖安装到同一目录，资源数据（角色、背景、音频）自动保留
+- **自动更新**：启动后自动检查新版本（之后每 4 小时再查一次）。发现新版本时「设置」页签上会亮一个小红点，
+  点进去能看到**这一版改了什么**、下载进度，下载完点「重启并安装」即可 —— 静默安装、装完自动打开新版本。
+  想手动查一次，点菜单 **帮助 → 检查更新**。
+- **更新源**：GitHub 官方地址，连不上时自动改走加速通道（`gh-proxy` / `ghfast`），
+  所以**不需要能打开 GitHub** 也能收到更新。
+- **用自己下载的安装包更新**：如果已经手动下好了 `LCPx.y.z.exe`，把它**直接拖进程序窗口**，
+  或者在「设置 → 软件更新」里点「用已下载的安装包更新」。程序会先核对文件名、版本与官方 sha512
+  再安装（核对不上会拒绝，并告诉你哪一项不对）。
+- **手动更新**：下载新版安装包，覆盖安装到同一目录即可。**不需要先卸载** ——
+  角色、背景、音频素材与工程库都会保留（卸载也不会删这些数据）。
 
 > ⚠️ 请勿删除安装目录下的 `data/` 和 `assets/` 文件夹，这些是你的资源库数据。
 
@@ -161,7 +169,7 @@ LimbusCompanyPlotVideoGenerator/
 
 ## 版本号管理
 
-当前版本：**0.2.3**（真源：`demo/frontend/electron-react-app/package.json` 的 `version`）
+当前版本：**0.5.1**（真源：`demo/frontend/electron-react-app/package.json` 的 `version`）
 
 ```powershell
 node scripts\version.mjs                 # 查看各处版本号是否一致
@@ -175,7 +183,7 @@ node scripts\version.mjs --check-tag v0.2.4   # 额外校验 git tag（发版前
 - 后端日志「后端版本: x.y.z」与 `GET /api/health` 的 `version` 来自 `demo/src/main/resources/application.yml` 的 `app.version`
 - 前端日志（`logs\log-*.log`）启动时会打印 `应用版本: x.y.z | 运行模式: ...`，排障先看这一行
 - 改完记得在 [版本更新笔记](docs/版本更新笔记.md) 顶部加一节，提交后打 tag（`git tag v0.2.4`）触发 CI 发版
-- 详细说明与坑：[本地打包说明](docs/本地打包说明.md) 的「改版本号」
+- 详细说明与坑：[打包说明](docs/打包说明.md) 的「改版本号」
 
 ## 排障：立绘显示成红色「加载失败」方块
 
@@ -183,18 +191,18 @@ WebP 立绘在 Java 21 上没有 ImageIO 解码器，只能靠 JavaCV/FFmpeg 的
 原生库起不来时渲染管线拿不到像素，就会画出红色占位图。最快的判断方式是直接在**打包好的 jar** 上自检：
 
 ```powershell
-java -jar demo\target\demo-0.2.3-SNAPSHOT.jar --self-check=webp
+java -jar demo\target\demo-0.5.1-SNAPSHOT.jar --self-check=webp
 ```
 
 `[SELF-CHECK] PASS webp 8x4 ...` 并返回 0 = 解码链路正常；返回 1 时日志里会有完整的原因链。
 
 注意这类问题**本地开发环境复现不了**：`mvn spring-boot:run` / IDE / `mvn test` 用的是扁平 classpath，
 原生 jar 是磁盘上的真实文件；只有 `java -jar`（Spring Boot 可执行 jar）才会暴露。
-详见 [本地打包说明](docs/本地打包说明.md) 的「先跑一次后端自检」。
+详见 [打包说明](docs/打包说明.md) 的「先跑一次后端自检」。
 
 另外，立绘上传时如果文件是 WebP 会自动转成 PNG 存盘、原图备份到角色目录下的 `originals/`，
 所以**新上传的立绘不会再因为原生库问题变红**（上传时解不出来会直接报错、不落库）；
-老素材里的 `.webp` 仍由 FFmpeg 兜底读取。详见 [本地打包说明](docs/本地打包说明.md) 的「立绘的 WebP → PNG 入库转换」。
+老素材里的 `.webp` 仍由 FFmpeg 兜底读取。详见 [打包说明](docs/打包说明.md) 的「立绘的 WebP → PNG 入库转换」。
 
 ## 文档
 
@@ -204,7 +212,7 @@ java -jar demo\target\demo-0.2.3-SNAPSHOT.jar --self-check=webp
 - [前端模型](docs/前端模型.md) - 前后端数据模型字段
 - [API文档](docs/API文档.md) - REST 接口说明
 - [配置文档](docs/配置文档.md) - 后端与前端配置项
-- [本地打包说明](docs/本地打包说明.md) - 出安装包的完整流程与坑
+- [打包说明](docs/打包说明.md) - 出安装包的完整流程与坑
 - [版本更新笔记](docs/版本更新笔记.md) - 各版本改动
 - [情绪动画设计](docs/情绪动画设计.md) - 立绘的序列帧动画（**已实现**，开头有「实现说明」记录与设计稿的差异）
 - [立绘动画设计](docs/立绘动画设计.md) - 立绘移动动画（预设 / 关键帧）的实现规格与进度

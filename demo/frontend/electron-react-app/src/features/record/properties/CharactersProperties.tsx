@@ -5,8 +5,12 @@ import {
   CharacterVisual,
   Portrait,
 } from "@types";
-import ApiService, { BASE_URL } from "@services/ApiService";
-import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
+import ApiService from "@services/ApiService";
+import {
+  MISSING_THUMBNAIL_PLACEHOLDER,
+  buildPortraitThumbnailUrl,
+  getDefaultPortrait,
+} from "@features/common/utils/portraitUtils";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
 import CharacterSelect, {
@@ -15,6 +19,7 @@ import CharacterSelect, {
 import NumberField from "./NumberField";
 import CharacterAnimationPanel from "./CharacterAnimationPanel";
 import EmotionAnimPicker from "./EmotionAnimPicker";
+import PortraitPickerDialog from "./PortraitPickerDialog";
 import {
   DESIGN_CANVAS_WIDTH,
   MAX_VISUAL_SCALE,
@@ -103,7 +108,12 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   const [newChara, setNewChara] = useState<any | null>(null);
   const [newPortrait, setNewPortrait] = useState<Portrait | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [portraitModalIndex, setPortraitModalIndex] = useState<number | null>(null);
+  /** 正在换立绘的卡片下标（null = 弹窗没开） */
+  const [portraitPickerIndex, setPortraitPickerIndex] = useState<number | null>(
+    null,
+  );
+  /** 添加表单里"挑初始立绘"的弹窗是否打开 */
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
 
   // 每张角色卡片的 DOM 节点：从预览点中立绘时要滚到它
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -135,12 +145,54 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
     avatarCharacter: chara,
   }));
 
-  /** 拼接缩略图完整 URL */
-  const getThumbnailUrl = (thumbnailPath: string | undefined): string => {
-    if (!thumbnailPath) return "";
-    if (thumbnailPath.startsWith("http")) return thumbnailPath;
-    if (thumbnailPath.startsWith("/")) return BASE_URL + thumbnailPath;
-    return `${BASE_URL}/assets/characters/${encodeURIComponent(thumbnailPath)}`;
+  /**
+   * 素材库里某个角色的立绘列表。
+   *
+   * <p>返回 `null` 表示「素材库里找不到这个角色」（角色被删了、或角色列表还没拉回来），
+   * 与「角色存在但一张立绘都没有」（返回空数组）区分开，弹窗里给的是两种不同的提示。
+   */
+  const portraitsOf = (characterID: string | undefined): Portrait[] | null => {
+    const found = characters.find((chara) => chara.characterID === characterID);
+    if (!found) return null;
+    return found.portraits ?? [];
+  };
+
+  /**
+   * 「选择立绘」弹窗到底列什么。
+   *
+   * <p>正常情况下 = 素材库里这个角色的全部立绘。但记录里存的角色是**内联快照**：
+   * 角色在素材库里被删掉（或重新导入后换了 ID）时按 ID 找不到，弹窗就会是一张空网格 ——
+   * 用户只看到一个只有标题的白框，不知道发生了什么。这时至少把**记录当前用的那张立绘**列出来，
+   * 并在顶部说明为什么只有这一张：用户能看到自己在用什么，也知道"要换别的得先去「角色」里重选"。
+   */
+  const pickerSourceFor = (
+    characterID: string | undefined,
+    currentPortrait?: Portrait | null,
+  ): { portraits: Portrait[]; notice?: string; emptyHint: string } => {
+    const library = portraitsOf(characterID);
+    if (library && library.length > 0) {
+      return { portraits: library, emptyHint: "" };
+    }
+
+    const current = currentPortrait ? [currentPortrait] : [];
+    if (current.length === 0) {
+      return {
+        portraits: [],
+        emptyHint:
+          library === null
+            ? "素材库里找不到这个角色（可能已被删除），请先在「角色」里重新选择"
+            : "这个角色还没有立绘，可到「资源管理 → 角色」里添加",
+      };
+    }
+
+    return {
+      portraits: current,
+      notice:
+        library === null
+          ? "素材库里找不到这个角色（可能已被删除）：下面是这条记录当前使用的立绘。要换别的立绘，请先在「角色」里重新选择这个角色"
+          : "素材库里这个角色还没有立绘：下面是这条记录当前使用的立绘",
+      emptyHint: "",
+    };
   };
 
   const updateCharacter = (index: number, field: string, value: any) => {
@@ -310,23 +362,32 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                 </div>
                 <div className="char-col char-col-1-2">
                   <label>立绘</label>
-                  <div
+                  <button
+                    type="button"
                     className="portrait-selector-display"
-                    onClick={() => setPortraitModalIndex(index)}
+                    onClick={() => setPortraitPickerIndex(index)}
                     title="点击更换立绘"
+                    aria-label={`更换立绘（当前：${char.portrait?.portName || "未选择"}）`}
                   >
                     {char.portrait?.thumbnailPath ? (
                       <img
-                        src={getThumbnailUrl(char.portrait.thumbnailPath)}
+                        src={buildPortraitThumbnailUrl(
+                          char.portrait.thumbnailPath,
+                        )}
                         alt={char.portrait.portName}
+                        onError={(event) => {
+                          const image = event.currentTarget;
+                          image.onerror = null;
+                          image.src = MISSING_THUMBNAIL_PLACEHOLDER;
+                        }}
                       />
                     ) : (
-                      <div className="portrait-placeholder">?</div>
+                      <span className="portrait-placeholder">?</span>
                     )}
                     <span className="portrait-name">
                       {char.portrait?.portName || "未选择"}
                     </span>
-                  </div>
+                  </button>
                 </div>
                 <div className="char-col char-col-1-4 char-col-dim">
                   <label>立绘压暗</label>
@@ -522,66 +583,54 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                   <label>立绘</label>
                   {newChara ? (
                     (() => {
-                      const charPortraits = characters.find(
-                        (c) => c.characterID === newChara.characterID,
-                      )?.portraits || [];
+                      const charPortraits =
+                        portraitsOf(newChara.characterID) ?? [];
                       if (charPortraits.length === 0) {
-                        return <div className="portrait-selector-display" style={{cursor: "default"}}>
-                          <div className="portrait-placeholder">—</div>
-                          <span className="portrait-name">该角色无立绘</span>
-                        </div>;
+                        return (
+                          <div
+                            className="portrait-selector-display"
+                            aria-disabled="true"
+                          >
+                            <span className="portrait-placeholder">—</span>
+                            <span className="portrait-name">该角色无立绘</span>
+                          </div>
+                        );
                       }
                       return (
-                        <div className="portrait-selector-display"
-                          onClick={() => {
-                            const modal = document.createElement("div");
-                            modal.className = "portrait-modal-overlay";
-                            modal.onclick = () => modal.remove();
-                            const content = document.createElement("div");
-                            content.className = "portrait-modal";
-                            content.onclick = (ev) => ev.stopPropagation();
-                            content.innerHTML = `
-                              <div class="portrait-modal-header">
-                                <h4>选择立绘</h4>
-                                <button>✕</button>
-                              </div>
-                              <div class="portrait-grid" id="add-portrait-grid-record"></div>`;
-                            modal.appendChild(content);
-                            document.body.appendChild(modal);
-                            content.querySelector("button")!.onclick = () => modal.remove();
-
-                            const grid = content.querySelector("#add-portrait-grid-record")!;
-                            charPortraits.forEach((p: Portrait) => {
-                              const item = document.createElement("div");
-                              item.className = `portrait-grid-item${newPortrait?.portraitID === p.portraitID ? " selected" : ""}`;
-                              item.innerHTML = `
-                                <img src="${getThumbnailUrl(p.thumbnailPath)}" alt="${p.portName}"
-                                  onerror="this.src='data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2780%27 height=%2780%27><rect fill=%27%23eee%27 width=%2780%27 height=%2780%27/><text x=%2740%27 y=%2745%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2712%27>无缩略图</text></svg>'"/>
-                                <div class="name">${p.portName}</div>
-                                <div class="emotion-tag">${p.emotion}</div>`;
-                              item.onclick = () => {
-                                setNewPortrait(p);
-                                modal.remove();
-                              };
-                              grid.appendChild(item);
-                            });
-                          }}
+                        <button
+                          type="button"
+                          className="portrait-selector-display"
+                          onClick={() => setAddPickerOpen(true)}
                           title="点击选择立绘"
+                          aria-label={`选择立绘（当前：${newPortrait?.portName || "未选择"}）`}
                         >
                           {newPortrait?.thumbnailPath ? (
-                            <img src={getThumbnailUrl(newPortrait.thumbnailPath)} alt={newPortrait.portName} />
+                            <img
+                              src={buildPortraitThumbnailUrl(
+                                newPortrait.thumbnailPath,
+                              )}
+                              alt={newPortrait.portName}
+                              onError={(event) => {
+                                const image = event.currentTarget;
+                                image.onerror = null;
+                                image.src = MISSING_THUMBNAIL_PLACEHOLDER;
+                              }}
+                            />
                           ) : (
-                            <div className="portrait-placeholder">?</div>
+                            <span className="portrait-placeholder">?</span>
                           )}
                           <span className="portrait-name">
                             {newPortrait?.portName || "点击选择立绘"}
                           </span>
-                        </div>
+                        </button>
                       );
                     })()
                   ) : (
-                    <div className="portrait-selector-display" style={{cursor: "default", opacity: 0.5}}>
-                      <div className="portrait-placeholder">—</div>
+                    <div
+                      className="portrait-selector-display"
+                      aria-disabled="true"
+                    >
+                      <span className="portrait-placeholder">—</span>
                       <span className="portrait-name">请先选择角色</span>
                     </div>
                   )}
@@ -602,48 +651,51 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
         )}
       </div>
 
-      {/* ===== 立绘选择弹窗 ===== */}
-      {portraitModalIndex !== null && (() => {
-        const idx = portraitModalIndex;
-        const char = currentCharacters[idx];
-        const charPortraits = characters.find(
-          (c) => c.characterID === char?.chara?.characterID,
-        )?.portraits || [];
-        return (
-          <div className="portrait-modal-overlay" onClick={() => setPortraitModalIndex(null)}>
-            <div className="portrait-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="portrait-modal-header">
-                <h4>选择立绘 — {char?.chara?.characterName || ""}</h4>
-                <button onClick={() => setPortraitModalIndex(null)}>✕</button>
-              </div>
-              <div className="portrait-grid">
-                {charPortraits.map((p) => (
-                  <div
-                    key={p.portraitID}
-                    className={`portrait-grid-item${char?.portrait?.portraitID === p.portraitID ? " selected" : ""}`}
-                    onClick={() => {
-                      updateCharacter(idx, "portrait", p);
-                      setPortraitModalIndex(null);
-                    }}
-                  >
-                    <img
-                      src={getThumbnailUrl(p.thumbnailPath)}
-                      alt={p.portName}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect fill='%23eee' width='80' height='80'/><text x='40' y='45' text-anchor='middle' fill='%23999' font-size='12'>无缩略图</text></svg>";
-                      }}
-                    />
-                    <div className="name">{p.portName}</div>
-                    <div className="emotion-tag">{p.emotion}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* ===== 立绘选择弹窗 =====
+          两个入口共用同一个组件（挂在 body 上，见 PortraitPickerDialog / ModalPortal）：
+          1) 已添加角色卡片点立绘缩略图 → 换一张；
+          2) 添加表单里点立绘缩略图 → 挑初始立绘。 */}
+      {portraitPickerIndex !== null &&
+        (() => {
+          const idx = portraitPickerIndex;
+          const char = currentCharacters[idx];
+          if (!char) return null;
+          const source = pickerSourceFor(char.chara?.characterID, char.portrait);
+          return (
+            <PortraitPickerDialog
+              title={`选择立绘 — ${char.chara?.characterName || ""}`}
+              portraits={source.portraits}
+              notice={source.notice}
+              emptyHint={source.emptyHint}
+              selectedPortraitId={char.portrait?.portraitID}
+              onSelect={(portrait) => {
+                updateCharacter(idx, "portrait", portrait);
+                setPortraitPickerIndex(null);
+              }}
+              onClose={() => setPortraitPickerIndex(null)}
+            />
+          );
+        })()}
 
+      {addPickerOpen &&
+        newChara &&
+        (() => {
+          const source = pickerSourceFor(newChara.characterID, newPortrait);
+          return (
+            <PortraitPickerDialog
+              title={`选择立绘 — ${newChara.characterName || ""}`}
+              portraits={source.portraits}
+              notice={source.notice}
+              emptyHint={source.emptyHint}
+              selectedPortraitId={newPortrait?.portraitID}
+              onSelect={(portrait) => {
+                setNewPortrait(portrait);
+                setAddPickerOpen(false);
+              }}
+              onClose={() => setAddPickerOpen(false)}
+            />
+          );
+        })()}
     </div>
   );
 };

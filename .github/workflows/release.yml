@@ -30,6 +30,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           node scripts/version.test.mjs
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          # 更新说明的解析器：解析错了会静默打出"更新内容：空白"的安装包，必须在发版前先红
+          node scripts/changelog.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # latest.yml 的解析：解析错了就是"永远发现不了新版本"，同样静默
+          node scripts/update-manifest.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -70,11 +76,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Release Assets
+      # 更新说明在打包之后再生成：changelog.json 要落在 electron-builder 的输出目录里被打包上传，
+      # 而 electron-builder 自己会清理/重建 release/ 目录，先放进去会被删掉。
+      #   release-notes.md  -> GitHub Release 正文（electron-updater 读它当 releaseNotes）
+      #   changelog.json    -> release 资产（走加速通道时改由 public/update-service.js 读它）
+      - name: Prepare release notes and changelog
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          node scripts/changelog.mjs --version '${{ github.ref_name }}' --out release-notes.md
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node scripts/changelog.mjs --json demo/frontend/electron-react-app/release/changelog.json
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Upload release notes, changelog and assets
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          # Release 正文 = 更新说明。electron-updater 的 GitHub provider 会把它当 releaseNotes
+          # 带进应用（历史版本的正文一直是空的，所以应用里从来没显示过"更新内容"）。
+          body_path: release-notes.md
+          # 安装包 / blockmap / latest.yml 由上一步 electron-builder --publish always 上传，
+          # 这里只补 changelog.json：同一个文件名上传两次容易踩 "already_exists"，
+          # 一旦这一步失败，正文也就跟着丢了。
           files: |
-            demo/frontend/electron-react-app/release/*.exe
-            demo/frontend/electron-react-app/release/*.blockmap
-            demo/frontend/electron-react-app/release/latest*.yml
+            demo/frontend/electron-react-app/release/changelog.json

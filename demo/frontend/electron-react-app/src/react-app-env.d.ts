@@ -105,7 +105,30 @@ interface Window {
     onMenuSaveProject: (callback: () => void) => void;
     onMenuExportVideo: (callback: () => void) => void;
     onMenuAbout: (callback: () => void) => void;
+    /** 菜单「帮助 → 检查更新」：主进程已开始检查，界面只需切到设置页的更新卡片 */
+    onMenuCheckUpdate: (callback: () => void) => void;
     removeAllListeners: (channel: string) => void;
+    // ---- 自动更新（主进程逻辑见 public/update-service.js）----
+    getUpdateState: () => Promise<UpdateState>;
+    checkForUpdates: () => Promise<UpdateState>;
+    downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
+    installUpdate: () => Promise<{
+      ok: boolean;
+      installing?: boolean;
+      version?: string;
+      error?: string;
+      silent?: boolean;
+      installDir?: string;
+    }>;
+    /** 用本地安装包更新；confirmed=false 只校验并返回待确认信息 */
+    installUpdateFromFile: (
+      filePath: string,
+      options?: { confirmed?: boolean },
+    ) => Promise<InstallFromFileResult>;
+    chooseUpdateInstaller: () => Promise<{ canceled: boolean; filePath?: string }>;
+    openUpdateLink: (url: string) => Promise<{ ok: boolean; error?: string }>;
+    /** 订阅更新状态；返回取消订阅函数 */
+    onUpdateStatus: (callback: (state: UpdateState) => void) => () => void;
     /**
      * 屏幕取色：主进程打开铺满屏幕的取色遮罩（可吸取软件窗口以外的颜色），
      * 单击拾取、Esc / 右键取消。取消时返回 reason="canceled"，失败时 reason="error"。
@@ -212,5 +235,85 @@ interface DataLocationChangeResult {
     failed: string[];
     warnings: string[];
   } | null;
+}
+
+/**
+ * 自动更新状态：主进程 `public/update-service.js` 里的 state，经 `update:status` 推给界面，
+ * 界面挂载时再用 `getUpdateState()` 拉一次（避免错过窗口打开之前就已完成的那次检查）。
+ *
+ * <p>phase：
+ * `idle` 还没查过 / `checking` 正在探查更新源 / `up-to-date` 已是最新 /
+ * `available` 有新版本（等用户点下载）/ `downloading` 下载中（带进度）/
+ * `downloaded` 已下载（等用户点重启安装）/ `installing` 安装中（应用马上退出）/
+ * `error` 出错（`error` 是给用户看的一句话，`errorDetail` 是技术细节）/
+ * `unsupported` 这个安装包里没有更新组件。
+ */
+interface UpdateLink {
+  label: string;
+  url: string;
+}
+
+interface UpdateState {
+  phase:
+    | "idle"
+    | "checking"
+    | "up-to-date"
+    | "available"
+    | "downloading"
+    | "downloaded"
+    | "installing"
+    | "error"
+    | "unsupported";
+  /** 当前版本（app.getVersion()） */
+  currentVersion: string;
+  /** 新版本号（available / downloading / downloaded / installing 时有） */
+  version?: string;
+  /** 更新说明（release body 或 changelog.json 里对应版本那节） */
+  notes?: string;
+  notesUrl?: string;
+  /** 下载进度：percent 是 0~100，其余是字节数 */
+  percent?: number;
+  transferred?: number;
+  total?: number;
+  bytesPerSecond?: number;
+  /** 这次用的更新源（github / gh-proxy / ghfast）与它的显示名 */
+  source?: string;
+  sourceLabel?: string;
+  error?: string;
+  errorDetail?: string;
+  /** 手动下载链接（GitHub 发布页 + 各加速通道直链） */
+  links?: UpdateLink[];
+  checkedAt?: number;
+  /** 是否用户主动点的检查（自动检查出错时界面可以安静一点） */
+  manual?: boolean;
+  releasePage?: string;
+  sources?: { id: string; label: string }[];
+}
+
+/** 本地安装包的校验结果：match = 与官方 sha512 一致，unverified = 拿不到官方值 */
+interface InstallerConfirmInfo {
+  filePath: string;
+  fileName: string;
+  version: string;
+  size: number;
+  status: "match" | "mismatch" | "unverified";
+  /** 校验值是哪个源给的（GitHub / 加速通道 1 …） */
+  sourceLabel?: string;
+  expectedShort?: string;
+  actualShort?: string;
+  reason?: string;
+}
+
+/** 主进程 `update:install-from-file` 的返回 */
+interface InstallFromFileResult {
+  ok: boolean;
+  error?: string;
+  /** true = 校验通过/仅能确认文件名，等界面确认后再调一次（confirmed: true） */
+  needConfirm?: boolean;
+  info?: InstallerConfirmInfo;
+  installing?: boolean;
+  version?: string;
+  silent?: boolean;
+  installDir?: string;
 }
 

@@ -2,13 +2,13 @@
   "uuid" : "b7254978-73be-4e82-8211-5b2afa2539e1",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "属性面板-文本-说话人-自由文本，与章节开头的文字是相同样式",
+    "text" : "属性面板-文本-说话人-自由文本：\n与章节开头的文字是相同样式",
     "location" : "办公室",
     "speakerC" : [ ],
     "speakerName" : "自由文本",
     "faction" : "中立",
     "align" : "LEFT",
-    "speed" : 3,
+    "speed" : 6,
     "emotion" : "NORMAL",
     "freeText" : true,
     "bold" : false,
@@ -62,13 +62,13 @@
   "uuid" : "96497792-85b3-45b7-b982-462eedb3ce2b",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "属性面板-文本-说话人-旁白\n属性面板-特效，有转场效果",
+    "text" : "属性面板-文本-说话人-旁白：就是这样\n属性面板-特效：添加转场效果",
     "location" : "办公室",
     "speakerC" : [ ],
     "speakerName" : "旁白",
     "faction" : "未设定",
     "align" : "LEFT",
-    "speed" : 3,
+    "speed" : 6,
     "emotion" : "ANGRY",
     "freeText" : false,
     "bold" : false,
@@ -86,14 +86,7 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
-  "camera" : {
-    "centerX" : 960.0,
-    "centerY" : 540.0,
-    "zoom" : 1.0,
-    "to" : null,
-    "easing" : "easeOut",
-    "moveFrames" : 24
-  },
+  "camera" : null,
   "effects" : [ {
     "type" : "CROSS_DISSOLVE",
     "amplitude" : null,
@@ -106,30 +99,30 @@
   "isDirty" : false,
   "chars" : [ {
     "chara" : {
-      "characterID" : "char_1785997936961",
+      "characterID" : "char_1792296094464",
       "characterName" : "格里高尔",
       "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
+      "faction" : "13号罪人",
+      "colorBg" : "#69350B",
       "colorText" : "#FBDBB3"
     },
     "portrait" : {
-      "portraitID" : "portrait_1785998312581",
-      "characterID" : "char_1785997936961",
-      "imagePath" : "char_1785997936961/portrait_1785998312581.png",
-      "portName" : "Gregor-face_serious_R",
-      "emotion" : "angry",
-      "faceX" : 243,
-      "faceY" : 0,
-      "length" : 192,
+      "portraitID" : "portrait_1792511385751_0",
+      "characterID" : "char_1792296094464",
+      "imagePath" : "char_1792296094464/portrait_1792511385751_0.png",
+      "portName" : "格里高尔-face_depressed_L",
+      "emotion" : "sad",
+      "faceX" : 251,
+      "faceY" : 16,
+      "length" : 177,
       "adjX" : 0,
       "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
+      "thumbnailPath" : "/assets/characters/char_1792296094464/thumbnails/thumbnail_portrait_1792511385751_0.png",
       "defaultPortrait" : false
     },
-    "posX" : 88,
-    "posY" : 257,
-    "adjX" : -640,
+    "posX" : 700,
+    "posY" : 240,
+    "adjX" : 0,
     "adjY" : 0,
     "scale" : 1.0,
     "dim" : false,
@@ -149,23 +142,116 @@
     "visible" : true
   } ]
 }, {
-  "uuid" : "04c1ff47-ff9e-466d-8ff6-756229742266",
+  "uuid" : "e9bcac67-8fae-4389-b4a5-8be7e0c01c41",
   "durationFrames" : 0,
   "dialogue" : {
-    "text" : "...",
-    "location" : "办公室",
-    "speakerC" : [ {
+    "text" : "属性面板-文本-说话人-角色：文字就会变成左对齐的。\n←可以临时修改角色名，阵营名\n↑左上角的场景名",
+    "location" : "不xx就出不去的房间",
+    "speakerC" : [ ],
+    "speakerName" : "扭曲的虫厨",
+    "faction" : "同人女",
+    "align" : "LEFT",
+    "speed" : 6,
+    "emotion" : "ANGRY",
+    "freeText" : false,
+    "bold" : false,
+    "italic" : false,
+    "hideUI" : true,
+    "freeTextColor" : "#FBDBB3",
+    "freeTextFontSize" : 28,
+    "freeTextX" : 0,
+    "freeTextY" : 0
+  },
+  "tempImages" : [ ],
+  "audioCommands" : [ {
+    "type" : "BGM_ACTIVE",
+    "audioId" : "办公室BGM",
+    "volume" : 1.0,
+    "fadeDuration" : null
+  } ],
+  "camera" : null,
+  "effects" : [ {
+    "type" : "CROSS_DISSOLVE",
+    "amplitude" : null,
+    "periodFrames" : null,
+    "durationFrames" : null,
+    "fadeInFrames" : null,
+    "fadeOutFrames" : null,
+    "enabled" : true
+  } ],
+  "isDirty" : false,
+  "chars" : [ {
+    "chara" : {
       "characterID" : "char_1792296094464",
-      "characterName" : "新角色",
-      "height" : 170,
-      "faction" : "未设定",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
       "colorBg" : "#69350B",
       "colorText" : "#FBDBB3"
-    } ],
-    "speakerName" : "新角色",
-    "faction" : "未设定",
+    },
+    "portrait" : {
+      "portraitID" : "portrait_1792511385830_1",
+      "characterID" : "char_1792296094464",
+      "imagePath" : "char_1792296094464/portrait_1792511385830_1.png",
+      "portName" : "格里高尔-face_idle_R",
+      "emotion" : "normal",
+      "faceX" : 251,
+      "faceY" : 16,
+      "length" : 177,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : "/assets/characters/char_1792296094464/thumbnails/thumbnail_portrait_1792511385830_1.png",
+      "defaultPortrait" : false
+    },
+    "posX" : 380,
+    "posY" : 240,
+    "adjX" : -320,
+    "adjY" : 0,
+    "scale" : 1.0,
+    "dim" : false,
+    "anim" : null,
+    "emotionAnim" : {
+      "version" : 1,
+      "clipId" : "question_8c8eca48",
+      "name" : "问号",
+      "canvasWidth" : 512,
+      "canvasHeight" : 512,
+      "frameHolds" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 81 ],
+      "loop" : "once",
+      "iterations" : null,
+      "startFrame" : 0,
+      "offsetX" : -0.8910502784532124,
+      "offsetY" : -0.36383405821344933,
+      "scale" : 0.30146512,
+      "fadeInFrames" : 0,
+      "fadeOutFrames" : 40,
+      "opacity" : 1.0,
+      "posterFrame" : 19
+    }
+  } ],
+  "bg" : [ {
+    "background" : {
+      "uuid" : "bg_1794154907498",
+      "path" : "/assets/backgrounds/办公室_1794154914085.png",
+      "name" : "办公室",
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1794154907498_1794154914342.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "faeac8f8-bc9b-47a8-a692-dce0ff203a39",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "属性面板-立绘：可以让立绘发抖，预设的序列帧动画。\n属性面板-摄像机：\n点击预览图左上方的“播放”按钮可以浏览当前对话的动画效果。",
+    "location" : "办公室",
+    "speakerC" : [ ],
+    "speakerName" : "扭曲的虫厨",
+    "faction" : "同人女",
     "align" : "LEFT",
-    "speed" : 3,
+    "speed" : 6,
     "emotion" : "NORMAL",
     "freeText" : false,
     "bold" : false,
@@ -183,23 +269,16 @@
     "volume" : 1.0,
     "fadeDuration" : null
   } ],
-  "camera" : {
-    "centerX" : 439.1039,
-    "centerY" : 378.0192,
-    "zoom" : 2.8576512,
-    "to" : null,
-    "easing" : "easeOut",
-    "moveFrames" : 24
-  },
+  "camera" : null,
   "effects" : [ ],
   "isDirty" : false,
   "chars" : [ {
     "chara" : {
-      "characterID" : "char_1785997936961",
+      "characterID" : "char_1792296094464",
       "characterName" : "格里高尔",
       "height" : 168,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
+      "faction" : "13号罪人",
+      "colorBg" : "#69350B",
       "colorText" : "#FBDBB3"
     },
     "portrait" : {
@@ -216,9 +295,9 @@
       "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
       "defaultPortrait" : false
     },
-    "posX" : 88,
+    "posX" : 728,
     "posY" : 257,
-    "adjX" : -640,
+    "adjX" : 0,
     "adjY" : 0,
     "scale" : 1.0,
     "dim" : false,
@@ -231,45 +310,12 @@
       "enabled" : null,
       "anchor" : null,
       "clips" : [ {
-        "id" : "keyframes-mvl68aob-1",
-        "kind" : "keyframes",
-        "enabled" : null,
-        "startFrame" : 0,
-        "endFrame" : null,
-        "durationFrames" : 3,
-        "loop" : "once",
-        "iterations" : null,
-        "timeScale" : null,
-        "preset" : null,
-        "params" : null,
-        "channels" : [ "x", "y" ],
-        "keys" : [ {
-          "f" : 0,
-          "v" : {
-            "x" : 0.0,
-            "y" : 0.0,
-            "scale" : null,
-            "rotate" : null,
-            "alpha" : null,
-            "empty" : false
-          },
-          "ease" : "easeInOut",
-          "hold" : false
-        } ],
-        "blend" : null,
-        "priority" : 0,
-        "fadeInFrames" : 0,
-        "fadeOutFrames" : 6,
-        "onEnd" : "reset",
-        "sourcePresetId" : null,
-        "sourcePresetVersion" : null
-      }, {
-        "id" : "shake-mvl698lk-4",
+        "id" : "shake-mw9bxjr6-1",
         "kind" : "preset",
         "enabled" : null,
         "startFrame" : 0,
         "endFrame" : null,
-        "durationFrames" : 60,
+        "durationFrames" : 30,
         "loop" : "once",
         "iterations" : null,
         "timeScale" : null,
@@ -284,7 +330,7 @@
         "blend" : null,
         "priority" : 0,
         "fadeInFrames" : 0,
-        "fadeOutFrames" : 6,
+        "fadeOutFrames" : 10,
         "onEnd" : "reset",
         "sourcePresetId" : null,
         "sourcePresetVersion" : null
@@ -292,60 +338,162 @@
     },
     "emotionAnim" : {
       "version" : 1,
-      "clipId" : "exclamation_7c73e018",
-      "name" : "惊讶",
+      "clipId" : "bapchick_speech_bubble_eec1867c",
+      "name" : "生气",
       "canvasWidth" : 512,
       "canvasHeight" : 512,
-      "frameHolds" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 87 ],
+      "frameHolds" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 68 ],
       "loop" : "once",
       "iterations" : null,
       "startFrame" : 0,
-      "offsetX" : -0.7371691846137363,
-      "offsetY" : -0.291650781547846,
-      "scale" : 0.35021317,
+      "offsetX" : -0.8492456159116911,
+      "offsetY" : -0.41942765198385373,
+      "scale" : 0.4068439,
       "fadeInFrames" : 0,
       "fadeOutFrames" : 40,
       "opacity" : 1.0,
-      "posterFrame" : 13
+      "posterFrame" : 11
     }
-  }, {
-    "chara" : {
-      "characterID" : "char_1791800699958",
-      "characterName" : "新角色",
-      "height" : 170,
-      "faction" : "未设定",
-      "colorBg" : "#4C361F",
-      "colorText" : "#FBDBB3"
-    },
-    "portrait" : {
-      "portraitID" : "portrait_1791800709646",
-      "characterID" : "char_1791800699958",
-      "imagePath" : "char_1791800699958/portrait_1791800709646.webp",
-      "portName" : "巴里-default",
-      "emotion" : "normal",
-      "faceX" : 423,
-      "faceY" : 108,
-      "length" : 176,
-      "adjX" : 0,
-      "adjY" : 0,
-      "thumbnailPath" : "/assets/characters/char_1791800699958/thumbnails/thumbnail_portrait_1791800709646.png",
-      "defaultPortrait" : true
-    },
-    "posX" : 520,
-    "posY" : 121,
-    "adjX" : 0,
-    "adjY" : 0,
-    "scale" : 1.0,
-    "dim" : false,
-    "anim" : null,
-    "emotionAnim" : null
   } ],
   "bg" : [ {
     "background" : {
-      "uuid" : "bg_1792301526450",
-      "path" : "/assets/backgrounds/办公室_1792301537868.png",
+      "uuid" : "bg_1794154907498",
+      "path" : "/assets/backgrounds/办公室_1794154914085.png",
       "name" : "办公室",
-      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1792301526450_1792301538082.png"
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1794154907498_1794154914342.png"
+    },
+    "posX" : 0,
+    "posY" : 0,
+    "scale" : 1.0,
+    "visible" : true
+  } ]
+}, {
+  "uuid" : "c8348405-f1ab-4451-988d-e2811ec8328a",
+  "durationFrames" : 0,
+  "dialogue" : {
+    "text" : "属性面板-临时图片\n添加一些图片",
+    "location" : "办公室",
+    "speakerC" : [ {
+      "characterID" : "char_1792296094464",
+      "characterName" : "新角色",
+      "height" : 170,
+      "faction" : "未设定",
+      "colorBg" : "#69350B",
+      "colorText" : "#FBDBB3"
+    } ],
+    "speakerName" : "新角色",
+    "faction" : "未设定",
+    "align" : "LEFT",
+    "speed" : 6,
+    "emotion" : "NORMAL",
+    "freeText" : false,
+    "bold" : false,
+    "italic" : false,
+    "hideUI" : true,
+    "freeTextColor" : "",
+    "freeTextFontSize" : 28,
+    "freeTextX" : 0,
+    "freeTextY" : 0
+  },
+  "tempImages" : [ ],
+  "audioCommands" : [ {
+    "type" : "BGM_ACTIVE",
+    "audioId" : "办公室BGM",
+    "volume" : 1.0,
+    "fadeDuration" : null
+  } ],
+  "camera" : null,
+  "effects" : [ ],
+  "isDirty" : false,
+  "chars" : [ {
+    "chara" : {
+      "characterID" : "char_1792296094464",
+      "characterName" : "格里高尔",
+      "height" : 168,
+      "faction" : "13号罪人",
+      "colorBg" : "#69350B",
+      "colorText" : "#FBDBB3"
+    },
+    "portrait" : {
+      "portraitID" : "portrait_1785998312581",
+      "characterID" : "char_1785997936961",
+      "imagePath" : "char_1785997936961/portrait_1785998312581.png",
+      "portName" : "Gregor-face_serious_R",
+      "emotion" : "angry",
+      "faceX" : 243,
+      "faceY" : 0,
+      "length" : 192,
+      "adjX" : 0,
+      "adjY" : 0,
+      "thumbnailPath" : "/assets/characters/char_1785997936961/thumbnails/thumbnail_portrait_1785998312581.png",
+      "defaultPortrait" : false
+    },
+    "posX" : 408,
+    "posY" : 257,
+    "adjX" : -320,
+    "adjY" : 0,
+    "scale" : 1.0,
+    "dim" : true,
+    "anim" : {
+      "version" : 1,
+      "timebase" : {
+        "unit" : "frame",
+        "fps" : 30
+      },
+      "enabled" : null,
+      "anchor" : null,
+      "clips" : [ {
+        "id" : "shake-mw9bxjr6-1",
+        "kind" : "preset",
+        "enabled" : null,
+        "startFrame" : 0,
+        "endFrame" : null,
+        "durationFrames" : 30,
+        "loop" : "once",
+        "iterations" : null,
+        "timeScale" : null,
+        "preset" : "shake",
+        "params" : {
+          "amplitude" : 6,
+          "periodFrames" : 2,
+          "rotateAmplitude" : 0
+        },
+        "channels" : null,
+        "keys" : null,
+        "blend" : null,
+        "priority" : 0,
+        "fadeInFrames" : 0,
+        "fadeOutFrames" : 10,
+        "onEnd" : "reset",
+        "sourcePresetId" : null,
+        "sourcePresetVersion" : null
+      } ]
+    },
+    "emotionAnim" : {
+      "version" : 1,
+      "clipId" : "bapchick_speech_bubble_eec1867c",
+      "name" : "生气",
+      "canvasWidth" : 512,
+      "canvasHeight" : 512,
+      "frameHolds" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 68 ],
+      "loop" : "once",
+      "iterations" : null,
+      "startFrame" : 0,
+      "offsetX" : -0.8492456159116911,
+      "offsetY" : -0.41942765198385373,
+      "scale" : 0.4068439,
+      "fadeInFrames" : 0,
+      "fadeOutFrames" : 40,
+      "opacity" : 1.0,
+      "posterFrame" : 11
+    }
+  } ],
+  "bg" : [ {
+    "background" : {
+      "uuid" : "bg_1794154907498",
+      "path" : "/assets/backgrounds/办公室_1794154914085.png",
+      "name" : "办公室",
+      "thumbnailPath" : "/assets/backgrounds/thumbnails/thumb_bg_1794154907498_1794154914342.png"
     },
     "posX" : 0,
     "posY" : 0,

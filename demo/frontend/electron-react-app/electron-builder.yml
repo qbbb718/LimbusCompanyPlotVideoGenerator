@@ -8,11 +8,20 @@ directories:
 
 files:
   - build/**/*
-  - public/electron.js
-  - public/preload.js
-  # 屏幕取色：主进程模块 + 全屏遮罩页面（electron.js 用相对路径 require / loadFile）
-  - public/color-picker.js
+  # 主进程用到的 public 下的 .js 全都要进包：
+  #   electron.js          入口（package.json 的 main）
+  #   preload.js           contextBridge 暴露给渲染进程的 API
+  #   color-picker.js      屏幕取色
+  #   update-service.js    自动更新（状态机 / 多源探测 / 静默安装）
+  #   update-manifest.js   latest.yml 解析（update-service.js 用相对路径 require）
+  # 用通配而不是逐个列举：漏一个的后果是安装版启动即 MODULE_NOT_FOUND，或者更新功能静默消失，
+  # 而开发模式直接读源码，永远复现不了。
+  - public/*.js
+  # 屏幕取色的全屏遮罩页面（color-picker.js 用 loadFile 打开）
   - public/color-picker-overlay.html
+  # 导出日志的 zip 写入器（electron.js require("./log-export/zip-writer")）。
+  # 以前只列了 electron.js / preload.js 等四个文件，这个目录没被包含，历史版本会启动崩溃。
+  - public/log-export/**/*
   # node_modules 由 electron-builder 自动按生产依赖打包，无需手动声明
 
 extraResources:
@@ -67,8 +76,12 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: "边狱巴士剧情视频生成器"
-  # 卸载时同时删除用户数据目录 (%APPDATA%/com.lbc-plot.video-generator/)
-  deleteAppDataOnUninstall: true
+  # 卸载时是否删掉用户数据目录（%APPDATA%/limbus-company-plot-video-generator/，
+  # 里面是角色/背景/音频素材与工程库）。
+  # 设为 true（原来）时，用户"先卸载再装新版本"这种最朴素的升级方式会连素材一起删掉，
+  # 一次丢数据的口碑伤害远大于更新做得多顺；更新本来也只需要覆盖安装、不需要卸载。
+  # 想彻底删干净的用户可以自己删那个目录（设置页里能直接打开）。
+  deleteAppDataOnUninstall: false
 
 # 打包时额外的资源映射
 # assets/ 和 data/ 放在安装目录下，与 backend.jar 同级

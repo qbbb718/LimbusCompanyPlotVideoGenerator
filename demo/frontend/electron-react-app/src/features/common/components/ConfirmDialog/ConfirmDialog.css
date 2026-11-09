@@ -1,0 +1,101 @@
+/*
+ * 应用内确认框的样式。
+ *
+ * 与资源管理里那个「删除角色」的确认框（.confirm-dialog）保持同一套视觉，
+ * 但用独立的类名：这个确认框是全局的，可能盖在任何页面/弹窗之上，
+ * 不能和某个页面的样式互相牵连。
+ */
+.app-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.app-confirm-dialog {
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.app-confirm-dialog h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  color: #333;
+}
+
+.app-confirm-message {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #444;
+  /* 提示里常有很长的中文串/路径：允许在任意位置断行，别把弹窗撑宽 */
+  word-break: break-word;
+}
+
+.app-confirm-detail {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #777;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.app-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.app-confirm-actions button {
+  min-width: 88px;
+  padding: 7px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+.app-confirm-actions button:hover {
+  border-color: #40a9ff;
+  color: #1677ff;
+}
+
+.app-confirm-actions .app-confirm-ok {
+  border-color: #1890ff;
+  background-color: #1890ff;
+  color: #fff;
+}
+
+.app-confirm-actions .app-confirm-ok:hover {
+  border-color: #40a9ff;
+  background-color: #40a9ff;
+  color: #fff;
+}
+
+.app-confirm-actions .app-confirm-ok-danger {
+  border-color: #ff4d4f;
+  background-color: #ff4d4f;
+}
+
+.app-confirm-actions .app-confirm-ok-danger:hover {
+  border-color: #ff7875;
+  background-color: #ff7875;
+}
+
+.app-confirm-actions button:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}

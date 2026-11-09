@@ -56,6 +56,19 @@
   background-color: rgba(255, 255, 255, 0.3);
 }
 
+/* 有新版本时「设置」上的小红点：不点进去也知道该去看一眼 */
+.tab-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background-color: #ff4d4f;
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  vertical-align: middle;
+}
+
 .app-main {
   flex: 1;
   overflow: hidden;

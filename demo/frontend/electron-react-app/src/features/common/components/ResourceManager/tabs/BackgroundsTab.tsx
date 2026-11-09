@@ -9,6 +9,7 @@ import {
 } from "@features/common/utils/resourceTransfer";
 import { toAssetPath } from "@features/common/utils/assetPath";
 import { describeApiError, isRetryableError } from "@features/common/utils/apiError";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import "../ResourceManager.css";
 import "./BackgroundsTab.css";
 import BackgroundCard from "./BackgroundCard";
@@ -446,9 +447,15 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
 
     // 整个删除流程只有这一个弹窗：确认后连磁盘上的原图与缩略图一起删除。
     // （卡片上的删除按钮已不再单独弹确认框，删除成功后也不再弹提示框）
-    const confirmed = window.confirm(
-      `确定删除背景「${name}」吗？\n\n将同时删除数据库记录和磁盘中的图片文件（原图与缩略图）。`,
-    );
+    // 用应用内确认框而不是 window.confirm：Electron 的原生对话框关掉后会抢走键盘焦点，
+    // 之后所有输入框都点不进、打不了字。
+    const confirmed = await askConfirm({
+      title: "删除背景",
+      message: `确定删除背景「${name}」吗？`,
+      detail: "将同时删除数据库记录和磁盘中的图片文件（原图与缩略图）。",
+      confirmLabel: "删除",
+      danger: true,
+    });
     if (!confirmed) return;
 
     const deleteFiles = true;

@@ -212,6 +212,137 @@
   color: #888;
 }
 
+/* ---- 软件更新（sections/UpdateSection.tsx）---- */
+/* 状态、进度、更新说明都放在「关于」下方的独立分区里，样式沿用设置页现有的灰底卡片 */
+.update-version-line {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #333;
+}
+
+.update-new-version {
+  color: #d46b08;
+  font-weight: bold;
+}
+
+.update-checked-at {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #999;
+}
+
+.update-status {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.update-status[data-phase="error"],
+.update-status[data-phase="unsupported"] {
+  color: #d4380d;
+}
+
+.update-status[data-phase="available"],
+.update-status[data-phase="downloaded"] {
+  color: #237804;
+  font-weight: bold;
+}
+
+/* 下载进度：280MB 的安装包要下几分钟，没有进度条用户会以为卡死了 */
+.update-progress {
+  margin: 0 0 10px;
+}
+
+.update-progress-bar {
+  height: 8px;
+  background-color: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background-color: #1890ff;
+  transition: width 0.2s linear;
+}
+
+.update-progress-text {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #666;
+  /* 百分比与字节数会不断变化，等宽数字避免整行左右跳 */
+  font-variant-numeric: tabular-nums;
+}
+
+/* 更新说明（release notes / changelog.json 里的那一节，原文是 markdown，这里按纯文本显示） */
+.update-notes {
+  margin: 0 0 10px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.update-notes > summary {
+  padding: 6px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.update-notes-body {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border-top: 1px solid #e8e8e8;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #555;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.update-detail {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #8c8c8c;
+  word-break: break-all;
+}
+
+.update-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #666;
+}
+
+/* 借用 .about-link 的配色，但这里必须是 <button>：<a href> 会把 Electron 窗口整个导航走 */
+.update-link {
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.update-hint {
+  margin-top: 4px;
+}
+
 /* 素材自检与修复 */
 .settings-hint {
   margin: 0 0 8px;

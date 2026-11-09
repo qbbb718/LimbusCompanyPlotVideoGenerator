@@ -25,6 +25,7 @@ import {
   normalizeStayFrames,
   withGlobalTextSpeed,
 } from "@features/common/utils/projectSettings";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import { generateUUID } from "./utils";
 import {
   createRecordGroup,
@@ -757,22 +758,26 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   /**
    * @function 解散分组
    * 组内记录保留，只是变成未分组（位置不变，播放顺序也不变）。
+   *
+   * <p>确认框走应用内的 {@link askConfirm}：Electron 的原生 `window.confirm` 关掉之后
+   * 窗口拿不回键盘焦点，回到「对话内容」会发现点不进、打不了字（只能重启）。
    */
   const dissolveGroup = useCallback(
-    (groupId: string) => {
+    async (groupId: string) => {
       const group = groupsRef.current.find((item) => item.id === groupId);
       if (!group) return;
       const count = recordsRef.current.filter(
         (record) => record.groupId === groupId,
       ).length;
 
-      if (
-        count > 0 &&
-        !window.confirm(
-          `解散分组「${group.name}」？组内 ${count} 条记录会保留并变为未分组。`,
-        )
-      ) {
-        return;
+      if (count > 0) {
+        const confirmed = await askConfirm({
+          title: "解散分组",
+          message: `解散分组「${group.name}」？`,
+          detail: `组内 ${count} 条记录会保留并变为未分组。`,
+          confirmLabel: "解散",
+        });
+        if (!confirmed) return;
       }
 
       const nextGroups = groupsRef.current.filter(

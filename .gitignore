@@ -72,3 +72,6 @@ demo/data/project.db
 # 导出视频时自动生成的素材来源提示文件（导出目录在仓库内时不要提交）
 发布视频时请注明-*.txt
 *.lnk
+
+# CI 从 docs/版本更新笔记.md 生成的发版说明（scripts/changelog.mjs --out release-notes.md）
+/release-notes.md

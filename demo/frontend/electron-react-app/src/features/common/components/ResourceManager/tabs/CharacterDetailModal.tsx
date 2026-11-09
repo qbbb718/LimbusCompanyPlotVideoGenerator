@@ -37,6 +37,7 @@ import {
   loadImageElement,
 } from "@features/common/utils/imageUtils";
 import { describeApiError } from "@features/common/utils/apiError";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 
 /** 批量导入时挑出来的一张图 */
 interface PickedPortraitFile {
@@ -388,10 +389,11 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         )}，原图 ${defaultImageSize?.width}×${defaultImageSize?.height}）`
       : `按像素照搬默认立绘「${defaultPortrait.portName}」的裁剪值（读不到它的原图尺寸）`;
 
-    const confirmed = window.confirm(
-      `将把 ${targets.length} 张立绘的裁剪${modeText}，` +
-        `并重新生成这些立绘的缩略图。确定吗？`,
-    );
+    const confirmed = await askConfirm({
+      title: "与默认立绘裁剪一致",
+      message: `将把 ${targets.length} 张立绘的裁剪${modeText}，并重新生成这些立绘的缩略图。`,
+      confirmLabel: "开始应用",
+    });
     if (!confirmed) return;
 
     const characterId = editingCharacter.characterID;

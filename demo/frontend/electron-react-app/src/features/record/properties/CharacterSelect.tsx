@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { MyCharacter } from "@types";
-import { BASE_URL } from "@services/ApiService";
-import { getDefaultPortrait } from "@features/common/utils/portraitUtils";
+import {
+  buildPortraitThumbnailUrl,
+  getDefaultPortrait,
+} from "@features/common/utils/portraitUtils";
 import "./CharacterSelect.css";
 
 /** 下拉选项：角色选项带默认立绘头像；旁白/自由文本等特殊选项用文字徽标 */
@@ -31,14 +33,6 @@ interface CharacterSelectProps {
   ariaLabel?: string;
 }
 
-/** 拼接角色缩略图 URL（与立绘 tab 的缩略图规则一致） */
-const resolveThumbnailUrl = (thumbnailPath: string): string => {
-  if (!thumbnailPath) return "";
-  if (thumbnailPath.startsWith("http")) return thumbnailPath;
-  if (thumbnailPath.startsWith("/")) return BASE_URL + thumbnailPath;
-  return `${BASE_URL}/assets/characters/${encodeURIComponent(thumbnailPath)}`;
-};
-
 /** 角色小头像：缩略图加载失败时露出首字占位 */
 const CharacterAvatar: React.FC<{ character: MyCharacter }> = ({
   character,
@@ -51,7 +45,7 @@ const CharacterAvatar: React.FC<{ character: MyCharacter }> = ({
       </span>
       {thumbnail && (
         <img
-          src={resolveThumbnailUrl(thumbnail)}
+          src={buildPortraitThumbnailUrl(thumbnail)}
           alt=""
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";

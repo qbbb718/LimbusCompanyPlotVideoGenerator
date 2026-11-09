@@ -20,6 +20,28 @@ export interface ElectronAPI {
   onMenuSaveProject: (callback: () => void) => void;
   onMenuExportVideo: (callback: () => void) => void;
   onMenuAbout: (callback: () => void) => void;
+  /** 菜单「帮助 → 检查更新」：主进程已开始检查，界面只需切到设置页 */
+  onMenuCheckUpdate: (callback: () => void) => void;
+
+  // ---- 自动更新（主进程逻辑见 public/update-service.js）----
+  /** 拉一次当前更新状态（挂载时用，之后靠 onUpdateStatus 推送） */
+  getUpdateState: () => Promise<UpdateState>;
+  checkForUpdates: () => Promise<UpdateState>;
+  downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
+  installUpdate: () => Promise<{
+    ok: boolean;
+    installing?: boolean;
+    version?: string;
+    error?: string;
+  }>;
+  /** 用本地安装包更新；confirmed=false 只校验并返回待确认信息 */
+  installUpdateFromFile: (
+    filePath: string,
+    options?: { confirmed?: boolean },
+  ) => Promise<InstallFromFileResult>;
+  chooseUpdateInstaller: () => Promise<{ canceled: boolean; filePath?: string }>;
+  openUpdateLink: (url: string) => Promise<{ ok: boolean; error?: string }>;
+  onUpdateStatus: (callback: (state: UpdateState) => void) => () => void;
 
   // 移除监听器
   removeAllListeners: (channel: string) => void;

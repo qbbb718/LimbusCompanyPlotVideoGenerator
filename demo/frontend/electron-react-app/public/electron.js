@@ -19,18 +19,13 @@ const {
 } = require("./log-export/zip-writer");
 // 屏幕取色（颜色面板的"吸管"）：desktopCapturer + 全屏遮罩，见 color-picker.js
 const { registerColorPicker } = require("./color-picker");
+// 自动更新：探查源 / 下载 / 静默安装的状态机都在这一个文件里，见 update-service.js 文件头
+const updateService = require("./update-service");
 const isDev = !app.isPackaged;
 
-// autoUpdater — 仅在打包后可用，开发模式静默跳过
-let autoUpdater = null;
-if (!isDev) {
-  try {
-    const { autoUpdater: au } = require("electron-updater");
-    autoUpdater = au;
-  } catch (e) {
-    log.warn("electron-updater 不可用:", e.message);
-  }
-}
+// Windows Toast 通知（"新版本已下载完成"）需要 AppUserModelID，且必须与安装包快捷方式的
+// appId 一致（electron-builder.yml 的 appId）。不设置时 Notification 会静默不弹。
+app.setAppUserModelId("com.lbc-plot.video-generator");
 
 // ============================================================================
 // 数据根目录（资源存储位置）——"素材、数据库、临时工程、日志到底放在哪"的唯一决策点
@@ -898,6 +893,18 @@ function createMenu() {
       label: "帮助",
       submenu: [
         {
+          label: "检查更新",
+          click: () => {
+            // 主进程立刻开始检查（设置页的更新卡片会跟着显示进度），
+            // 再让界面切到设置页——用户点菜单就想看见结果，不想自己找。
+            void updateService.checkNow({ manual: true });
+            if (mainWindow) {
+              mainWindow.webContents.send("menu-check-update");
+            }
+          },
+        },
+        { type: "separator" },
+        {
           label: "关于",
           click: () => {
             mainWindow.webContents.send("menu-about");
@@ -959,21 +966,9 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  // 生产模式检查更新
-  if (!isDev && autoUpdater) {
-    try {
-      autoUpdater.setFeedURL({
-        provider: "github",
-        owner: "qbbb718",
-        repo: "LimbusCompanyPlotVideoGenerator",
-      });
-      autoUpdater.checkForUpdatesAndNotify().catch(() => {
-        // 静默失败，更新检查不应影响正常使用
-      });
-    } catch (e) {
-      log.warn("自动更新检查失败:", e.message);
-    }
-  }
+  // 自动更新：窗口出来之后再排期（25 秒后第一次检查，之后每 4 小时一次）。
+  // 更新链路的全部逻辑在 update-service.js；这里只负责"什么时候开始"。
+  updateService.startAutoCheck();
 });
 
 // 当全部窗口关闭时退出应用
@@ -1001,32 +996,24 @@ app.on("will-quit", () => {
   }
 });
 
-// ---- 自动更新事件 ----
-if (!isDev && autoUpdater) {
-  autoUpdater.on("update-available", (info) => {
-    log.info("发现新版本:", info.version);
-    if (mainWindow) {
-      mainWindow.webContents.send("update-available", info);
-    }
-  });
-
-  autoUpdater.on("update-downloaded", (info) => {
-    log.info("更新已下载:", info.version);
-    if (mainWindow) {
-      mainWindow.webContents.send("update-downloaded", info);
-    }
-  });
-
-  autoUpdater.on("error", (err) => {
-    log.warn("自动更新错误:", err.message);
-  });
-}
-
-// IPC: 渲染进程可请求安装更新
-ipcMain.handle("update:install", () => {
-  if (autoUpdater) {
-    autoUpdater.quitAndInstall();
-  }
+// ---- 自动更新：注册 IPC + 安装前清理 ----
+// 安装包要覆盖安装目录里的 exe / app.asar / demo-*.jar，而本实例拉起的 java 进程正锁着那个 jar，
+// 所以在"重启并安装"之前必须先停后端，并等它真的退出（最多 4 秒）再交给安装器，
+// 否则会出现"安装完成但版本没变"（旧 jar 被占用，安装器跳过它）。
+updateService.init({
+  getWindow: () => mainWindow,
+  onBeforeInstall: () =>
+    new Promise((resolve) => {
+      stopBackend();
+      const startedAt = Date.now();
+      const timer = setInterval(() => {
+        if (!isOwnedBackendAlive() || Date.now() - startedAt > 4000) {
+          clearInterval(timer);
+          log.info("[更新] 后端已停止，准备启动安装器");
+          resolve();
+        }
+      }, 150);
+    }),
 });
 
 // 处理来自渲染进程的消息

@@ -12,6 +12,7 @@ import "../ResourceManager.css";
 import PortraitModal from "./PortraitModal";
 import CharacterDetailModal from "./CharacterDetailModal";
 import CharacterAvatar from "./CharacterDetailModal/CharacterAvatar";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 
 interface CharactersTabProps {
   characters: MyCharacter[];
@@ -192,16 +193,23 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
   /**
    * 卡片右上角悬浮删除按钮的点击处理。
    * 整个流程只弹一个确认框，确认后连磁盘上的角色素材一起删除。
+   *
+   * <p>确认框必须走 {@link askConfirm}（应用内），不能用 `window.confirm`：
+   * Electron 里原生对话框关掉之后窗口拿不回键盘焦点，之后所有输入框都点不进、打不了字。
    */
-  const handleDeleteCharacterFromCard = (
+  const handleDeleteCharacterFromCard = async (
     e: React.MouseEvent,
     character: MyCharacter,
   ) => {
     // 阻止冒泡，避免同时触发卡片的「选中」与「双击编辑」
     e.stopPropagation();
-    const confirmed = window.confirm(
-      `确定删除角色「${character.characterName}」吗？\n\n将同时删除数据库记录和磁盘中的角色素材（立绘原图与缩略图）。`,
-    );
+    const confirmed = await askConfirm({
+      title: "删除角色",
+      message: `确定删除角色「${character.characterName}」吗？`,
+      detail: "将同时删除数据库记录和磁盘中的角色素材（立绘原图与缩略图）。",
+      confirmLabel: "删除",
+      danger: true,
+    });
     if (!confirmed) return;
     handleDeleteCharacter(character.characterID, true);
   };

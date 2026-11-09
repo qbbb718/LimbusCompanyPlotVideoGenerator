@@ -8,6 +8,7 @@ import { ProjectSettings as IProjectSettings, Record } from "@types";
 import ApiService from "@services/ApiService";
 import { loadSettings, saveSettings } from "@features/common/components/Settings/Settings";
 import { normalizeStayFrames } from "@features/common/utils/projectSettings";
+import { promptAndInstallFromFile } from "../common/updates/installFromFile";
 import log from "electron-log";
 
 function AppElectron() {
@@ -24,6 +25,8 @@ function AppElectron() {
     "characters" | "backgrounds" | "audios" | "animation-clips"
   >("characters");
   const [appInitialized, setAppInitialized] = useState(false);
+  /** 有新版本待处理（available / downloaded）：设置页 tab 上显示一个小红点 */
+  const [updateReady, setUpdateReady] = useState(false);
   const [projectSettings, setProjectSettings] = useState<IProjectSettings>(() =>
     loadSettings(),
   );
@@ -143,6 +146,9 @@ function AppElectron() {
       window.electronAPI.onMenuSaveProject(handleSaveProject);
       window.electronAPI.onMenuExportVideo(handleExportVideo);
       window.electronAPI.onMenuAbout(handleAbout);
+      // 菜单"帮助 → 检查更新"：主进程已经开查了，这里只要把用户带到设置页的更新卡片
+      const handleCheckUpdate = () => setActiveTab("settings");
+      window.electronAPI.onMenuCheckUpdate?.(handleCheckUpdate);
 
       return () => {
         window.electronAPI.removeAllListeners("menu-new-project");
@@ -150,11 +156,69 @@ function AppElectron() {
         window.electronAPI.removeAllListeners("menu-save-project");
         window.electronAPI.removeAllListeners("menu-export-video");
         window.electronAPI.removeAllListeners("menu-about");
+        window.electronAPI.removeAllListeners("menu-check-update");
       };
     }
     // saveProject / importProject 是稳定引用（内部用 ref 读取最新状态），
     // 这里不会因为编辑内容变化而反复解绑重绑菜单事件。
   }, [isElectron, saveProject, importProject]);
+
+  // 有新版本时在「设置」tab 上点一个小红点：用户不进设置页就不知道有更新，
+  // 而"不知道有新版本"正是这次要解决的问题本身。
+  useEffect(() => {
+    const api = isElectron ? window.electronAPI : undefined;
+    if (!api?.onUpdateStatus) return undefined;
+    let cancelled = false;
+    const apply = (state: { phase?: string } | null | undefined) => {
+      if (cancelled) return;
+      setUpdateReady(state?.phase === "available" || state?.phase === "downloaded");
+    };
+    api.getUpdateState?.().then(apply).catch(() => {});
+    const unsubscribe = api.onUpdateStatus(apply);
+    return () => {
+      cancelled = true;
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [isElectron]);
+
+  // 把安装包拖进窗口 = 用本地安装包更新（GitHub 打不开时用户多半是手动下的包）。
+  // 只接管 .exe：其它文件拖动（剧情列表内排序、文本框拖文本文件）保持原样，
+  // 但所有"拖文件"都 preventDefault —— 否则 Electron 会把整个窗口导航到 file:// 那个文件。
+  useEffect(() => {
+    const api = isElectron ? window.electronAPI : undefined;
+    if (!api?.installUpdateFromFile) return undefined;
+
+    const isFileDrag = (event: DragEvent) =>
+      Array.from(event.dataTransfer?.types || []).includes("Files");
+
+    const handleDragOver = (event: DragEvent) => {
+      if (!isFileDrag(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    };
+
+    const handleDrop = async (event: DragEvent) => {
+      if (!isFileDrag(event)) return;
+      event.preventDefault();
+      const files = Array.from(event.dataTransfer?.files || []);
+      if (!files.length) return;
+      const exePath = files
+        .map((file) => api.getPathForFile(file))
+        .find((filePath) => /\.exe$/i.test(filePath || ""));
+      // 不认识的拖放（工程文件等）交给它们自己的入口，这里不接管
+      if (!exePath) return;
+      log.info("[App_electron] 拖入安装包:", exePath);
+      await promptAndInstallFromFile(api, exePath);
+      // 安装成功后应用会自己退出；取消或校验失败时提示已经弹过
+    };
+
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+    return () => {
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, [isElectron]);
 
   const handleParsedRecords = (records: Record[]) => {
     log.info("[App_electron] 收到转换后的记录，数量:", records.length);
@@ -252,6 +316,11 @@ function AppElectron() {
             onClick={() => setActiveTab("settings")}
           >
             ⚙️ 设置
+            {updateReady && (
+              <span className="tab-badge" title="有新版本可以更新">
+                新
+              </span>
+            )}
           </button>
         </div>
       </header>
