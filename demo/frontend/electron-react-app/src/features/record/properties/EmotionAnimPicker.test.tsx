@@ -60,7 +60,7 @@ describe("情绪动画选择器", () => {
 
     const select = screen.getByLabelText("罗佳 选用情绪动画") as HTMLSelectElement;
     expect(select.value).toBe("");
-    expect(screen.getByText(/还没有可用于序列帧动画的素材/)).toBeTruthy();
+    expect(screen.getByText(/还没有素材/)).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
   });
 

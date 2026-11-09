@@ -362,11 +362,11 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
             </div>
           ))}
           <div className="global-hint">
-            空着的通道表示"这一帧不写它"，沿用前后的插值；菱形颜色金黄色 = 当前选中。
+            留空的通道 = 这一帧不写它（沿用插值）。
           </div>
         </div>
       ) : (
-        <div className="global-hint">点轴上的菱形选中一帧，或用 ▶ 播到某一帧后点「＋ 加关键帧」。</div>
+        <div className="global-hint">点菱形选中一帧，或播到某一帧后点「＋ 加关键帧」。</div>
       )}
     </div>
   );

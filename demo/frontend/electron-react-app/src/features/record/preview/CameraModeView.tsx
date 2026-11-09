@@ -1,17 +1,22 @@
 /**
- * @module 摄像机模式（世界视图）
+ * @module 摄像机世界视图（「摄像机」页签的编辑画布）
  *
- * 「最终效果」看的是后端渲出来的成片；这个模式看的是**没渲染 UI 的世界**：
+ * 「最终效果」看的是后端渲出来的成片；这个视图看的是**没渲染 UI 的世界**：
  * 背景全图 + 立绘 + 临时图片铺在一块可缩放/平移的画布上，上面浮着一个 16:9 的取景框。
+ *
+ * <h3>控件在右，画布在左</h3>
+ * 起止镜头、缓动、运镜帧数、播放、复位、铺满背景、拖动工具这些**控件全部在「摄像机」页签里**
+ * （`properties/CameraProperties.tsx`），本组件只负责"在画布上动手"：
+ * 状态由 `useCameraEditor` 统一持有，这里的每一次拖动/滚轮都写回那份共享状态。
  *
  * <h3>交互</h3>
  * <table>
- *   <tr><td>拖动</td><td>移镜（默认工具）；按住 Alt 临时切成"移元素"</td></tr>
+ *   <tr><td>拖动</td><td>移镜（当前工具）；按住 Alt 临时切成另一种工具</td></tr>
  *   <tr><td>拖动取景框的边框</td><td>始终是移镜（不管当前工具）</td></tr>
  *   <tr><td>滚轮</td><td>推拉镜头（以指针为中心）</td></tr>
  *   <tr><td>Ctrl + 滚轮</td><td>缩放**视图**（只是看得更近，不影响成片）</td></tr>
  *   <tr><td>空格 + 拖动</td><td>平移视图</td></tr>
- *   <tr><td>F / 0</td><td>适配视图 / 镜头复位</td></tr>
+ *   <tr><td>F / 0</td><td>适配视图 / 镜头复位（与页签里的按钮等价）</td></tr>
  * </table>
  *
  * <p>世界边界：参考框（背景归位框 ∪ 画布）每边再留一个取景框的余地，镜头最多摇到
@@ -21,34 +26,22 @@
  * 只是把坐标系换成世界坐标：给 hit 层传 `worldPerCssPixel = 1 / 视图缩放`。
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ImageSize, PreviewLayer, PreviewRect, RecordCamera } from "./previewLayout";
+import type { ImageSize, PreviewLayer, PreviewRect } from "./previewLayout";
 import PreviewSceneLayer from "./PreviewSceneLayer";
 import type { SceneLayerItem } from "./PreviewSceneLayer";
 import PreviewHitLayer from "./PreviewHitLayer";
 import type { DragPoint } from "./previewDrag";
-import type { CameraKeyframe, CameraEasing } from "./cameraView";
-import { useCameraPlayback } from "./useCameraPlayback";
+import type { CameraEditor, CameraTool } from "./useCameraEditor";
 import {
-  CAMERA_EASINGS,
-  DEFAULT_CAMERA_EASING,
-  IDENTITY_CAMERA,
-  cameraAt,
   cameraKeyframe,
-  cameraMoveFrames,
-  cameraProgressOf,
-  isAnimatedCamera,
-  withKeyframe,
   cameraRectOf,
   cssToWorld,
   moveCameraBy,
-  normalizeCamera,
   viewTransformOf,
   zoomCameraAt,
   zoomViewAt,
 } from "./cameraView";
-
-/** 摄像机模式的两把工具 */
-export type CameraTool = "camera" | "elements";
+import type { CameraKeyframe } from "./cameraView";
 
 interface CameraModeViewProps {
   /** 全量图层（世界层 + UI 层；这里只用世界层） */
@@ -57,15 +50,18 @@ interface CameraModeViewProps {
   worldRef: PreviewRect;
   /** 世界框 = 参考框 + 每边一个取景框余地（镜头可活动范围） */
   worldBox: PreviewRect;
-  camera: RecordCamera | undefined;
   /** 图层 key → 原图地址 */
   sceneImages: Record<string, string>;
-  /** 当前记录的时长（帧），播放摇镜用 */
-  durationFrames: number;
   /** 舞台可用尺寸（CSS 像素） */
   stageSize: ImageSize;
   selectedKey: string | null;
-  onCameraChange: (camera: RecordCamera) => void;
+  /**
+   * 摄像机编辑状态（与「摄像机」页签共用同一份）。
+   *
+   * <p>本组件只读取其中"现在编辑哪一帧、工具是什么、视图缩放多少"，
+   * 写入一律走 `applyEditing`，页签里的控件因此会同步跟着动。
+   */
+  editor: CameraEditor;
   onSelectLayer: (layer: PreviewLayer) => void;
   onClearSelection?: () => void;
   /** 元素拖动（与最终效果模式共用） */
@@ -74,8 +70,6 @@ interface CameraModeViewProps {
   onLayerMove: (layer: PreviewLayer, position: DragPoint) => void;
   onLayerDragEnd: (layer: PreviewLayer) => void;
   onLayerDragCancel: (layer: PreviewLayer) => void;
-  /** 「铺满背景」：把当前背景放大到盖住取景框；不传则按钮隐藏 */
-  onCoverBackground?: () => void;
 }
 
 const FRAME_EDGES = ["n", "s", "e", "w"] as const;
@@ -100,12 +94,10 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
   layers,
   worldRef,
   worldBox,
-  camera,
   sceneImages,
-  durationFrames,
   stageSize,
   selectedKey,
-  onCameraChange,
+  editor,
   onSelectLayer,
   onClearSelection,
   getLayerPosition,
@@ -113,57 +105,52 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
   onLayerMove,
   onLayerDragEnd,
   onLayerDragCancel,
-  onCoverBackground,
 }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const [tool, setTool] = useState<CameraTool>("camera");
   const [altHeld, setAltHeld] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
-  const [viewZoom, setViewZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
 
-  /** Alt 临时反转工具（按你说的"留修改余地"：默认移镜，按住 Alt 变成移元素） */
+  const {
+    editing,
+    shown,
+    animated,
+    keyframe,
+    tool,
+    viewZoom,
+    pan,
+    playback,
+    applyEditing,
+    setViewZoom,
+    setPan,
+    resetCamera,
+    resetView,
+    stop,
+  } = editor;
+
+  /** Alt 临时反转工具（"留修改余地"：按住 Alt 切成另一种） */
   const effectiveTool: CameraTool = altHeld
     ? tool === "camera"
       ? "elements"
       : "camera"
     : tool;
 
-  const normalized = normalizeCamera(camera);
-  /** 正在编辑哪一帧：起点还是终点（终点缺省时与起点重合，拖一下就自动生成 to） */
-  const [keyframe, setKeyframe] = useState<"start" | "end">("start");
-  /** 运镜时长输入框的草稿：允许中途为空，失焦时回落到真实值 */
-  const [moveDraft, setMoveDraft] = useState<string | null>(null);
-  const editing = cameraKeyframe(normalized, keyframe);
-  const animated = isAnimatedCamera(normalized);
-  /** 运镜时长（帧）：播放就播这么多帧，走完停住 */
-  const moveFrames = cameraMoveFrames(normalized);
-  /** 记录比运镜还短时，按记录长度播（与导出一样会被截断） */
-  const playFrames = durationFrames > 0 ? Math.min(moveFrames, durationFrames) : moveFrames;
-  const playback = useCameraPlayback(playFrames);
-  // 播放时取景框走插值，否则停在被编辑的那一帧
-  const shown =
-    playback.t != null
-      ? cameraAt(normalized, cameraProgressOf(playback.elapsedFrames, moveFrames))
-      : editing;
   const frameRect = cameraRectOf(shown);
   // 另一帧的虚影：一眼看出镜头会往哪走
   const ghostRect =
     animated && playback.t == null
-      ? cameraRectOf(cameraKeyframe(normalized, keyframe === "start" ? "end" : "start"))
+      ? cameraRectOf(
+          cameraKeyframe(
+            editor.camera,
+            keyframe === "start" ? "end" : "start",
+          ),
+        )
       : null;
-
-  /** 把改动写回"正在编辑的那一帧" */
-  const applyEditing = useCallback(
-    (next: CameraKeyframe) => onCameraChange(withKeyframe(camera, keyframe, next)),
-    [camera, keyframe, onCameraChange],
-  );
 
   /**
    * 视图"适配"的基准：世界参考框再外扩 8%。
    *
    * <p>不直接用世界框——它含「一帧余地」，适配后真正的内容只占屏幕 1/3，
-   * 一进摄像机模式就得先放大才能干活。
+   * 一进摄像机视图就得先放大才能干活。
    */
   const viewBox = useMemo(() => {
     const padding = Math.max(worldRef.w, worldRef.h) * 0.08;
@@ -184,7 +171,7 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
 
   const cameraDragRef = useRef<{
     startClient: { x: number; y: number };
-    startCamera: RecordCamera;
+    startCamera: CameraKeyframe;
   } | null>(null);
   const panDragRef = useRef<{
     startClient: { x: number; y: number };
@@ -194,7 +181,7 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     // 一动手就停播：否则镜头一边被动画推、一边被手推
-    if (playback.playing) playback.stop();
+    if (playback.playing) stop();
     const target = event.target as HTMLElement;
 
     // 空格 + 拖动：平移视图（优先级最高，任何工具下都能用）
@@ -252,7 +239,7 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
-      if (playback.playing) playback.stop();
+      if (playback.playing) stop();
       const rect = element.getBoundingClientRect();
       const point = {
         x: event.clientX - rect.left,
@@ -283,7 +270,20 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
 
     element.addEventListener("wheel", handleWheel, { passive: false });
     return () => element.removeEventListener("wheel", handleWheel);
-  }, [stageSize, worldBox, viewBox, viewZoom, pan, transform, editing, normalized, applyEditing, playback]);
+  }, [
+    stageSize,
+    worldBox,
+    viewBox,
+    viewZoom,
+    pan,
+    transform,
+    editing,
+    applyEditing,
+    playback,
+    setViewZoom,
+    setPan,
+    stop,
+  ]);
 
   /* ===================== 键盘：Alt 反转工具 / 空格平移 / F 适配 / 0 复位 ===================== */
 
@@ -299,15 +299,14 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
       }
       const key = event.key?.toLowerCase();
       if (key === "f") {
-        setViewZoom(1);
-        setPan({ x: 0, y: 0 });
+        resetView();
         return;
       }
       if (event.key === "0") {
-        applyEditing(IDENTITY_CAMERA);
+        resetCamera();
       }
     },
-    [applyEditing],
+    [resetCamera, resetView],
   );
 
   useEffect(() => {
@@ -361,22 +360,12 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
     [worldLayers, sceneImages],
   );
 
-  const zoomBy = (factor: number) => {
-    applyEditing(
-      zoomCameraAt(editing, editing.zoom * factor, {
-        x: editing.centerX,
-        y: editing.centerY,
-      }, worldBox),
-    );
-  };
-
   return (
     <div
       ref={stageRef}
       className={`camera-stage${spaceHeld ? " panning" : ""}${
         effectiveTool === "elements" ? " editing-elements" : ""
       }`}
-
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -432,149 +421,6 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
             />
           ))}
         </div>
-      </div>
-
-      <div className="camera-toolbar" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="camera-tool-group" role="group" aria-label="编辑哪一帧">
-          <button
-            type="button"
-            className={keyframe === "start" ? "active" : ""}
-            onClick={() => setKeyframe("start")}
-            title="编辑起点镜头（= 没有 to 时就是这条记录唯一的镜头）"
-          >
-            ◆ 起点
-          </button>
-          <button
-            type="button"
-            className={keyframe === "end" ? "active" : ""}
-            onClick={() => setKeyframe("end")}
-            title="编辑终点镜头；拖一下就会自动生成「起止镜头」"
-          >
-            ◇ 终点
-          </button>
-        </div>
-
-        {animated && (
-          <select
-            className="camera-easing-select"
-            value={normalized.easing ?? DEFAULT_CAMERA_EASING}
-            onChange={(event) =>
-              onCameraChange({
-                ...normalized,
-                easing: event.target.value as CameraEasing,
-              })
-            }
-            title="起点 → 终点之间的缓动"
-          >
-            {CAMERA_EASINGS.map((easing) => (
-              <option key={easing} value={easing}>
-                {easing === "linear"
-                  ? "匀速"
-                  : easing === "easeIn"
-                    ? "慢入"
-                    : easing === "easeOut"
-                      ? "慢出"
-                      : "慢入慢出"}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {animated && (
-          <label className="camera-move-frames" title="镜头从起点走到终点用多少帧（30fps，最小 1）">
-            运镜
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={moveDraft ?? String(moveFrames)}
-              onChange={(event) => {
-                const raw = event.target.value;
-                setMoveDraft(raw);
-                const next = Math.round(Number(raw));
-                if (Number.isFinite(next) && next >= 1) {
-                  onCameraChange({ ...normalized, moveFrames: Math.min(9999, next) });
-                }
-              }}
-              onBlur={() => setMoveDraft(null)}
-            />
-            帧
-          </label>
-        )}
-
-        <button
-          type="button"
-          className={playback.playing ? "active" : ""}
-          onClick={() => (playback.playing ? playback.stop() : playback.play())}
-          disabled={!animated}
-          title={animated ? "按记录时长播放一遍镜头" : "先编辑终点镜头，才有可播的动画"}
-        >
-          {playback.playing ? "⏹ 停止" : "▶ 播放"}
-        </button>
-
-        <div className="camera-tool-group" role="group" aria-label="拖动工具">
-          <button
-            type="button"
-            className={tool === "camera" ? "active" : ""}
-            onClick={() => setTool("camera")}
-            title="拖动移镜（快捷键 C），按住 Alt 临时切成移元素"
-          >
-            🎥 移镜
-          </button>
-          <button
-            type="button"
-            className={tool === "elements" ? "active" : ""}
-            onClick={() => setTool("elements")}
-            title="拖动移元素（快捷键 E），按住 Alt 临时切成移镜"
-          >
-            🖐 移元素
-          </button>
-        </div>
-
-        <span className="camera-zoom-readout">
-          {altHeld ? `Alt：${effectiveTool === "camera" ? "移镜" : "移元素"}` : ""}
-        </span>
-
-        <span className="camera-center-readout" title="镜头取景中心（世界坐标）">
-          中心 {Math.round(shown.centerX)}, {Math.round(shown.centerY)}
-        </span>
-
-        <div className="camera-zoom-controls">
-          <button type="button" onClick={() => zoomBy(1 / 1.25)} title="拉远（滚轮也以指针为中心推拉）">
-            −
-          </button>
-          <span className="camera-zoom-value">{editing.zoom.toFixed(2)}×</span>
-          <button type="button" onClick={() => zoomBy(1.25)} title="推近">
-            ＋
-          </button>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setViewZoom(1);
-            setPan({ x: 0, y: 0 });
-          }}
-          title="视图适配世界（F）"
-        >
-          适配
-        </button>
-        <button
-          type="button"
-          onClick={() => applyEditing(IDENTITY_CAMERA)}
-          title="镜头复位（0）"
-        >
-          复位
-        </button>
-        {onCoverBackground && (
-          <button type="button" onClick={onCoverBackground} title="把背景放大到盖住取景框">
-            铺满背景
-          </button>
-        )}
-      </div>
-
-      <div className="camera-hint">
-        拖动移镜 · 滚轮推拉 · Ctrl+滚轮缩放视图 · 空格+拖动平移 · F 适配 · 0 复位 · Alt 临时切换工具
       </div>
     </div>
   );

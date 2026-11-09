@@ -56,12 +56,12 @@ describe("全局设置 → 文字显示速度（全局）", () => {
     expect(onChange).toHaveBeenCalledWith("textSpeed", 2);
   });
 
-  test("说明文字写清“统一应用到所有文本”", () => {
+  test("说明文字写清“改完会覆盖所有记录”", () => {
     render(<GlobalProperties projectSettings={settings} onChange={noop} />);
 
-    expect(
-      screen.getByText(/修改后会统一应用到所有文本的显示速度/),
-    ).toBeTruthy();
+    expect(screen.getByText(/改完会覆盖所有记录/)).toBeTruthy();
+    // 档位含义也要在说明里（1 最慢、6 最快）
+    expect(screen.getByText(/1 最慢、6 最快/)).toBeTruthy();
   });
 
   test("旧设置里没有 textSpeed 时，滑块回退到默认档位", () => {

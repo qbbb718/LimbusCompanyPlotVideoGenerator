@@ -277,18 +277,24 @@ export const EFFECT_TYPE_FADE_FROM_BLACK = "FADE_FROM_BLACK";
 export const EFFECT_TYPE_FADE_FROM_WHITE = "FADE_FROM_WHITE";
 
 /**
- * 特效类型：镜头摇动。
+ * 特效类型：镜头摇动（属于**镜头层预设**，开关在「剧情编辑 → 摄像机 → 预设」）。
  *
  * <p>按帧轻微晃动"看世界的那台相机"：只影响背景 / 立绘 / 临时图片（世界层），
  * 对话框、地点牌、角色名片与边框暗角画在设计画布上，**UI 与遮罩不受影响**。
- * 与三种起始转场互不冲突，可以同时开。
- * 取值与后端 EffectVisual.TYPE_CAMERA_SHAKE 一致（公式见 preview/cameraShake.ts 与 CameraShake.java）。
+ * 与三种起始转场互不冲突，可以同时开（同写在 `record.effects` 里，按 type 区分）。
+ * 取值与后端 EffectVisual.TYPE_CAMERA_SHAKE 一致（公式见 preview/cameraShake.ts 与 CameraShake.java，
+ * 注册表见 preview/cameraPresets.ts）。
  */
 export const EFFECT_TYPE_CAMERA_SHAKE = "CAMERA_SHAKE";
 
 // 特效视觉元素（记录级特效条目）
 export interface EffectVisual {
-  /** 特效类型，取值见 EFFECT_TYPE_* 常量（三种起始转场互斥） */
+  /**
+   * 特效类型，取值见 EFFECT_TYPE_* 常量。
+   *
+   * <p>三种起始转场互斥（「特效」页签）；镜头摇动等**镜头层预设**也写在这里，
+   * 由「摄像机 → 预设」页签读写。比较类型时忽略大小写（后端 EffectVisual.isEnabledType）。
+   */
   type: string;
   /**
    * 是否启用。缺省视为启用；面板里取消勾选时会直接把这条特效从数组里删掉，
@@ -299,6 +305,12 @@ export interface EffectVisual {
   amplitude?: number;
   /** 镜头摇动的周期（帧）；缺省见 DEFAULT_CAMERA_SHAKE_PERIOD_FRAMES */
   periodFrames?: number;
+  /** 镜头摇动持续多少帧；缺省 0 = 整条记录（与加这个参数之前的行为一致） */
+  durationFrames?: number;
+  /** 镜头摇动渐入多少帧；缺省 0 = 一开始就是满幅度 */
+  fadeInFrames?: number;
+  /** 镜头摇动渐出多少帧；缺省 0 = 不渐出（对齐"抖动结束"，持续时长为 0 时对齐记录结尾） */
+  fadeOutFrames?: number;
 }
 
 // 音频类型枚举

@@ -96,7 +96,7 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
         <div className="emotion-picker-body">
           {!plot && (
             <div className="global-hint" role="note">
-              人格故事模式下立绘不参与渲染，情绪动画不会出现在成片里；切回「剧情」后自动生效。
+              人格故事模式下情绪动画不参与渲染，切回「剧情」自动生效。
             </div>
           )}
 
@@ -133,7 +133,7 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
 
           {library.clips.length === 0 && !library.loading && (
             <div className="global-hint">
-              还没有可用于序列帧动画的素材。点「前往资源管理编辑动画」导入一批帧图片即可创建。
+              还没有素材：点「前往资源管理编辑动画」导入帧序列。
             </div>
           )}
           {library.error && (

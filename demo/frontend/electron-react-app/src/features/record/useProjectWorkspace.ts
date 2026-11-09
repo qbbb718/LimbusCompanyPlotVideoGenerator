@@ -37,6 +37,11 @@ export type PropertyTab =
   /** 临时图片（路人 / 道具）：原先是「立绘」页签里的一段，现在是同级页签 */
   | "tempImages"
   | "background"
+  /**
+   * 摄像机：镜头（起止 / 缓动 / 运镜时长 / 铺满背景…）原先浮在预览画面上，
+   * 现在是同级页签；进这个页签时预览会切到"世界视图"。
+   */
+  | "camera"
   | "effects"
   | "audio"
   | "global";

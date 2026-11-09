@@ -15,6 +15,7 @@ import TextProperties from "./properties/TextProperties";
 import CharactersProperties from "./properties/CharactersProperties";
 import TempImagesProperties from "./properties/TempImagesProperties";
 import BackgroundProperties from "./properties/BackgroundProperties";
+import CameraProperties from "./properties/CameraProperties";
 import EffectsProperties from "./properties/EffectsProperties";
 import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
@@ -43,6 +44,7 @@ import {
   cameraKeyframe,
   isIdentityCamera,
 } from "./preview/cameraView";
+import { useCameraEditor } from "./preview/useCameraEditor";
 import {
   EditorSnapshot,
   HistoryState,
@@ -56,11 +58,13 @@ import {
 } from "./recordHistory";
 import {
   focusRequestForLayer,
+  keepsActiveTabOnSelect,
   PreviewSelection,
   PropertyFocusRequest,
   selectionOfLayer,
 } from "./preview/previewTargets";
 import type { PreviewLayer } from "./preview/previewLayout";
+import type { RecordCamera } from "@types";
 import { writeLayerPosition } from "./preview/previewDrag";
 import type { DragPoint } from "./preview/previewDrag";
 import { useRecordDuration } from "./preview/useRecordDuration";
@@ -470,15 +474,64 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   /**
    * @function 更新单条记录
    * 压撤销快照用 `coalesce = true`：连续打字/拖滑杆合并成一步（见 recordHistory.ts）。
+   *
+   * <p>用 useCallback 固定引用：下面 {@link updateCamera} 与摄像机页签都依赖它，
+   * 属性面板每次渲染都换一个新函数会让下游的 effect 反复重挂。
    */
-  const updateRecord = (index: number, updatedRecord: Record) => {
-    pushUndo(true);
-    setRecords((prev) => {
-      const newRecords = [...(prev || [])];
-      newRecords[index] = { ...updatedRecord, isDirty: true };
-      return newRecords;
-    });
-  };
+  const updateRecord = useCallback(
+    (index: number, updatedRecord: Record) => {
+      pushUndo(true);
+      setRecords((prev) => {
+        const newRecords = [...(prev || [])];
+        newRecords[index] = { ...updatedRecord, isDirty: true };
+        return newRecords;
+      });
+    },
+    [pushUndo, setRecords],
+  );
+
+  /**
+   * @function 写回当前记录的镜头
+   *
+   * <p>「摄像机」页签与世界视图（拖动/滚轮/快捷键）都走这里，所以两处改的是同一条记录，
+   * 也共用同一条撤销栈（一次拖动 ≈ 1 步，见 updateRecord 的 coalesce）。
+   */
+  const updateCamera = useCallback(
+    (camera: RecordCamera) => {
+      const current = recordsRef.current[selectedIndexRef.current];
+      if (!current) return;
+      updateRecord(selectedIndexRef.current, { ...current, camera });
+    },
+    [updateRecord],
+  );
+
+  /**
+   * 摄像机编辑状态（起止帧 / 工具 / 视图缩放 / 播放头）。
+   *
+   * <p>提到编辑器这一层持有：右侧「摄像机」页签与预览里的世界视图是两个兄弟组件，
+   * 必须看到同一份状态，否则"页签里选终点、画布里拖起点"这类错位会反复出现。
+   * 记录换人时由 `resetKey`（uuid）把"编辑终点"复位回起点并停播。
+   */
+  const cameraEditor = useCameraEditor(
+    durationRecord?.camera,
+    durationRecord?.durationFrames ?? 0,
+    updateCamera,
+    durationRecord?.uuid,
+  );
+
+  /** 当前是不是「摄像机」页签：预览该显示世界视图，而不是后端渲的成片 */
+  const cameraTabActive = activePropertyTab === "camera";
+
+  /**
+   * 离开「摄像机」页签就停下运镜播放。
+   *
+   * <p>播放头在编辑器这一层，世界视图卸载后它还会继续空转（每帧 setState 却没人看）；
+   * 切回来时也从"编辑中的那一帧"重新开始，而不是停在上一次播完的终点。
+   */
+  const stopCameraPlayback = cameraEditor.stop;
+  useEffect(() => {
+    if (!cameraTabActive) stopCameraPlayback();
+  }, [cameraTabActive, stopCameraPlayback]);
 
   /**
    * @function 预览里点中一个元素
@@ -486,16 +539,20 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
    * 三件事一起做：记下选中态（画选中框）→ 切到对应页签 → 下发一次定位请求
    * （属性面板收到后会滚到该条目并闪一下，见 useFocusFlash）。
    * 页签与定位目标的映射集中在 previewTargets.ts，这里只管调用。
+   *
+   * <p>「摄像机」页签下**只选中不切页签**（见 keepsActiveTabOnSelect）：世界视图是那个页签
+   * 的画布，切走会把它卸载掉，正在拖的手势会断在半路。
    */
   const handlePreviewSelect = useCallback(
     (layer: PreviewLayer) => {
       setPreviewSelection(selectionOfLayer(layer));
+      if (keepsActiveTabOnSelect(activePropertyTab)) return;
       const target = focusRequestForLayer(layer, Date.now());
       if (!target) return;
       setActivePropertyTab(target.tab);
       setPropertyFocus(target.focus);
     },
-    [setActivePropertyTab],
+    [activePropertyTab, setActivePropertyTab],
   );
 
   /** 点空白处取消选中：保留页签与面板内容，只去掉选中框 */
@@ -975,6 +1032,17 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             focusRequest={propertyFocus}
           />
         );
+      case "camera":
+        // 镜头控件（起止 / 缓动 / 运镜时长 / 播放 / 复位 / 铺满背景 / 预设 / 拖动工具）；
+        // 状态与预览里的世界视图共用同一份（见 useCameraEditor）
+        return (
+          <CameraProperties
+            selectedRecord={selectedRecord}
+            selectedRecordIndex={selectedRecordIndex}
+            updateRecord={updateRecord}
+            editor={cameraEditor}
+          />
+        );
       case "effects":
         return (
           <EffectsProperties
@@ -1043,19 +1111,11 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
               // 关键帧时间轴 ↔ 预览：点轴上的帧 → 渲染该帧；反向把当前帧报给时间轴画播放头
               seekRequest={previewSeek}
               onFrameChange={setPreviewFrame}
-              // 摄像机模式：镜头与「铺满背景」都直接写回当前记录
-              onCameraChange={(camera) => {
-                const current = recordsRef.current[selectedIndexRef.current];
-                if (!current) return;
-                updateRecord(selectedIndexRef.current, { ...current, camera });
-              }}
-              onBackgroundScaleChange={(index, scale) => {
-                const current = recordsRef.current[selectedIndexRef.current];
-                if (!current?.bg?.[index]) return;
-                const bg = [...current.bg];
-                bg[index] = { ...bg[index], scale };
-                updateRecord(selectedIndexRef.current, { ...current, bg });
-              }}
+              // 预览模式跟着页签走：进「摄像机」页签 = 世界视图（可移镜/拖元素），
+              // 其它页签 = 后端渲的成片。镜头与「铺满背景」的控件都在那个页签里，
+              // 两边共用 cameraEditor 这一份状态。
+              viewMode={cameraTabActive ? "camera" : "effect"}
+              cameraEditor={cameraEditor}
             />
           </ResizablePanel>
 

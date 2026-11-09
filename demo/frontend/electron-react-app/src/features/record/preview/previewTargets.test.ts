@@ -6,6 +6,7 @@
  */
 import {
   focusRequestForLayer,
+  keepsActiveTabOnSelect,
   selectionOfLayer,
   targetForLayerKind,
 } from "./previewTargets";
@@ -83,5 +84,13 @@ describe("预览点选 → 页签与定位目标", () => {
     expect(second.focus.nonce).toBe(2);
     expect(first.tab).toBe("characters");
     expect(second.focus).toEqual({ kind: "characters", index: 0, nonce: 2 });
+  });
+
+  test("「摄像机」页签下点中元素不切页签（世界视图就挂在这个页签上）", () => {
+    // 切走会把世界视图卸载掉：正在拖的元素手势会断在半路（收不到 pointerup）
+    expect(keepsActiveTabOnSelect("camera")).toBe(true);
+    // 其它页签照旧：点了就跳过去（点立绘 → 立绘页签并高亮那一张）
+    (["text", "characters", "tempImages", "background", "effects", "audio", "global"] as const)
+      .forEach((tab) => expect(keepsActiveTabOnSelect(tab)).toBe(false));
   });
 });

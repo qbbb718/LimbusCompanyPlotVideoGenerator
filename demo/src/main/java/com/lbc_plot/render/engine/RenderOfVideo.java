@@ -181,11 +181,18 @@ public class RenderOfVideo {
             boolean cameraAnimated = camera != null && camera.isAnimated();
             // 立绘 / 临时图片的移动动画：与"镜头在动"同类，都会让每帧画面不同
             boolean spriteAnimated = RecordAnimation.hasAnimatedSprites(record, plot);
-            boolean sceneChanges = cameraAnimated || spriteAnimated;
-            logger.debug("渲染静态背景 (layerType={}, 镜头{}, 精灵动画{})", layerType,
-                    cameraAnimated ? "会动" : "静止", spriteAnimated ? "有" : "无");
+            // 镜头摇动同理：每帧的位移都不一样（还有渐入/渐出），而且它**只**改相机、
+            // 不改任何素材，所以必须在这里显式算进来，否则"只开了摇动"的记录会被当成
+            // 静止画面整段复用同一张底图，导出看不到晃。
+            boolean shakeActive = CameraShake.isActive(record);
+            boolean sceneChanges = cameraAnimated || spriteAnimated || shakeActive;
+            logger.debug("渲染静态背景 (layerType={}, 镜头{}, 精灵动画{}, 摇动{})", layerType,
+                    cameraAnimated ? "会动" : "静止", spriteAnimated ? "有" : "无", shakeActive ? "有" : "无");
             if (cameraAnimated) {
                 logger.info("这条记录的镜头会动，需要逐帧重渲场景层（{} 帧，比静止镜头慢）", requiredFrames);
+            }
+            if (shakeActive) {
+                logger.info("这条记录启用了镜头摇动，需要逐帧重渲场景层（{} 帧，比静止镜头慢）", requiredFrames);
             }
             if (spriteAnimated) {
                 logger.info("这条记录有立绘/图片移动动画，需要逐帧重渲场景层（{} 帧）", requiredFrames);
@@ -231,9 +238,10 @@ public class RenderOfVideo {
                     Camera frameCamera = cameraAnimated
                             ? Camera.at(camera, Camera.progressAt(frameIndex, camera.getMoveFramesSafe()))
                             : camera;
-                    // 镜头摇动（特效）：只改"看世界的那台相机"的取景中心，
-                    // 所以背景/立绘/临时图片会晃，而对话框/地点牌/名片/暗角画在设计画布上、不受影响
-                    frameCamera = CameraShake.apply(frameCamera, record, frameIndex);
+                    // 镜头摇动（摄像机预设）：只改"看世界的那台相机"的取景中心，
+                    // 所以背景/立绘/临时图片会晃，而对话框/地点牌/名片/暗角画在设计画布上、不受影响。
+                    // 总帧数要传进去：持续时长为 0（整条记录）时，渐出是相对记录结尾算的。
+                    frameCamera = CameraShake.apply(frameCamera, record, frameIndex, requiredFrames);
                     String signature = RecordAnimation.sceneSignature(record, plot, frameCamera, frameIndex);
                     if (reusableScene != null && signature.equals(reusableSceneSignature)) {
                         base = reusableScene;

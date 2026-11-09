@@ -209,8 +209,7 @@ const GlobalProperties: React.FC<GlobalPropertiesProps> = ({
           <span>{globalTextSpeed}</span>
         </div>
         <div className="global-hint">
-          数值越大文字显示越快（1 最慢，6 最快）。修改后会统一应用到所有文本的显示速度，
-          覆盖各条记录在“文本”页里单独调过的速度；之后新增的记录也按这个速度。
+          1 最慢、6 最快；改完会覆盖所有记录（含之后新增的）。
         </div>
       </div>
 
@@ -226,9 +225,7 @@ const GlobalProperties: React.FC<GlobalPropertiesProps> = ({
           aria-label="结尾停留时长（帧）"
         />
         <div className="global-hint">
-          每条记录说完/播完之后再多停多少帧（30fps 下 75 帧 = 2.5 秒）。
-          时长 = max(文字, 音频, 动画) + 这个值；<b>随本工程保存</b>，
-          修改后重新导出会强制重渲已缓存的片段。
+          <b>随本工程保存</b>：每条记录播完再多停这么多帧（75 帧 = 2.5 秒）；改动后导出会重渲缓存片段。
         </div>
       </div>
 

@@ -100,3 +100,21 @@ export function focusRequestForLayer(
   if (!target) return null;
   return { tab: target.tab, focus: { ...target.focus, nonce } };
 }
+
+/**
+ * @function 在这个页签下点中元素要不要"切到它的页签"
+ *
+ * <p>通常要切（点立绘 → 滚到「立绘」页签并高亮那一张）。**「摄像机」页签例外**：
+ * 那里的预览是**世界视图**（背景/立绘铺在可缩放画布上 + 一个取景框），它属于这个页签。
+ * 切页签会把世界视图卸载掉——除了"看着构图改元素"这件事直接断掉，正在拖的手势也会
+ * 中断在卸载的那一刻（`PreviewHitLayer` 再也收不到 pointerup）。
+ *
+ * <p>所以摄像机页签下点中元素只记选中态（画选中框、可继续拖动），
+ * 要看/改它的属性由用户自己切到「立绘」「临时图片」「背景」页签。
+ *
+ * @param activeTab 当前页签
+ * @returns true = 保持当前页签，不跳转
+ */
+export function keepsActiveTabOnSelect(activeTab: PropertyTab): boolean {
+  return activeTab === "camera";
+}

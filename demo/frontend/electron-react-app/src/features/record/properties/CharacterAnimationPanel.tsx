@@ -21,7 +21,6 @@ import {
   createSpriteAnimation,
   presetChannels,
   presetLabel,
-  withClipField,
   withClipParam,
 } from "../animation/clipEditing";
 import { PRESET_IDS } from "../animation/presetRegistry";
@@ -70,8 +69,6 @@ const CharacterAnimationPanel: React.FC<CharacterAnimationPanelProps> = ({
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [addKind, setAddKind] = useState<"preset" | "keyframes">("preset");
   const [addPreset, setAddPreset] = useState<PresetId>("bounce");
-
-  const selectedClip = clips.find((clip) => clip.id === selectedClipId) ?? null;
 
   /** 把新的 clip 列表写回；空列表 → 直接清掉 anim（渲染端走原路径） */
   const commitClips = (nextClips: AnimationClip[]) => {
@@ -147,7 +144,7 @@ const CharacterAnimationPanel: React.FC<CharacterAnimationPanelProps> = ({
         <div id={panelBodyId} className="animation-panel-body">
       {!plot && (
         <div className="global-hint" role="note">
-          人格故事模式下立绘/临时图片不参与渲染，这里的动画不会出现在成片里；切回「剧情」后自动生效。
+          人格故事模式下动画不参与渲染，切回「剧情」自动生效。
         </div>
       )}
       <div className="char-row" style={{ alignItems: "center", gap: 6 }}>
@@ -180,7 +177,7 @@ const CharacterAnimationPanel: React.FC<CharacterAnimationPanelProps> = ({
 
       {clips.length === 0 && (
         <div className="global-hint">
-          还没有动画。加一个"弹跳"或"发抖"，然后用预览上方的 ▶ 播放看效果。
+          还没有动画：选一个预设加进来，再用预览上方的 ▶ 播放看效果。
         </div>
       )}
 
@@ -286,12 +283,15 @@ const CharacterAnimationPanel: React.FC<CharacterAnimationPanelProps> = ({
                   />
                 )}
 
-                <div className="global-hint">
-                  作用通道：{(clip.kind === "preset" && clip.preset
+                <div
+                  className="global-hint"
+                  title="循环模式下淡出会让每轮接缝闪一下，填 0 即可"
+                >
+                  通道：{(clip.kind === "preset" && clip.preset
                     ? presetChannels(clip.preset as PresetId)
                     : clip.channels ?? []
                   ).join(" / ")}
-                  ；循环模式的"淡出"要填 0，否则接缝会一淡一显。
+                  ；循环模式淡出填 0。
                 </div>
                 <div className="char-row" style={{ gap: 6 }}>
                   <span className="char-label-fixed">淡入/淡出(帧)</span>
@@ -370,7 +370,7 @@ const PresetParams: React.FC<{
       })}
       {clip.preset === "shake" && (
         <div className="global-hint">
-          发抖用确定性种子，每次导出轨迹完全相同；换种子请删掉重加（或等"🎲 换种子"上线）。
+          用确定性种子：每次导出轨迹一致，想换就删掉重加。
         </div>
       )}
     </div>

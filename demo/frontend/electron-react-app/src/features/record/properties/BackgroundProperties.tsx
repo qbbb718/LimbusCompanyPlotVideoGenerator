@@ -175,8 +175,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
       <div className="background-properties">
         <h4>背景设置</h4>
         <p className="transform-hint">
-          缩放以画面中心为基准；位置 0 = 居中，数值不设上下限（放大后也能把背景完全移出画面，
-          滑杆范围随缩放自动扩大）。每行右侧的 ↺ 只复原该行，不影响另外两行。
+          缩放以画面中心为基准；位置 0 = 居中，可超出画面；每行 ↺ 只复原该行。
         </p>
         <div className="backgrounds-list">
           {currentBackgrounds.map((bg, index) => {

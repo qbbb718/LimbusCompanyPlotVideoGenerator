@@ -1,0 +1,374 @@
+/*
+ * 「摄像机」属性页签（剧情编辑 → 摄像机）。
+ *
+ * 面板宽度不固定（属性栏可拖动，最小 300px），所以所有行都用 flex + wrap：
+ * 标签固定宽度，控件占剩余空间；放不下时整块换行，而不是把输入框挤成一条缝。
+ * 配色与立绘 / 背景页签保持一致（#1890ff 主题蓝、#555 标签、#888 说明文字）。
+ */
+
+.camera-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.camera-properties h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #333;
+}
+
+.camera-properties h5 {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+}
+
+/* ===== 状态摘要：静止 / 运镜 + 取景框读数 ===== */
+
+.camera-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+}
+
+/* 有运镜时给一点主题色，和"静止镜头"区分开（不用红/绿，避免看起来像状态告警） */
+.camera-summary.is-animated {
+  background: #f0f7ff;
+  border-color: #bae0ff;
+}
+
+.camera-summary-state {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+
+.camera-summary-text {
+  font-size: 12px;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ===== 说明文字 ===== */
+
+.camera-hint,
+.camera-section-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #888;
+}
+
+.camera-section-hint {
+  padding-left: 2px;
+}
+
+/* ===== 行布局 ===== */
+
+.camera-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.camera-label {
+  flex: 0 0 42px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.camera-value {
+  font-size: 13px;
+  color: #333;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.camera-unit {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+/* ===== 分段按钮（编辑起点/终点、移镜/移元素） ===== */
+
+.camera-segmented {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.camera-segmented button {
+  padding: 3px 10px;
+  font-size: 12px;
+  color: #444;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.camera-segmented button:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: #e6f4ff;
+}
+
+.camera-segmented button.active {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+/* ===== 缩放：± 按钮 + 滑杆 ===== */
+
+.camera-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.camera-zoom button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  color: #666;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.camera-zoom button:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: #e6f4ff;
+}
+
+.camera-zoom-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  color: #333;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-slider {
+  flex: 1;
+  min-width: 80px;
+}
+
+.camera-slider input[type="range"] {
+  width: 100%;
+  margin: 0;
+}
+
+/* ===== 输入控件 ===== */
+
+.camera-select {
+  padding: 3px 4px;
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.camera-number {
+  width: 76px;
+  padding: 3px 6px;
+  font-size: 13px;
+  text-align: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* ===== 动作按钮（播放 / 复位 / 适配 / 铺满背景） ===== */
+
+.camera-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.camera-actions button {
+  flex: 1 1 auto;
+  min-width: 76px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #444;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.camera-actions button:hover:not(:disabled) {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: #e6f4ff;
+}
+
+.camera-actions button.active {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.camera-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== 预设：镜头层的动态效果（镜头摇动等） =====
+ *
+ * 结构是"分组 → 卡片 → 参数行"，全部 flex + wrap：
+ * 预设变多、换成别的类型、参数行放不下时都只是往下排 / 换行，布局骨架不用动。
+ */
+
+.camera-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.camera-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.camera-preset-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 分组小标题（只有预设填了 group 时才会出现） */
+.camera-preset-group-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.camera-preset-item {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  min-width: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* 已启用：与「特效」页签里勾选后的视觉一致（同一个主题蓝） */
+.camera-preset-item.active {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+}
+
+.camera-preset-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+}
+
+.camera-preset-head input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #1890ff;
+  cursor: pointer;
+}
+
+/* 名称过长时省略，不把复选框挤出去 */
+.camera-preset-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-preset-emoji {
+  margin-right: 4px;
+}
+
+.camera-preset-desc {
+  margin: 6px 0 0 24px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #666;
+}
+
+/* 参数行：标签 + 数字框 + 单位，放不下时整组换行 */
+.camera-preset-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 8px 0 0 24px;
+}
+
+.camera-preset-param {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: #555;
+}
+
+.camera-preset-param-label {
+  white-space: nowrap;
+}
+
+.camera-preset-number {
+  width: 64px;
+  padding: 3px 6px;
+  font-size: 13px;
+  text-align: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.camera-preset-param-unit {
+  color: #888;
+  white-space: nowrap;
+}
+

@@ -20,12 +20,11 @@ import {
   cameraAt,
   cameraMoveFrames,
   cameraProgressOf,
-  coverScaleForBackground,
   isAnimatedCamera,
 } from "./preview/cameraView";
-import { sceneLayerKey, DEFAULT_CAMERA } from "./preview/previewLayout";
+import type { CameraEditor } from "./preview/useCameraEditor";
+import { DEFAULT_CAMERA } from "./preview/previewLayout";
 import { applyCameraShake, cameraShakeConfigOf } from "./preview/cameraShake";
-import type { RecordCamera } from "@types";
 import { useTimelinePlayback } from "./preview/useTimelinePlayback";
 import { anchorOf, durationEndFrameOf, isAnimated } from "./animation/spriteAnimator";
 import { evaluate as evaluateSpriteAnim } from "./animation/spriteAnimator";
@@ -74,10 +73,20 @@ interface RecordPreviewProps {
    * 记录变干净（isDirty=false）时会命中上一次渲的图，画面就停在撤销之前的样子。
    */
   refreshToken?: number;
-  /** 摄像机模式里调整了镜头（由 RecordEditor 写回记录） */
-  onCameraChange?: (camera: RecordCamera) => void;
-  /** 「铺满背景」：把第 index 张背景的 scale 改成给定值 */
-  onBackgroundScaleChange?: (index: number, scale: number) => void;
+  /**
+   * 预览模式：`effect` = 后端渲的成片；`camera` = 摄像机世界视图。
+   *
+   * <p>由**页签**决定（RecordEditor 传 `activePropertyTab === "camera"`）：进「摄像机」页签
+   * 就切到世界视图，离开就回到成片。原先这里是预览上的一个「🎥 摄像机」按钮，
+   * 现在摄像机是独立页签，控件与说明都在那里。
+   */
+  viewMode?: "effect" | "camera";
+  /**
+   * 摄像机编辑状态（世界视图与「摄像机」页签共用同一份，由 RecordEditor 持有）。
+   *
+   * <p>`viewMode === "camera"` 时必须给：世界视图里的拖动、滚轮、快捷键都写回这份状态。
+   */
+  cameraEditor?: CameraEditor;
   /**
    * 这条记录的成片总帧数（`POST /api/records/duration` 的 `frames`，含 stayFrames）。
    *
@@ -122,6 +131,10 @@ const PREVIEW_DEBOUNCE_MS = 150;
  *
  * <p>第 2、3 层目前只用于「对位自检」（右下角的「▦ 框」「◧ 场景」开关）：
  * 叠框与画面严丝合缝，才说明几何是准的，之后的点击命中、拖拽、摄像机取景才有意义。
+ *
+ * <p><b>两种视图</b>由右侧页签决定：`viewMode` = `effect`（成片）/ `camera`（「摄像机」页签的
+ * 世界视图）。顶部只有一个「▶ 播放」：最终效果里直接播成片近似；世界视图里点它会临时切到
+ * **成片预览**（同一个播放头），播完/停止后自动回到世界视图——构图时不用来回切页签。
  */
 const RecordPreview: React.FC<RecordPreviewProps> = ({
   selectedRecord,
@@ -139,8 +152,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   onElementDragEnd,
   onElementDragCancel,
   refreshToken = 0,
-  onCameraChange,
-  onBackgroundScaleChange,
+  viewMode = "effect",
+  cameraEditor,
   durationFrames,
   seekRequest,
   onFrameChange,
@@ -162,12 +175,13 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
    */
   const [isDragging, setIsDragging] = useState(false);
   /**
-   * 预览模式：`effect` = 看后端渲的成片；`camera` = 看没渲染 UI 的世界并调镜头。
+   * 是否显示摄像机世界视图。
    *
-   * <p>摄像机模式不显示栅格图（那张图是取景后的结果，没法用来显示世界全图），
-   * 也**不发预览图请求**——镜头一动记录就变，每动一下都让后端重渲一遍纯属浪费。
+   * <p>由**页签**决定（RecordEditor 传 `viewMode`）：世界视图不显示栅格图（那张图是取景后的
+   * 结果，没法用来显示世界全图），也**不发预览图请求**——镜头一动记录就变，
+   * 每动一下都让后端重渲一遍纯属浪费。没有摄像机编辑状态时退回最终效果。
    */
-  const [viewMode, setViewMode] = useState<"effect" | "camera">("effect");
+  const showCamera = viewMode === "camera" && Boolean(cameraEditor);
   /** 运镜时长（帧）：预览与成片用同一个数字，这里只是把它读出来 */
   const moveFrames = cameraMoveFrames(selectedRecord.camera);
   /** 记录比运镜还短时按记录播（与导出一样会被截断） */
@@ -233,7 +247,19 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   }, [playback.frame, onFrameChange]);
 
   /**
-   * 有没有"能播动"的东西：镜头会动，或者有立绘/图片动画。
+   * 镜头摇动（预设）的参数：叠到世界层相机上，也决定"这条记录能不能播"。
+   *
+   * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时图片。
+   * 静止（未播放、未跳帧）时按第 0 帧算 → 位移 0，预览栅格图与成片第 0 帧仍然一致。
+   * 总帧数要传给求值：持续时长缺省为"整条记录"时，渐出是相对记录结尾算的。
+   */
+  const shakeConfig = useMemo(
+    () => cameraShakeConfigOf(selectedRecord.effects),
+    [selectedRecord.effects],
+  );
+
+  /**
+   * 有没有"能播动"的东西：镜头会动、有立绘/图片动画，或者开了镜头摇动。
    *
    * <p>动画侧**不能**用 `animEndFrame > 0` 判断：无限循环的 clip（最常见的"弹跳·循环"）
    * 按设计不参与时长计算，`durationEndFrameOf` 返回 null，`animEndFrame` 一直是 0——
@@ -249,7 +275,19 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     ];
     return anims.some((anim) => isAnimated(anim));
   }, [selectedRecord]);
-  const hasPlayableAnimation = isAnimatedCamera(selectedRecord.camera) || hasSpriteAnimation;
+  const hasPlayableAnimation =
+    isAnimatedCamera(selectedRecord.camera) || hasSpriteAnimation || Boolean(shakeConfig);
+
+  /**
+   * 世界视图里点了「▶ 播放」：临时切到**成片预览**（用同一个播放头播镜头 + 立绘动画），
+   * 停止（或播完）后自动回到世界视图。
+   *
+   * <p>为什么要它：在「摄像机」页签构图时，想直接确认"这条记录成片是什么样"，
+   * 不用先切到别的页签再点播放。世界视图本身只画取景框，看不到摇动与立绘动画。
+   */
+  const [previewingFromCamera, setPreviewingFromCamera] = useState(false);
+  /** 只剩下世界视图时（没在预览成片）才画世界视图 */
+  const showWorldView = showCamera && !previewingFromCamera;
 
   /** "没有动画所以播放无效"的说明；点了 ▶ 才出现，几秒后自动消失 */
   const [playHint, setPlayHint] = useState<string | null>(null);
@@ -258,6 +296,52 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     const timer = setTimeout(() => setPlayHint(null), 6000);
     return () => clearTimeout(timer);
   }, [playHint]);
+
+  /**
+   * @function 播放 / 停止
+   *
+   * <p>没有可动内容时给一段说明，而不是让按钮"点了没反应"（与改造前一致）。
+   * 在世界视图里播放时先把「运镜播放」停掉：两个播放头各推一版镜头会打架。
+   */
+  const handlePlayToggle = () => {
+    if (!hasPlayableAnimation) {
+      setPlayHint(
+        "没有镜头动画、预设或立绘动画，播放不会有变化。可在「立绘」「临时图片」加动画，或在「摄像机」设一个运镜 / 摇动。",
+      );
+      return;
+    }
+    setPlayHint(null);
+    if (playback.playing) {
+      playback.stop();
+      setPreviewingFromCamera(false);
+      return;
+    }
+    if (showCamera) {
+      cameraEditor?.stop();
+      setPreviewingFromCamera(true);
+    }
+    playback.play();
+  };
+
+  /** 播完（停在最后一帧）或播放被停掉时，从"成片预览"回到世界视图 */
+  useEffect(() => {
+    if (!previewingFromCamera) return;
+    if (playback.frame === null) {
+      setPreviewingFromCamera(false);
+      return;
+    }
+    if (playback.frame >= playback.totalFrames - 1) {
+      playback.stop();
+      setPreviewingFromCamera(false);
+    }
+    // playback.stop 每次渲染都是同一个引用（useCallback），这里只需要跟着帧号走
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewingFromCamera, playback.frame, playback.totalFrames]);
+
+  /** 离开「摄像机」页签：退掉"成片预览"状态，回来时直接是世界视图 */
+  useEffect(() => {
+    if (!showCamera) setPreviewingFromCamera(false);
+  }, [showCamera]);
 
   /** 动画求值用的帧号：不播时按第 0 帧（与后端预览图渲的是同一帧，画面才对得上） */
   const spriteFrame = playback.frame ?? 0;
@@ -317,8 +401,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   useEffect(() => {
     // 拖拽期间不请求预览图：画面由 DOM 场景层实时顶上，
     // 松手后 isDragging 变 false，这个 effect 会带着最新记录重新跑一次。
-    // 摄像机模式同理：那张图是取景后的成片，用不上；镜头一动就重渲纯属浪费。
-    if (isDragging || viewMode === "camera" || playback.playing) return undefined;
+    // 世界视图同理：那张图是取景后的成片，用不上；镜头一动就重渲纯属浪费。
+    if (isDragging || showCamera || playback.playing) return undefined;
 
     let cancelled = false;
 
@@ -384,8 +468,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     // 不需要 forceRefresh，但必须重新请求一次才能拿到另一种样式的图。
     // isDragging 进依赖：松手那一刻要用最新记录补一张。
     // refreshToken 进依赖：撤销要跳过后端磁盘缓存。
-    // viewMode 进依赖：从摄像机模式切回最终效果时要立刻补一张（成片按新镜头渲）。
-  }, [selectedRecord, videoWidth, videoHeight, plot, applyPreviewUrl, isDragging, refreshToken, viewMode, playback.playing]);
+    // showCamera 进依赖：从世界视图切回最终效果时要立刻补一张（成片按新镜头渲）。
+  }, [selectedRecord, videoWidth, videoHeight, plot, applyPreviewUrl, isDragging, refreshToken, showCamera, playback.playing]);
 
   // 组件卸载时清理 blob URL
   useEffect(() => {
@@ -462,23 +546,29 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       : undefined;
 
   /**
-   * 镜头摇动（特效）：叠加在**世界层的相机**上。
+   * 镜头摇动（预设）：叠加在**世界层的相机**上（参数 `shakeConfig` 在上面算好，
+   * 播放按钮的可用性也要看它）。
    *
    * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时图片。
    * 静止（未播放、未跳帧）时按第 0 帧算 → 位移 0，预览栅格图与成片第 0 帧仍然一致。
+   * 总帧数要传给求值：持续时长缺省为"整条记录"时，渐出是相对记录结尾算的。
    */
-  const shakeConfig = useMemo(
-    () => cameraShakeConfigOf(selectedRecord.effects),
-    [selectedRecord.effects],
-  );
   const sceneCamera = useMemo(
     () =>
       applyCameraShake(
         playbackCamera ?? selectedRecord.camera ?? DEFAULT_CAMERA,
         shakeConfig,
         playback.frame !== null ? playback.elapsedFrames : 0,
+        playback.totalFrames,
       ),
-    [playbackCamera, selectedRecord.camera, shakeConfig, playback.frame, playback.elapsedFrames],
+    [
+      playbackCamera,
+      selectedRecord.camera,
+      shakeConfig,
+      playback.frame,
+      playback.elapsedFrames,
+      playback.totalFrames,
+    ],
   );
 
   /** 一条记录在预览图上的全部几何（矩形、世界框、缺失尺寸清单） */
@@ -495,10 +585,12 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         dialogBoxSize: sizes[UI_IMAGE_URLS.dialogBox],
         locationSize: sizes[UI_IMAGE_URLS.locationPlate],
         // 镜头：预览图已经按它取景，热区也要跟着一起投影，否则框和画面对不上。
-        // 播放时用插值后的镜头，DOM 场景层才会真的"摇"起来。
+        // 播放时用插值后的镜头（含摇动），DOM 场景层才会真的"摇"起来。
+        // 依赖必须写 sceneCamera：只有摇动、镜头动画静止时，playbackCamera 是不变的，
+        // 少写它就会出现"播放时画面不晃、热区也不晃"（摇动被整段冻住）。
         camera: sceneCamera,
       }),
-    [selectedRecord, plot, videoWidth, videoHeight, sceneImages, sizes, playbackCamera],
+    [selectedRecord, plot, videoWidth, videoHeight, sceneImages, sizes, sceneCamera],
   );
 
   const frameSize = { width: videoWidth || 1920, height: videoHeight || 1080 };
@@ -513,39 +605,6 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     { x: 0, y: 0, w: DESIGN_WIDTH, h: DESIGN_HEIGHT },
     frameSize,
   );
-
-  /**
-   * 「铺满背景」：把最上面那张**已加载出尺寸**的背景放大到盖住当前取景框。
-   *
-   * <p>为什么要它：后端背景是 contain（完整放进目标框），30:9 这种横长条在 scale=1 时
-   * 只画成 1920×576、上下留黑，世界也只有画布那么大，镜头根本没地方摇。
-   */
-  const coverTargetIndex = useMemo(() => {
-    const backgrounds = selectedRecord.bg ?? [];
-    for (let index = backgrounds.length - 1; index >= 0; index--) {
-      const url = sceneImages[sceneLayerKey("background", index)];
-      if (url && sizes[url]) return index;
-    }
-    return -1;
-  }, [selectedRecord.bg, sceneImages, sizes]);
-
-  const coverBackground =
-    coverTargetIndex >= 0 && onBackgroundScaleChange
-      ? () => {
-          const background = (selectedRecord.bg ?? [])[coverTargetIndex];
-          const url = sceneImages[sceneLayerKey("background", coverTargetIndex)];
-          const size = url ? sizes[url] : undefined;
-          if (!background || !size) return;
-          onBackgroundScaleChange(
-            coverTargetIndex,
-            coverScaleForBackground(background, size, {
-              centerX: selectedRecord.camera?.centerX ?? 960,
-              centerY: selectedRecord.camera?.centerY ?? 540,
-              zoom: selectedRecord.camera?.zoom ?? 1,
-            }),
-          );
-        }
-      : undefined;
 
   /**
    * 场景层的绘制列表。
@@ -716,60 +775,35 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
   return (
     <div className="preview-container">
-      {/* 两种看法：后端渲的成片 / 没渲染 UI 的世界（可移镜） */}
-      <div className="preview-mode-bar" role="tablist" aria-label="预览模式">
+      {/*
+        顶部状态条：只显示"当前在看什么" + 一个播放按钮。
+        世界视图（「摄像机」页签）里点播放会临时切到成片预览，停止后自动回到世界视图。
+      */}
+      <div className="preview-mode-bar" role="group" aria-label="预览模式">
+        <span className="preview-mode-chip active">
+          {showWorldView
+            ? "🎥 摄像机 · 世界视图"
+            : previewingFromCamera
+              ? "🖼 成片预览中"
+              : "🖼 最终效果"}
+        </span>
         <button
           type="button"
-          role="tab"
-          aria-selected={viewMode === "effect"}
-          className={viewMode === "effect" ? "active" : ""}
-          onClick={() => setViewMode("effect")}
-          title="看最终成片；点画面里的元素可直接编辑"
+          className={`${playback.playing ? "active" : ""}${
+            hasPlayableAnimation ? "" : " is-inactive"
+          }`.trim()}
+          onClick={handlePlayToggle}
+          aria-disabled={!hasPlayableAnimation}
+          aria-describedby={playHint ? "preview-play-hint" : undefined}
+          title={
+            hasPlayableAnimation
+              ? showCamera
+                ? `播放一遍成片效果（共 ${playback.totalFrames} 帧）；停止后回到世界视图`
+                : `播放一遍这条记录（共 ${playback.totalFrames} 帧；镜头 + 立绘/图片动画，DOM 近似；台词不参与动画）`
+              : "这条记录没有可动的镜头或立绘：点一下会告诉你为什么"
+          }
         >
-          🖼 最终效果
-        </button>
-        {viewMode === "effect" && (
-          <button
-            type="button"
-            className={`${playback.playing ? "active" : ""}${
-              hasPlayableAnimation ? "" : " is-inactive"
-            }`.trim()}
-            onClick={() => {
-              // 没有动画时播放不会改变任何画面：给一段说明，而不是让按钮"点了没反应"
-              if (!hasPlayableAnimation) {
-                setPlayHint(
-                  "这条记录没有镜头动画，也没有立绘/图片动画，所以播放不会有任何变化。" +
-                    "去「立绘」或「临时图片」页签加一个动画（或到「摄像机」模式把终点镜头挪一下）再播。",
-                );
-                return;
-              }
-              setPlayHint(null);
-              if (playback.playing) {
-                playback.stop();
-              } else {
-                playback.play();
-              }
-            }}
-            aria-disabled={!hasPlayableAnimation}
-            aria-describedby={playHint ? "preview-play-hint" : undefined}
-            title={
-              hasPlayableAnimation
-                ? `播放一遍这条记录（共 ${playback.totalFrames} 帧；镜头 + 立绘/图片动画，DOM 近似；台词不参与动画）`
-                : "这条记录的镜头与立绘都不会动：点一下会告诉你为什么"
-            }
-          >
-            {playback.playing ? "⏹ 停止" : "▶ 播放"}
-          </button>
-        )}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === "camera"}
-          className={viewMode === "camera" ? "active" : ""}
-          onClick={() => setViewMode("camera")}
-          title="看没渲染 UI 的世界并调整镜头（背景/立绘/临时图片受镜头影响）"
-        >
-          🎥 摄像机
+          {playback.playing ? "⏹ 停止" : "▶ 播放"}
         </button>
       </div>
       {/* 没有动画时点 ▶ 的说明：写在按钮下方而不是弹窗，不打断编辑 */}
@@ -782,17 +816,15 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         className={`preview-image${playback.playing ? " is-playing" : ""}`}
         ref={containerRef}
       >
-        {viewMode === "camera" ? (
+        {showWorldView ? (
           <CameraModeView
             layers={geometry.layers}
             worldRef={geometry.worldRef}
             worldBox={geometry.worldBox}
-            camera={selectedRecord.camera}
-            durationFrames={selectedRecord.durationFrames ?? 0}
             sceneImages={sceneImages}
             stageSize={containerSize}
             selectedKey={selectedElementKey}
-            onCameraChange={(camera) => onCameraChange?.(camera)}
+            editor={cameraEditor!}
             onSelectLayer={(layer) => onSelectElement?.(layer)}
             onClearSelection={onClearSelection}
             getLayerPosition={(layer) =>
@@ -804,7 +836,6 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
             onLayerMove={(layer, position) => onElementDragMove?.(layer, position)}
             onLayerDragEnd={(layer) => onElementDragEnd?.(layer)}
             onLayerDragCancel={(layer) => onElementDragCancel?.(layer)}
-            onCoverBackground={coverBackground}
           />
         ) : (
           stage && (

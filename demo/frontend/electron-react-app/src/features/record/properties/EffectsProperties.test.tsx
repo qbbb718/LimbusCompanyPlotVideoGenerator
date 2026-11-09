@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import {
   DialogueAlign,
+  EFFECT_TYPE_CAMERA_SHAKE,
   EFFECT_TYPE_CROSS_DISSOLVE,
   EFFECT_TYPE_FADE_FROM_BLACK,
   EFFECT_TYPE_FADE_FROM_WHITE,
@@ -18,7 +19,9 @@ import EffectsProperties from "./EffectsProperties";
  * - 三种转场（交叉溶解 / 黑屏 / 白屏）互斥：勾一种会把其它两种去掉；
  * - 已有特效（包括 enabled 缺省的旧数据）能正确回显成勾选；
  * - 数据里同时存在多种时按 交叉溶解 > 黑屏 > 白屏 只显示一种勾选（与后端渲染一致）；
- * - 第一条记录勾了交叉溶解要提示"没有上一条"，黑屏/白屏不受影响。
+ * - 第一条记录勾了交叉溶解要提示"没有上一条"，黑屏/白屏不受影响；
+ * - **镜头摇动不再是这个页签的入口**（已迁到「摄像机 → 预设」，见 CameraPresets.test.tsx），
+ *   但旧记录里已有的那条摇动数据不会被这个页签改掉。
  */
 
 const makeRecord = (effects: EffectVisual[] = []): PlotRecord => ({
@@ -160,5 +163,33 @@ describe("EffectsProperties 起始转场", () => {
     expect(
       screen.queryByText(/没有「上一条记录」可以叠加/),
     ).not.toBeInTheDocument();
+  });
+
+  it("不再提供「镜头摇动」开关（已迁到「摄像机 → 预设」）", () => {
+    setupPanel(makeRecord([{ type: EFFECT_TYPE_CAMERA_SHAKE }]));
+
+    // 这个页签只剩三种起始转场
+    expect(screen.queryByRole("checkbox", { name: "镜头摇动" })).toBeNull();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(3);
+    // 提示去「摄像机 → 预设」找
+    expect(screen.getByText(/「摄像机」页签的「预设」/)).toBeInTheDocument();
+  });
+
+  it("旧记录里的摇动数据不会被转场开关误删", async () => {
+    const updateRecord = setupPanel(
+      makeRecord([
+        { type: EFFECT_TYPE_CAMERA_SHAKE, enabled: true },
+        { type: EFFECT_TYPE_CROSS_DISSOLVE },
+      ]),
+    );
+
+    fireEvent.click(checkbox("黑屏转场"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.effects).toEqual([
+      { type: EFFECT_TYPE_CAMERA_SHAKE, enabled: true },
+      { type: EFFECT_TYPE_FADE_FROM_BLACK, enabled: true },
+    ]);
   });
 });

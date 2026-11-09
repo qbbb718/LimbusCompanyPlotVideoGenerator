@@ -53,6 +53,23 @@ public class EffectVisual extends VisualElement {
     private Double periodFrames;
 
     /**
+     * 镜头摇动持续多少帧；缺省 / 0 = 整条记录（与加这个参数之前的行为一致）。
+     *
+     * <p>与记录总帧数取较小值：设得比记录还长时，摇动到记录结尾就没了。
+     */
+    private Double durationFrames;
+
+    /** 镜头摇动从静止到满幅度用多少帧；缺省 / 0 = 一开始就是满幅度 */
+    private Double fadeInFrames;
+
+    /**
+     * 镜头摇动从满幅度回到静止用多少帧；缺省 / 0 = 不渐出。
+     *
+     * <p>对齐"抖动结束"往前推：设了持续时长就相对持续时长，没设就相对记录结尾。
+     */
+    private Double fadeOutFrames;
+
+    /**
      * 是否勾选/启用；缺省（JSON 里没写这个字段）按启用处理，
      * 这样手写的/旧版本的工程里只写了 {@code "type"} 的特效也能生效。
      */
@@ -165,6 +182,30 @@ public class EffectVisual extends VisualElement {
 
     public void setPeriodFrames(Double periodFrames) {
         this.periodFrames = periodFrames;
+    }
+
+    public Double getDurationFrames() {
+        return durationFrames;
+    }
+
+    public void setDurationFrames(Double durationFrames) {
+        this.durationFrames = durationFrames;
+    }
+
+    public Double getFadeInFrames() {
+        return fadeInFrames;
+    }
+
+    public void setFadeInFrames(Double fadeInFrames) {
+        this.fadeInFrames = fadeInFrames;
+    }
+
+    public Double getFadeOutFrames() {
+        return fadeOutFrames;
+    }
+
+    public void setFadeOutFrames(Double fadeOutFrames) {
+        this.fadeOutFrames = fadeOutFrames;
     }
 
     /**

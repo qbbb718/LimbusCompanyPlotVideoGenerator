@@ -13,19 +13,24 @@ interface PropertyTabsProps {
  *
  * 「临时图片」与「立绘」同级：原先它是「立绘」页签底部的一段（路人 / 道具），
  * 拆出来单独成页签，立绘页签里不再有它的入口。
+ *
+ * 「摄像机」同样与「立绘」「背景」同级：镜头相关的控件原先浮在预览画面上（工具条），
+ * 现在整块搬进这个页签；进这个页签时预览会切到"世界视图"（见 RecordPreview 的 viewMode）。
  */
 const PROPERTY_TABS: { key: PropertyTab; emoji: string; label: string }[] = [
   { key: "text", emoji: "📝", label: "文本" },
   { key: "characters", emoji: "👤", label: "立绘" },
   { key: "tempImages", emoji: "🧩", label: "临时图片" },
   { key: "background", emoji: "🖼️", label: "背景" },
+  { key: "camera", emoji: "🎥", label: "摄像机" },
   { key: "effects", emoji: "✨", label: "特效" },
   { key: "audio", emoji: "🔊", label: "音效" },
   { key: "global", emoji: "⚙️", label: "全局设置" },
 ];
 
 /**
- * 属性面板页签：一行铺满、每个页签等宽（flex: 1 1 0，见 RecordEditor.css 的 .property-tabs）。
+ * 属性面板页签：一行铺满、每个页签等宽（flex: 1 1 56px，见 RecordEditor.css 的 .property-tabs；
+ * 面板太窄时按 56px 的最小宽度换行成多行）。
  */
 const PropertyTabs: React.FC<PropertyTabsProps> = ({
   activePropertyTab,

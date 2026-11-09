@@ -442,7 +442,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
           )}
           {isFreeText && (
             <div className="free-text-hint">
-              对话内容以旁白字体显示，可在下方调整字号、颜色与位置
+              以旁白字体显示，字号 / 颜色 / 位置在下方调。
             </div>
           )}
         </div>
@@ -511,7 +511,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
                     />
                   </div>
                   <div className="free-text-color-hint">
-                    可直接输入十六进制编码，或点吸管吸取屏幕上的颜色
+                    可输入十六进制，或点吸管取色。
                   </div>
                   {showColorPicker && (
                     <div className="free-text-color-popover">
@@ -598,7 +598,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
               />
             </div>
             <div className="free-text-position-hint">
-              设计画布像素（1080p），默认 {DEFAULT_FREE_TEXT_FONT_SIZE}
+              单位：设计画布像素（1080p），默认 {DEFAULT_FREE_TEXT_FONT_SIZE}
             </div>
           </div>
 
@@ -660,7 +660,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
               </button>
             </div>
             <div className="free-text-position-hint">
-              以画面中心为原点，单位：当前输出分辨率像素
+              以画面中心为原点（当前输出分辨率像素）。
             </div>
           </div>
         </div>

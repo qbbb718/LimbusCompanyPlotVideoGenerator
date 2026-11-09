@@ -286,7 +286,7 @@
   color: #fbbf24;
 }
 
-/* ===== 预览模式切换（最终效果 / 摄像机） ===== */
+/* ===== 预览状态条（最终效果 / 摄像机世界视图） ===== */
 
 .preview-mode-bar {
   display: flex;
@@ -294,6 +294,7 @@
   gap: 6px;
   padding: 0 0 6px 0;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .preview-mode-bar button {
@@ -316,6 +317,27 @@
 .preview-mode-bar button.is-inactive {
   color: #999;
   border-style: dashed;
+}
+
+/*
+ * 当前在看什么：不可点的纯文字标签。
+ * 「最终效果 / 世界视图 / 成片预览」不再由预览上的按钮切换，而是跟着右侧页签走
+ * （进「摄像机」页签 = 世界视图），所以这里只是状态显示。
+ */
+.preview-mode-chip {
+  padding: 3px 12px;
+  font-size: 12px;
+  color: #555;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.preview-mode-chip.active {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
 }
 
 /* 点了 ▶ 但这条记录没有动画时的说明文字 */
@@ -428,88 +450,7 @@
   width: 16px;
 }
 
-/* ===== 摄像机模式工具条 ===== */
-
-.camera-toolbar {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  right: 8px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 5px 8px;
-  border-radius: 4px;
-  background: rgba(20, 20, 20, 0.82);
-  color: #ddd;
-  font-size: 12px;
-  cursor: default;
-}
-
-.camera-toolbar button {
-  padding: 2px 8px;
-  font-size: 12px;
-  color: #ddd;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.camera-toolbar button:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.45);
-}
-
-.camera-toolbar button.active {
-  color: #111;
-  background: #38bdf8;
-  border-color: #38bdf8;
-}
-
-.camera-tool-group {
-  display: flex;
-  gap: 4px;
-}
-
-.camera-zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.camera-zoom-value {
-  min-width: 46px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.camera-zoom-readout {
-  color: #fbbf24;
-}
-
-.camera-hint {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  right: 8px;
-  z-index: 20;
-  padding: 3px 8px;
-  border-radius: 3px;
-  background: rgba(20, 20, 20, 0.7);
-  color: #bbb;
-  font-size: 11px;
-  pointer-events: none;
-}
-
-.camera-center-readout {
-  color: #9ca3af;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ===== C2：终点虚影 / 缓动下拉 ===== */
+/* ===== 取景框的读数标签 / 另一帧的虚影 ===== */
 
 .camera-frame-ghost {
   position: absolute;
@@ -520,16 +461,7 @@
   z-index: 11;
 }
 
-.camera-easing-select {
-  padding: 1px 4px;
-  font-size: 12px;
-  color: #ddd;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-}
-
-.camera-toolbar button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+/*
+ * 摄像机工具条已整体迁到「剧情编辑 → 摄像机」页签（见 properties/CameraProperties.css），
+ * 世界视图上不再有任何浮动控件——取景框、世界参考框、虚影都只是"看得见的标注"。
+ */

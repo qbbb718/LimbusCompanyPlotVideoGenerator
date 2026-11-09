@@ -1,15 +1,18 @@
 /**
- * 预览的「播放」按钮。
+ * 预览的「播放」按钮 + 摄像机世界视图。
  *
- * 锁的是一条反馈规则：**没有动画时点 ▶ 不能静默无反应**。
- * 以前按钮是 `disabled`，用户点下去屏幕一动不动，被当成软件卡顿（真实反馈）。
- * 现在按钮可点，点了在按钮下方给出"为什么没反应"的说明。
+ * 锁两条反馈规则：
+ * 1. **没有动画时点 ▶ 不能静默无反应**——以前按钮是 `disabled`，用户点下去屏幕一动不动，
+ *    被当成软件卡顿（真实反馈）。现在按钮可点，点了在按钮下方给出"为什么没反应"的说明；
+ * 2. **摄像机是一个页签**：预览上不再有「🎥 摄像机」按钮，`viewMode` 由 RecordEditor 按页签传入；
+ *    世界视图里没有 ▶ 播放（那个按钮播的是成片），也不发预览图请求。
  */
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import RecordPreview from "./RecordPreview";
 import ApiService from "@services/ApiService";
+import { useCameraEditor } from "./preview/useCameraEditor";
 
 const baseRecord = (patch: Record<string, any> = {}): any => ({
   uuid: "r1",
@@ -62,6 +65,9 @@ beforeEach(() => {
     stayFrames: 75,
     frameRate: 30,
   });
+  // jsdom 没有实现 object URL：预览图拿到的是 "blob:preview"，卸载时会 release 它
+  (URL as unknown as { revokeObjectURL: (url: string) => void }).revokeObjectURL =
+    jest.fn();
 });
 
 afterEach(() => {
@@ -101,5 +107,121 @@ describe("预览播放按钮", () => {
 
     expect(screen.getByRole("button", { name: /停止/ })).toBeTruthy();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+/* ===================== 摄像机：世界视图由页签驱动 ===================== */
+
+/** 挂上 useCameraEditor 的预览：世界视图需要这份共享状态（真实链路里由 RecordEditor 持有） */
+const PreviewWithCamera: React.FC<{
+  record: any;
+  viewMode: "effect" | "camera";
+}> = ({ record, viewMode }) => {
+  const editor = useCameraEditor(
+    record.camera,
+    record.durationFrames ?? 30,
+    () => undefined,
+    record.uuid,
+  );
+  return (
+    <RecordPreview
+      selectedRecord={record}
+      videoWidth={640}
+      videoHeight={360}
+      plot
+      records={[record]}
+      selectedRecordIndex={0}
+      setSelectedRecordIndex={() => undefined}
+      viewMode={viewMode}
+      cameraEditor={editor}
+    />
+  );
+};
+
+describe("预览 → 摄像机世界视图（页签驱动）", () => {
+  test("预览上不再有「🎥 摄像机」按钮（已经整体迁到右侧页签）", () => {
+    renderPreview(baseRecord());
+
+    expect(screen.getByText(/最终效果/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /摄像机/ })).toBeNull();
+  });
+
+  test("viewMode=camera：显示世界视图与取景框，并且**也有**播放按钮", () => {
+    render(<PreviewWithCamera record={baseRecord()} viewMode="camera" />);
+
+    expect(screen.getByText(/世界视图/)).toBeTruthy();
+    // 世界视图里的取景框读数（只出现在 CameraModeView 里 = 世界视图真的挂上了）
+    expect(screen.getByText("🎥 1.00×")).toBeTruthy();
+    // 「播放」在两种视图里都有：世界视图里点它是预览成片（见下一个用例）
+    expect(screen.getByRole("button", { name: /播放/ })).toBeTruthy();
+    // 也不请求后端渲成片：镜头一动记录就变，每动一下都重渲纯属浪费
+    expect(ApiService.getRecordPreview).not.toHaveBeenCalled();
+  });
+
+  test("viewMode=effect：照旧是成片 + 播放按钮", () => {
+    render(<PreviewWithCamera record={baseRecord()} viewMode="effect" />);
+
+    expect(screen.getByText(/最终效果/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /播放/ })).toBeTruthy();
+  });
+});
+
+describe("世界视图里的播放（预览成片）", () => {
+  /** 有运镜的记录：播放按钮才是"可播"的 */
+  const movingCameraRecord = (): any =>
+    baseRecord({
+      camera: {
+        centerX: 960,
+        centerY: 540,
+        zoom: 1,
+        to: { centerX: 480, centerY: 540, zoom: 1.5 },
+        easing: "linear",
+        moveFrames: 24,
+      },
+    });
+
+  test("点播放 → 切到成片预览；停止后回到世界视图", async () => {
+    render(<PreviewWithCamera record={movingCameraRecord()} viewMode="camera" />);
+
+    // 世界视图：取景框读数在
+    expect(screen.getByText("🎥 1.00×")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+
+    // 播放中：临时切成片预览（世界视图让位），状态标签跟着变
+    expect(await screen.findByText(/成片预览中/)).toBeTruthy();
+    expect(screen.queryByText("🎥 1.00×")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /停止/ }));
+
+    // 停止：回到世界视图，取景框读数又出现了
+    expect(await screen.findByText(/世界视图/)).toBeTruthy();
+    expect(screen.getByText("🎥 1.00×")).toBeTruthy();
+  });
+
+  test("没有可播的东西时点播放只给说明，不切视图", () => {
+    render(<PreviewWithCamera record={baseRecord()} viewMode="camera" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+
+    expect(screen.getByRole("status").textContent).toContain("没有镜头动画");
+    // 还在世界视图
+    expect(screen.getByText(/世界视图/)).toBeTruthy();
+    expect(screen.getByText("🎥 1.00×")).toBeTruthy();
+  });
+
+  test("只开了镜头摇动也算可播：点了同样能进成片预览", async () => {
+    const record = baseRecord({
+      effects: [
+        { type: "CAMERA_SHAKE", enabled: true, amplitude: 12, periodFrames: 4 },
+      ],
+    });
+    render(<PreviewWithCamera record={record} viewMode="camera" />);
+
+    const play = screen.getByRole("button", { name: /播放/ });
+    expect(play.getAttribute("aria-disabled")).toBe("false");
+
+    fireEvent.click(play);
+    expect(await screen.findByText(/成片预览中/)).toBeTruthy();
   });
 });

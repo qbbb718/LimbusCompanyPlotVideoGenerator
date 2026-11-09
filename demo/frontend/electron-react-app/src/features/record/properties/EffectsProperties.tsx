@@ -1,16 +1,11 @@
 import React from "react";
 import {
-  EFFECT_TYPE_CAMERA_SHAKE,
   EFFECT_TYPE_CROSS_DISSOLVE,
   EFFECT_TYPE_FADE_FROM_BLACK,
   EFFECT_TYPE_FADE_FROM_WHITE,
   Record,
   START_TRANSITION_FRAMES,
 } from "@types";
-import {
-  DEFAULT_CAMERA_SHAKE_AMPLITUDE,
-  DEFAULT_CAMERA_SHAKE_PERIOD_FRAMES,
-} from "../preview/cameraShake";
 import "../RecordEditor.css";
 import "./EffectsProperties.css";
 
@@ -40,8 +35,7 @@ const TRANSITION_OPTIONS: TransitionOption[] = [
   {
     type: EFFECT_TYPE_CROSS_DISSOLVE,
     name: "交叉溶解转场",
-    description:
-      "叠加「上一条记录的最后一帧」，把硬切变成叠化（第一条记录没有上一条，勾选也不会叠加）。",
+    description: "叠加「上一条记录的最后一帧」，把硬切变成叠化。",
   },
   {
     type: EFFECT_TYPE_FADE_FROM_BLACK,
@@ -91,6 +85,10 @@ const activeTransitionType = (record: Record): string | undefined => {
  * 并把其它起始转场删掉（三者互斥）；取消勾选 = 直接把这一条删掉。
  * 后端渲染时读的就是这份列表（见 StartTransition#kindOf），因此工程文件和导出请求
  * 里的特效都会原样保留。
+ *
+ * <p><b>镜头摇动不在这个页签</b>：它是镜头层的动态效果，已归到「摄像机 → 预设」
+ * （见 `preview/cameraPresets.ts`）。数据同样写在 `record.effects` 里，只是按 `type` 区分，
+ * 所以两个页签共用同一个数组、互不干扰。
  */
 const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
   selectedRecord,
@@ -100,26 +98,6 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
   const effects = selectedRecord.effects || [];
   const activeType = activeTransitionType(selectedRecord);
   const seconds = (START_TRANSITION_FRAMES / EXPORT_FRAME_RATE).toFixed(2);
-  /** 镜头摇动是独立开关（不是转场），与三种起始转场互不影响 */
-  const shakeEnabled = effects.some(
-    (effect) => effect?.type === EFFECT_TYPE_CAMERA_SHAKE && effect.enabled !== false,
-  );
-
-  /**
-   * @function 勾选/取消"镜头摇动"
-   *
-   * <p>只增删这一条，不碰三种起始转场（它们由 {@link toggleTransition} 管）。
-   * @param checked 勾选状态
-   */
-  const toggleCameraShake = (checked: boolean) => {
-    const nextEffects = checked
-      ? [
-          ...effects.filter((effect) => effect?.type !== EFFECT_TYPE_CAMERA_SHAKE),
-          { type: EFFECT_TYPE_CAMERA_SHAKE, enabled: true },
-        ]
-      : effects.filter((effect) => effect?.type !== EFFECT_TYPE_CAMERA_SHAKE);
-    updateRecord(selectedRecordIndex, { ...selectedRecord, effects: nextEffects });
-  };
 
   /**
    * @function 勾选/取消勾选某种起始转场
@@ -147,7 +125,7 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
     <div className="effects-properties">
       <h4>特效设置</h4>
       <p className="effects-hint">
-        {`起始转场只作用在导出的视频上：开头 ${START_TRANSITION_FRAMES} 帧（30fps 下约 ${seconds} 秒）在本条画面上方叠加一层图像，不透明度从 100% 降到 0%，记录时长与预览图不变。三种转场互斥，勾选一种会取消其它两种。`}
+        {`只作用于导出视频：开头 ${START_TRANSITION_FRAMES} 帧（约 ${seconds} 秒）叠一层图像淡出，记录时长与预览图不变；三种互斥。`}
       </p>
 
       <div className="effects-list">
@@ -176,30 +154,14 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
       {activeType === EFFECT_TYPE_CROSS_DISSOLVE &&
         selectedRecordIndex === 0 && (
           <p className="effects-warning">
-            当前是第一条记录，没有「上一条记录」可以叠加，交叉溶解不会生效；黑屏/白屏转场不受影响。
+            第一条记录：没有「上一条记录」可以叠加，交叉溶解不生效（黑/白屏不受影响）。
           </p>
         )}
 
-      {/* 镜头摇动：不是转场，与上面三种互不冲突，可以同时开 */}
-      <h4 style={{ marginTop: 12 }}>镜头摇动</h4>
-      <div className="effects-list">
-        <div className={`effect-item${shakeEnabled ? " active" : ""}`}>
-          <label className="effect-item-head">
-            <input
-              type="checkbox"
-              checked={shakeEnabled}
-              onChange={(e) => toggleCameraShake(e.target.checked)}
-              aria-label="镜头摇动"
-            />
-            <span className="effect-item-name">镜头摇动</span>
-          </label>
-          <p className="effect-item-desc">
-            {`按帧轻轻晃动摇镜头，像手持拍摄。只晃背景 / 立绘 / 临时图片——对话框、地点牌、角色名片与黑边暗角不受影响。默认幅度 ${
-              DEFAULT_CAMERA_SHAKE_AMPLITUDE
-            }px、周期 ${DEFAULT_CAMERA_SHAKE_PERIOD_FRAMES} 帧；与上面的转场可以同时开启。`}
-          </p>
-        </div>
-      </div>
+      {/* 指路而不是入口：镜头摇动是镜头层效果，控件已经搬到「摄像机 → 预设」 */}
+      <p className="effects-hint" style={{ marginTop: 12, marginBottom: 0 }}>
+        镜头摇动在「摄像机」页签的「预设」区域；这里只管起始转场。
+      </p>
     </div>
   );
 };
