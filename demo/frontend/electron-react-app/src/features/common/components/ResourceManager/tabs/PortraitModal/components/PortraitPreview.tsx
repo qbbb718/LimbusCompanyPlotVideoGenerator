@@ -1,4 +1,12 @@
-import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { CropperRef, Cropper } from "react-advanced-cropper";
 import { Area } from "react-easy-crop";
 import { Portrait } from "@types";
@@ -38,6 +46,26 @@ interface PortraitPreviewProps {
   defaultPortraitImagePath?: string | null;
 }
 
+/**
+ * 暴露给父组件的命令式接口。
+ *
+ * <p>「按截图校准」算出来的裁剪框必须走裁剪器自己的 {@code setCoordinates}，
+ * 否则界面上还停在旧框、保存下来的却是新值 —— 所以只给这一个方法，不给"绕过裁剪器改状态"的口子。
+ */
+export interface PortraitPreviewHandle {
+  /**
+   * 把一个正方形裁剪框（原图像素）设给裁剪器，并回读夹取后的实际坐标回调出去。
+   *
+   * @returns 裁剪器还没准备好（或弹窗已关）时返回 false
+   */
+  applyCropRect: (rect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }) => Promise<boolean>;
+}
+
 const toArea = (rect: {
   left?: number;
   top?: number;
@@ -57,15 +85,18 @@ const toArea = (rect: {
   return { x: left, y: top, width, height };
 };
 
-const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
-  ({
-    portraitPreview,
-    currentPortrait,
-    onCropComplete,
-    handleImageLoad,
-    defaultCropState,
-    defaultPortraitImagePath,
-  }) => {
+const PortraitPreview = memo(
+  forwardRef<PortraitPreviewHandle, PortraitPreviewProps>((
+    {
+      portraitPreview,
+      currentPortrait,
+      onCropComplete,
+      handleImageLoad,
+      defaultCropState,
+      defaultPortraitImagePath,
+    },
+    ref,
+  ) => {
     const cropperRef = useRef<CropperRef>(null);
     // 正在为哪张立绘应用默认裁剪：等待图片就绪期间如果换了立绘就废弃这次操作
     const applyingPortraitIdRef = useRef<string | null>(null);
@@ -209,6 +240,61 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
       waitForCropperState,
     ]);
 
+    /**
+     * 把外部算出来的裁剪框（「按截图校准」的反推结果）设给裁剪器。
+     *
+     * <p>与 {@link applyDefaultCropState} 一样要等裁剪器把图读进来：state 为 null 时
+     * 调 setCoordinates 会把画布清空，表现为"点了按钮什么都没发生"。
+     */
+    const applyCropRect = useCallback(
+      async (rect: {
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+      }) => {
+        const portraitId = currentPortrait.portraitID;
+        applyingPortraitIdRef.current = portraitId;
+
+        try {
+          let state = cropperRef.current?.getState() ?? null;
+          if (!state?.imageSize?.width) {
+            state = await waitForCropperState(portraitId);
+          }
+          if (!state || unmountedRef.current) return false;
+          if (applyingPortraitIdRef.current !== portraitId) return false;
+
+          const cropper = cropperRef.current;
+          if (!cropper) return false;
+
+          const side = Math.max(1, Math.round(rect.width));
+          cropper.setCoordinates({
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
+            width: side,
+            height: side,
+          });
+
+          // 回读实际坐标：越界时裁剪器会把框夹进图片，回调必须用实际值，
+          // 否则保存下来的和用户眼前看到的框对不上。
+          const actual = toArea(cropper.getCoordinates());
+          if (actual && onCropComplete) {
+            onCropComplete(actual, actual);
+          }
+          setNotice(null);
+          log("已应用反推的裁剪框", { rect, actual });
+          return true;
+        } finally {
+          if (applyingPortraitIdRef.current === portraitId) {
+            applyingPortraitIdRef.current = null;
+          }
+        }
+      },
+      [currentPortrait.portraitID, onCropComplete, waitForCropperState],
+    );
+
+    useImperativeHandle(ref, () => ({ applyCropRect }), [applyCropRect]);
+
     // 裁剪框变化时把实际坐标抛给父组件（缩略图 / 保存都用它）
     const onCropChange = useCallback(
       (cropper: CropperRef | null) => {
@@ -321,7 +407,7 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
         )}
       </div>
     );
-  },
+  }),
 );
 
 PortraitPreview.displayName = "PortraitPreview";

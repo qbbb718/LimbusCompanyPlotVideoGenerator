@@ -1,0 +1,461 @@
+/*
+ * 按截图反推裁剪框（ReferenceCropDialog）样式。
+ * 仅被「资源管理 → 角色 → 编辑立绘 → 按截图校准」使用，颜色沿用应用现有浅色弹窗风格。
+ */
+
+/* 弹窗：盖住编辑立绘弹窗（z-index 1000）与场景预览（1100） */
+.reference-crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.72);
+}
+
+.reference-crop-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1280px, 96vw);
+  max-height: 94vh;
+  padding: 16px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.reference-crop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.reference-crop-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.reference-crop-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  color: #999;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reference-crop-close:hover {
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+/* 舞台外层：黑底（视频画面本身就是黑底场景） */
+.reference-crop-viewport-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  background-color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/*
+ * 视口：严格 16:9。
+ * 宽度同时受"弹窗宽度"和"可见高度"约束，避免只夹住一边导致画面被拉扁。
+ * 舞台内的东西由 .reference-crop-frame 的 transform 统一缩放/平移（查看视图），
+ * 与校准数据无关。
+ */
+.reference-crop-viewport {
+  position: relative;
+  width: min(100%, calc(52vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  margin: 0 auto;
+  background-color: #000;
+  overflow: hidden;
+  /* 默认拖动 = 移动立绘；按住空格 / 中键拖动才是平移视图 */
+  cursor: move;
+  outline: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.reference-crop-viewport:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: -2px;
+}
+
+.reference-crop-viewport.is-dragging {
+  cursor: grabbing;
+}
+
+.reference-crop-viewport.is-pan-ready {
+  cursor: grab;
+}
+
+.reference-crop-viewport.is-panning {
+  cursor: grabbing;
+}
+
+/* 帧坐标系：1920×1080 的绝对定位容器，整体用 transform 做"查看视图"的缩放/平移 */
+.reference-crop-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  /* 高频缩放时交给合成层，滚轮缩放更跟手 */
+  will-change: transform;
+}
+
+.reference-crop-shot,
+.reference-crop-portrait {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  /* 立绘是透明底的 PNG / WebP，缩放时用平滑插值 */
+  image-rendering: auto;
+}
+
+.reference-crop-shot {
+  object-fit: fill;
+}
+
+/*
+ * 竖直靶带：只有上下两条边 + 中间那条"头部中心"线。
+ *
+ * 这里刻意不画左右边 —— 水平位置不参与校准（角色站画面哪边都行），
+ * 画成方框会让人误以为必须把角色拖到画面中间。
+ */
+.reference-crop-guide {
+  position: absolute;
+  border-top: 3px dashed rgba(24, 144, 255, 0.95);
+  border-bottom: 3px dashed rgba(24, 144, 255, 0.95);
+  background-color: rgba(24, 144, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.reference-crop-guide-center {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  border-top: 3px dashed rgba(24, 144, 255, 0.85);
+}
+
+.reference-crop-guide span {
+  position: absolute;
+  top: 6px;
+  left: 24px;
+  padding: 2px 10px;
+  font-size: 26px;
+  line-height: 1.3;
+  color: #fff;
+  background-color: rgba(24, 144, 255, 0.95);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* 还没选截图时的引导 */
+.reference-crop-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: #ddd;
+  font-size: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.reference-crop-empty p {
+  margin: 0;
+}
+
+.reference-crop-empty-hint {
+  max-width: 460px;
+  color: #999;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* 控制区 */
+.reference-crop-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  color: #555;
+  font-size: 13px;
+}
+
+.reference-crop-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.reference-crop-pick {
+  padding: 6px 14px;
+  color: #fff;
+  background-color: #1890ff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reference-crop-pick:hover {
+  background-color: #40a9ff;
+}
+
+.reference-crop-shot-meta {
+  color: #888;
+  font-size: 12px;
+}
+
+.reference-crop-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.reference-crop-slider input[type="range"] {
+  width: 120px;
+}
+
+.reference-crop-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+
+.reference-crop-zoom {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.reference-crop-zoom button {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: #333;
+  background-color: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reference-crop-zoom button:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.reference-crop-reset {
+  padding: 5px 12px;
+  font-size: 13px;
+  color: #1890ff;
+  background-color: #fff;
+  border: 1px solid #9cc8ff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reference-crop-reset:hover:not(:disabled) {
+  background-color: #f0f7ff;
+}
+
+.reference-crop-reset:disabled {
+  color: #bfbfbf;
+  border-color: #e5e5e5;
+  cursor: not-allowed;
+}
+
+/* ---- 查看视图缩放（− / 比例输入 / ＋），与"立绘缩放"是两组独立控件 ---- */
+.reference-crop-view-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background-color: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+}
+
+.reference-crop-view-zoom button {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: #333;
+  background-color: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.reference-crop-view-zoom button:hover {
+  color: #1890ff;
+  background-color: #f0f7ff;
+}
+
+.reference-crop-zoom-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 2px;
+  font-size: 12px;
+  color: #666;
+}
+
+.reference-crop-zoom-field input {
+  width: 58px;
+  padding: 2px 4px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: #333;
+  text-align: right;
+  background-color: #fff;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+
+.reference-crop-zoom-field input:hover {
+  border-color: #e0e0e0;
+}
+
+.reference-crop-zoom-field input:focus {
+  border-color: #1890ff;
+  outline: none;
+}
+
+.reference-crop-hint {
+  color: #999;
+  font-size: 12px;
+}
+
+.reference-crop-hint-strong {
+  margin-left: 8px;
+  font-weight: 400;
+  color: #ad6800;
+}
+
+/* 反推口径的说明（水平不参与 / 竖直来自身高） */
+.reference-crop-note {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #666;
+  background-color: #fafafa;
+  border-left: 3px solid #91caff;
+  border-radius: 2px;
+}
+
+/* 反推结果读数 */
+.reference-crop-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  color: #333;
+  background-color: #f7f9fc;
+  border: 1px solid #e3ecf7;
+  border-radius: 4px;
+}
+
+.reference-crop-readout strong {
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.reference-crop-readout-raw {
+  margin-left: auto;
+  color: #999;
+  font-size: 12px;
+}
+
+.reference-crop-warning {
+  margin: 0;
+  color: #ad4e00;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.reference-crop-error {
+  margin: 0;
+  color: #c0392b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 底部按钮 */
+.reference-crop-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.reference-crop-cancel {
+  padding: 8px 20px;
+  color: #555;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reference-crop-cancel:hover {
+  background-color: #eee;
+}
+
+.reference-crop-apply {
+  padding: 8px 20px;
+  color: #fff;
+  background-color: #1890ff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.reference-crop-apply:hover:not(:disabled) {
+  background-color: #40a9ff;
+}
+
+.reference-crop-apply:disabled {
+  background-color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+/* 窄而矮的窗口：控件再紧一点，保证舞台看得全 */
+@media (max-height: 700px) {
+  .reference-crop-viewport {
+    width: min(100%, calc(48vh * 16 / 9));
+  }
+}

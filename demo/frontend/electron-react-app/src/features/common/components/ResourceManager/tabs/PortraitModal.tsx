@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Portrait } from "@types";
 import {
   detectEmotionFromFileName,
@@ -13,8 +13,10 @@ import {
   PortraitPreview,
   PortraitSettings,
   PortraitScenePreview,
+  ReferenceCropDialog,
   createLogger,
 } from "./PortraitModal/index";
+import type { PortraitPreviewHandle } from "./PortraitModal/index";
 import {
   ImageSize,
   PortraitCropState,
@@ -83,6 +85,10 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
   const [isPreparingImage, setIsPreparingImage] = useState(false);
   // 立绘场景预览弹窗是否打开
   const [showScenePreview, setShowScenePreview] = useState(false);
+  // 「按截图反推裁剪框」弹窗是否打开
+  const [showReferenceCalibration, setShowReferenceCalibration] = useState(false);
+  // 裁剪器的命令式接口：反推结果要通过它写回裁剪框，否则界面和保存值会不一致
+  const portraitPreviewRef = useRef<PortraitPreviewHandle>(null);
   // 使用自定义hooks管理状态
   const {
     editingPortrait,
@@ -303,6 +309,7 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
               </div>
             )}
             <PortraitPreview
+              ref={portraitPreviewRef}
               portraitPreview={isPreparingImage ? null : portraitPreview}
               currentPortrait={currentPortrait}
               onCropComplete={onCropComplete}
@@ -313,6 +320,20 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
 
             {/* 裁剪区域下方右侧：预览立绘在完整画面中的效果 */}
             <div className="portrait-preview-actions">
+              <button
+                className="btn-secondary"
+                onClick={() => setShowReferenceCalibration(true)}
+                disabled={!portraitPreview || isPreparingImage}
+                title={
+                  isPreparingImage
+                    ? "正在读取新图的尺寸，稍等一下"
+                    : portraitPreview
+                      ? "上传一张 16:9 游戏截图，把立绘对齐后自动反推头部裁剪框"
+                      : "请先选择立绘文件"
+                }
+              >
+                按截图校准
+              </button>
               <button
                 className="btn-secondary"
                 onClick={() => setShowScenePreview(true)}
@@ -433,6 +454,41 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             保存
           </button>
         </div>
+
+        {showReferenceCalibration && portraitPreview && (
+          <ReferenceCropDialog
+            portraitUrl={portraitPreview}
+            currentCrop={previewCrop}
+            characterHeight={characterHeight}
+            adjX={currentPortrait.adjX || 0}
+            adjY={currentPortrait.adjY || 0}
+            onApply={(crop) => {
+              void (async () => {
+                const applied = await portraitPreviewRef.current?.applyCropRect({
+                  left: crop.faceX,
+                  top: crop.faceY,
+                  width: crop.length,
+                  height: crop.length,
+                });
+                // 裁剪器没准备好（极端情况）也把值写进 editingPortrait：
+                // 至少"保存"存下来的是用户刚校准的结果，不会退回旧框。
+                setEditingPortrait((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        faceX: crop.faceX,
+                        faceY: crop.faceY,
+                        length: crop.length,
+                      }
+                    : prev,
+                );
+                log("按截图校准写回裁剪框", { crop, applied });
+              })();
+              setShowReferenceCalibration(false);
+            }}
+            onClose={() => setShowReferenceCalibration(false)}
+          />
+        )}
 
         {showScenePreview && portraitPreview && (
           <PortraitScenePreview

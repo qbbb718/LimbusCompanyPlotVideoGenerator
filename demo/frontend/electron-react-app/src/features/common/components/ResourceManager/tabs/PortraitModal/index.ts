@@ -6,8 +6,10 @@ export { default as useFileSelector } from './hooks/useFileSelector';
 
 // Components
 export { default as PortraitPreview } from './components/PortraitPreview';
+export type { PortraitPreviewHandle } from './components/PortraitPreview';
 export { default as PortraitSettings } from './components/PortraitSettings';
 export { default as PortraitScenePreview } from './components/PortraitScenePreview';
+export { default as ReferenceCropDialog } from './components/ReferenceCropDialog';
 
 // Utils
 export { default as createLogger } from './utils/logger';

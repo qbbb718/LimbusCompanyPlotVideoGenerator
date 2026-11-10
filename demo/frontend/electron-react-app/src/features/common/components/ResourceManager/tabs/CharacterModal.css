@@ -770,10 +770,11 @@
   background: #fff;
 }
 
-/* 立绘裁剪区域下方右侧的「预览」按钮行 */
+/* 立绘裁剪区域下方右侧的按钮行（按截图校准 / 预览） */
 .portrait-preview-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   margin-top: 10px;
 }
 
