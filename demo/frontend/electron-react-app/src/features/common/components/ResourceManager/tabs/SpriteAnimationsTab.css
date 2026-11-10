@@ -400,7 +400,10 @@
   background: #fff;
 }
 
-.sprite-anim-field > input[type="number"] {
+/* 缩略图缩放的输入框是 text + inputMode=decimal（number 会把 "0." / "1." 净化成空串），
+   所以这里 text 与 number 共用同一套尺寸 */
+.sprite-anim-field > input[type="number"],
+.sprite-anim-field > input[type="text"] {
   flex: 0 0 72px;
   width: 72px;
   min-width: 56px;
@@ -410,6 +413,30 @@
   border: 1px solid #d9ddc0;
   border-radius: 4px;
   text-align: center;
+}
+
+/* 缩略图缩放的 ± 微调按钮：默认 1%、Shift 5%、Alt 0.1%（和输入框同一组上下限） */
+.sprite-anim-field > .sprite-anim-step {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid #c8cf9d;
+  border-radius: 4px;
+  background: #fff;
+  color: #3f4a2a;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sprite-anim-field > .sprite-anim-step:hover:not(:disabled) {
+  background: #f7f9ea;
+}
+
+.sprite-anim-field > .sprite-anim-step:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* 滑块：留得下就占满，留不下就换行（min-width 保证还拖得动） */
@@ -798,6 +825,76 @@
   white-space: nowrap;
 }
 
+/* 视图缩放条：− / 百分比输入框 / ＋ / 适应 + 一句用法提示。
+   放在播放控制条下面单独一行：它改的是"看"，和播放不是一件事。 */
+.sprite-preview-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: 12px;
+  color: #55603c;
+}
+
+.sprite-preview-viewbar-label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sprite-preview-viewbar button {
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid #c8cf9d;
+  border-radius: 4px;
+  background: #fff;
+  color: #3f4a2a;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sprite-preview-viewbar button:hover:not(:disabled) {
+  background: #f7f9ea;
+}
+
+.sprite-preview-viewbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 缩放比例输入框：数字 + 固定的 % 后缀（读数与输入框用同一套百分比口径） */
+.sprite-preview-zoom-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.sprite-preview-zoom-field input {
+  width: 60px;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border: 1px solid #d9ddc0;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.sprite-preview-zoom-unit {
+  font-size: 12px;
+  color: #7a8465;
+}
+
+/* 用法提示：宽度不够时单行省略（title 里有全文），不抢按钮的位置 */
+.sprite-preview-viewbar-note {
+  flex: 1 1 150px;
+  min-width: 0;
+  font-size: 11px;
+  color: #7a8465;
+}
+
 /* 视口：多余空间留白，舞台在中间（舞台尺寸由 JS 按 16:9 算成 px） */
 .sprite-preview-viewport {
   flex: 1 1 auto;
@@ -824,6 +921,15 @@
   box-shadow: 0 0 0 1px rgba(120, 130, 80, 0.35);
   user-select: none;
   touch-action: none;
+}
+
+/* 视图放大后：空白处按住可平移（缩略图自己的 move 光标会盖住它） */
+.sprite-preview-stage.is-zoomed {
+  cursor: grab;
+}
+
+.sprite-preview-stage.is-panning {
+  cursor: grabbing;
 }
 
 /* 底板已经是 16:9 的输出尺寸，contain 是"万一尺寸不符也只留黑边、不拉伸"的保险 */

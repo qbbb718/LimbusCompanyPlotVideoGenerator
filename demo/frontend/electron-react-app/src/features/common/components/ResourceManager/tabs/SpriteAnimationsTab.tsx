@@ -17,6 +17,17 @@
  * （高亮 + 提示"请点击某一帧设为缩略图"），点哪张就设哪张，选完自动退出；
  * 再按一次按钮或 Esc 可以原地取消，不改变当前缩略图。
  *
+ * <h3>缩略图缩放的精度</h3>
+ * 缩略图往往只有几十像素（汗滴、怒气符号），原来 0.05 的步进与"一格约 16%"的滚轮
+ * 一按就过头。"对准边缘"需要的粒度是**亚像素**，所以：
+ * <ul>
+ *   <li>输入框自由输入（text + `inputMode=decimal`，`type=number` 会把 `0.` / `1.` 净化成空串），
+ *       显示 4 位小数（0.01% 一档，微调在读数上一定看得见）；</li>
+ *   <li>± 按钮与 ↑↓ 方向键默认 1%，`Shift` 5%，`Alt` 0.1%（与「按截图校准」的立绘缩放同一套手感）；</li>
+ *   <li>预览里的滚轮默认约 1%/格，`Shift` 约 5%、`Alt` 约 0.1%（与按钮同一套粒度）；</li>
+ *   <li>预览的**视图**还能放大到 400%（Ctrl+滚轮）：视图只影响看，摆放参数一个字都不改。</li>
+ * </ul>
+ *
  * <h3>左侧列表的封面为什么就是"缩略图"</h3>
  * 列表要让人一眼认出是哪套动画，所以封面直接用缩略图（`poster.frame`）那张图，
  * 而不是第 0 张——淡入起点的第 0 帧往往全透明，看上去像"素材没导入成功"。
@@ -99,6 +110,36 @@ type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
 const AUTO_HOLDS_STORAGE_KEY = "lbc.animation.autoHolds";
 
 /**
+ * 缩略图缩放的 ± 按钮步长：默认 1%，Shift 5%，Alt 0.1%。
+ *
+ * <p>与「资源管理 → 角色 → 按截图校准」的立绘缩放同一套手感：1% 一档能落到一两个像素，
+ * 0.1% 留给最后一两个像素的微调。滚轮（预览里）也按这三档走，见 `SpriteAnimationPreview`。
+ */
+const SCALE_STEP = 1.01;
+const SCALE_STEP_LARGE = 1.05;
+const SCALE_STEP_FINE = 1.001;
+
+/** 缩略图缩放的上下限（与输入框 min / max、预览里的滚轮共用同一组边界） */
+const SCALE_MIN = 0.01;
+const SCALE_MAX = 20;
+
+/**
+ * 缩放值显示到小数点后 4 位（0.01% 一档）。
+ *
+ * <p>输入框用**倍率**（1 = 100%）：只显示 3 位时，0.1% 的微调在小缩放值上会被四舍五入吃掉
+ * （0.5 × 1.001 = 0.5005，按一下显示不出来），按钮 / 滚轮就"按了没反应"。4 位保证每动一档都看得见。
+ */
+const SCALE_DIGITS = 4;
+
+/** 缩放值保留 0.01% 一档：避免乘法累积出 1.0000000000000002 这种浮点尾巴 */
+const roundScale = (value: number): number =>
+  Math.round(value * 10 ** SCALE_DIGITS) / 10 ** SCALE_DIGITS;
+
+/** 把缩放夹进模型允许的范围（输入框 / ± 按钮 / 预览滚轮共用） */
+const clampScale = (value: number): number =>
+  Math.min(SCALE_MAX, Math.max(SCALE_MIN, Number.isFinite(value) ? value : 1));
+
+/**
  * @function 列表卡片上展示哪张图
  *
  * <p>用**缩略图**（`poster.frame`）而不是第 0 张：缩略图是用户在「帧序列」里专门挑出来
@@ -163,6 +204,15 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
   const [exportSelection, setExportSelection] = useState<Set<string>>(() => new Set());
   /** 预览正在播放：此时锁住缩略图的偏移/缩放输入（拖拽在预览里也已锁） */
   const [previewPlaying, setPreviewPlaying] = useState(false);
+  /**
+   * 缩略图缩放输入框正在编辑的文本（null = 没在编辑，显示规范化后的倍率）。
+   *
+   * <p>不直接用 `Number(input.value)` 当受控值：输入 `0.5` 的第一个字符是 `0`，
+   * 会被"必须大于 0"的校验打回、受控值把输入框重置掉，`.` 和 `5` 就打不进去了。
+   */
+  const [scaleDraft, setScaleDraft] = useState<string | null>(null);
+  /** 聚焦时的缩放值：Esc 放弃编辑时还原到它（输入过程中已经实时改了草稿） */
+  const scaleBeforeEdit = useRef<number | null>(null);
   /** 正在"选择缩略图"：帧列表进入待选态，点任意一帧即设为缩略图 */
   const [pickingPoster, setPickingPoster] = useState(false);
   /** 递增这个值 → 预览立刻停止播放（选缩略图是静态动作，边播边选必然看不清） */
@@ -225,6 +275,8 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
   /* 换素材时退出"选择缩略图"：待选态是给当前这套序列的，跨素材没意义 */
   useEffect(() => {
     setPickingPoster(false);
+    // 缩放输入框的草稿也跟着素材走：切过去再失焦，不能把 A 的输入提交到 B 上
+    setScaleDraft(null);
   }, [selectedId]);
 
   /* 待选态下按 Esc 取消（不改变当前缩略图） */
@@ -344,6 +396,35 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
 
   // 卸载（切页面）时把还没落库的改动补存掉，别让刚改的参数白发
   useEffect(() => () => flushRef.current(), []);
+
+  /**
+   * @function 缩略图缩放的 ± 微调
+   *
+   * @param direction +1 = 放大，-1 = 缩小（取倒数，保证放大与缩小对称）
+   * @param modifier  默认 1%，Shift 5%，Alt 0.1%（与「按截图校准」的立绘缩放一致）
+   *
+   * <p>倍率是乘法量：直接 `scale × 1.01` 会在几次之后带出浮点尾巴（1.0303...），
+   * 所以每次落成 0.01% 一档的圆整值，读数与再次保存的值都可预期。
+   */
+  const nudgePosterScale = (
+    direction: 1 | -1,
+    modifier: { shiftKey: boolean; altKey: boolean },
+  ) => {
+    const current = draftRef.current;
+    if (!current || previewPlaying) return;
+    const base = modifier.altKey
+      ? SCALE_STEP_FINE
+      : modifier.shiftKey
+        ? SCALE_STEP_LARGE
+        : SCALE_STEP;
+    const factor = direction > 0 ? base : 1 / base;
+    updateDraft({
+      poster: {
+        ...current.poster,
+        scale: clampScale(roundScale((current.poster.scale ?? 1) * factor)),
+      },
+    });
+  };
 
   const saveNow = () => {
     const current = draftRef.current;
@@ -712,6 +793,8 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
   const posterIndex = draft
     ? Math.min(Math.max(0, Math.round(draft.poster.frame ?? 0)), Math.max(0, frameCount - 1))
     : 0;
+  /** 缩放输入框的显示值：编辑中显示原始文本，平时显示 0.01% 一档的圆整值 */
+  const scaleText = scaleDraft ?? String(Number((draft?.poster.scale ?? 1).toFixed(SCALE_DIGITS)));
 
   return (
     <div className="sprite-anim-page">
@@ -1200,26 +1283,79 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
                         </span>
                         <span className="sprite-anim-field">
                           <span className="sprite-anim-label">缩放</span>
-                          <input
-                            type="number"
-                            min={0.01}
-                            max={20}
-                            step={0.05}
+                          <button
+                            type="button"
+                            className="sprite-anim-step"
                             disabled={previewPlaying}
-                            value={Number((draft.poster.scale ?? 1).toFixed(3))}
+                            onClick={(event) => nudgePosterScale(-1, event)}
+                            aria-label="缩小缩略图"
+                            title="缩小 1%（Shift 5%，Alt 0.1%）"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            autoComplete="off"
+                            maxLength={12}
+                            disabled={previewPlaying}
+                            value={scaleText}
                             aria-label="缩略图缩放"
-                            onChange={(e) => {
-                              const value = Number(e.target.value);
-                              if (Number.isFinite(value) && value > 0) {
-                                updateDraft({ poster: { ...draft.poster, scale: value } });
+                            title="缩放倍率：1 = 100%。可直接输入（0.0001 = 0.01%），或用 ± 按钮（1% / Shift 5% / Alt 0.1%）、方向键、滚轮微调"
+                            onFocus={() => {
+                              // 记下编辑前的值：Esc 放弃时还原（输入过程中预览已经实时跟着变了）
+                              scaleBeforeEdit.current = draftRef.current?.poster.scale ?? 1;
+                            }}
+                            onChange={(event) => {
+                              const text = event.target.value;
+                              setScaleDraft(text);
+                              // 只把能解析的值回写；"-"、"0."、"1." 这些中间态留在草稿里，
+                              // 受控值不会把它们打回去（这是 text 而不是 number 的原因，见 NumberField）
+                              const value = Number(text);
+                              if (text.trim() !== "" && Number.isFinite(value) && value > 0) {
+                                updateDraft({
+                                  poster: { ...draft.poster, scale: clampScale(value) },
+                                });
+                              }
+                            }}
+                            // 数值已经在 onChange 里实时回写过了：失焦只结束编辑态，不重新提交
+                            // （否则"输入框还开着时用滚轮改过"的旧文本会把新值盖回去）
+                            onBlur={() => setScaleDraft(null)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                event.currentTarget.blur();
+                              } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                                // 方向键当步进器用：默认 1%，Shift 5%，Alt 0.1%
+                                event.preventDefault();
+                                nudgePosterScale(event.key === "ArrowUp" ? 1 : -1, event);
+                                setScaleDraft(null);
+                              } else if (event.key === "Escape") {
+                                // 放弃这次输入：还原到聚焦前的缩放，再退出编辑态
+                                const before = scaleBeforeEdit.current;
+                                if (before !== null) {
+                                  updateDraft({ poster: { ...draft.poster, scale: before } });
+                                }
+                                setScaleDraft(null);
+                                event.currentTarget.blur();
                               }
                             }}
                           />
+                          <button
+                            type="button"
+                            className="sprite-anim-step"
+                            disabled={previewPlaying}
+                            onClick={(event) => nudgePosterScale(1, event)}
+                            aria-label="放大缩略图"
+                            title="放大 1%（Shift 5%，Alt 0.1%）"
+                          >
+                            ＋
+                          </button>
                         </span>
                         <span className="sprite-anim-note">
                           {previewPlaying
                             ? "播放中已锁定，暂停/停止后可调"
-                            : "也可以直接在右侧预览里拖动平移、滚轮缩放"}
+                            : "也可以直接在预览里拖动平移；滚轮缩放与 ± 按钮同档（1% / Shift 5% / Alt 0.1%）"}
                         </span>
                       </div>
                     </div>

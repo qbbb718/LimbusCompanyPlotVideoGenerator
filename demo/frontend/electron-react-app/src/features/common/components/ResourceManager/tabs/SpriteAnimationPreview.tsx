@@ -35,6 +35,22 @@
  * 同一段动画要能挂到不同角色身上。头部方框（立绘裁剪框）在场景里恒为
  * `183 × 用户缩放`（与角色身高、站位、裁剪框大小无关），所以把偏移存成
  * **头部长度的倍数**、把大小存成**缩放倍率**，换任何角色都落在同一个相对位置。
+ *
+ * <h3>视图缩放（与摆放参数严格分离）</h3>
+ * 缩略图摆放是"对着画面调"的活：16:9 舞台放进预览栏后通常只有原图的 50%~80%，
+ * 缩略图相对头部偏一两个像素根本看不出来。所以预览多了一层**只影响看**的视图：
+ * <ul>
+ *   <li>100% = 适应窗口，最多放大到 400%：按钮每次 ±10%、输入框可精确到 0.1%、
+ *       `Ctrl/⌘ + 滚轮` 以指针为锚点连续缩放（见 `spritePreviewView.ts`）；</li>
+ *   <li>放大后拖动画面**空白处**平移；拖缩略图仍然是移动缩略图；</li>
+ *   <li>视图不进任何保存：写回的仍是"相对头部"的偏移与缩放倍率，
+ *       在 400% 下拖出来的值与在 100% 下拖出来的完全一致（拖动换算是按实测舞台像素算的）。</li>
+ * </ul>
+ *
+ * <h3>缩略图缩放的精度</h3>
+ * 滚轮默认一格约 1%（原来是 16%，摆一个几十像素的符号一滚就过头）；
+ * `Shift` 约 5% 快速调、`Alt` 约 0.1% 微调；面板上另有 ± 按钮（1% / Shift 5% / Alt 0.1%），
+ * 与滚轮是同一套粒度。
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import log from "electron-log";
@@ -63,7 +79,26 @@ import {
 } from "@features/record/animation/sequenceTiming";
 import type { SequenceSample } from "@features/record/animation/sequenceTiming";
 import type { AnimationClipDto, AnimationClipPoster } from "@features/record/animation/animationClipAsset";
+import {
+  formatZoomPercentValue,
+  parseZoomPercent,
+  wheelZoomFactor,
+} from "@features/common/utils/referenceView";
 import { fitStage } from "./stageFit";
+import type { BoxSize } from "./stageFit";
+import {
+  VIEW_ZOOM_MAX,
+  VIEW_ZOOM_MIN,
+  VIEW_ZOOM_STEP,
+  clampView,
+  clampViewZoom,
+  fitView,
+  panViewBy,
+  viewStageSize,
+  zoomViewAt,
+  zoomViewToCenter,
+} from "./spritePreviewView";
+import type { PreviewView } from "./spritePreviewView";
 import "./SpriteAnimationsTab.css";
 
 /** 播放参数（来自编辑器草稿，改了立刻在预览里生效） */
@@ -100,6 +135,24 @@ const PREVIEW_ASPECT = `${PREVIEW_WIDTH} / ${PREVIEW_HEIGHT}`;
 /** 播放时钟的帧率：与全项目 timebase 一致 */
 const PLAY_FPS = 30;
 
+/** 缩略图缩放的上下限（与资源面板输入框的 min / max 一致） */
+const SPRITE_SCALE_MIN = 0.01;
+const SPRITE_SCALE_MAX = 20;
+
+/**
+ * 缩略图缩放的滚轮灵敏度：标准鼠标一格（`deltaY ≈ 100`）约 ×0.99（1%）。
+ *
+ * <p>倍率是 `exp(-deltaY × sensitivity)`（见 `referenceView.wheelZoomFactor`）：
+ * 0.0001 → 一格约 1%。原来是 `1.0015^deltaY`（一格约 16%），摆一个几十像素的符号一滚就过头，
+ * 所以整体调细；需要快调时按 `Shift`（约 5%/格），要抠最后一两个像素时按 `Alt`（约 0.1%/格）。
+ * 三档与面板上的 ± 按钮（1% / Shift 5% / Alt 0.1%）是同一套粒度。
+ */
+const SPRITE_SCALE_WHEEL_SENSITIVITY = 0.0001;
+/** Shift+滚轮：粗调，一格约 5% */
+const SPRITE_SCALE_WHEEL_COARSE_SENSITIVITY = 0.0005;
+/** Alt+滚轮：微调，一格约 0.1% */
+const SPRITE_SCALE_WHEEL_FINE_SENSITIVITY = 0.00001;
+
 /** 播放状态：停止 = 显示缩略图；播放/暂停 = 显示序列 */
 type Phase = "stopped" | "playing" | "paused";
 
@@ -134,6 +187,15 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   const [dragging, setDragging] = useState(false);
   const { ref: viewportRef, size: viewportSize } = useElementSize<HTMLDivElement>();
 
+  /* ==================== 视图缩放（只影响看） ==================== */
+  const [view, setView] = useState<PreviewView>(fitView);
+  /** 视图缩放输入框的草稿：null = 没在编辑，显示当前比例 */
+  const [zoomDraft, setZoomDraft] = useState<string | null>(null);
+  /** 输入框按 Esc：标记"这次失焦是取消"，别把被放弃的输入提交上去 */
+  const cancelZoomRef = useRef(false);
+  const panDragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const [panning, setPanning] = useState(false);
+
   /* ==================== 播放 ==================== */
   const [phase, setPhase] = useState<Phase>("stopped");
   const [loopPreview, setLoopPreview] = useState(true);
@@ -148,6 +210,22 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   const loopingAsset = loopMode === "loop" || loopMode === "pingpong";
   const transformEnabled = phase !== "playing";
   const playing = phase === "playing";
+
+  /**
+   * 事件回调（原生滚轮 / 指针拖拽）里要读**最新**值。
+   *
+   * <p>原生 `wheel` 监听只挂一次（否则每次改草稿都要 add/remove 一遍），
+   * 回调读这些 ref 才不会拿到旧闭包里的 poster、舞台尺寸或播放状态。
+   */
+  const posterRef = useRef(poster);
+  posterRef.current = poster;
+  const onPosterChangeRef = useRef(onPosterChange);
+  onPosterChangeRef.current = onPosterChange;
+  const transformEnabledRef = useRef(transformEnabled);
+  transformEnabledRef.current = transformEnabled;
+  const viewportSizeRef = useRef(viewportSize);
+  viewportSizeRef.current = viewportSize;
+  const stageSizeRef = useRef<BoxSize | null>(null);
 
   /**
    * 这一遍播放总共要走的帧数。
@@ -497,6 +575,85 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
       ),
     [viewportSize.width, viewportSize.height],
   );
+  stageSizeRef.current = stageSize;
+
+  /**
+   * 舞台的**显示**尺寸 = 适应尺寸 × 视图缩放。
+   *
+   * <p>舞台里的叠加层仍然按百分比铺，所以缩放只是把同一个坐标系整体放大，
+   * 缩略图与底板的相对位置不会漂；拖动换算走实测 `getBoundingClientRect()`，也不用改。
+   */
+  const displayedStage = useMemo(
+    () => (stageSize ? viewStageSize(stageSize, view.zoom) : null),
+    [stageSize, view.zoom],
+  );
+
+  // 视口 / 舞台尺寸变了（拉窗口、切换布局）：把视图夹回边界，别停在"露白"的位置
+  useEffect(() => {
+    if (!stageSize) return;
+    setView((current) => {
+      const next = clampView(current, stageSize, viewportSize);
+      return next.zoom === current.zoom && next.panX === current.panX && next.panY === current.panY
+        ? current
+        : next;
+    });
+  }, [stageSize, viewportSize]);
+
+  /**
+   * 原生滚轮监听：`Ctrl/⌘ + 滚轮` = 视图缩放（以指针为锚点），普通滚轮 = 缩略图缩放。
+   *
+   * <p>为什么不用 React 的 `onWheel`：React 17+ 把 wheel 注册成 passive 监听，
+   * 里面 `preventDefault()` 会被忽略（页面 / 外层容器照样滚，Ctrl+滚轮还会触发窗口缩放）。
+   * 这里用 `{ passive: false }` 的原生监听接管。
+   */
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+
+    const onWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLElement | null;
+      const overStage = !!target?.closest?.(".sprite-preview-stage");
+
+      // 视图缩放：只影响看，不写任何参数
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        const base = stageSizeRef.current;
+        const size = viewportSizeRef.current;
+        // 滚轮是"直接操作视图"：丢掉输入框里还没提交的文本，
+        // 否则鼠标移开失焦时会按旧草稿把视图又缩回去
+        setZoomDraft(null);
+        cancelZoomRef.current = false;
+        if (!base || size.width <= 0 || size.height <= 0) return;
+        const rect = viewport.getBoundingClientRect();
+        const anchor = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        setView((current) =>
+          zoomViewAt(current, current.zoom * wheelZoomFactor(event.deltaY), anchor, base, size),
+        );
+        return;
+      }
+
+      // 缩略图缩放：仍然只在舞台上生效（在留白处滚轮留给页面滚动，不抢）
+      if (!overStage || !transformEnabledRef.current) return;
+      event.preventDefault();
+      const sensitivity = event.altKey
+        ? SPRITE_SCALE_WHEEL_FINE_SENSITIVITY
+        : event.shiftKey
+          ? SPRITE_SCALE_WHEEL_COARSE_SENSITIVITY
+          : SPRITE_SCALE_WHEEL_SENSITIVITY;
+      const current = posterRef.current;
+      const scale = clamp(
+        (current.scale ?? 1) * wheelZoomFactor(event.deltaY, sensitivity),
+        SPRITE_SCALE_MIN,
+        SPRITE_SCALE_MAX,
+      );
+      // 同一帧里可能连着来好几个滚轮事件：先更新 ref，下一次才基于最新值算
+      posterRef.current = { ...current, scale };
+      onPosterChangeRef.current({ ...current, scale });
+    };
+
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
+  }, [viewportRef]);
 
   /** 当前要显示的帧图 */
   const frameIndex = sample.imageIndex === NO_FRAME ? 0 : sample.imageIndex;
@@ -548,15 +705,79 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
     setDragging(false);
   };
 
-  /** 滚轮缩放（以缩略图中心为基准；播放中禁用） */
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    if (!geometry || !transformEnabled) return;
-    event.preventDefault();
-    const factor = Math.pow(1.0015, -event.deltaY);
-    onPosterChange({
-      ...poster,
-      scale: clamp((poster.scale ?? 1) * factor, 0.01, 20),
+  /* ==================== 视图缩放：按钮 / 输入框 ==================== */
+
+  /**
+   * 视图缩放的唯一入口。
+   *
+   * <p>以视口中心为锚点：按钮 / 输入框缩完，画面中心的内容还在中心（不会"缩着缩着跑掉"）。
+   * 量不到舞台尺寸时（单元测试 / 首帧）只改读数，不产生假平移。
+   */
+  const changeZoom = (resolve: (current: PreviewView) => number) => {
+    setView((current) => {
+      const base = stageSizeRef.current;
+      const size = viewportSizeRef.current;
+      const target = resolve(current);
+      if (!base || size.width <= 0 || size.height <= 0) {
+        return { zoom: clampViewZoom(target), panX: 0, panY: 0 };
+      }
+      return zoomViewToCenter(current, target, base, size);
     });
+  };
+
+  /** 按钮：每次 10 个百分点（100 → 110 → … → 400） */
+  const zoomByStep = (direction: 1 | -1) =>
+    changeZoom((current) => current.zoom + direction * VIEW_ZOOM_STEP);
+
+  const resetView = () => setView(fitView());
+
+  /** 提交视图缩放输入框：150 / 150% / 2x 都认，非法输入直接还原 */
+  const commitZoomDraft = () => {
+    if (cancelZoomRef.current) {
+      // 上一次是按 Esc 取消的：丢掉草稿，别把被放弃的输入提交上去
+      cancelZoomRef.current = false;
+      setZoomDraft(null);
+      return;
+    }
+    if (zoomDraft === null) return;
+    const parsed = parseZoomPercent(zoomDraft);
+    setZoomDraft(null);
+    if (parsed === null) return;
+    // 只是点进输入框又点出去（或输入的值四舍五入后与当前读数一致）：别把显示用的
+    // 0.1 级近似值当成新比例提交，否则每次聚焦都会让视图轻微跳一下
+    if (formatZoomPercentValue(parsed) === formatZoomPercentValue(view.zoom)) return;
+    changeZoom(() => parsed);
+  };
+
+  /* ==================== 放大后拖动空白处平移 ==================== */
+
+  const handleStagePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    // 没放大时没有可平移的余量；缩略图自己的拖拽会 stopPropagation，轮不到这里
+    if (view.zoom <= VIEW_ZOOM_MIN || event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest?.(".sprite-preview-handle")) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    panDragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    setPanning(true);
+  };
+
+  const handleStagePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = panDragRef.current;
+    const base = stageSizeRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !base) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    setView((current) => panViewBy(current, base, viewportSizeRef.current, dx, dy));
+  };
+
+  const endStagePan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!panDragRef.current) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    panDragRef.current = null;
+    setPanning(false);
   };
 
   const stageStyle = (rect: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
@@ -672,23 +893,100 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
             {frameReadout}
             {playing ? "（播放中：变换已锁定）" : ""}
           </span>
-          <span className="sprite-preview-ratio" title="预览图固定 16:9，窗口缩放时只等比缩放、不变形">
+          <span
+            className="sprite-preview-ratio"
+            title="预览图固定 16:9：窗口缩放或视图放大时都只等比缩放、不变形"
+          >
             16:9
           </span>
         </span>
       </div>
 
+      {/* 视图缩放：只影响看，不写任何参数（摆放仍按"相对头部"保存） */}
+      <div className="sprite-preview-viewbar" role="group" aria-label="视图缩放">
+        <span className="sprite-preview-viewbar-label">视图</span>
+        <button
+          type="button"
+          onClick={() => zoomByStep(-1)}
+          disabled={view.zoom <= VIEW_ZOOM_MIN}
+          aria-label="缩小视图"
+          title="缩小视图（每次 10%）；100% = 适应窗口"
+        >
+          −
+        </button>
+        <label
+          className="sprite-preview-zoom-field"
+          title="视图缩放：100% = 适应窗口；可输入 150、150% 或 2x（精确到 0.1%），只影响看"
+        >
+          <input
+            type="text"
+            inputMode="decimal"
+            aria-label="视图缩放比例（百分比，100% = 适应窗口，可输入 150、150% 或 2x）"
+            value={zoomDraft ?? formatZoomPercentValue(view.zoom)}
+            onFocus={() => setZoomDraft(formatZoomPercentValue(view.zoom))}
+            onChange={(event) => setZoomDraft(event.target.value)}
+            onBlur={commitZoomDraft}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitZoomDraft();
+                event.currentTarget.blur();
+              } else if (event.key === "Escape") {
+                // 放弃这次输入：失焦时不要再提交（与「按截图校准」的视图缩放输入框同一套交互）
+                cancelZoomRef.current = true;
+                setZoomDraft(null);
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          <span className="sprite-preview-zoom-unit">%</span>
+        </label>
+        <button
+          type="button"
+          onClick={() => zoomByStep(1)}
+          disabled={view.zoom >= VIEW_ZOOM_MAX}
+          aria-label="放大视图"
+          title="放大视图（每次 10%）；最多 400%"
+        >
+          ＋
+        </button>
+        <button
+          type="button"
+          onClick={resetView}
+          disabled={view.zoom <= VIEW_ZOOM_MIN && view.panX === 0 && view.panY === 0}
+          title="回到适应窗口（100%），丢掉平移"
+        >
+          适应
+        </button>
+        <span
+          className="sprite-preview-viewbar-note sprite-anim-ellipsis"
+          title="Ctrl/⌘+滚轮以指针为中心缩放视图；放大后拖动画面空白处平移。视图只影响看，缩略图的摆放参数不会变。"
+        >
+          Ctrl+滚轮缩放 · 放大后拖动空白处平移
+        </span>
+      </div>
+
       {/* 视口：多余空间留白，舞台居中 */}
-      <div className="sprite-preview-viewport" ref={viewportRef}>
+      <div className="sprite-preview-viewport" ref={viewportRef} data-testid="sprite-preview-viewport">
         <div
-          className="sprite-preview-stage"
+          className={`sprite-preview-stage${view.zoom > VIEW_ZOOM_MIN ? " is-zoomed" : ""}${
+            panning ? " is-panning" : ""
+          }`}
           ref={stageRef}
-          style={
-            stageSize
-              ? { width: `${stageSize.width}px`, height: `${stageSize.height}px` }
-              : { width: "100%", aspectRatio: PREVIEW_ASPECT }
-          }
-          onWheel={handleWheel}
+          data-testid="sprite-preview-stage"
+          style={{
+            // 舞台显示尺寸 = 适应尺寸 × 视图缩放；量不到视口时退回 CSS 的 16:9 兜底
+            ...(displayedStage
+              ? { width: `${displayedStage.width}px`, height: `${displayedStage.height}px` }
+              : { width: `${view.zoom * 100}%`, aspectRatio: PREVIEW_ASPECT }),
+            // 平移只是"看"的位移：舞台仍由 flex 居中，translate 只挪显示位置
+            transform:
+              view.panX || view.panY ? `translate(${view.panX}px, ${view.panY}px)` : undefined,
+          }}
+          onPointerDown={handleStagePointerDown}
+          onPointerMove={handleStagePointerMove}
+          onPointerUp={endStagePan}
+          onPointerCancel={endStagePan}
         >
           {rasterUrl ? (
             <img className="sprite-preview-raster" src={rasterUrl} alt="合成预览" draggable={false} />
@@ -710,7 +1008,7 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
               onPointerCancel={endDrag}
               title={
                 transformEnabled
-                  ? "拖动移动；滚轮缩放（以中心为基准）"
+                  ? "拖动移动；滚轮缩放（Shift 粗调 / Alt 微调）；Ctrl+滚轮缩放画面"
                   : "播放中锁定变换，暂停或停止后可编辑"
               }
               role="presentation"
@@ -739,15 +1037,16 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
       {/* 说明：窗口窄/矮时由 CSS 掐成两行并省略（悬浮看全文），把高度让给画面 */}
       <div
         className="sprite-preview-hint"
-        title="拖动缩略图可平移、滚轮可缩放（以缩略图中心为基准），播放中锁定、暂停/停止后可编辑；位置与大小按“相对头部区域”保存，换角色也落在同一相对位置。播放到末尾：勾选「循环播放」会从头再播一遍，不勾则自动停止并回到缩略图（初始状态）。"
+        title="拖动缩略图可平移；滚轮缩放（以缩略图中心为基准，Shift 粗调 5%、Alt 微调 0.1%）；Ctrl/⌘+滚轮缩放预览视图，放大后拖动画面空白处平移（视图只影响看）。播放中锁定缩略图变换，暂停/停止后可编辑；位置与大小按“相对头部区域”保存，换角色也落在同一相对位置。播放到末尾：勾选「循环播放」会从头再播一遍，不勾则自动停止并回到缩略图（初始状态）。"
       >
-        拖动缩略图可平移，滚轮可缩放（<strong>以缩略图中心为基准</strong>）；播放中锁定、暂停/停止后可编辑。
-        位置与大小存成<strong>相对头部区域</strong>的偏移（头长的倍数）与缩放倍率，换个角色也落在同一个相对位置。
+        拖动缩略图可平移；滚轮缩放（<strong>以缩略图中心为基准</strong>，Shift 粗调 5% / Alt 微调 0.1%）；
+        Ctrl+滚轮缩放预览<strong>视图</strong>，放大后拖动空白处平移（只影响看）。播放中锁定、暂停/停止后可编辑。
         <br />
-        播放到末尾：勾选「循环播放」会从头再播一遍，不勾则<strong>自动停止并回到缩略图</strong>（初始状态）。
+        位置与大小存成<strong>相对头部区域</strong>的偏移（头长的倍数）与缩放倍率，换个角色也落在同一个相对位置。
+        播放到末尾：勾选「循环播放」会从头再播一遍，不勾则<strong>自动停止并回到缩略图</strong>。
         当前：横向 {(poster.offsetX ?? 0).toFixed(2)} 个头宽、纵向 {(poster.offsetY ?? 0).toFixed(2)} 个头宽、
-        缩放 {Math.round((poster.scale ?? 1) * 100)}%
-        {geometry ? `（头部方框约 ${Math.round(geometry.headOut)}px）` : ""}。
+        缩放 {((poster.scale ?? 1) * 100).toFixed(2)}%（{Number((poster.scale ?? 1).toFixed(4))}×）
+        {geometry ? `，头部方框约 ${Math.round(geometry.headOut)}px` : ""}。
       </div>
     </div>
   );

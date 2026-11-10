@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 资源管理 → 序列帧动画子页面的接线测试。
  *
  * 只验"用户操作 → 交给后端的数据 / 界面状态"，不验样式与预览渲染（预览的几何与等比适配
@@ -685,6 +685,141 @@ describe("资源管理 · 序列帧动画", () => {
     fireEvent.click(screen.getByText("取消"));
     fireEvent.click(screen.getByText("选择导出"));
     expect(screen.getByText(/确认导出 \(0\)/)).toBeTruthy();
+  });
+
+  /* ==================== 预览画面缩放 / 缩放精度 ==================== */
+
+  describe("预览视图缩放与缩略图缩放精度", () => {
+    /** 视图缩放输入框（读数是百分比数字，不带 %） */
+    const zoomInput = () =>
+      screen.getByLabelText(/视图缩放比例/) as HTMLInputElement;
+    /** 缩略图缩放输入框（倍率） */
+    const scaleInput = () => screen.getByLabelText("缩略图缩放") as HTMLInputElement;
+
+    test("视图缩放：±10%、精确输入、适应，且不写任何参数", () => {
+      mockLibrary([asset]);
+      const update = jest.spyOn(ApiService, "updateAnimationClip").mockResolvedValue({} as any);
+      renderTab();
+
+      expect(zoomInput().value).toBe("100");
+
+      // 按钮一次 10 个百分点；100% 时不能再缩小
+      fireEvent.click(screen.getByRole("button", { name: "放大视图" }));
+      expect(zoomInput().value).toBe("110");
+      fireEvent.click(screen.getByRole("button", { name: "缩小视图" }));
+      expect(zoomInput().value).toBe("100");
+      expect((screen.getByRole("button", { name: "缩小视图" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+
+      // 可输入精确比例：150 / 150% / 2x 三种写法都认
+      fireEvent.change(zoomInput(), { target: { value: "250" } });
+      fireEvent.keyDown(zoomInput(), { key: "Enter" });
+      expect(zoomInput().value).toBe("250");
+
+      fireEvent.change(zoomInput(), { target: { value: "150%" } });
+      fireEvent.keyDown(zoomInput(), { key: "Enter" });
+      expect(zoomInput().value).toBe("150");
+
+      fireEvent.change(zoomInput(), { target: { value: "2x" } });
+      fireEvent.keyDown(zoomInput(), { key: "Enter" });
+      expect(zoomInput().value).toBe("200");
+
+      // 夹在 [100%, 400%]
+      fireEvent.change(zoomInput(), { target: { value: "900" } });
+      fireEvent.keyDown(zoomInput(), { key: "Enter" });
+      expect(zoomInput().value).toBe("400");
+      expect((screen.getByRole("button", { name: "放大视图" }) as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+
+      fireEvent.change(zoomInput(), { target: { value: "50" } });
+      fireEvent.keyDown(zoomInput(), { key: "Enter" });
+      expect(zoomInput().value).toBe("100");
+
+      // 适应 = 回到 100%
+      fireEvent.click(screen.getByRole("button", { name: "放大视图" }));
+      expect(zoomInput().value).toBe("110");
+      fireEvent.click(screen.getByText("适应"));
+      expect(zoomInput().value).toBe("100");
+
+      // 视图只影响看：没有产生任何保存
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    test("视图缩放输入框：Esc 放弃、非法输入还原", () => {
+      mockLibrary([asset]);
+      renderTab();
+
+      fireEvent.focus(zoomInput());
+      fireEvent.change(zoomInput(), { target: { value: "250" } });
+      fireEvent.keyDown(zoomInput(), { key: "Escape" });
+      expect(zoomInput().value).toBe("100");
+
+      fireEvent.change(zoomInput(), { target: { value: "abc" } });
+      fireEvent.keyDown(zoomInput(), { key: "Enter" });
+      expect(zoomInput().value).toBe("100");
+    });
+
+    test("缩略图缩放精度：± 按钮 1% / Shift 5% / Alt 0.1%、方向键、4 位小数与落库值", async () => {
+      mockLibrary([asset]);
+      const update = jest.spyOn(ApiService, "updateAnimationClip").mockResolvedValue({} as any);
+      renderTab();
+
+      // 输入框是 text + decimal：number 会把 "0." / "1." 这类中间态净化成空串，小数敲不进去
+      expect(scaleInput().getAttribute("type")).toBe("text");
+      expect(scaleInput().getAttribute("inputmode")).toBe("decimal");
+      expect(scaleInput().value).toBe("1");
+
+      // 默认 1%
+      fireEvent.click(screen.getByRole("button", { name: "放大缩略图" }));
+      expect(scaleInput().value).toBe("1.01");
+      // Shift 5%
+      fireEvent.click(screen.getByRole("button", { name: "放大缩略图" }), { shiftKey: true });
+      expect(scaleInput().value).toBe("1.0605");
+      // Alt 0.1%：1.0605 / 1.001 = 1.05944…，落成 0.01% 一档
+      fireEvent.click(screen.getByRole("button", { name: "缩小缩略图" }), { altKey: true });
+      expect(scaleInput().value).toBe("1.0594");
+
+      // 手输小数：先敲 "0"（中间态）再敲 "0.5"，受控值不会把 "0" 打回去
+      fireEvent.focus(scaleInput());
+      fireEvent.change(scaleInput(), { target: { value: "0" } });
+      expect(scaleInput().value).toBe("0");
+      fireEvent.change(scaleInput(), { target: { value: "0.5" } });
+      expect(scaleInput().value).toBe("0.5");
+      // 方向键当步进器：↑ 加 1%，↓ 减回去
+      fireEvent.keyDown(scaleInput(), { key: "ArrowUp" });
+      expect(scaleInput().value).toBe("0.505");
+      fireEvent.keyDown(scaleInput(), { key: "ArrowDown" });
+      expect(scaleInput().value).toBe("0.5");
+      fireEvent.blur(scaleInput());
+      expect(scaleInput().value).toBe("0.5");
+
+      // 精确输入：4 位小数（0.01%）能原样保留
+      fireEvent.focus(scaleInput());
+      fireEvent.change(scaleInput(), { target: { value: "1.2345" } });
+      expect(scaleInput().value).toBe("1.2345");
+      fireEvent.blur(scaleInput());
+      expect(scaleInput().value).toBe("1.2345");
+
+      fireEvent.click(screen.getByText("保存"));
+      await waitFor(() => expect(update).toHaveBeenCalled());
+      const payload = (update.mock.calls[update.mock.calls.length - 1] as [string, any])[1];
+      expect(payload.poster.scale).toBeCloseTo(1.2345, 6);
+    });
+
+    test("Esc 放弃缩放输入：还原到聚焦前的值", () => {
+      mockLibrary([asset]);
+      renderTab();
+
+      fireEvent.focus(scaleInput());
+      fireEvent.change(scaleInput(), { target: { value: "1.9" } });
+      // 编辑过程中预览实时跟着变（草稿已经改了）
+      expect(scaleInput().value).toBe("1.9");
+
+      fireEvent.keyDown(scaleInput(), { key: "Escape" });
+      expect(scaleInput().value).toBe("1");
+    });
   });
 });
 
