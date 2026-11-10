@@ -100,6 +100,8 @@ const PortraitSettings: React.FC<PortraitSettingsProps> = ({
           请从下巴框选至头顶（不含头发厚度）
           <br />
           裁剪区域将用于计算缩放比例
+          <br />
+          拖动裁剪框可改位置；滚轮 / 拖动框外只缩放平移画面，框跟立绘走、不改裁剪值
         </p>
         <img
           className="crop-hint-image"

@@ -3,6 +3,7 @@ import { CropperRef, Cropper } from "react-advanced-cropper";
 import { Area } from "react-easy-crop";
 import { Portrait } from "@types";
 import createLogger from "../utils/logger";
+import { keepStencilImageRect } from "../utils/keepStencilImageRect";
 import {
   PortraitCropState,
   resolveDefaultCropRect,
@@ -297,6 +298,8 @@ const PortraitPreview: React.FC<PortraitPreviewProps> = memo(
                 ref={cropperRef}
                 key={`portrait-${currentPortrait.portraitID}`}
                 src={portraitPreview}
+                // 缩放 / 平移立绘时框跟着一起动，保持相对位置（见 keepStencilImageRect）
+                transformImageAlgorithm={keepStencilImageRect}
                 stencilProps={{
                   aspectRatio: 1, // 1:1 宽高比
                 }}
