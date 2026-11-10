@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Portrait } from "@types";
 import PortraitSettings from "./PortraitSettings";
 
-// PortraitSettings 只用 BASE_URL 拼裁剪提示图的地址，测试里不需要真的请求后端
-jest.mock("@services/ApiService", () => ({
-  __esModule: true,
-  BASE_URL: "http://localhost:8081",
-}));
-
 const CHINESE_EMOTION_LABELS = [
   "正常",
   "开心",
@@ -89,5 +83,23 @@ describe("立绘情绪下拉框", () => {
       portName: "罗佳-face_happy_L",
       emotion: "sad",
     });
+  });
+});
+
+/**
+ * 头部裁剪示例图必须跟着**前端**一起打包。
+ *
+ * <p>历史实现拼的是 `${BASE_URL}/assets/guides/head-crop-guideline.png`，
+ * 而数据目录里从来没有过这个文件（安装包也不带），界面上一直是裂图。
+ * 现在改成 `import` 打包资源：Jest 里是文件名，打包后是 static/media 下的文件。
+ */
+describe("头部裁剪示例图", () => {
+  test("走打包资源，不再拼后端 /assets/guides 地址", () => {
+    renderSettings(createPortrait());
+
+    const image = screen.getByAltText("头部裁剪区域示例") as HTMLImageElement;
+    expect(image.getAttribute("src")).toMatch(/head-crop-guideline\.png$/);
+    expect(image.getAttribute("src")).not.toContain("/assets/guides");
+    expect(image.className).toBe("crop-hint-image");
   });
 });

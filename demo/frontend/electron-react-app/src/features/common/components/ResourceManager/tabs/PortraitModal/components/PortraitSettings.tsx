@@ -1,11 +1,14 @@
 import React from "react";
 import { Portrait } from "@types";
-import { BASE_URL } from "@services/ApiService";
 import {
   StandardEmotion,
   getEmotionOptions,
   mapEmotion,
 } from "../../../../../utils/emotionMapper";
+// 示例图跟着前端一起打包：它只是界面上的说明图，不是用户素材。
+// 以前拼 `${BASE_URL}/assets/guides/...` 从数据目录取，那个文件从来没进过安装包，
+// 实际一直是裂图（换台机器/新装也一样）。
+import headCropGuideline from "../assets/head-crop-guideline.png";
 
 interface PortraitSettingsProps {
   currentPortrait: Portrait;
@@ -105,7 +108,7 @@ const PortraitSettings: React.FC<PortraitSettingsProps> = ({
         </p>
         <img
           className="crop-hint-image"
-          src={`${BASE_URL}/assets/guides/head-crop-guideline.png`}
+          src={headCropGuideline}
           alt="头部裁剪区域示例"
         />
       </div>

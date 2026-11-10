@@ -260,199 +260,218 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
         length: Math.round(currentPortrait.length || 0),
       };
 
+  /**
+   * 保存立绘。
+   *
+   * <p>按钮在标题栏里（和「角色编辑」弹窗一致），逻辑与原先底部按钮完全相同：
+   * 新立绘先传原图 → 用当前裁剪框生成缩略图传后端 → 裁剪值写回立绘 → {@link PortraitModalProps.onSave}。
+   */
+  const handleSave = async () => {
+    if (!editingPortrait) return;
+
+    // 情绪由中文下拉框直接写入 editingPortrait.emotion，
+    // 这里再归一化一次，兼容后端返回的 code 和历史数据里的大写枚举名
+    const standardEmotion = mapEmotion(editingPortrait.emotion);
+    editingPortrait.emotion = standardEmotion as unknown as any;
+    const emotionCode = String(standardEmotion).toLowerCase();
+
+    // 如果是新立绘且有待上传的文件，先上传到后端
+    if (isNewPortrait && pendingFile && characterId) {
+      try {
+        // 确保 portraitID 存在（后端用 portraitId 命名文件）
+        if (!editingPortrait.portraitID) {
+          editingPortrait.portraitID = `portrait_${Date.now()}`;
+        }
+        log("开始上传立绘原图到后端...");
+        const uploadResult = await ApiService.uploadPortraitFile(
+          characterId,
+          editingPortrait.portraitID,
+          pendingFile,
+          emotionCode,
+        );
+        // 用后端返回的路径覆盖本地路径
+        editingPortrait.imagePath = uploadResult.imagePath;
+        log("立绘原图已上传", uploadResult.imagePath);
+      } catch (error) {
+        console.error("上传立绘原图失败:", error);
+        alert("上传立绘原图失败，请检查后端是否正常运行");
+        return; // 阻止保存
+      }
+    }
+
+    // 生成缩略图（通过后端 API 上传，路径由后端 config 集中管理）
+    // 后端保存到 {characters}/{characterId}/{characterThumbnailsSubdir}/thumbnail_{portraitId}.png
+    // 返回 URL 路径，存入 DB portrait.thumbnail_path，删除角色目录时一并清理。
+    if (portraitPreview && croppedAreaPixels) {
+      try {
+        // 使用createCroppedImage函数生成缩略图
+        const thumbnailBlob = await createCroppedImage(
+          portraitPreview,
+          croppedAreaPixels,
+        );
+
+        // 创建缩略图文件名
+        const thumbnailFileName = `thumbnail_${editingPortrait.portraitID}.png`;
+
+        // 通过后端 API 上传缩略图（替代原 Electron IPC saveThumbnail）
+        const formData = new FormData();
+        formData.append("file", thumbnailBlob, thumbnailFileName);
+        const thumbnailPath = await ApiService.uploadPortraitThumbnail(
+          editingPortrait.characterID,
+          editingPortrait.portraitID,
+          formData,
+        );
+
+        // 更新立绘的缩略图路径（URL 路径，前端 <img src> 直接拼 baseUrl 访问）
+        editingPortrait.thumbnailPath = thumbnailPath;
+      } catch (error) {
+        console.error("生成缩略图失败:", error);
+        log("生成缩略图失败", error);
+      }
+    }
+
+    // 更新裁剪相关值
+    if (croppedAreaPixels) {
+      editingPortrait.faceX = Math.round(croppedAreaPixels.x);
+      editingPortrait.faceY = Math.round(croppedAreaPixels.y);
+      editingPortrait.length = Math.round(croppedAreaPixels.width);
+      // 确保保存了裁剪区域的大小，以便下次打开时能够恢复
+      log("保存裁剪区域", {
+        x: editingPortrait.faceX,
+        y: editingPortrait.faceY,
+        width: editingPortrait.length,
+      });
+    }
+
+    log("保存立绘", editingPortrait);
+    onSave(editingPortrait);
+  };
+
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      {/* portrait-modal：标题栏固定（保存 / 取消常驻可见），裁剪区与设置面板在 .modal-body 里自己滚 */}
+      <div className="modal-content portrait-modal">
         <div className="modal-header">
           <h2>{isNewPortrait ? "添加新立绘" : "编辑立绘"}</h2>
-          <button className="close-button" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
-        <div className="portrait-editor">
-          {/* 左侧：图片预览和上传 */}
-          <div className="portrait-preview">
-            <div className="file-upload">
-              {window.electronAPI ? (
-                <button
-                  className="file-upload-button"
-                  onClick={selectImageFile}
-                >
-                  选择立绘文件
-                </button>
-              ) : (
-                <>
-                  <label className="file-upload-label">
-                    选择立绘文件
-                    {/* 隐藏的文件输入框，仅在非Electron环境使用 */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      style={{ display: "none" }}
-                    />
-                  </label>
-                </>
-              )}
-            </div>
-
-            {/* 使用拆分后的组件 */}
-            {isPreparingImage && (
-              <div
-                className="portrait-preview-loading"
-                role="status"
-                style={{ padding: "24px 0", color: "#666", fontSize: "14px" }}
-              >
-                正在读取立绘尺寸并按比例套用裁剪…
-              </div>
-            )}
-            <PortraitPreview
-              ref={portraitPreviewRef}
-              portraitPreview={isPreparingImage ? null : portraitPreview}
-              currentPortrait={currentPortrait}
-              onCropComplete={onCropComplete}
-              handleImageLoad={handleImageLoad}
-              defaultCropState={defaultCropState}
-              defaultPortraitImagePath={defaultPortrait?.imagePath ?? null}
-            />
-
-            {/* 裁剪区域下方右侧：预览立绘在完整画面中的效果 */}
-            <div className="portrait-preview-actions">
-              <button
-                className="btn-secondary"
-                onClick={() => setShowReferenceCalibration(true)}
-                disabled={!portraitPreview || isPreparingImage}
-                title={
-                  isPreparingImage
-                    ? "正在读取新图的尺寸，稍等一下"
-                    : portraitPreview
-                      ? "上传一张 16:9 游戏截图，把立绘对齐后自动反推头部裁剪框"
-                      : "请先选择立绘文件"
-                }
-              >
-                按截图校准
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => setShowScenePreview(true)}
-                disabled={!portraitPreview || isPreparingImage}
-                title={
-                  isPreparingImage
-                    ? "正在读取新图的尺寸，稍等一下"
-                    : portraitPreview
-                      ? "按当前裁剪参数渲染立绘在画面中的效果"
-                      : "请先选择立绘文件"
-                }
-              >
-                预览
-              </button>
-            </div>
-          </div>
-
-          {/* 右侧：设置面板 */}
-          <PortraitSettings
-            currentPortrait={currentPortrait}
-            setEditingPortrait={setEditingPortrait}
-          />
-        </div>
-
-        {/* 底部按钮 */}
-        <div className="modal-footer">
-          <button className="cancel-button" onClick={onClose}>
-            取消
-          </button>
-          <button
-            className="save-button"
-            disabled={isPreparingImage}
-            title={
-              isPreparingImage ? "正在读取新图的尺寸，稍等一下" : undefined
-            }
-            onClick={async () => {
-              if (editingPortrait) {
-                // 情绪由中文下拉框直接写入 editingPortrait.emotion，
-                // 这里再归一化一次，兼容后端返回的 code 和历史数据里的大写枚举名
-                const standardEmotion = mapEmotion(editingPortrait.emotion);
-                editingPortrait.emotion = standardEmotion as unknown as any;
-                const emotionCode = String(standardEmotion).toLowerCase();
-
-                // 如果是新立绘且有待上传的文件，先上传到后端
-                if (isNewPortrait && pendingFile && characterId) {
-                  try {
-                    // 确保 portraitID 存在（后端用 portraitId 命名文件）
-                    if (!editingPortrait.portraitID) {
-                      editingPortrait.portraitID = `portrait_${Date.now()}`;
-                    }
-                    log("开始上传立绘原图到后端...");
-                    const uploadResult = await ApiService.uploadPortraitFile(
-                      characterId,
-                      editingPortrait.portraitID,
-                      pendingFile,
-                      emotionCode,
-                    );
-                    // 用后端返回的路径覆盖本地路径
-                    editingPortrait.imagePath = uploadResult.imagePath;
-                    log("立绘原图已上传", uploadResult.imagePath);
-                  } catch (error) {
-                    console.error("上传立绘原图失败:", error);
-                    alert("上传立绘原图失败，请检查后端是否正常运行");
-                    return; // 阻止保存
-                  }
-                }
-
-                // 生成缩略图（通过后端 API 上传，路径由后端 config 集中管理）
-                // 后端保存到 {characters}/{characterId}/{characterThumbnailsSubdir}/thumbnail_{portraitId}.png
-                // 返回 URL 路径，存入 DB portrait.thumbnail_path，删除角色目录时一并清理。
-                if (portraitPreview && croppedAreaPixels) {
-                  try {
-                    // 使用createCroppedImage函数生成缩略图
-                    const thumbnailBlob = await createCroppedImage(
-                      portraitPreview,
-                      croppedAreaPixels,
-                    );
-
-                    // 创建缩略图文件名
-                    const thumbnailFileName = `thumbnail_${editingPortrait.portraitID}.png`;
-
-                    // 通过后端 API 上传缩略图（替代原 Electron IPC saveThumbnail）
-                    const formData = new FormData();
-                    formData.append("file", thumbnailBlob, thumbnailFileName);
-                    const thumbnailPath =
-                      await ApiService.uploadPortraitThumbnail(
-                        editingPortrait.characterID,
-                        editingPortrait.portraitID,
-                        formData,
-                      );
-
-                    // 更新立绘的缩略图路径（URL 路径，前端 <img src> 直接拼 baseUrl 访问）
-                    editingPortrait.thumbnailPath = thumbnailPath;
-                  } catch (error) {
-                    console.error("生成缩略图失败:", error);
-                    log("生成缩略图失败", error);
-                  }
-                }
-
-                // 更新裁剪相关值
-                if (croppedAreaPixels) {
-                  editingPortrait.faceX = Math.round(croppedAreaPixels.x);
-                  editingPortrait.faceY = Math.round(croppedAreaPixels.y);
-                  editingPortrait.length = Math.round(croppedAreaPixels.width);
-                  // 确保保存了裁剪区域的大小，以便下次打开时能够恢复
-                  log("保存裁剪区域", {
-                    x: editingPortrait.faceX,
-                    y: editingPortrait.faceY,
-                    width: editingPortrait.length,
-                  });
-                }
-
-                log("保存立绘", editingPortrait);
-                onSave(editingPortrait);
+          <div className="header-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleSave}
+              // 新立绘还没选文件时 editingPortrait 还是 null：以前点保存是静默无反应，这里直接置灰
+              disabled={isPreparingImage || !editingPortrait}
+              title={
+                isPreparingImage
+                  ? "正在读取新图的尺寸，稍等一下"
+                  : !editingPortrait
+                    ? "请先选择立绘文件"
+                    : undefined
               }
-            }}
-          >
-            保存
-          </button>
+            >
+              保存
+            </button>
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="close-button"
+              onClick={onClose}
+              aria-label="关闭编辑立绘"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="portrait-editor">
+            {/* 左侧：图片预览和上传 */}
+            <div className="portrait-preview">
+              <div className="file-upload">
+                {window.electronAPI ? (
+                  <button
+                    className="file-upload-button"
+                    onClick={selectImageFile}
+                  >
+                    选择立绘文件
+                  </button>
+                ) : (
+                  <>
+                    <label className="file-upload-label">
+                      选择立绘文件
+                      {/* 隐藏的文件输入框，仅在非Electron环境使用 */}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+
+              {/* 使用拆分后的组件 */}
+              {isPreparingImage && (
+                <div
+                  className="portrait-preview-loading"
+                  role="status"
+                  style={{ padding: "24px 0", color: "#666", fontSize: "14px" }}
+                >
+                  正在读取立绘尺寸并按比例套用裁剪…
+                </div>
+              )}
+              <PortraitPreview
+                ref={portraitPreviewRef}
+                portraitPreview={isPreparingImage ? null : portraitPreview}
+                currentPortrait={currentPortrait}
+                onCropComplete={onCropComplete}
+                handleImageLoad={handleImageLoad}
+                defaultCropState={defaultCropState}
+                defaultPortraitImagePath={defaultPortrait?.imagePath ?? null}
+              />
+
+              {/* 裁剪区域下方右侧：预览立绘在完整画面中的效果 */}
+              <div className="portrait-preview-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowReferenceCalibration(true)}
+                  disabled={!portraitPreview || isPreparingImage}
+                  title={
+                    isPreparingImage
+                      ? "正在读取新图的尺寸，稍等一下"
+                      : portraitPreview
+                        ? "上传一张 16:9 游戏截图，把立绘对齐后自动反推头部裁剪框"
+                        : "请先选择立绘文件"
+                  }
+                >
+                  按截图校准
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowScenePreview(true)}
+                  disabled={!portraitPreview || isPreparingImage}
+                  title={
+                    isPreparingImage
+                      ? "正在读取新图的尺寸，稍等一下"
+                      : portraitPreview
+                        ? "按当前裁剪参数渲染立绘在画面中的效果"
+                        : "请先选择立绘文件"
+                  }
+                >
+                  预览
+                </button>
+              </div>
+            </div>
+
+            {/* 右侧：设置面板 */}
+            <PortraitSettings
+              currentPortrait={currentPortrait}
+              setEditingPortrait={setEditingPortrait}
+            />
+          </div>
         </div>
 
         {showReferenceCalibration && portraitPreview && (

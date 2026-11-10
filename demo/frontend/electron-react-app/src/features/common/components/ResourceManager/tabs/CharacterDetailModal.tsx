@@ -151,8 +151,35 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     useState<PortraitBatchProgress | null>(null);
   const [batchMessage, setBatchMessage] =
     useState<PortraitBatchMessage | null>(null);
-  // 缩略图版本号：批量重新生成缩略图后 +1，让立绘列表里的 <img> 重新取图
-  const [thumbnailVersion, setThumbnailVersion] = useState(0);
+  /**
+   * 缩略图代次表：立绘ID → 代次。
+   *
+   * <p>缩略图文件名是固定的 `thumbnail_{portraitId}.png`，裁剪完再保存时后端**覆盖**同名文件，
+   * 路径一个字都不变。浏览器缓存按地址认图，所以列表里还是旧头部的缩略图 ——
+   * 要关掉角色弹窗重新打开（列表重新挂载、换了地址）才会变。这里给改过的那张立绘 +1，
+   * `PortraitThumbnail` 据此换一个 `?t=` 时间戳重新取图，保存完当场就换。
+   *
+   * <p>刻意按立绘分别记，而不是全局一个版本号：一次批量导入 40 多张时，
+   * 全局版本号会让每一张缩略图都重新下载一遍。
+   */
+  const [thumbnailVersions, setThumbnailVersions] = useState<
+    Record<string, number>
+  >({});
+
+  /**
+   * @function 让指定立绘的缩略图重新取图
+   * @param portraitIds 缩略图文件在磁盘上被覆盖过的立绘ID
+   */
+  const bumpThumbnailVersions = (portraitIds: string[]) => {
+    if (portraitIds.length === 0) return;
+    setThumbnailVersions((prev) => {
+      const next = { ...prev };
+      for (const portraitId of portraitIds) {
+        next[portraitId] = (next[portraitId] ?? 0) + 1;
+      }
+      return next;
+    });
+  };
 
   /**
    * 批量进度上报节流。
@@ -488,7 +515,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             }
           : prev,
       );
-      setThumbnailVersion((version) => version + 1);
+      // 只刷新真的重算过缩略图的那几张，其它立绘的 <img> 不动
+      bumpThumbnailVersions(Array.from(updatedPortraits.keys()));
     }
 
     // 一张都没改动：说明算出来的框和现在存的一样（或原图都读不到，只能算像素值）
@@ -679,7 +707,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             }
           : prev,
       );
-      setThumbnailVersion((version) => version + 1);
+      bumpThumbnailVersions(
+        importedPortraits.map((portrait) => portrait.portraitID),
+      );
     }
 
     const parts: string[] = [];
@@ -865,6 +895,52 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     onClose();
   };
 
+  /**
+   * @function 接收立绘编辑弹窗的保存结果
+   *
+   * <p>裁剪 / 换图之后后端会把**同名**缩略图（`thumbnail_{portraitId}.png`）覆盖掉，
+   * 路径不变，浏览器缓存里还是旧头部的图。所以除了更新立绘数据，还要把这张立绘的
+   * 缩略图代次 +1 —— 列表里的缩略图当场换成新的，不用关掉弹窗重新打开。
+   */
+  const handlePortraitSaved = (portrait: Portrait) => {
+    // 使用isAddingNewPortrait标志来判断是添加还是更新
+    if (!isAddingNewPortrait) {
+      // 更新现有立绘
+      setEditingCharacter((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          portraits:
+            prev.portraits?.map((p) =>
+              p.portraitID === portrait.portraitID ? portrait : p,
+            ) || [],
+        };
+      });
+      console.log("[CharacterDetailModal] 更新立绘", {
+        portraitId: portrait.portraitID,
+      });
+    } else {
+      // 添加新立绘
+      setEditingCharacter((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          portraits: [...(prev.portraits || []), portrait],
+        };
+      });
+      console.log("[CharacterDetailModal] 添加新立绘", {
+        portraitId: portrait.portraitID,
+        totalPortraits: (editingCharacter?.portraits?.length || 0) + 1,
+      });
+    }
+
+    bumpThumbnailVersions([portrait.portraitID]);
+
+    setShowPortraitModal(false);
+    setEditingPortrait(null);
+    setIsAddingNewPortrait(false);
+  };
+
   if (!editingCharacter) return null;
 
   return (
@@ -939,7 +1015,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             batchProgress={batchProgress}
             batchMessage={batchMessage}
             onDismissBatchMessage={() => setBatchMessage(null)}
-            thumbnailVersion={thumbnailVersion}
+            thumbnailVersions={thumbnailVersions}
           />
         </div>
       </div>
@@ -988,41 +1064,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             setEditingPortrait(null);
             setIsAddingNewPortrait(false);
           }}
-          onSave={(portrait) => {
-            // 使用isAddingNewPortrait标志来判断是添加还是更新
-            if (!isAddingNewPortrait) {
-              // 更新现有立绘
-              setEditingCharacter((prev) => {
-                if (!prev) return prev;
-                return {
-                  ...prev,
-                  portraits:
-                    prev.portraits?.map((p) =>
-                      p.portraitID === portrait.portraitID ? portrait : p,
-                    ) || [],
-                };
-              });
-              console.log("[CharacterDetailModal] 更新立绘", {
-                portraitId: portrait.portraitID,
-              });
-            } else {
-              // 添加新立绘
-              setEditingCharacter((prev) => {
-                if (!prev) return prev;
-                return {
-                  ...prev,
-                  portraits: [...(prev.portraits || []), portrait],
-                };
-              });
-              console.log("[CharacterDetailModal] 添加新立绘", {
-                portraitId: portrait.portraitID,
-                totalPortraits: (editingCharacter?.portraits?.length || 0) + 1,
-              });
-            }
-            setShowPortraitModal(false);
-            setEditingPortrait(null);
-            setIsAddingNewPortrait(false);
-          }}
+          onSave={handlePortraitSaved}
         />
       )}
     </div>

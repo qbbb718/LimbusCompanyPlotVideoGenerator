@@ -130,10 +130,77 @@
   padding: 20px;
 }
 
+/* ============================================================
+ * 立绘裁剪弹窗（PortraitModal）专用布局：
+ * 「保存 / 取消」和角色编辑弹窗一样放进标题栏，所以标题栏也要固定住 ——
+ * 否则把裁剪画布往下滚一屏，按钮就跟着滚没了，等于没搬上去。
+ * 同样用 .portrait-modal 前缀限定，不影响 BackgroundModal / AudiosTab。
+ * ============================================================ */
+.portrait-modal {
+  display: flex;
+  flex-direction: column;
+  /* 滚动交给内容区（裁剪画布 + 设置面板），弹窗本身不再滚 */
+  overflow: hidden;
+  padding: 0;
+}
+
+/* 标题栏：固定高度，保存 / 取消常驻可见 */
+.portrait-modal > .modal-header {
+  flex: 0 0 auto;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  box-sizing: border-box;
+  margin-bottom: 0;
+  padding: 0 20px;
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
+  border-radius: 8px 8px 0 0;
+}
+
+.portrait-modal > .modal-header h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portrait-modal > .modal-header .header-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+/* 内容区：裁剪画布 + 设置面板，超出一屏就自己滚 */
+.portrait-modal > .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+}
+
 .header-actions {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+/* 标题栏按钮：原生 <button> 的默认内边距只有 1px 6px，配上 .btn-primary 的底色会挤成一团 */
+.header-actions .btn-primary,
+.header-actions .btn-secondary,
+.header-actions .btn-danger {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.header-actions .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .header-actions .close-button {
@@ -762,8 +829,12 @@
 }
 
 .crop-hint-image {
-  width: 100%;
+  display: block;
+  /* 示例图是界面截图（275×245）：按原尺寸居中显示，别拉到栏宽糊掉 */
+  width: auto;
+  max-width: 100%;
   max-height: 200px;
+  margin: 0 auto;
   object-fit: contain;
   border: 1px solid #e8e8e8;
   border-radius: 4px;

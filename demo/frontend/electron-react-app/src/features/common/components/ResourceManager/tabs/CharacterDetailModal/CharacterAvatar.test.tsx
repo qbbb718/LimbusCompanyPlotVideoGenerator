@@ -66,6 +66,34 @@ describe("角色卡片头像", () => {
     expect(getImg(container)?.src).toBe(firstSrc);
   });
 
+  it("默认立绘的裁剪改了（缩略图路径不变）时，头像也要换成新地址重新取图", () => {
+    const character = makeCharacter();
+    const { container, rerender } = render(
+      <CharacterAvatar character={character} />,
+    );
+
+    const before = getImg(container)?.src;
+    expect(before).toBeTruthy();
+
+    // 裁剪改好并保存：后端覆盖了同名缩略图，路径一个字都没变
+    const cropped = makeCharacter({
+      portraits: [
+        {
+          ...character.portraits![0],
+          faceX: 320,
+          faceY: 260,
+          length: 420,
+        },
+      ],
+    });
+    rerender(<CharacterAvatar character={cropped} />);
+
+    const after = getImg(container)?.src;
+    expect(after).not.toBe(before);
+    // 变的只是时间戳，路径还是同一个缩略图
+    expect(after?.split("?")[0]).toBe(before?.split("?")[0]);
+  });
+
   it("缩略图走懒加载，避免一次解码几十张图", () => {
     const { container } = render(
       <CharacterAvatar character={makeCharacter()} />,

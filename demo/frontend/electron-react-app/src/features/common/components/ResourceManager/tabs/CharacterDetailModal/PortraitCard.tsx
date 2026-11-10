@@ -7,7 +7,11 @@ interface PortraitCardProps {
   portrait: Portrait;
   characterId: string;
   isDefault: boolean;
-  /** 缩略图版本号：批量重生成缩略图后变，用来强制刷新缩略图 */
+  /**
+   * 这张立绘的缩略图代次：裁剪 / 换图后父组件给它 +1。
+   *
+   * <p>缩略图文件名固定，后端只覆盖内容，所以只能靠这个代次换一个 `?t=` 重新取图。
+   */
   thumbnailVersion?: number;
   onEdit: (portrait: Portrait) => void;
   onSetDefault: (portraitId: string) => void;

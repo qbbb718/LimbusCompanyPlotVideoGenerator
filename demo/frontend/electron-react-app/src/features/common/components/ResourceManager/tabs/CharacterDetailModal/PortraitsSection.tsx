@@ -31,8 +31,14 @@ interface PortraitsSectionProps {
   batchProgress: PortraitBatchProgress | null;
   batchMessage: PortraitBatchMessage | null;
   onDismissBatchMessage: () => void;
-  /** 缩略图版本号：批量重生成缩略图后 +1，让卡片重新取图 */
-  thumbnailVersion: number;
+  /**
+   * 各立绘的缩略图代次（立绘ID → 代次）。
+   *
+   * <p>缩略图文件名固定（`thumbnail_{portraitId}.png`），裁剪 / 换图后后端只覆盖内容、
+   * 不改路径。改过的那张立绘代次 +1，卡片据此拼新的 `?t=` 重新取图；
+   * 没改的立绘代次不变，不会跟着重新下载。
+   */
+  thumbnailVersions: { [portraitId: string]: number };
 }
 
 const BATCH_PROGRESS_LABEL: { [key in PortraitBatchProgress["kind"]]: string } =
@@ -53,7 +59,7 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
   batchProgress,
   batchMessage,
   onDismissBatchMessage,
-  thumbnailVersion,
+  thumbnailVersions,
 }) => {
   const isDefaultPortrait = (portraitId: string) =>
     isDefaultPortraitId(character.portraits, portraitId);
@@ -131,7 +137,7 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
             portrait={portrait}
             characterId={character.characterID}
             isDefault={isDefaultPortrait(portrait.portraitID)}
-            thumbnailVersion={thumbnailVersion}
+            thumbnailVersion={thumbnailVersions[portrait.portraitID] ?? 0}
             onEdit={onEditPortrait}
             onSetDefault={onSetDefaultPortrait}
             onDelete={onDeletePortrait}
