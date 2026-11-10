@@ -444,6 +444,8 @@ const PortraitModal: React.FC<PortraitModalProps> = ({
             adjX={currentPortrait.adjX || 0}
             adjY={currentPortrait.adjY || 0}
             characterHeight={characterHeight}
+            currentCharacterId={characterId}
+            currentPortraitId={currentPortrait.portraitID || null}
             onClose={() => setShowScenePreview(false)}
           />
         )}

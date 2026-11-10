@@ -17,6 +17,8 @@
 }
 
 .portrait-scene-preview-dialog {
+  /* 「添加对比角色」选择器是绝对定位在弹窗里的浮层，需要这个定位上下文 */
+  position: relative;
   display: flex;
   flex-direction: column;
   width: min(1100px, 94vw);
@@ -45,10 +47,10 @@
 .portrait-scene-preview-stage {
   position: relative;
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
-  min-height: 240px;
+  min-height: 180px;
   background-color: #000;
   border-radius: 4px;
   overflow: hidden;
@@ -59,7 +61,8 @@
   width: auto;
   height: auto;
   max-width: 100%;
-  max-height: 70vh;
+  /* 底部多了对比角色的操作区，留出一点高度给它（原来 70vh 会把控件挤出弹窗） */
+  max-height: 62vh;
 }
 
 /* 加载 / 错误提示 */
@@ -101,15 +104,22 @@
   }
 }
 
-/* 底部：背景选择 + 说明 */
+/* 底部：背景选择 + 对比角色 + 说明 */
 .portrait-scene-preview-footer {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
   margin-top: 12px;
   color: #555;
   font-size: 14px;
+}
+
+.portrait-scene-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
 }
 
 .portrait-scene-preview-footer select {
@@ -122,6 +132,297 @@
 }
 
 .portrait-scene-preview-hint {
+  margin: 0;
   color: #999;
   font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ---- 对比角色 ---- */
+
+.portrait-scene-preview-label {
+  color: #333;
+}
+
+.portrait-scene-preview-empty {
+  color: #aaa;
+  font-size: 12px;
+}
+
+/* 已加入对比区的角色：缩略图 + 名字 + 在哪一侧 + 移除按钮 */
+.portrait-compare-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  padding: 3px 4px 3px 5px;
+  background-color: #f5f9ff;
+  border: 1px solid #cfe3ff;
+  border-radius: 6px;
+}
+
+.portrait-compare-chip img {
+  display: block;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  background-color: #fff;
+  border-radius: 3px;
+}
+
+.portrait-compare-chip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.portrait-compare-chip-name {
+  overflow: hidden;
+  font-size: 13px;
+  color: #333;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portrait-compare-chip-meta {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.portrait-compare-chip-remove {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #999;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.portrait-compare-chip-remove:hover {
+  color: #d4380d;
+  background-color: #fff1e6;
+}
+
+.portrait-scene-preview-add {
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #1890ff;
+  background-color: #fff;
+  border: 1px dashed #9cc8ff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.portrait-scene-preview-add:hover:not(:disabled) {
+  background-color: #f0f7ff;
+}
+
+.portrait-scene-preview-add:disabled {
+  color: #bbb;
+  border-color: #ddd;
+  cursor: not-allowed;
+}
+
+/* 间距滑杆：靠右放，窄窗口自动换行 */
+.portrait-scene-preview-spacing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12px;
+  color: #666;
+}
+
+.portrait-scene-preview-spacing input[type="range"] {
+  width: 130px;
+}
+
+/* ---- 「添加对比角色」选择器（浮在预览弹窗里的面板） ---- */
+
+.portrait-compare-picker {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 5;
+  max-height: 72%;
+  padding: 12px 14px;
+  overflow-y: auto;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.portrait-compare-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.portrait-compare-picker-header strong {
+  font-size: 15px;
+  color: #333;
+}
+
+.portrait-compare-picker-close {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: #999;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.portrait-compare-picker-close:hover {
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+.portrait-compare-picker-hint {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #999;
+}
+
+.portrait-compare-picker-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 13px;
+  color: #c0392b;
+}
+
+.portrait-compare-picker-error button {
+  padding: 3px 10px;
+  color: #1890ff;
+  background-color: #fff;
+  border: 1px solid #9cc8ff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.portrait-compare-picker-characters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #555;
+}
+
+.portrait-compare-picker-characters select {
+  min-width: 200px;
+  max-width: 340px;
+  padding: 5px 8px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.portrait-compare-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+/* 卡片是 <button>：先清掉浏览器默认样式，再套原来的观感 */
+.portrait-compare-picker-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 6px;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  background-color: #fff;
+  border: 2px solid #eee;
+  border-radius: 6px;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.portrait-compare-picker-card:hover:not(:disabled) {
+  border-color: #1890ff;
+}
+
+.portrait-compare-picker-card:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 1px;
+}
+
+.portrait-compare-picker-card.is-added {
+  background-color: #f6ffed;
+  border-color: #b7eb8f;
+  cursor: default;
+}
+
+.portrait-compare-picker-thumb {
+  display: block;
+  height: 72px;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  border-radius: 3px;
+}
+
+.portrait-compare-picker-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.portrait-compare-picker-name {
+  overflow: hidden;
+  font-size: 12px;
+  color: #555;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portrait-compare-picker-emotion {
+  font-size: 11px;
+  color: #999;
+}
+
+.portrait-compare-picker-added {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #fff;
+  background-color: #52c41a;
+  border-radius: 3px;
+}
+
+/* 窄窗口（弹窗被视口挤扁时）：卡片再矮一点，保证一屏能看全两行 */
+@media (max-height: 640px) {
+  .portrait-scene-preview-stage img {
+    max-height: 52vh;
+  }
+
+  .portrait-compare-picker-thumb {
+    height: 56px;
+  }
 }

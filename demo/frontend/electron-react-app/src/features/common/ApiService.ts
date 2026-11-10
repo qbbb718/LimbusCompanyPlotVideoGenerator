@@ -670,7 +670,10 @@ class ApiService {
    * 新立绘还未上传时把 File 放进 formData 的 `file` 字段；已有立绘只传 `imagePath`，
    * 避免预览动作在磁盘上留下多余文件。
    *
-   * @param formData 字段：file? / imagePath? / faceX / faceY / length / adjX / adjY / height / backgroundId
+   * <p>对比角色用重复的 `compare` 字段传（每个值形如 `立绘ID:水平偏移`，
+   * 偏移单位是 1080p 设计画布像素，负数在左），后端按 ID 从素材库读出来一起渲染。
+   *
+   * @param formData 字段：file? / imagePath? / faceX / faceY / length / adjX / adjY / height / backgroundId / compare*
    * @returns blob URL，可直接用于 <img src>。调用方需在关闭预览时 URL.revokeObjectURL()
    */
   async getPortraitPreview(formData: FormData): Promise<string> {
