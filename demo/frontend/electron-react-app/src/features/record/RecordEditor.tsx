@@ -106,8 +106,10 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     activePropertyTab,
     setActivePropertyTab,
     isLoadingProject,
+    projectGeneration,
     saveProject,
     importProject,
+    newProject,
     fileName: projectFileName,
   } = workspace;
 
@@ -159,8 +161,6 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   // 新记录的初始"显示速度"取全局设置（不做成依赖，避免改设置就重建回调）
   const projectSettingsRef = useRef(projectSettings);
   projectSettingsRef.current = projectSettings;
-  // 空工程只自动补一条记录，避免 StrictMode 下 effect 重跑出两条
-  const autoCreatedRef = useRef(false);
 
   /* ===================== 撤销（Ctrl+Z） ===================== */
 
@@ -461,15 +461,42 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   }, [applyRecords, setSelectedRecordIndex, setGroups]);
 
   // 工程记录由 App 层持有（useProjectWorkspace 负责首次从后端加载）。
-  // 加载完成且确实没有任何记录时补一条空记录，让用户可以直接开始编辑。
+  // 空工程自动补一条空白记录，让用户点完「新建工程」就能直接编辑：
+  // - 首次加载完成时工程是空的（第一次启动 / 新建工程后重启）；
+  // - 点了「新建工程」，记录刚被清空（见 useProjectWorkspace.newProject）。
+  //
+  // 记的是"已经为哪一代工程补过"，而不是简单的 true/false：
+  // StrictMode 下 effect 会跑两遍、新建工程时"代次 +1"与"清空列表"又在同一轮更新，
+  // 用代次既能挡住重复补，又能在下一次新建时重新补一条。
+  const autoFilledGenerationRef = useRef<number | null>(null);
   useEffect(() => {
     if (isLoadingProject) return;
-    if (records && records.length === 0 && !autoCreatedRef.current) {
-      autoCreatedRef.current = true;
-      console.log("[RecordEditor] 工程为空，自动创建第一条记录");
-      createNewRecord();
+    if (!records || records.length > 0) {
+      // 已经有内容了：解除标记，下次再变空（新建工程）时可以再补一条
+      autoFilledGenerationRef.current = null;
+      return;
     }
-  }, [isLoadingProject, records, createNewRecord]);
+    if (autoFilledGenerationRef.current === projectGeneration) return;
+    autoFilledGenerationRef.current = projectGeneration;
+    console.log("[RecordEditor] 工程为空，自动创建第一条记录");
+    createNewRecord();
+  }, [isLoadingProject, records, createNewRecord, projectGeneration]);
+
+  /**
+   * 新建工程 = 换了一份文档：撤销栈与预览选中态都从零开始。
+   *
+   * <p>撤销栈必须清空：新工程里只有一条刚补的空白记录，栈里如果还留着旧工程那几十步，
+   * Ctrl+Z 就会把旧工程的记录一步步撤回到新工程里（而文件关联已经是新工程的），
+   * 既没有意义，也容易让人以为"新建工程把上一个工程弄坏了"。
+   */
+  const appliedGenerationRef = useRef(projectGeneration);
+  useEffect(() => {
+    if (projectGeneration === appliedGenerationRef.current) return;
+    appliedGenerationRef.current = projectGeneration;
+    historyRef.current = createHistory();
+    setPreviewSelection(null);
+    setPropertyFocus(null);
+  }, [projectGeneration]);
 
   /**
    * @function 更新单条记录
@@ -1157,6 +1184,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           moveRecord={moveRecord}
           duplicateRecord={duplicateRecord}
           deleteRecord={deleteRecord}
+          onNewProject={newProject}
           onSaveProject={saveProject}
           onImportProject={importProject}
           projectFileName={projectFileName}

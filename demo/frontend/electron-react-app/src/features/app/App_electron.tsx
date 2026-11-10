@@ -45,7 +45,7 @@ function AppElectron() {
         stayFrames: normalizeStayFrames(settings.stayFrames),
       })),
   });
-  const { saveProject, importProject } = workspace;
+  const { saveProject, importProject, newProject } = workspace;
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -124,7 +124,13 @@ function AppElectron() {
 
   useEffect(() => {
     if (isElectron && window.electronAPI) {
-      const handleNewProject = () => setActiveTab("settings");
+      const handleNewProject = () => {
+        // 菜单"新建项目"（Ctrl+N）：与剧情编辑页的「新建工程」按钮走同一套流程
+        // （先问是否保存当前工程，然后清空剧情列表）。先把页面切回编辑器，
+        // 这样确认框弹在用户马上要操作的那个页面上。
+        setActiveTab("editor");
+        newProject();
+      };
       // 菜单"打开项目"：与"导入工程"按钮走同一套流程（载入工程文件并记住路径）
       const handleOpenProject = () => importProject();
       // 菜单"保存项目"：与 Ctrl+S / "保存工程"按钮走同一套流程。
@@ -159,9 +165,9 @@ function AppElectron() {
         window.electronAPI.removeAllListeners("menu-check-update");
       };
     }
-    // saveProject / importProject 是稳定引用（内部用 ref 读取最新状态），
+    // saveProject / importProject / newProject 是稳定引用（内部用 ref 读取最新状态），
     // 这里不会因为编辑内容变化而反复解绑重绑菜单事件。
-  }, [isElectron, saveProject, importProject]);
+  }, [isElectron, saveProject, importProject, newProject]);
 
   // 有新版本时在「设置」tab 上点一个小红点：用户不进设置页就不知道有更新，
   // 而"不知道有新版本"正是这次要解决的问题本身。

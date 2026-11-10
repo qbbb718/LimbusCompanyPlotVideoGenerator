@@ -8,7 +8,7 @@
  * - 点页签栏的「摄像机」会通知 workspace 切页签（真实状态由 App 层持有）。
  */
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import {
   DEFAULT_PROJECT_SETTINGS,
@@ -54,12 +54,14 @@ const makeWorkspace = (
   setActivePropertyTab: jest.fn(),
   filePath: null,
   fileName: null,
+  projectGeneration: 0,
   isLoadingProject: false,
   toast: null,
   dismissToast: jest.fn(),
   showToast: jest.fn(),
   saveProject: jest.fn(),
   importProject: jest.fn(),
+  newProject: jest.fn(),
   adoptParsedRecords: jest.fn(),
   ...overrides,
 });
@@ -135,5 +137,38 @@ describe("剧情编辑 → 摄像机页签驱动预览", () => {
     fireEvent.click(await screen.findByRole("tab", { name: /摄像机/ }));
 
     expect(workspace.setActivePropertyTab).toHaveBeenCalledWith("camera");
+  });
+});
+
+describe("剧情编辑 → 新建工程", () => {
+  test("新建工程（记录被清空、代次 +1）后自动补一条空白记录", async () => {
+    // 真实状态在 App 层：清空与代次 +1 由 workspace.newProject 一起做，
+    // 这里直接构造那个"已经清空"的入参，验证编辑器把空白记录补回来
+    const workspace = makeWorkspace({ records: [makeRecord()] });
+    const { rerender } = render(
+      <RecordEditor
+        projectSettings={DEFAULT_PROJECT_SETTINGS}
+        setProjectSettings={jest.fn()}
+        workspace={workspace}
+      />,
+    );
+    await screen.findByText(/最终效果/);
+
+    rerender(
+      <RecordEditor
+        projectSettings={DEFAULT_PROJECT_SETTINGS}
+        setProjectSettings={jest.fn()}
+        workspace={{ ...workspace, records: [], projectGeneration: 1 }}
+      />,
+    );
+
+    // 补的是"一条空白记录"：没有继承上一条的台词 / 角色 / 背景
+    await waitFor(() => expect(workspace.setRecords).toHaveBeenCalled());
+    const added = (workspace.setRecords as jest.Mock).mock.calls[0][0] as PlotRecord[];
+    expect(added).toHaveLength(1);
+    expect(added[0].dialogue.text).toBe("");
+    expect(added[0].chars).toEqual([]);
+    expect(added[0].bg).toEqual([]);
+    expect(added[0].uuid).toBeTruthy();
   });
 });

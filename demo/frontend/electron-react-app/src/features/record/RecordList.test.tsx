@@ -68,6 +68,7 @@ const makeProps = (overrides: { [key: string]: unknown } = {}) => ({
   moveRecord: jest.fn(),
   duplicateRecord: jest.fn(),
   deleteRecord: jest.fn(),
+  onNewProject: jest.fn(),
   onSaveProject: jest.fn(),
   onImportProject: jest.fn(),
   projectFileName: null,
@@ -444,5 +445,21 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
     expect(dataTransfer.setData).not.toHaveBeenCalled();
     expect(props.onMoveGroup).not.toHaveBeenCalled();
+  });
+});
+
+describe("剧情编辑 → 工程操作（新建 / 导入 / 保存）", () => {
+  test("「新建工程」按钮在工具条里，点击交给上层（真正的询问在上层）", () => {
+    const props = makeProps();
+    render(<RecordList {...props} />);
+
+    const button = screen.getByRole("button", { name: "新建工程" });
+    // 与导入 / 保存并排，且排在最前面（破坏性操作不挨着「导出视频」）
+    const actions = document.querySelector(".record-list-actions") as HTMLElement;
+    expect(actions.firstElementChild).toBe(button);
+    expect(button.getAttribute("title")).toContain("是否保存当前工程");
+
+    fireEvent.click(button);
+    expect(props.onNewProject).toHaveBeenCalledTimes(1);
   });
 });

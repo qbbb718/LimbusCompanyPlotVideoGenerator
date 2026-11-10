@@ -33,6 +33,8 @@ interface RecordListProps {
   deleteRecord: (index: number) => void;
   /** 保存工程（与 Ctrl+S 相同：已关联文件则更新，否则先选保存位置） */
   onSaveProject: () => void;
+  /** 新建工程：先问是否保存当前工程，然后清空剧情列表（与菜单 Ctrl+N 同一套流程） */
+  onNewProject: () => void;
   /** 导入工程：从工程文件载入记录 */
   onImportProject: (file?: File) => void;
   /** 当前工程已关联的文件名；未保存到文件时为 null */
@@ -86,6 +88,7 @@ const RecordList: React.FC<RecordListProps> = ({
   moveRecord,
   duplicateRecord,
   deleteRecord,
+  onNewProject,
   onSaveProject,
   onImportProject,
   projectFileName,
@@ -674,6 +677,14 @@ const RecordList: React.FC<RecordListProps> = ({
           </button>
         </div>
         <div className="record-list-actions">
+          <button
+            className="plain-button"
+            onClick={onNewProject}
+            title="新建工程（Ctrl+N）：先问是否保存当前工程，然后把剧情列表清空成一份空白工程"
+          >
+            新建工程
+          </button>
+
           <label
             className="plain-button"
             title="从工程文件载入记录（导入后 Ctrl+S 可直接更新该文件）"

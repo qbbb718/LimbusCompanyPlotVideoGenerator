@@ -73,6 +73,12 @@
   color: #1677ff;
 }
 
+/* 三选一里的中间那个按钮（例如「不保存」）：仍是次要样式，
+   只把文字压暗一点，和「取消」区分开，不抢主按钮的视觉权重 */
+.app-confirm-actions .app-confirm-extra {
+  color: #666;
+}
+
 .app-confirm-actions .app-confirm-ok {
   border-color: #1890ff;
   background-color: #1890ff;

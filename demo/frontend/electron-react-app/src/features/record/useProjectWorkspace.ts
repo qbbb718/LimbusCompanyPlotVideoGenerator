@@ -5,14 +5,17 @@
  *    切回来就被后端数据覆盖 —— 现在记录、选中位置、属性页签都由本 Hook 保存，切换页面不丢；
  * 2. Ctrl+S：工程已关联文件时直接更新该文件并给出文字提示；尚未关联文件时先弹保存对话框，
  *    之后的 Ctrl+S 都更新同一个文件；
- * 3. "保存工程 / 导入工程"按钮与菜单里的"打开项目 / 保存项目"共用同一套逻辑。
+ * 3. "保存工程 / 导入工程 / 新建工程"按钮与菜单里的"新建项目 / 打开项目 / 保存项目"共用同一套逻辑。
  * 4. 剧情列表的分组（图层文件夹）也由本 Hook 持有：切换页面不丢分组，保存/导入工程时
  *    名称与折叠状态随记录一起往返（见 recordGroups.ts）。
+ * 5. 新建工程：先问"是否保存当前工程"，再清空记录、分组与文件关联；
+ *    代次 `projectGeneration` 让编辑器知道"这是一份新文档"（补一条空白记录、清掉撤销历史）。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import log from "electron-log";
 import { Record } from "@types";
 import ApiService from "@services/ApiService";
+import { askChoice } from "@features/common/components/ConfirmDialog";
 import {
   defaultProjectFileName,
   downloadProjectFile,
@@ -72,15 +75,32 @@ export interface ProjectWorkspace {
   filePath: string | null;
   /** 当前工程文件名（按钮提示、提示文字使用） */
   fileName: string | null;
+  /**
+   * 新建工程的代次：每新建一次 +1，首次加载完成时为 0。
+   *
+   * <p>编辑器据此判断"记录的清空是新建工程造成的"：补一条空白记录、
+   * 把撤销历史清空（否则 Ctrl+Z 会把旧工程的记录撤销回来，和空工程混在一起）。
+   */
+  projectGeneration: number;
   /** 首次从后端加载工程记录中 */
   isLoadingProject: boolean;
   toast: ProjectToastMessage | null;
   dismissToast: () => void;
   showToast: (kind: ProjectToastKind, text: string) => void;
-  /** 保存工程：已关联文件则就地更新，否则弹出保存对话框（Ctrl+S 与"保存工程"按钮） */
-  saveProject: () => void;
+  /**
+   * 保存工程：已关联文件则就地更新，否则弹出保存对话框（Ctrl+S 与"保存工程"按钮）。
+   * @returns 是否真的存到了磁盘（保存失败、或在保存对话框里点了取消 → false）。
+   *          "新建工程"先问保存时靠这个返回值决定要不要清空，存不下来就绝不清。
+   */
+  saveProject: () => Promise<boolean>;
   /** 导入工程：传入文件选择框得到的 File，或不传（走 Electron 原生对话框） */
   importProject: (file?: File) => void;
+  /**
+   * 新建工程：「保存并新建 / 不保存 / 取消」三选一，确认后清空剧情列表与分组，
+   * 并断开与上一个工程文件的关联（之后 Ctrl+S 会先让选新的保存位置，不会覆盖旧工程）。
+   * 页面按钮与菜单「文件 → 新建项目（Ctrl+N）」共用这一套流程。
+   */
+  newProject: () => Promise<void>;
   /** 文本转记录解析完成后接入编辑器（新的记录尚未关联工程文件） */
   adoptParsedRecords: (records: Record[]) => void;
 }
@@ -121,6 +141,7 @@ export function useProjectWorkspace(
   const [selectedRecordIndex, setSelectedRecordIndex] = useState(0);
   const [activePropertyTab, setActivePropertyTab] = useState<PropertyTab>("text");
   const [filePath, setFilePath] = useState<string | null>(null);
+  const [projectGeneration, setProjectGeneration] = useState(0);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   const [toast, setToast] = useState<ProjectToastMessage | null>(null);
 
@@ -141,6 +162,8 @@ export function useProjectWorkspace(
   onSettingsLoadedRef.current = options.onSettingsLoaded;
   const savingRef = useRef(false);
   const importingRef = useRef(false);
+  /** 新建工程进行中（确认框 / 保存对话框还没落定）：防止连点两次弹两个框 */
+  const creatingProjectRef = useRef(false);
 
   const showToast = useCallback((kind: ProjectToastKind, text: string) => {
     setToast({ id: Date.now() + Math.random(), kind, text });
@@ -196,19 +219,20 @@ export function useProjectWorkspace(
    * @function 把工程写入磁盘
    * 已关联文件时用 file:write 直接覆盖（不弹对话框）；未关联文件时弹保存对话框，
    * 选定后记住路径，之后的 Ctrl+S 都更新这个文件。
+   * @return 是否真的存下来了（保存失败、用户在对话框里取消都是 false）
    */
-  const saveProject = useCallback(async () => {
+  const saveProject = useCallback(async (): Promise<boolean> => {
     const currentRecords = recordsRef.current;
 
     if (currentRecords === undefined) {
       showToast("info", "工程还在加载中，请稍候再保存");
-      return;
+      return false;
     }
     if (currentRecords.length === 0) {
       showToast("info", "当前工程没有可保存的记录");
-      return;
+      return false;
     }
-    if (savingRef.current) return;
+    if (savingRef.current) return false;
 
     savingRef.current = true;
     try {
@@ -222,7 +246,7 @@ export function useProjectWorkspace(
       if (!isElectronRuntime() || !api) {
         downloadProjectFile(text, defaultName);
         showToast("success", `已下载工程文件：${defaultName}`);
-        return;
+        return true;
       }
 
       // 主进程未重启（preload 里还没有新增的保存接口）时也走下载：
@@ -233,7 +257,7 @@ export function useProjectWorkspace(
           "info",
           `主进程还是旧版本，已改用下载方式保存：${defaultName}（重启应用后 Ctrl+S 可直接更新文件）`,
         );
-        return;
+        return true;
       }
 
       const target = filePathRef.current;
@@ -241,27 +265,29 @@ export function useProjectWorkspace(
         const result = await writeProjectFile(target, text);
         if (result.success) {
           showToast("success", `保存成功：${target}`);
-        } else {
-          showToast("error", `保存失败：${result.error || "未知错误"}`);
+          return true;
         }
-        return;
+        showToast("error", `保存失败：${result.error || "未知错误"}`);
+        return false;
       }
 
       const result = await saveProjectFileAs(defaultName, text);
       if (result.canceled) {
         showToast("info", "已取消保存");
-        return;
+        return false;
       }
       if (!result.success || !result.filePath) {
         showToast("error", `保存失败：${result.error || "未知错误"}`);
-        return;
+        return false;
       }
       setFilePath(result.filePath);
       filePathRef.current = result.filePath;
       showToast("success", `保存成功：${result.filePath}`);
+      return true;
     } catch (error) {
       log.error("[工程] 保存工程失败:", error);
       showToast("error", `保存失败：${errorText(error)}`);
+      return false;
     } finally {
       savingRef.current = false;
     }
@@ -366,6 +392,76 @@ export function useProjectWorkspace(
   );
 
   /**
+   * @function 新建工程
+   *
+   * <p>流程：先问「保存并新建 / 不保存 / 取消」，再清空剧情列表。
+   * 破坏性操作的兜底都放在这里：
+   * - 点「取消」什么都不动；
+   * - 选「保存并新建」但保存失败 / 用户在保存对话框里点了取消 → **不清空**（宁可不清，也不能丢内容）；
+   * - 空工程没什么可保存的，直接新建，不打扰用户。
+   *
+   * <p>清空后把关联文件置空：新工程还没有文件名，Ctrl+S 会先让选保存位置，
+   * 不会把上一个工程的文件覆盖掉。
+   *
+   * <p>清空后的"空列表"由编辑器补一条空白记录（见 RecordEditor 的空工程补全），
+   * 所以用户点完就能直接编辑；这里只负责把工程状态归零并把代次 +1。
+   */
+  const newProject = useCallback(async () => {
+    if (creatingProjectRef.current) return;
+    const currentRecords = recordsRef.current;
+    if (currentRecords === undefined) {
+      showToast("info", "工程还在加载中，请稍候再新建");
+      return;
+    }
+
+    creatingProjectRef.current = true;
+    try {
+      let savedCurrent = false;
+
+      if (currentRecords.length > 0) {
+        const target = filePathRef.current;
+        const choice = await askChoice({
+          title: "新建工程",
+          message: "是否保存当前工程？",
+          detail: `${currentRecords.length} 条剧情记录${
+            target ? `（当前关联 ${fileNameOf(target)}）` : "（尚未保存到工程文件）"
+          }。\n选择「不保存」后，这些内容将无法找回。`,
+          extraLabel: "不保存",
+          confirmLabel: "保存并新建",
+          cancelLabel: "取消",
+        });
+
+        if (choice === "cancel") {
+          showToast("info", "已取消新建工程");
+          return;
+        }
+        if (choice === "confirm") {
+          savedCurrent = await saveProject();
+          if (!savedCurrent) return;
+        }
+      }
+
+      setRecords([]);
+      setGroups([]);
+      setSelectedRecordIndex(0);
+      setActivePropertyTab("text");
+      setFilePath(null);
+      filePathRef.current = null;
+      setProjectGeneration((generation) => generation + 1);
+      showToast("success", savedCurrent ? "已保存并新建工程" : "已新建工程");
+
+      // 后端那份 data/records.json 也换成空工程：它只是"启动时的初始数据"，
+      // 不一起清掉的话，重启软件时旧记录又会被当成初始工程加载回来。
+      syncToBackend(
+        serializeProject([], [], { stayFrames: stayFramesRef.current }),
+        defaultProjectFileName(projectNameRef.current),
+      );
+    } finally {
+      creatingProjectRef.current = false;
+    }
+  }, [saveProject, showToast, syncToBackend]);
+
+  /**
    * Ctrl+S 快捷键：拦截浏览器"保存网页"的默认行为，转为保存工程。
    * Electron 里菜单项"保存项目"也绑定了 CmdOrCtrl+S（菜单快捷键会先于页面 keydown 生效），
    * 所以菜单事件在 App 里也接到了同一个 saveProject 上，两条路都能保存。
@@ -395,12 +491,14 @@ export function useProjectWorkspace(
     setActivePropertyTab,
     filePath,
     fileName: filePath ? fileNameOf(filePath) : null,
+    projectGeneration,
     isLoadingProject,
     toast,
     dismissToast,
     showToast,
     saveProject,
     importProject,
+    newProject,
     adoptParsedRecords,
   };
 }

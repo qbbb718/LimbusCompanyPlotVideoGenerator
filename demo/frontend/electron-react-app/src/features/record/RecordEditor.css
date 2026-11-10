@@ -96,6 +96,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  /* 新建 / 导入 / 保存 / 导出 四个按钮：面板被拖窄时换行，而不是把文字挤成两行 */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 6px;
 }
 
 .import-button {
@@ -108,6 +112,7 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  white-space: nowrap;
   transition: background-color 0.3s;
 }
 
@@ -126,6 +131,7 @@
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  white-space: nowrap;
   transition: all 0.3s;
 }
 .plain-button:hover {
