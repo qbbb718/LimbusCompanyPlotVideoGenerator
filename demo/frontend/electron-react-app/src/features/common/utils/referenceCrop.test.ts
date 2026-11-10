@@ -13,6 +13,7 @@ import {
   portraitRectInFrame,
   screenshotPlacement,
   screenshotRectInFrame,
+  zoomAlignmentAt,
 } from "./referenceCrop";
 
 /**
@@ -54,12 +55,19 @@ describe("按截图反推裁剪框", () => {
       });
     });
 
-    test("身高每高 1cm，头框上边缘在成片里高 12×0.8 = 9.6px", () => {
+    test("身高差按 8.333 设计像素/cm 折算：15cm 在原作成片里约 100px", () => {
+      // anchorY 每 1cm 走 25/3 ≈ 8.333 设计像素，两端都向零截断 → 1cm 实际走 8 设计像素（成片 6.4）
       expect(headAnchorInFrame(171).y - headAnchorInFrame(172).y).toBeCloseTo(
-        9.6,
+        6.4,
         6,
       );
-      expect(characterAnchorY(180)).toBe(221 - 108);
+      // 真正用来标定的是跨度：原作 167cm→182cm 实测相差 100px，这里设计 124px → 成片 99.2px
+      expect(headAnchorInFrame(167).y - headAnchorInFrame(182).y).toBeCloseTo(
+        99.2,
+        6,
+      );
+      // 高 10cm → 设计画布上移 83px（成片 66.4px）；12px/cm 的老口径会是 120/96
+      expect(characterAnchorY(181)).toBe(221 - 83);
     });
 
     test("身高缺省 / 非法值都按 171 处理", () => {
@@ -71,6 +79,22 @@ describe("按截图反推裁剪框", () => {
     test("设计画布 → 成片帧：×0.8 再偏移 (192,108)", () => {
       expect(designToFrame(0, 0)).toEqual({ x: 192, y: 108 });
       expect(designToFrame(960, 221)).toEqual({ x: 960, y: 108 + 0.8 * 221 });
+    });
+
+    test("188cm：靶带落在原作帧的实测位置（172px），校准不会被夹到 0", () => {
+      // 原作 1080p 帧里《默尔索》(188cm) 的头框上边缘实测 ≈ 172px（「梅菲斯托费勒斯 内部」那张）
+      expect(headAnchorInFrame(188).y).toBeCloseTo(172, 6);
+
+      // 把立绘顶边对到截图里角色头顶稍上一点（164）后，反推出来的 faceY 仍然是正数
+      const result = deriveCropFromAlignment({
+        alignment: { scale: 0.8271, x: 0, y: 164 },
+        portraitSize: { width: 533, height: 1550 },
+        characterHeight: 188,
+        centerX: 288.5,
+      })!;
+      expect(result.raw.faceY).toBeGreaterThan(0);
+      expect(result.crop.faceY).toBe(Math.round(result.raw.faceY));
+      expect(result.warnings).toEqual([]);
     });
   });
 
@@ -240,6 +264,19 @@ describe("按截图反推裁剪框", () => {
       expect(result.adjusted).toBe(true);
     });
 
+    test("截图里的角色比锚点更靠下 → 单独给出 anchorBelow 提示", () => {
+      // 立绘被拖到截图下方：faceY 会算成 -275，立绘原图里根本没有这个位置
+      const result = deriveCropFromAlignment({
+        alignment: { scale: 0.8271, x: 0, y: 400 },
+        portraitSize: { width: 533, height: 1550 },
+        characterHeight: 188,
+      })!;
+
+      expect(result.raw.faceY).toBeLessThan(0);
+      expect(result.crop.faceY).toBe(0);
+      expect(result.warnings.map((w) => w.code)).toEqual(["anchorBelow"]);
+    });
+
     test("框太小 / 太大都给提示", () => {
       const tiny = deriveCropFromAlignment({
         alignment: { scale: 20, x: 0, y: 0 },
@@ -281,6 +318,89 @@ describe("按截图反推裁剪框", () => {
       expect(clampAlignmentScale(1e9)).toBeCloseTo(146.4 / 24, 9);
       const mid = clampAlignmentScale(0.5);
       expect(mid).toBeCloseTo(0.5, 9);
+    });
+  });
+
+  describe("立绘缩放（以锚点缩放对齐）", () => {
+    /** 锚点下的那块立绘在缩放前后必须落在同一个画面点上 */
+    const framePointUnderAnchor = (
+      alignment: { scale: number; x: number; y: number },
+      anchorX: number,
+      anchorY: number,
+    ) => ({
+      x: (anchorX - alignment.x) / alignment.scale,
+      y: (anchorY - alignment.y) / alignment.scale,
+    });
+
+    test("锚点下的立绘保持不动：放大 / 缩小都成立", () => {
+      const alignment = { scale: 0.4, x: 100, y: 200 };
+      const anchorX = 960;
+      const anchorY = 540;
+      const before = framePointUnderAnchor(alignment, anchorX, anchorY);
+
+      for (const nextScale of [0.8, 0.2, 0.401]) {
+        const zoomed = zoomAlignmentAt(
+          alignment,
+          nextScale,
+          anchorX,
+          anchorY,
+        );
+        expect(zoomed.scale).toBeCloseTo(nextScale, 9);
+        const after = framePointUnderAnchor(zoomed, anchorX, anchorY);
+        expect(after.x).toBeCloseTo(before.x, 9);
+        expect(after.y).toBeCloseTo(before.y, 9);
+      }
+    });
+
+    test("非中心锚点也保持不动（滚轮 / 拖到哪缩到哪）", () => {
+      const alignment = { scale: 0.25, x: 100, y: 200 };
+      const zoomed = zoomAlignmentAt(alignment, 0.5, 300, 400);
+      const before = framePointUnderAnchor(alignment, 300, 400);
+      const after = framePointUnderAnchor(zoomed, 300, 400);
+      expect(after.x).toBeCloseTo(before.x, 9);
+      expect(after.y).toBeCloseTo(before.y, 9);
+    });
+
+    test("目标比例夹进合法区间；NaN 保持当前比例不动", () => {
+      const alignment = { scale: 0.4, x: 100, y: 200 };
+
+      expect(zoomAlignmentAt(alignment, 1e9, 0, 0).scale).toBeCloseTo(
+        146.4 / 24,
+        9,
+      );
+      expect(zoomAlignmentAt(alignment, 0, 0, 0).scale).toBeCloseTo(
+        146.4 / 8192,
+        9,
+      );
+
+      const nan = zoomAlignmentAt(alignment, Number.NaN, 0, 0);
+      expect(nan.scale).toBeCloseTo(0.4, 9);
+      expect(nan.x).toBeCloseTo(100, 9);
+      expect(nan.y).toBeCloseTo(200, 9);
+    });
+
+    test("对齐不可用时原样返回", () => {
+      const broken = { scale: 0, x: 1, y: 2 };
+      expect(zoomAlignmentAt(broken, 0.5, 0, 0)).toBe(broken);
+    });
+
+    test("缩放 1% 后头框边长按 146.4 / S 变化", () => {
+      const alignment = alignmentFromCrop({
+        crop: { faceX: 568, faceY: 40, length: 400 },
+      })!;
+      const zoomed = zoomAlignmentAt(
+        alignment,
+        alignment.scale * 1.01,
+        960,
+        540,
+      );
+      const result = deriveCropFromAlignment({
+        alignment: zoomed,
+        portraitSize: PORTRAIT,
+        centerX: 768,
+      })!;
+      // 400 / 1.01 = 396.04 → 396
+      expect(result.crop.length).toBe(396);
     });
   });
 

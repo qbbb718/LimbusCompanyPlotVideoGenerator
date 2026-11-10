@@ -249,27 +249,41 @@
   cursor: pointer;
 }
 
+/* ---- 立绘缩放（− / 精确比例输入 / ＋），与"查看视图缩放"是两组独立控件 ---- */
 .reference-crop-zoom {
   display: inline-flex;
-  gap: 6px;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 2px 2px 8px;
+  background-color: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
 }
 
 .reference-crop-zoom button {
-  width: 30px;
-  height: 28px;
+  width: 28px;
+  height: 26px;
   padding: 0;
   font-size: 16px;
   line-height: 1;
   color: #333;
-  background-color: #fff;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  background-color: transparent;
+  border: none;
+  border-radius: 3px;
   cursor: pointer;
 }
 
 .reference-crop-zoom button:hover {
   color: #1890ff;
-  border-color: #1890ff;
+  background-color: #f0f7ff;
+}
+
+/* 两组缩放前面的小标签（视图 / 立绘），避免两个 −%＋ 分不清 */
+.reference-crop-zoom-name {
+  margin-right: 4px;
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
 }
 
 .reference-crop-reset {
@@ -297,7 +311,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px;
+  padding: 2px 2px 2px 8px;
   background-color: #fff;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
@@ -331,7 +345,7 @@
 }
 
 .reference-crop-zoom-field input {
-  width: 58px;
+  width: 64px;
   padding: 2px 4px;
   font: inherit;
   font-variant-numeric: tabular-nums;

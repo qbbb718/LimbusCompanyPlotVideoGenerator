@@ -2,6 +2,8 @@ import {
   MAX_VIEW_SCALE,
   MIN_VIEW_SCALE,
   VIEW_ZOOM_STEP,
+  WHEEL_PORTRAIT_ZOOM_FINE_SENSITIVITY,
+  WHEEL_PORTRAIT_ZOOM_SENSITIVITY,
   actualSizeView,
   clampView,
   clampViewPan,
@@ -10,6 +12,7 @@ import {
   fitScale,
   fitView,
   formatZoomPercent,
+  formatZoomPercentValue,
   frameToCss,
   isActualSizeView,
   isFitView,
@@ -161,6 +164,15 @@ describe("截图舞台视图变换", () => {
       expect(formatZoomPercent(4)).toBe("400%");
     });
 
+    test("立绘缩放显示到 0.01 级；输入框文字不带 %", () => {
+      expect(zoomPercent(0.366, 2)).toBe(36.6);
+      expect(zoomPercent(0.36612, 2)).toBe(36.61);
+      expect(formatZoomPercent(0.36612, 2)).toBe("36.61%");
+      expect(formatZoomPercentValue(0.36612, 2)).toBe("36.61");
+      expect(formatZoomPercentValue(0.5)).toBe("50");
+      expect(formatZoomPercentValue(Number.NaN)).toBe("0");
+    });
+
     test("解析用户输入：百分数 / 百分号 / 倍率", () => {
       expect(parseZoomPercent("150")).toBe(1.5);
       expect(parseZoomPercent("150%")).toBe(1.5);
@@ -207,6 +219,19 @@ describe("截图舞台视图变换", () => {
 
     test("按钮步进是 1.1（与需求 1.05~1.1 一致）", () => {
       expect(VIEW_ZOOM_STEP).toBeCloseTo(1.1, 9);
+    });
+
+    test("立绘缩放滚轮：Alt 每格 0.5%，Shift+Alt 每格 0.1%", () => {
+      expect(
+        wheelZoomFactor(-100, WHEEL_PORTRAIT_ZOOM_SENSITIVITY),
+      ).toBeCloseTo(Math.exp(0.005), 6);
+      expect(
+        wheelZoomFactor(-100, WHEEL_PORTRAIT_ZOOM_FINE_SENSITIVITY),
+      ).toBeCloseTo(Math.exp(0.001), 6);
+      // 向下滚就是缩小（与视图滚轮方向一致）
+      expect(
+        wheelZoomFactor(100, WHEEL_PORTRAIT_ZOOM_SENSITIVITY),
+      ).toBeLessThan(1);
     });
   });
 });

@@ -13,7 +13,6 @@ import {
   FRAME_WIDTH,
   PortraitAlignment,
   alignmentFromCrop,
-  clampAlignmentScale,
   cropCenterX,
   defaultAlignment,
   deriveCropFromAlignment,
@@ -21,23 +20,25 @@ import {
   isSixteenByNine,
   portraitRectInFrame,
   screenshotRectInFrame,
+  zoomAlignmentAt,
 } from "@features/common/utils/referenceCrop";
 import {
   ReferenceView,
   VIEW_ZOOM_STEP,
   Viewport,
+  WHEEL_PORTRAIT_ZOOM_FINE_SENSITIVITY,
   WHEEL_PORTRAIT_ZOOM_SENSITIVITY,
   actualSizeView,
   clampView,
   clampViewScale,
   fitView,
   formatZoomPercent,
+  formatZoomPercentValue,
   isActualSizeView,
   isFitView,
   normalizeWheelDelta,
   parseZoomPercent,
   wheelZoomFactor,
-  zoomPercent,
   zoomViewAt,
 } from "@features/common/utils/referenceView";
 import createLogger from "../utils/logger";
@@ -47,11 +48,37 @@ const log = createLogger("ReferenceCropDialog");
 
 /** 立绘叠加层的默认不透明度：太低看不出对齐，太高看不见截图底下的原角色 */
 const DEFAULT_OPACITY = 0.55;
-/** 立绘缩放的按钮步长（5%）；更细的调整用 Alt+滚轮（每格约 3%） */
-const ZOOM_STEP = 1.05;
+/**
+ * 立绘缩放的按钮步长：默认 1%，Shift = 5%，Alt = 0.1%。
+ *
+ * <p>以前是 5%，对齐头部时总差"一点点"却跨不过去；1% 一档能落到一两个像素，
+ * 0.1% 留给最后一两像素的微调（显示到 0.01% 也看得见变化）。
+ */
+const ZOOM_STEP = 1.01;
+const ZOOM_STEP_LARGE = 1.05;
+const ZOOM_STEP_FINE = 1.001;
+/** 立绘缩放百分比显示到小数点后几位（0.01 级） */
+const PORTRAIT_ZOOM_DIGITS = 2;
 /** 方向键微调的步长（帧像素）；按住 Shift 走大步 */
 const NUDGE_STEP = 1;
 const NUDGE_STEP_LARGE = 10;
+
+/**
+ * 立绘缩放按钮的倍率。
+ *
+ * @param direction +1 = 放大，-1 = 缩小（取倒数，保证与放大对称）
+ */
+const portraitStepFactor = (
+  event: { shiftKey: boolean; altKey: boolean },
+  direction: 1 | -1,
+): number => {
+  const base = event.altKey
+    ? ZOOM_STEP_FINE
+    : event.shiftKey
+      ? ZOOM_STEP_LARGE
+      : ZOOM_STEP;
+  return direction > 0 ? base : 1 / base;
+};
 
 interface ReferenceCropDialogProps {
   /** 正在编辑的立绘（data URL / blob URL / 后端 URL 都行） */
@@ -119,7 +146,11 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
     panY: 0,
   });
   /** 缩放比例输入框的草稿：null = 没在编辑，显示当前比例 */
-  const [zoomDraft, setZoomDraft] = useState<string | null>(null);
+  const [viewZoomDraft, setViewZoomDraft] = useState<string | null>(null);
+  /** 立绘缩放输入框的草稿：null = 没在编辑 */
+  const [portraitZoomDraft, setPortraitZoomDraft] = useState<string | null>(
+    null,
+  );
   /** 空格按住 = 平移预备态 */
   const [isSpaceDown, setIsSpaceDown] = useState(false);
   /** 当前拖拽的模式：拖动立绘（校准）还是平移视图 */
@@ -140,7 +171,8 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
   /** 截图 objectURL：换图 / 关闭时要回收 */
   const screenshotUrlRef = useRef<string | null>(null);
   /** 比例输入框按 Esc：标记"这次失焦是取消"，别把被放弃的输入提交上去 */
-  const cancelZoomRef = useRef(false);
+  const cancelViewZoomRef = useRef(false);
+  const cancelPortraitZoomRef = useRef(false);
 
   useEffect(() => {
     viewRef.current = view;
@@ -339,20 +371,20 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
     applyView(() => actualSizeView(currentStage));
   }, [applyView]);
 
-  /** 提交缩放比例输入框：150 / 150% / 1.5x 都认，非法输入直接还原 */
-  const commitZoomDraft = useCallback(() => {
-    if (cancelZoomRef.current) {
+  /** 提交视图缩放输入框：150 / 150% / 1.5x 都认，非法输入直接还原 */
+  const commitViewZoomDraft = useCallback(() => {
+    if (cancelViewZoomRef.current) {
       // 上一次是按 Esc 取消的：丢掉草稿，别把被放弃的输入提交上去
-      cancelZoomRef.current = false;
-      setZoomDraft(null);
+      cancelViewZoomRef.current = false;
+      setViewZoomDraft(null);
       return;
     }
-    if (zoomDraft === null) return;
-    const parsed = parseZoomPercent(zoomDraft);
-    setZoomDraft(null);
+    if (viewZoomDraft === null) return;
+    const parsed = parseZoomPercent(viewZoomDraft);
+    setViewZoomDraft(null);
     if (parsed === null) return;
     zoomViewTo(parsed);
-  }, [zoomDraft, zoomViewTo]);
+  }, [viewZoomDraft, zoomViewTo]);
 
   /** 以舞台上的某一点为中心缩放视图（滚轮用） */
   const zoomViewAroundPoint = useCallback(
@@ -370,24 +402,64 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
     [applyView],
   );
 
-  /* ---------------- 滚轮：视图缩放（Alt = 立绘缩放） ---------------- */
+  /* ---------------- 立绘缩放（校准） ---------------- */
 
-  /** 以帧里的某一点为中心缩放立绘（校准） */
-  const zoomPortraitAt = useCallback(
-    (factor: number, frameX: number, frameY: number) => {
-      setAlignment((current) => {
-        if (!current) return current;
-        const scale = clampAlignmentScale(current.scale * factor);
-        const applied = scale / current.scale;
-        return {
-          scale,
-          x: frameX - (frameX - current.x) * applied,
-          y: frameY - (frameY - current.y) * applied,
-        };
-      });
+  /**
+   * 立绘缩放的唯一入口：读最新对齐算目标比例，再以帧里的某一点为锚点缩放。
+   *
+   * <p>锚点默认是画面中心（按钮 / 输入框 / 滚轮都用它）。缩放只改
+   * `scale / x / y` 这三个对齐量，反推公式与写回逻辑一个字都不动。
+   */
+  const zoomPortrait = useCallback(
+    (
+      resolveScale: (current: PortraitAlignment) => number,
+      frameX = FRAME_WIDTH / 2,
+      frameY = FRAME_HEIGHT / 2,
+    ) => {
+      setAlignment((current) =>
+        current
+          ? zoomAlignmentAt(current, resolveScale(current), frameX, frameY)
+          : current,
+      );
     },
     [],
   );
+
+  const zoomPortraitBy = useCallback(
+    (factor: number) => zoomPortrait((current) => current.scale * factor),
+    [zoomPortrait],
+  );
+
+  const zoomPortraitTo = useCallback(
+    (targetScale: number) => zoomPortrait(() => targetScale),
+    [zoomPortrait],
+  );
+
+  /** 提交立绘缩放输入框：36.6 / 36.6% / 0.366x 都认，非法输入直接还原 */
+  const commitPortraitZoomDraft = useCallback(() => {
+    if (cancelPortraitZoomRef.current) {
+      cancelPortraitZoomRef.current = false;
+      setPortraitZoomDraft(null);
+      return;
+    }
+    if (portraitZoomDraft === null) return;
+    const parsed = parseZoomPercent(portraitZoomDraft);
+    setPortraitZoomDraft(null);
+    if (parsed === null) return;
+
+    // 只是点进输入框又点出去（或输入的数字四舍五入后与当前一致）：别把显示用的
+    // 0.01 级近似值当成新比例写回去，否则每次聚焦都会让裁剪框漂一丁点。
+    if (
+      alignment &&
+      formatZoomPercentValue(parsed, PORTRAIT_ZOOM_DIGITS) ===
+        formatZoomPercentValue(alignment.scale, PORTRAIT_ZOOM_DIGITS)
+    ) {
+      return;
+    }
+    zoomPortraitTo(parsed);
+  }, [alignment, portraitZoomDraft, zoomPortraitTo]);
+
+  /* ---------------- 滚轮：视图缩放（Alt = 立绘缩放） ---------------- */
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -409,10 +481,13 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
 
     const onWheel = (event: WheelEvent) => {
       if (event.altKey) {
-        // Alt+滚轮 = 立绘缩放（更细：每格约 3%），以画面中心为锚点
+        // Alt+滚轮 = 立绘缩放（0.5%/格）；Shift+Alt 再细一档（0.1%/格）
         event.preventDefault();
-        zoomPortraitAt(
-          wheelZoomFactor(event.deltaY, WHEEL_PORTRAIT_ZOOM_SENSITIVITY),
+        const sensitivity = event.shiftKey
+          ? WHEEL_PORTRAIT_ZOOM_FINE_SENSITIVITY
+          : WHEEL_PORTRAIT_ZOOM_SENSITIVITY;
+        zoomPortrait(
+          (current) => current.scale * wheelZoomFactor(event.deltaY, sensitivity),
           FRAME_WIDTH / 2,
           FRAME_HEIGHT / 2,
         );
@@ -442,7 +517,7 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
         cancelAnimationFrame(frame);
       }
     };
-  }, [zoomPortraitAt, zoomViewAroundPoint]);
+  }, [zoomPortrait, zoomViewAroundPoint]);
 
   /* ---------------- 拖拽：立绘 or 平移 ---------------- */
 
@@ -648,7 +723,20 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
   const fitDisabled = stage.width > 0 && isFitView(view, stage);
   const actualSizeDisabled = isActualSizeView(view);
   const zoomInputValue =
-    zoomDraft !== null ? zoomDraft : String(zoomPercent(view.scale));
+    viewZoomDraft !== null
+      ? viewZoomDraft
+      : formatZoomPercentValue(view.scale);
+  const portraitZoomInputValue =
+    portraitZoomDraft !== null
+      ? portraitZoomDraft
+      : alignment
+        ? formatZoomPercentValue(alignment.scale, PORTRAIT_ZOOM_DIGITS)
+        : "";
+  /** 读数里的立绘缩放（与输入框同精度；对齐还没建好时给个占位） */
+  const portraitZoomPercentText =
+    alignment !== null
+      ? formatZoomPercent(alignment.scale, PORTRAIT_ZOOM_DIGITS)
+      : "—";
 
   /* ---------------- 渲染 ---------------- */
 
@@ -825,6 +913,7 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
               role="group"
               aria-label="查看视图缩放"
             >
+              <span className="reference-crop-zoom-name">视图</span>
               <button
                 type="button"
                 onClick={() => zoomViewBy(1 / VIEW_ZOOM_STEP)}
@@ -838,25 +927,28 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
                   type="text"
                   inputMode="decimal"
                   aria-label="视图缩放比例（百分比，可输入 150、150% 或 1.5x）"
+                  title="视图缩放：100% = 1 个画面像素对 1 个屏幕像素，只影响查看"
                   value={zoomInputValue}
-                  onChange={(event) => setZoomDraft(event.target.value)}
+                  onChange={(event) => setViewZoomDraft(event.target.value)}
                   onFocus={(event) => {
-                    cancelZoomRef.current = false;
-                    setZoomDraft(String(zoomPercent(viewRef.current.scale)));
+                    cancelViewZoomRef.current = false;
+                    setViewZoomDraft(
+                      formatZoomPercentValue(viewRef.current.scale),
+                    );
                     event.currentTarget.select();
                   }}
-                  onBlur={commitZoomDraft}
+                  onBlur={commitViewZoomDraft}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
-                      commitZoomDraft();
+                      commitViewZoomDraft();
                       event.currentTarget.blur();
                     } else if (event.key === "Escape") {
                       // 只取消输入，别把这个 Esc 冒泡成"关闭弹窗"
                       event.stopPropagation();
-                      cancelZoomRef.current = true;
+                      cancelViewZoomRef.current = true;
                       // 立刻把显示还原（失焦是异步的，别让用户看到被放弃的数字）
-                      setZoomDraft(null);
+                      setViewZoomDraft(null);
                       event.currentTarget.blur();
                     }
                   }}
@@ -893,24 +985,65 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
               1:1
             </button>
 
-            <div className="reference-crop-zoom" role="group" aria-label="立绘缩放">
+            <div
+              className="reference-crop-zoom"
+              role="group"
+              aria-label="立绘缩放"
+            >
+              <span className="reference-crop-zoom-name">立绘</span>
               <button
                 type="button"
-                onClick={() =>
-                  zoomPortraitAt(1 / ZOOM_STEP, FRAME_WIDTH / 2, FRAME_HEIGHT / 2)
-                }
+                onClick={(event) => zoomPortraitBy(portraitStepFactor(event, -1))}
                 aria-label="缩小立绘"
-                title="立绘缩小 5%（更细用 Alt+滚轮）"
+                title="立绘缩小 1%（Shift 点按 5%、Alt 点按 0.1%；更细用 Alt+滚轮）"
               >
                 −
               </button>
+              <label className="reference-crop-zoom-field">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  aria-label="立绘缩放比例（百分比，可输入 36.6、36.6% 或 0.366x，精确到 0.01%）"
+                  title="立绘缩放：100% = 1 个立绘原图像素对 1 个画面像素；与 ± 按钮、Alt+滚轮是同一件事"
+                  value={portraitZoomInputValue}
+                  onChange={(event) =>
+                    setPortraitZoomDraft(event.target.value)
+                  }
+                  onFocus={(event) => {
+                    cancelPortraitZoomRef.current = false;
+                    if (alignment) {
+                      setPortraitZoomDraft(
+                        formatZoomPercentValue(
+                          alignment.scale,
+                          PORTRAIT_ZOOM_DIGITS,
+                        ),
+                      );
+                    }
+                    event.currentTarget.select();
+                  }}
+                  onBlur={commitPortraitZoomDraft}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      commitPortraitZoomDraft();
+                      event.currentTarget.blur();
+                    } else if (event.key === "Escape") {
+                      // 同样只取消输入，别把弹窗关掉
+                      event.stopPropagation();
+                      cancelPortraitZoomRef.current = true;
+                      setPortraitZoomDraft(null);
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  onKeyUp={(event) => event.stopPropagation()}
+                />
+                <span>%</span>
+              </label>
               <button
                 type="button"
-                onClick={() =>
-                  zoomPortraitAt(ZOOM_STEP, FRAME_WIDTH / 2, FRAME_HEIGHT / 2)
-                }
+                onClick={(event) => zoomPortraitBy(portraitStepFactor(event, 1))}
                 aria-label="放大立绘"
-                title="立绘放大 5%（更细用 Alt+滚轮）"
+                title="立绘放大 1%（Shift 点按 5%、Alt 点按 0.1%；更细用 Alt+滚轮）"
               >
                 ＋
               </button>
@@ -928,23 +1061,13 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
           <div className="reference-crop-row">
             <span className="reference-crop-hint">
               滚轮缩放视图（以指针为中心）· 拖动立绘 / 方向键 1px（Shift 10px）·
-              空格或中键拖动平移 · Alt+滚轮缩放立绘
-              {screenshot && (
-                <strong className="reference-crop-hint-strong">
-                  只取「头的大小」和「竖直中心」：左右拖到哪都不影响结果，角色不必站在画面中间。
-                </strong>
-              )}
+              空格或中键拖动平移 · Alt+滚轮缩放立绘（0.5%/格，Shift+Alt 0.1%/格）·
+              立绘缩放可直接输入精确比例（0.01% 级）
+
             </span>
           </div>
 
-          {screenshot && (
-            <p className="reference-crop-note">
-              水平方向沿用当前裁剪框的中心（{Math.round(horizontalCenter)} px）——
-              原作里角色的左右站位由镜头决定、同一角色各场景都不一样，拿它反推只会把框带偏。
-              竖直位置则由角色身高决定，所以人物在哪一镜里站着都要对齐。
-              舞台缩放只影响查看，不改任何裁剪参数。
-            </p>
-          )}
+        
 
           {screenshotError && (
             <p className="reference-crop-error" role="alert">
@@ -971,7 +1094,7 @@ const ReferenceCropDialog: React.FC<ReferenceCropDialogProps> = ({
                 </span>
                 <span className="reference-crop-readout-raw">
                   角色身高 {Math.round(characterHeight || 171)}cm · 视图{" "}
-                  {formatZoomPercent(view.scale)}
+                  {formatZoomPercent(view.scale)} · 立绘 {portraitZoomPercentText}
                 </span>
               </div>
               {result.warnings.map((warning) => (

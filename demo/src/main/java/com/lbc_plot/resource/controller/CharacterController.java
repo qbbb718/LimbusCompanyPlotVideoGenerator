@@ -359,6 +359,14 @@ public class CharacterController {
 
                     // 保存新的关联关系（保留原有默认立绘，入参带标记时以入参为准）
                     portraitDao.saveCharacterPortraits(id, character.getPortraits(), preservedDefaultPortraitId);
+
+                    // 返回给前端的立绘顺序 / 标记，与 GET /api/characters 的约定对齐：
+                    // 默认立绘在第一张、其余保持入参顺序，defaultPortrait 按库里实际写进去的结果回填。
+                    // 不做这一步的话，前端保存后拿到的仍是"入参顺序 + 可能全为 false 的标记"，
+                    // 角色卡片头像 / 下次打开的立绘列表就可能挑错默认立绘。
+                    String savedDefaultPortraitId = portraitDao.findDefaultPortraitId(id);
+                    character.setPortraits(
+                            orderPortraitsDefaultFirst(character.getPortraits(), savedDefaultPortraitId));
                 }
 
                 return null;
@@ -503,6 +511,50 @@ public class CharacterController {
         } finally {
             ResourceTransferService.deleteQuietly(tempZip);
         }
+    }
+
+    /**
+     * 把立绘列表整理成「默认立绘在前、其余保持原相对顺序」，并按 defaultPortraitId
+     * 回填 defaultPortrait 标记。
+     *
+     * <p>用途：PUT /api/characters/{id} 重建完关联关系后，把**库里实际写进去的结果**
+     * 反映到响应里。约定与 {@code PortraitDAO.findByCharacterId}（GET /api/characters）
+     * 一致：默认立绘排在第一位，前端因此可以一直依赖"列表首项 = 默认立绘"这个老约定
+     * 做兜底（标记缺失时也不会挑错图）。
+     *
+     * <p>纯内存整理，不查库、不碰图片，单次保存的开销可以忽略。
+     *
+     * @param portraits         待整理的立绘列表（可空）
+     * @param defaultPortraitId 库里实际的默认立绘ID（可空，为空时原样返回）
+     * @return 默认立绘在首位的列表；入参可空 / 无默认时原样返回
+     */
+    static List<Portrait> orderPortraitsDefaultFirst(List<Portrait> portraits,
+            String defaultPortraitId) {
+        if (portraits == null || portraits.isEmpty() || defaultPortraitId == null) {
+            return portraits;
+        }
+
+        Portrait defaultPortrait = null;
+        for (Portrait portrait : portraits) {
+            // 标记一律按库里的结果重写：入参可能一个都没带，也可能带了多个
+            portrait.setDefaultPortrait(defaultPortraitId.equals(portrait.getPortraitID()));
+            if (portrait.isDefaultPortrait()) {
+                defaultPortrait = portrait;
+            }
+        }
+        if (defaultPortrait == null) {
+            // 默认立绘不在本次列表里（例如刚被删）：保持原顺序，别把列表搅乱
+            return portraits;
+        }
+
+        List<Portrait> ordered = new ArrayList<>(portraits.size());
+        ordered.add(defaultPortrait);
+        for (Portrait portrait : portraits) {
+            if (portrait != defaultPortrait) {
+                ordered.add(portrait);
+            }
+        }
+        return ordered;
     }
 
     /**

@@ -180,14 +180,14 @@ describe("预览几何 → 立绘", () => {
     });
   });
 
-  test("身高变矮 → 锚点下移（12 px/厘米）", () => {
-    // 171-151 = 20cm → +240px
+  test("身高变矮 → 锚点下移（8.333 px/厘米，向零截断）", () => {
+    // 171-151 = 20cm → +166px（12px/cm 的老口径会是 +240）
     expect(
       characterWorldRect(
         makeCharacter({ height: 151 }) as any,
         IMAGE_PORTRAIT,
       ).y,
-    ).toBe(461);
+    ).toBe(387);
   });
 
   test("用户缩放 2×：以裁剪框中心为基准放大，脸框中心不动", () => {

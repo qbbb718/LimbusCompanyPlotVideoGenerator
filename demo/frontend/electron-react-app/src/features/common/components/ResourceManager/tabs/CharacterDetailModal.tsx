@@ -14,8 +14,10 @@ import PortraitModal from "./PortraitModal";
 import {
   buildPortraitImageUrl,
   getDefaultPortrait,
+  isDefaultPortraitId,
   loadPortraitImageSize,
   markDefaultPortrait,
+  orderPortraitsDefaultFirst,
 } from "@features/common/utils/portraitUtils";
 import {
   CropRect,
@@ -114,9 +116,17 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   isNewCharacter,
   portraits,
 }) => {
-  // 编辑中的角色状态，初始化时传入角色数据或为null
+  // 编辑中的角色状态，初始化时传入角色数据或为null。
+  // 立绘统一按"默认立绘在前"排一次：后端返回的顺序本来就是默认在前，
+  // 但上层父组件可能带着本地改动过的顺序进来（保存后的响应、局部更新），
+  // 这里排好之后，"设为默认 / 新增 / 删除"的本地改动也能保持同一约定。
   const [editingCharacter, setEditingCharacter] = useState<MyCharacter | null>(
-    character ? { ...character, portraits: character.portraits || [] } : null,
+    character
+      ? {
+          ...character,
+          portraits: orderPortraitsDefaultFirst(character.portraits),
+        }
+      : null,
   );
   // 颜色选择器显示状态，控制文本和背景颜色选择器的显示
   const [showColorPicker, setShowColorPicker] = useState<{
@@ -703,7 +713,11 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         prev
           ? {
               ...prev,
-              portraits: [...(prev.portraits || []), ...importedPortraits],
+              // 新导入的立绘一律排在后面；默认立绘仍然保持第一张
+              portraits: orderPortraitsDefaultFirst([
+                ...(prev.portraits || []),
+                ...importedPortraits,
+              ]),
             }
           : prev,
       );
@@ -779,11 +793,22 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       await ApiService.deletePortrait(editingCharacter.characterID, portraitId);
 
       // 从本地状态中移除立绘
+      const remaining = (editingCharacter.portraits || []).filter(
+        (p) => p.portraitID !== portraitId,
+      );
+      // 删掉的是默认立绘：把剩下的第一张提为默认，别让角色变成"没有默认立绘"。
+      // 后端删除接口做同样的事（保住"角色至少有一张默认立绘"的约定），这里同步本地标记，
+      // 保证这次「保存」传回去的 defaultPortrait 标记和库里一致。
+      const deletedDefault = isDefaultPortraitId(
+        editingCharacter.portraits,
+        portraitId,
+      );
       setEditingCharacter({
         ...editingCharacter,
-        portraits: editingCharacter.portraits.filter(
-          (p) => p.portraitID !== portraitId,
-        ),
+        portraits:
+          deletedDefault && remaining.length > 0
+            ? markDefaultPortrait(remaining, remaining[0].portraitID)
+            : orderPortraitsDefaultFirst(remaining),
       });
     } catch (error) {
       console.error("删除立绘失败:", error);
@@ -809,8 +834,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         portrait,
       );
 
-      // 本地同步默认标记。默认立绘由 defaultPortrait 字段表示，
-      // 不再靠"把立绘挪到数组第一位"来模拟——那样刷新页面后就会被后端顺序覆盖。
+      // 本地同步默认标记。默认立绘由 defaultPortrait 字段表示（后端 is_default 是唯一真源），
+      // markDefaultPortrait 会顺手把新的默认立绘挪到第一张：本地顺序与后端返回的顺序
+      // （默认立绘在前、其余按名称）保持一致，保存后再打开也不会"默认立绘排在中间"。
       setEditingCharacter((prev) =>
         prev
           ? {
@@ -829,7 +855,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (character) {
       setEditingCharacter({
         ...character,
-        portraits: character.portraits || portraits || [],
+        portraits: orderPortraitsDefaultFirst(
+          character.portraits || portraits || [],
+        ),
       });
     }
   }, [character, portraits]);
@@ -920,12 +948,15 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         portraitId: portrait.portraitID,
       });
     } else {
-      // 添加新立绘
+      // 添加新立绘：追加到末尾（默认立绘仍在第一张，角色原本没有立绘时它就是唯一一张）
       setEditingCharacter((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
-          portraits: [...(prev.portraits || []), portrait],
+          portraits: orderPortraitsDefaultFirst([
+            ...(prev.portraits || []),
+            portrait,
+          ]),
         };
       });
       console.log("[CharacterDetailModal] 添加新立绘", {

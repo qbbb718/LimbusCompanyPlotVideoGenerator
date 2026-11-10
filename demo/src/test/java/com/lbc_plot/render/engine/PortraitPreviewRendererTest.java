@@ -143,7 +143,7 @@ class PortraitPreviewRendererTest {
     }
 
     @Test
-    @DisplayName("对比角色用自身身高定位：195cm 的角色比 171cm 的角色高出 24×12 像素")
+    @DisplayName("对比角色用自身身高定位：195cm 的角色比 171cm 的角色高出 24cm 对应的像素")
     void comparePortraitUsesItsOwnHeight(@TempDir Path tempDir) throws Exception {
         BufferedImage portrait = solidImage(300, 600, PORTRAIT_COLOR);
         Background background = solidBackground(tempDir, 800, 450, BACKGROUND_COLOR);
@@ -156,10 +156,11 @@ class PortraitPreviewRendererTest {
         BufferedImage tallPreview = renderWithCompares(portrait, background, List.of(tall));
         BufferedImage normalPreview = renderWithCompares(portrait, background, List.of(normalHeight));
 
-        // 取样点在 y=600：标准身高角色（171cm）的身体还在这里，高个子（195cm）已经被整体抬高、此处只剩背景
-        assertColorNear(normalPreview, 1300, 600, COMPARE_RIGHT_COLOR,
+        // 取样点在 y=620：171cm 角色（成片里 284.8 ~ 764.8）还在这里，
+        // 195cm 被抬高 24cm（设计 200px → 成片 160px）后下边缘只到 604.8，此处只剩背景
+        assertColorNear(normalPreview, 1300, 620, COMPARE_RIGHT_COLOR,
                 "171cm 的对比角色：取样的高度还在它身上");
-        assertBackgroundTint(tallPreview, 1300, 600,
+        assertBackgroundTint(tallPreview, 1300, 620,
                 "195cm 的对比角色应整体抬高，取样的高度只剩背景");
     }
 

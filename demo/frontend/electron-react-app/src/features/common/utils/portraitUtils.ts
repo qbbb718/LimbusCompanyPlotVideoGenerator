@@ -46,7 +46,40 @@ export const getDefaultPortrait = (
 };
 
 /**
- * 把某个立绘标记为默认，其余立绘取消标记（返回新数组，不改动入参）
+ * 把默认立绘排到列表第一位（返回新数组，不改动入参）。
+ *
+ * <p>只管**显示顺序**，不参与"谁是默认"的判定 —— 判定仍然只由
+ * {@link getDefaultPortrait} 负责（defaultPortrait 标记，标记缺失时回退首项）。
+ *
+ * <p>为什么必须排：后端 GET /api/characters 返回的立绘本来就是"默认立绘在前、其余按名称"，
+ * 但本地一旦做过改动（设为默认 / 新增 / 批量导入 / 删掉默认立绘），数组顺序就和后端不一致了，
+ * 界面上会出现"默认立绘的卡片排在中间"。所以渲染列表时统一过一遍这个函数，
+ * 保证无论数据从哪条路径来，默认立绘永远在第一张。
+ *
+ * <p>已经排好的列表原样返回同一个引用，避免无意义的数组重建。
+ */
+export const orderPortraitsDefaultFirst = (
+  portraits: Portrait[] | undefined | null,
+): Portrait[] => {
+  if (!portraits || portraits.length === 0) {
+    return [];
+  }
+  const defaultPortrait = getDefaultPortrait(portraits);
+  if (!defaultPortrait || portraits[0] === defaultPortrait) {
+    return portraits;
+  }
+  return [
+    defaultPortrait,
+    ...portraits.filter((portrait) => portrait !== defaultPortrait),
+  ];
+};
+
+/**
+ * 把某个立绘标记为默认，其余立绘取消标记，并把新的默认立绘挪到第一位
+ * （返回新数组，不改动入参）。
+ *
+ * <p>取消旧标记和置顶是同一个动作：只改标记的话，用户点完「设为默认」会看到
+ * 卡片原地不动、只有角标换了位置，与列表"默认立绘在第一张"的约定不符。
  */
 export const markDefaultPortrait = (
   portraits: Portrait[] | undefined | null,
@@ -55,10 +88,12 @@ export const markDefaultPortrait = (
   if (!portraits) {
     return [];
   }
-  return portraits.map((p) => ({
-    ...p,
-    defaultPortrait: p.portraitID === portraitId,
-  }));
+  return orderPortraitsDefaultFirst(
+    portraits.map((p) => ({
+      ...p,
+      defaultPortrait: p.portraitID === portraitId,
+    })),
+  );
 };
 
 /**

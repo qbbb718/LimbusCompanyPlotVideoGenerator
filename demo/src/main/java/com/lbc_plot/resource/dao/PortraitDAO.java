@@ -291,6 +291,25 @@ public interface PortraitDAO {
     void deleteCharacterPortraits(@Bind("characterId") String characterId);
 
     /**
+     * 删除单个立绘的关联关系（删除一张立绘时用）。
+     *
+     * <p>不能用 {@link #deleteCharacterPortraits} 代替：那会把该角色**所有**关联记录
+     * 一起删掉，其它立绘的 is_default 标记也跟着没了，于是删掉任意一张立绘后，
+     * 角色的"默认立绘"就退回按名称排序的第一张。
+     *
+     * @param characterId 角色ID
+     * @param portraitId  立绘ID
+     * @return 受影响的行数
+     */
+    @SqlUpdate("""
+            DELETE FROM character_portraits
+            WHERE character_id = :characterId AND portrait_id = :portraitId
+            """)
+    int deleteCharacterPortrait(
+            @Bind("characterId") String characterId,
+            @Bind("portraitId") String portraitId);
+
+    /**
      * 设置默认立绘（同一角色下保证只有一个默认）。
      *
      * 之前只执行 UPDATE ... SET is_default = 1，旧的默认立绘仍保留 is_default = 1，

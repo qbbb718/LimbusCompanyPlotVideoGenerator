@@ -1,7 +1,12 @@
 import { AppConfig } from "@root/features/common/config/appConfig";
+import { Emotion, Portrait } from "@types";
 import {
   MISSING_THUMBNAIL_PLACEHOLDER,
   buildPortraitThumbnailUrl,
+  getDefaultPortrait,
+  isDefaultPortraitId,
+  markDefaultPortrait,
+  orderPortraitsDefaultFirst,
 } from "./portraitUtils";
 
 /**
@@ -58,5 +63,98 @@ describe("MISSING_THUMBNAIL_PLACEHOLDER", () => {
     expect(decodeURIComponent(MISSING_THUMBNAIL_PLACEHOLDER)).toContain(
       "无缩略图",
     );
+  });
+});
+
+/** 造一个只带立绘判定会用到的字段的立绘 */
+const portrait = (portraitID: string, defaultPortrait = false): Portrait => ({
+  portraitID,
+  characterID: "char_order_test",
+  imagePath: `char_order_test/${portraitID}.png`,
+  portName: `立绘-${portraitID}`,
+  emotion: Emotion.NORMAL,
+  faceX: 0,
+  faceY: 0,
+  length: 100,
+  adjX: 0,
+  adjY: 0,
+  thumbnailPath: "",
+  defaultPortrait,
+});
+
+const ids = (portraits: Portrait[]): string[] =>
+  portraits.map((p) => p.portraitID);
+
+/**
+ * 资源管理-角色-立绘：默认立绘永远排在列表第一张。
+ *
+ * 后端 GET /api/characters 返回的就是"默认立绘在前、其余按名称"，
+ * 但本地做过改动（设为默认 / 新增 / 批量导入 / 删掉默认立绘）之后数组顺序会漂，
+ * 所以界面上要统一按标记再排一次。
+ */
+describe("orderPortraitsDefaultFirst", () => {
+  it("默认立绘不在首位时被挪到第一位，其余保持原相对顺序", () => {
+    const list = [
+      portrait("a"),
+      portrait("b"),
+      portrait("default", true),
+      portrait("c"),
+    ];
+
+    expect(ids(orderPortraitsDefaultFirst(list))).toEqual([
+      "default",
+      "a",
+      "b",
+      "c",
+    ]);
+    // 不改动入参
+    expect(ids(list)).toEqual(["a", "b", "default", "c"]);
+  });
+
+  it("已经排好的列表原样返回同一个引用（不会触发无意义的数组重建）", () => {
+    const list = [portrait("default", true), portrait("a"), portrait("b")];
+
+    expect(orderPortraitsDefaultFirst(list)).toBe(list);
+  });
+
+  it("没有任何默认标记时退回首项约定：顺序不变", () => {
+    const list = [portrait("a"), portrait("b")];
+
+    expect(orderPortraitsDefaultFirst(list)).toBe(list);
+    expect(isDefaultPortraitId(list, "a")).toBe(true);
+  });
+
+  it("空 / undefined / null 都返回空数组", () => {
+    expect(orderPortraitsDefaultFirst([])).toEqual([]);
+    expect(orderPortraitsDefaultFirst(undefined)).toEqual([]);
+    expect(orderPortraitsDefaultFirst(null)).toEqual([]);
+  });
+});
+
+describe("markDefaultPortrait", () => {
+  it("只保留一个默认标记，并把新的默认立绘挪到第一位", () => {
+    const list = [
+      portrait("default", true),
+      portrait("a"),
+      portrait("b"),
+    ];
+
+    const next = markDefaultPortrait(list, "b");
+
+    expect(ids(next)).toEqual(["b", "default", "a"]);
+    expect(next.map((p) => !!p.defaultPortrait)).toEqual([true, false, false]);
+    // 入参没有被改
+    expect(ids(list)).toEqual(["default", "a", "b"]);
+    expect(list[0].defaultPortrait).toBe(true);
+  });
+
+  it("标记一个不存在的立绘时不会把顺序搅乱", () => {
+    const list = [portrait("a"), portrait("b")];
+
+    const next = markDefaultPortrait(list, "not-exists");
+
+    expect(ids(next)).toEqual(["a", "b"]);
+    expect(next.every((p) => !p.defaultPortrait)).toBe(true);
+    expect(getDefaultPortrait(next)?.portraitID).toBe("a");
   });
 });

@@ -105,6 +105,8 @@ const PortraitSettings: React.FC<PortraitSettingsProps> = ({
           裁剪区域将用于计算缩放比例
           <br />
           拖动裁剪框可改位置；滚轮 / 拖动框外只缩放平移画面，框跟立绘走、不改裁剪值
+          <br />
+          对不准头的大小？点裁剪框下方「按截图校准」，用一张游戏截图反推
         </p>
         <img
           className="crop-hint-image"

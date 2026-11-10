@@ -25,6 +25,10 @@ class CharacterVisualPositionTest {
     /** 视频空间中裁剪方框上边缘应有的默认 Y 位置（171cm） */
     private static final int BOX_TOP_ANCHOR_Y = ProjectConfig.DEFAULT_CHARACTER_HEIGHT_Pixels;
 
+    /** 剧情模式的场景变换：设计画布 → 成片（RenderOfImage.PLOT_SCENE_SCALE 与 designW/10） */
+    private static final double PLOT_SCENE_SCALE = 0.8;
+    private static final int PLOT_SCENE_OFFSET_Y = ProjectConfig.VIDEO_HEIGHT / 10;
+
     /**
      * 构造一个立绘对象。imagePath 留空以避免真实读图；Portrait.Builder 对空路径是安全的。
      */
@@ -78,11 +82,9 @@ class CharacterVisualPositionTest {
     }
 
     @Test
-    @Disabled("身高标定本身是对的；当前偏差来自后续画面缩放，运行效果已确认正常。"
-            + "等缩放参与方框偏移的口径重新标定后再启用。")
-    @DisplayName("标定：投影位置与 1080p 实测的 4 组身高样本一致")
+    @DisplayName("标定：换算到成片后与 1080p 实测的 4 组身高样本一致")
     void matchesMeasuredCalibrationSamples() throws Exception {
-        // 实测数据（1080p）：身高 -> 裁剪方框上边缘距顶端像素
+        // 实测数据（原作 1080p 成片）：身高 -> 裁剪方框上边缘距顶端像素
         int[][] samples = {
                 { 167, 308 },
                 { 182, 208 },
@@ -99,12 +101,17 @@ class CharacterVisualPositionTest {
             CharacterVisual cv = visual(height, 0, 0, length);
             int derived = expectedBoxTop(height, 0, length);
 
-            // 实现落点必须与常量推导一致
+            // 实现落点必须与常量推导一致（设计画布坐标）
             assertBoxTopAt(cv, ProjectConfig.VIDEO_WIDTH / 2, derived);
 
-            // 实测含取样误差：167/182/180 三点严格命中，174 点因口径不同偏差 -14px
-            assertTrue(Math.abs(derived - measured) <= 15,
-                    String.format("身高 %dcm 推导 %dpx 与实测 %dpx 偏差过大", height, derived, measured));        }
+            // 实测在**成片**里量的，所以要和"设计画布 ×0.8 + 偏移"比，而不是和设计画布直接比。
+            // 这一步同时守住 Pixels_per_centimeter：它一旦改回 12（成片 9.6px/cm），
+            // 167→182 这 15cm 就会差 144px 而不是实测的 100px，这里立刻炸。
+            double inFrame = PLOT_SCENE_OFFSET_Y + PLOT_SCENE_SCALE * derived;
+            assertTrue(Math.abs(inFrame - measured) <= 12,
+                    String.format("身高 %dcm 换算到成片是 %.1fpx，与实测 %dpx 偏差过大",
+                            height, inFrame, measured));
+        }
     }
 
     @Test
@@ -118,16 +125,15 @@ class CharacterVisualPositionTest {
     }
 
     @Test
-    @Disabled("身高标定本身是对的；当前偏差来自后续画面缩放，运行效果已确认正常。"
-            + "等缩放参与方框偏移的口径重新标定后再启用。")
-    @DisplayName("身高差按 Pixels_per_centimeter 线性映射")
+    @DisplayName("身高差按 Pixels_per_centimeter 线性映射（成片里 15cm ≈ 100px）")
     void heightDifferenceMapsLinearly() throws Exception {
         int length = ProjectConfig.DEFAULT_CHARACTER_HEAD_LENGTH;
         CharacterVisual base = visual(171, 243, 0, length);
         CharacterVisual taller = visual(181, 243, 0, length);
         CharacterVisual shorter = visual(161, 243, 0, length);
 
-        int step = (int) (10 * ProjectConfig.Pixels_per_centimeter);
+        int step = Math.abs((int) ((ProjectConfig.DEFAULT_CHARACTER_HEIGHT - 181)
+                * ProjectConfig.Pixels_per_centimeter));
 
         assertBoxTopAt(taller, ProjectConfig.VIDEO_WIDTH / 2, BOX_TOP_ANCHOR_Y - step);
         assertBoxTopAt(shorter, ProjectConfig.VIDEO_WIDTH / 2, BOX_TOP_ANCHOR_Y + step);
@@ -135,11 +141,13 @@ class CharacterVisualPositionTest {
         assertEquals(step, base.getPosY() - taller.getPosY(), "高 10cm 的立绘应上移一个步长");
         assertEquals(step, shorter.getPosY() - base.getPosY(), "矮 10cm 的立绘应下移一个步长");
 
-        // 实测跨度校验：167cm -> 182cm 共 15cm，实测相差 100px
+        // 实测跨度校验：167cm -> 182cm 共 15cm，原作成片里相差 100px（设计画布 125px）
         CharacterVisual h167 = visual(167, 0, 0, length);
         CharacterVisual h182 = visual(182, 0, 0, length);
         int span = h167.getPosY() - h182.getPosY();
-        assertTrue(Math.abs(span - 100) <= 2, "167cm 与 182cm 的方框上边缘应相差约 100px，实际 " + span);
+        double spanInFrame = PLOT_SCENE_SCALE * span;
+        assertTrue(Math.abs(spanInFrame - 100) <= 2,
+                "167cm 与 182cm 的方框上边缘在成片里应相差约 100px，实际 " + spanInFrame);
     }
 
     @Test

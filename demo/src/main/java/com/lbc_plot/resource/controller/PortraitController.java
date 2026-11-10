@@ -206,8 +206,23 @@ public class PortraitController {
             jdbi.inTransaction(handle -> {
                 PortraitDAO dao = handle.attach(PortraitDAO.class);
 
-                // 删除角色与立绘的关联关系
-                dao.deleteCharacterPortraits(characterId);
+                // 记下删除前的默认立绘：删掉的正是它的话，要把剩下的第一张提为默认，
+                // 否则角色会变成"一张默认立绘都没有"，重新打开时默认项会随名称排序漂移。
+                String previousDefaultId = dao.findDefaultPortraitId(characterId);
+
+                // 只删这一条关联。旧实现调的是 deleteCharacterPortraits（删该角色**全部**关联），
+                // 于是删掉任意一张立绘，其它立绘的 is_default 标记也跟着没了。
+                dao.deleteCharacterPortrait(characterId, portraitId);
+
+                if (portraitId.equals(previousDefaultId)) {
+                    // findDefaultPortraitId 按 (is_default, display_order) 取第一张，
+                    // 此时默认标记已清空，拿到的就是剩下的第一张（与前端列表首项一致）
+                    String nextDefaultId = dao.findDefaultPortraitId(characterId);
+                    if (nextDefaultId != null) {
+                        dao.setDefaultPortrait(characterId, nextDefaultId);
+                        logger.info("删除的立绘是默认立绘，已把 " + nextDefaultId + " 提为默认");
+                    }
+                }
 
                 // 删除立绘记录
                 dao.delete(portraitId);

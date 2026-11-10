@@ -138,7 +138,7 @@ describe("按截图反推裁剪框", () => {
     expect(onApply).toHaveBeenCalledWith(CURRENT_CROP);
   });
 
-  test("放大 5% 后头框边长按 146.4 / S 缩小", async () => {
+  test("按钮默认 1% 一档、Shift 点按 5%：头框边长按 146.4 / S 缩小", async () => {
     const { onApply } = renderDialog();
     await screen.findByText("400");
 
@@ -149,11 +149,102 @@ describe("按截图反推裁剪框", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "放大立绘" }));
 
-    // 400 / 1.05 = 380.95 → 381
+    // 400 / 1.01 = 396.04 → 396
+    expect(await screen.findByText("396")).toBeTruthy();
+    // 缩小一档回到原值（1/1.01 × 1.01 = 1）
+    fireEvent.click(screen.getByRole("button", { name: "缩小立绘" }));
+    expect(await screen.findByText("400")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "放大立绘" }), {
+      shiftKey: true,
+    });
+    // Shift = 5%：400 / 1.05 = 380.95 → 381
     expect(await screen.findByText("381")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "写回裁剪框" }));
     expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ length: 381 }));
+  });
+
+  test("Alt 点按微调 0.1%：长裁剪框下也能落到 1px", async () => {
+    // 400 的框 0.1% 只有 0.4px，取整看不出来；换成 1200 的框
+    renderDialog({ currentCrop: { faceX: 400, faceY: 40, length: 1200 } });
+    await screen.findByText("1200");
+
+    fireEvent.change(screen.getByTestId("reference-crop-file"), {
+      target: { files: [makeScreenshotFile()] },
+    });
+    await screen.findByText(/2560×1440/);
+
+    fireEvent.click(screen.getByRole("button", { name: "放大立绘" }), {
+      altKey: true,
+    });
+
+    // 1200 / 1.001 = 1198.8 → 1199
+    expect(await screen.findByText("1199")).toBeTruthy();
+  });
+
+  test("立绘缩放输入框：输入精确百分比，Enter 写回", async () => {
+    const { onApply } = renderDialog();
+    await screen.findByText("400");
+
+    fireEvent.change(screen.getByTestId("reference-crop-file"), {
+      target: { files: [makeScreenshotFile()] },
+    });
+    await screen.findByText(/2560×1440/);
+
+    const input = screen.getByLabelText(/立绘缩放比例/) as HTMLInputElement;
+    fireEvent.focus(input);
+    // 当前 146.4 / 400 = 0.366 → 36.6%
+    expect(input.value).toBe("36.6");
+
+    fireEvent.change(input, { target: { value: "40" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    // 146.4 / 0.4 = 366
+    expect(await screen.findByText("366")).toBeTruthy();
+    expect(input.value).toBe("40");
+
+    fireEvent.click(screen.getByRole("button", { name: "写回裁剪框" }));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ length: 366 }));
+  });
+
+  test("立绘缩放输入框：36.6% / 0.366x 两种写法都认", async () => {
+    renderDialog();
+    await screen.findByText("400");
+    const input = screen.getByLabelText(/立绘缩放比例/) as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "36.6%" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(input.value).toBe("36.6"));
+
+    fireEvent.change(input, { target: { value: "0.366x" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(input.value).toBe("36.6"));
+  });
+
+  test("立绘缩放输入框：非法输入还原、Esc 放弃且不关弹窗", async () => {
+    const { onClose } = renderDialog();
+    await screen.findByText("400");
+    const input = screen.getByLabelText(/立绘缩放比例/) as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "abc" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(input.value).toBe("36.6"));
+
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "50" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitFor(() => expect(input.value).toBe("36.6"));
+    expect(screen.getByText("400")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test("读数里能看到立绘缩放（0.01% 级）", async () => {
+    renderDialog();
+    await screen.findByText("400");
+
+    // 146.4 / 400 = 0.366 → 立绘 36.6%（视图是 50%）
+    expect(screen.getByText(/立绘 36\.6%/)).toBeTruthy();
   });
 
   test("「恢复当前裁剪」把对齐退回打开时的裁剪框", async () => {
@@ -217,8 +308,8 @@ describe("按截图反推裁剪框", () => {
     await screen.findByText("400");
 
     const guide = screen.getByTestId("reference-crop-guide");
-    // 身高 160 → anchorY = 221 + 11×12 = 353；成片里 108 + 0.8×353 = 390.4
-    expect(parseFloat(guide.style.top)).toBeCloseTo(390.4, 6);
+    // 身高 160 → anchorY = 221 + 11×8.333 = 221+91 = 312；成片里 108 + 0.8×312 = 357.6
+    expect(parseFloat(guide.style.top)).toBeCloseTo(357.6, 6);
     // 靶带是全宽的：水平位置不参与校准
     expect(guide.style.left).toBe("0px");
     expect(parseFloat(guide.style.height)).toBeCloseTo(146.4, 6);
@@ -358,16 +449,30 @@ describe("按截图反推裁剪框", () => {
       expect(frameEl().style.transform).toContain("scale(0.5525");
     });
 
-    test("Alt+滚轮缩放的是立绘（校准），不是视图", async () => {
+    test("Alt+滚轮缩放的是立绘（校准），每格 0.5%", async () => {
       renderDialog();
       await screen.findByText("400");
 
       const before = zoomInput().value;
       fireEvent.wheel(stageEl(), { deltaY: -100, altKey: true });
 
-      // 立绘放大约 3% → length 400 / 1.0305 ≈ 388
-      expect(await screen.findByText("388")).toBeTruthy();
+      // 立绘放大约 0.5% → length 400 / 1.005 ≈ 398
+      expect(await screen.findByText("398")).toBeTruthy();
       expect(zoomInput().value).toBe(before);
+    });
+
+    test("Shift+Alt+滚轮再细一档（0.1%/格），长裁剪框下能落到 1px", async () => {
+      renderDialog({ currentCrop: { faceX: 400, faceY: 40, length: 1200 } });
+      await screen.findByText("1200");
+
+      fireEvent.wheel(stageEl(), {
+        deltaY: -100,
+        altKey: true,
+        shiftKey: true,
+      });
+
+      // 1200 / 1.001 = 1198.8 → 1199
+      expect(await screen.findByText("1199")).toBeTruthy();
     });
 
     test("中键拖动平移视图，且写回结果不受影响", async () => {

@@ -25,7 +25,7 @@
  *   length = 146.4 / S
  *   faceY  = (108 + 0.8 · (anchorY + adjY) − TY) / S
  *   faceX  = centerX − length / 2          ← 水平位置**不**从截图读
- *   anchorY = 221 + (171 − 身高cm) · 12     ← ProjectConfig.DEFAULT_CHARACTER_* / Pixels_per_centimeter
+ *   anchorY = 221 + (171 − 身高cm) · 8.333  ← ProjectConfig.DEFAULT_CHARACTER_* / Pixels_per_centimeter
  * </pre>
  * 把结果代回 {@code CharacterVisual.updatePos()} 可以还原出同一个 (TX, TY, S)，
  * 往返与"与后端公式对拍"都写在 {@code referenceCrop.test.ts} 里。
@@ -43,8 +43,14 @@
  *
  * <p>换句话说：校准只需要"头多大"和"头有多高"，**不需要**角色站在画面中间。
  *
- * <p>另外身高必须填对：{@code anchorY} 每差 1cm 就差 12 设计像素（成片里 9.6px），
+ * <p>另外身高必须填对：{@code anchorY} 每差 1cm 就差 8.333 设计像素（成片里 6.67px），
  * 身高错了只会让 faceY 系统性偏移，length 不受影响。
+ *
+ * <p><b>锚点是「立绘最低能落到哪里」</b>：{@code faceY} 是图片内的坐标，只能是正数，
+ * 而 {@code posY = anchorY − faceY · 缩放}，所以任何立绘都不会比锚点更靠下。
+ * 因此身高锚点偏高一格，反推出来的 faceY 就会是负数、被夹到 0，屏幕上表现为
+ * 「校准完角色还是偏高」——这正是把 Pixels_per_centimeter 从 12 改成 8.333 的原因
+ * （12 是成片 9.6px/cm，比原作截帧实测陡 44%）。
  */
 
 import {
@@ -77,7 +83,8 @@ export const HEAD_BOX_FRAME_SIDE = CHARACTER_HEAD_LENGTH * SCENE_SCALE;
 /** 与 ProjectConfig 对齐的立绘定位基准 */
 const DEFAULT_CHARACTER_HEIGHT = 171;
 const CHARACTER_HEIGHT_PIXELS = 221;
-const PIXELS_PER_CENTIMETER = 12;
+/** 成片实测 6.667px/cm ÷ 0.8（场景缩放）= 8.333 设计像素/cm，见 ProjectConfig 同名字段的注释 */
+const PIXELS_PER_CENTIMETER = 25 / 3;
 
 /**
  * 反推出来的头框边长（原图像素）合法区间。
@@ -118,7 +125,11 @@ export interface ReferenceCropInput {
 }
 
 /** 反推结果里需要提醒用户的事项 */
-export type ReferenceWarningCode = "outOfBounds" | "tooSmall" | "tooLarge";
+export type ReferenceWarningCode =
+  | "outOfBounds"
+  | "anchorBelow"
+  | "tooSmall"
+  | "tooLarge";
 
 export interface ReferenceWarning {
   code: ReferenceWarningCode;
@@ -133,7 +144,7 @@ export interface ReferenceCropResult {
   raw: PortraitCropState;
   /** 是否因为越界被夹进图片范围 */
   adjusted: boolean;
-  /** 需要提示用户的问题（越界 / 框太小 / 框太大） */
+  /** 需要提示用户的问题（越界 / 角色比身高锚点更靠下 / 框太小 / 框太大） */
   warnings: ReferenceWarning[];
 }
 
@@ -233,6 +244,35 @@ export const headBoxInFrame = (
 /* ============================ 反推 / 正推 ============================ */
 
 /**
+ * 以帧里的某一点为锚点缩放立绘（校准）。
+ *
+ * <p>锚点下的那块立绘保持不动，所以"放大头"不会让头跑掉：`scale` 变成原来的 k 倍，
+ * 左上角就按 k 向锚点收 / 放。结果比例由 {@link clampAlignmentScale} 夹住
+ * （头框边长落在 `MIN_HEAD_BOX_SIDE ~ MAX_HEAD_BOX_SIDE` 之间）。
+ *
+ * @param alignment 当前对齐（不可用时原样返回）
+ * @param nextScale 目标缩放（帧像素 / 立绘原图像素）；非有限值按当前比例处理
+ * @returns 新的对齐
+ */
+export const zoomAlignmentAt = (
+  alignment: PortraitAlignment,
+  nextScale: number,
+  anchorX: number,
+  anchorY: number,
+): PortraitAlignment => {
+  if (!isUsableAlignment(alignment)) return alignment;
+  const scale = clampAlignmentScale(
+    Number.isFinite(nextScale) ? nextScale : alignment.scale,
+  );
+  const ratio = scale / alignment.scale;
+  return {
+    scale,
+    x: anchorX - (anchorX - alignment.x) * ratio,
+    y: anchorY - (anchorY - alignment.y) * ratio,
+  };
+};
+
+/**
  * 当前裁剪框的**水平中心**（原图像素）。
  *
  * <p>反推时拿它当 {@link ReferenceCropInput.centerX}：重新校准只改"框多大、多高"，
@@ -290,11 +330,27 @@ export const deriveCropFromAlignment = (
     crop.length !== target.width;
 
   const warnings: ReferenceWarning[] = [];
-  if (adjusted) {
+  // faceY < 0 是最容易踩、也最难看懂的一种"越界"：说明截图里的角色比身高锚点更靠下。
+  // 立绘只能比锚点更靠上（posY = anchorY − faceY·缩放，faceY 是图片内坐标、不能为负），
+  // 所以这时无论怎么调都压不回截图里的位置 —— 只能是身高填错了（锚点因此偏高）。
+  const belowAnchor = raw.faceY < 0;
+  const clampedOther =
+    crop.faceX !== target.left ||
+    crop.length !== target.width ||
+    (!belowAnchor && crop.faceY !== target.top);
+
+  if (clampedOther) {
     warnings.push({
       code: "outOfBounds",
       message:
         "推导出的裁剪框超出立绘原图范围，已按图片边界修正：调整竖直对齐或缩放后重试（左右位置不参与计算）。",
+    });
+  }
+  if (belowAnchor) {
+    warnings.push({
+      code: "anchorBelow",
+      message:
+        "截图里的角色比「身高锚点」更靠下，立绘最多只能落在锚点上（再往下没有空间），已按图片上边界修正。多半是角色身高填得偏高：核对身高后再校准。",
     });
   }
   if (length < MIN_HEAD_BOX_SIDE) {

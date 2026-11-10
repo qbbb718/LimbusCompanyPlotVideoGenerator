@@ -1,7 +1,10 @@
 import React from "react";
 import { MyCharacter, Portrait } from "@types";
 import PortraitCard from "./PortraitCard";
-import { isDefaultPortraitId } from "@features/common/utils/portraitUtils";
+import {
+  isDefaultPortraitId,
+  orderPortraitsDefaultFirst,
+} from "@features/common/utils/portraitUtils";
 
 /** 立绘批量操作进度（批量套用裁剪 / 批量导入） */
 export interface PortraitBatchProgress {
@@ -63,6 +66,15 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
 }) => {
   const isDefaultPortrait = (portraitId: string) =>
     isDefaultPortraitId(character.portraits, portraitId);
+
+  /**
+   * 列表里的渲染顺序：**默认立绘永远第一张**。
+   *
+   * <p>本地改过立绘（设为默认 / 新增 / 批量导入 / 删掉默认立绘）之后，数组顺序就和
+   * 后端"默认在前"的顺序不一致了，所以这里按默认标记再排一次，不依赖数据来源的顺序。
+   * 卡片本身仍然按 portraitID 做 key，挪位置不会重建组件。
+   */
+  const orderedPortraits = orderPortraitsDefaultFirst(character.portraits);
 
   const isBusy = batchProgress !== null;
   const progressText = batchProgress
@@ -131,7 +143,7 @@ const PortraitsSection: React.FC<PortraitsSectionProps> = ({
       )}
 
       <div className="portraits-grid">
-        {character.portraits?.map((portrait) => (
+        {orderedPortraits.map((portrait) => (
           <PortraitCard
             key={portrait.portraitID}
             portrait={portrait}

@@ -50,8 +50,19 @@ export const MIN_ZOOM_IN_OVER_FIT = 4;
 export const VIEW_ZOOM_STEP = 1.1;
 /** 滚轮灵敏度：标准鼠标一格 deltaY≈100 → 约 ×1.105 */
 export const WHEEL_ZOOM_SENSITIVITY = 0.001;
-/** Alt+滚轮（立绘缩放）的灵敏度：一格约 ×1.03，比按钮细很多 */
-export const WHEEL_PORTRAIT_ZOOM_SENSITIVITY = 0.0003;
+/**
+ * Alt+滚轮（立绘缩放）的灵敏度：一格约 ×1.005（0.5%）。
+ *
+ * <p>头框边长 = 146.4 / scale，所以 0.5% 的缩放精度在长边 400px 的裁剪框上约等于 2px，
+ * 够把「头的大小」对齐到截图里的一两个像素。
+ */
+export const WHEEL_PORTRAIT_ZOOM_SENSITIVITY = 0.00005;
+/**
+ * Shift+Alt+滚轮（立绘缩放的微调档）：一格约 ×1.001（0.1%）。
+ *
+ * <p>按钮和普通滚轮都按 1% 走，最后一两像素用这一档；再细就直接在比例输入框里敲数字。
+ */
+export const WHEEL_PORTRAIT_ZOOM_FINE_SENSITIVITY = 0.00001;
 /** 一帧里累计滚轮量算出来的倍率夹取范围（挡住"甩一下飞出太阳系"） */
 const MAX_FRAME_FACTOR = 2;
 const MIN_FRAME_FACTOR = 0.5;
@@ -191,13 +202,29 @@ export const isFitView = (
 export const isActualSizeView = (view: ReferenceView): boolean =>
   Math.abs(view.scale - 1) < 1e-6;
 
-/** 比例 → 百分比数字（保留 0.1 级） */
-export const zoomPercent = (scale: number): number =>
-  Math.round(scale * 1000) / 10;
+/**
+ * 比例 → 百分比数字。
+ *
+ * @param digits 保留几位小数，默认 1（0.1 级，视图缩放用）；立绘缩放传 2（0.01 级）
+ */
+export const zoomPercent = (scale: number, digits = 1): number => {
+  if (!Number.isFinite(scale)) return 0;
+  const factor = 10 ** digits;
+  return Math.round(scale * 100 * factor) / factor;
+};
 
-/** 比例 → 显示文字（57.3% / 50% / 100%） */
-export const formatZoomPercent = (scale: number): string =>
-  `${zoomPercent(scale)}%`;
+/** 比例 → 显示文字（57.3% / 50% / 100%）；digits 可指定小数位 */
+export const formatZoomPercent = (scale: number, digits = 1): string =>
+  `${zoomPercent(scale, digits)}%`;
+
+/**
+ * 比例 → 输入框里的数字文字（不带 `%`）：`57.3` / `36.62` / `100`。
+ *
+ * <p>输入框自己带一个 `%` 后缀，所以这里只给数字；与 {@link formatZoomPercent}
+ * 的区别只是不带百分号，解析回去仍走 {@link parseZoomPercent}。
+ */
+export const formatZoomPercentValue = (scale: number, digits = 1): string =>
+  String(zoomPercent(scale, digits));
 
 /**
  * 解析用户输入的缩放比例。

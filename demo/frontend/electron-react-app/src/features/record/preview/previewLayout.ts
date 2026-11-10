@@ -71,7 +71,13 @@ export const SCENE_OFFSET_Y = DESIGN_HEIGHT / 10;
 const CHARACTER_HEAD_LENGTH = 183; // DEFAULT_CHARACTER_HEAD_LENGTH
 const CHARACTER_HEIGHT = 171; // DEFAULT_CHARACTER_HEIGHT（厘米）
 const CHARACTER_HEIGHT_PIXELS = 221; // DEFAULT_CHARACTER_HEIGHT_Pixels
-const PIXELS_PER_CENTIMETER = 12;
+/**
+ * 每 1cm 身高差在设计画布里走多少像素 = 成片实测 6.667px/cm ÷ 0.8（场景要缩到 0.8 才贴进成片）。
+ *
+ * <p>不是 12：12 是历史值，成片里 9.6px/cm，比原作截帧实测陡 44%，
+ * 171cm 处看不出来，188cm 就会高出 50px。详见 {@code ProjectConfig.Pixels_per_centimeter}。
+ */
+const PIXELS_PER_CENTIMETER = 25 / 3;
 
 /** 旁白：后端 Dialogue.DEFAULT_NARRATOR / ProjectConfig.NARRATION_ID */
 const NARRATOR_NAME = "旁白";

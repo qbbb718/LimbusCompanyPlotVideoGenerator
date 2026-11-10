@@ -106,7 +106,24 @@ public class ProjectConfig {
 
     public static int DEFAULT_CHARACTER_HEIGHT = 171;
     public static int DEFAULT_CHARACTER_HEIGHT_Pixels = 221;
-    public static double Pixels_per_centimeter = 12;
+    /**
+     * 身高每差 1cm，裁剪方框上边缘在设计画布里移动多少像素（{@link com.lbc_plot.render.video.CharacterVisual#updatePos()}）。
+     *
+     * <p><b>必须按「成片实测 ÷ 0.8」来定，别拿设计画布的直觉估：</b>
+     * 这个偏移先在设计画布里算，整幅场景随后才缩到 0.8 贴进成片
+     * （{@code RenderOfImage.PLOT_SCENE_SCALE}），所以成片里 1cm 只走 {@code 6.667px}。
+     *
+     * <p>6.667px/cm 来自原作 1080p 截帧的实测：167cm → 头框上边缘距顶 308px、182cm → 208px，
+     * 15cm 差正好 100px（4 组样本 167/174/180/182 换算到成片后全落在 ±12px 内）；
+     * 188cm 的《默尔索》在「梅菲斯托费勒斯 内部」那张原作帧里头框上边缘约 172px，同样吻合。
+     * 设计画布 = 成片 ÷ 0.8 → {@code 6.667 / 0.8 = 8.333}。
+     *
+     * <p>历史值 12 是凭感觉定的（成片里 9.6px/cm），比实测陡 44%：
+     * 171cm 处两种取值完全一样（锚点 {@link #DEFAULT_CHARACTER_HEIGHT_Pixels} 不变），
+     * 但 188cm 会被抬高 50px —— 这正是「按截图校准后差距较大」的根因：
+     * 校准出来的 faceY 要 ≤ 0 才能把立绘放回去，而 faceY 是图片内的坐标、夹到 0 就再也降不下来。
+     */
+    public static double Pixels_per_centimeter = 25.0 / 3;
     public static int MAX_PORTRAITS_PER_CHARACTER = 20;
     public static int DEFAULT_CHARACTER_HEAD_LENGTH = 183;
 

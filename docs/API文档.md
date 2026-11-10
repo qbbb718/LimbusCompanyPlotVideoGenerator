@@ -226,6 +226,9 @@
 - **路径参数**: `id` - 角色ID
 - **请求体**: `MyCharacter` JSON 对象
 - **响应**: `MyCharacter` - 更新后的角色
+- **立绘顺序**: 响应里的 `portraits` 与 `GET /characters` 的约定一致 —— **默认立绘排在第一位**，
+  其余保持请求体里的相对顺序；`defaultPortrait` 标记按库里实际写入的结果回填
+  （请求体一个标记都没带时也不会丢），前端因此可以一直依赖"列表首项 = 默认立绘"。
 
 ### 删除角色
 - **URL**: `DELETE /characters/{id}`
@@ -277,6 +280,9 @@
   - `characterId` - 角色ID
   - `portraitId` - 立绘ID
 - **查询参数**: `deleteFiles` (可选, 默认false) - 是否同时删除文件
+- **关联关系**: 只删这一条 `character_portraits` 记录，其它立绘的默认标记不受影响；
+  删掉的正是默认立绘时，会把剩下的第一张（`display_order` 最小）提为默认，
+  保证角色"至少有一张默认立绘"，与前端列表首项一致
 
 ### 设置默认立绘
 - **URL**: `PUT /characters/{characterId}/portraits/{portraitId}/default`
