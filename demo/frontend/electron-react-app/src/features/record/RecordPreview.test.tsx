@@ -74,18 +74,19 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-const renderPreview = (record: any) =>
-  render(
-    <RecordPreview
-      selectedRecord={record}
-      videoWidth={640}
-      videoHeight={360}
-      plot
-      records={[record]}
-      selectedRecordIndex={0}
-      setSelectedRecordIndex={() => undefined}
-    />,
-  );
+const previewElement = (record: any) => (
+  <RecordPreview
+    selectedRecord={record}
+    videoWidth={640}
+    videoHeight={360}
+    plot
+    records={[record]}
+    selectedRecordIndex={0}
+    setSelectedRecordIndex={() => undefined}
+  />
+);
+
+const renderPreview = (record: any) => render(previewElement(record));
 
 describe("预览播放按钮", () => {
   test("没有动画时点击给出说明文字（而不是静默无反应）", () => {
@@ -223,5 +224,159 @@ describe("世界视图里的播放（预览成片）", () => {
 
     fireEvent.click(play);
     expect(await screen.findByText(/成片预览中/)).toBeTruthy();
+  });
+});
+
+/* ===================== 播放中切换行 = 点「停止」 ===================== */
+
+/**
+ * 带"当前记录"状态的预览。
+ *
+ * <p>时间轴块是组件内部唯一的切行入口，点它 = 调用 `setSelectedRecordIndex`
+ * （真实链路里同一个回调也由剧情列表的行点击触发）。
+ */
+const PreviewWithRows: React.FC<{ records: any[] }> = ({ records }) => {
+  const [index, setIndex] = React.useState(0);
+  return (
+    <RecordPreview
+      selectedRecord={records[index]}
+      videoWidth={640}
+      videoHeight={360}
+      plot
+      records={records}
+      selectedRecordIndex={index}
+      setSelectedRecordIndex={setIndex}
+    />
+  );
+};
+
+/** 点时间轴上的第 index 行（0 起） */
+const clickTimelineRow = (index: number) => {
+  // 时间轴块没有 role：靠 title（`#序号 说话人: 摘要`）定位，等价于用户点那一格
+  fireEvent.click(screen.getByTitle(new RegExp(`^#${index + 1} `)));
+};
+
+/** 没有动画的记录（换行目标） */
+const plainRecord = (uuid = "r2"): any =>
+  baseRecord({ uuid, dialogue: { text: "第二句", speakerName: "旁白" } });
+
+/** 有动画的记录（换行目标） */
+const otherAnimatedRecord = (): any => {
+  const record = animatedRecord();
+  record.uuid = "r2";
+  return record;
+};
+
+/** 固定 records + 指定下标：模拟父组件（剧情列表）直接换掉"当前行" */
+const previewAtRow = (records: any[], index: number) => (
+  <RecordPreview
+    selectedRecord={records[index]}
+    videoWidth={640}
+    videoHeight={360}
+    plot
+    records={records}
+    selectedRecordIndex={index}
+    setSelectedRecordIndex={() => undefined}
+  />
+);
+
+/** 播放中：按钮显示「⏹ 停止」，预览容器带 `.is-playing` */
+const expectPlaying = () => {
+  expect(screen.getByRole("button", { name: /停止/ })).toBeTruthy();
+  // `.is-playing` 是"画面由 DOM 场景层接管"的唯一容器级标记，没有对应的可访问查询
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(document.querySelector(".preview-image.is-playing")).not.toBeNull();
+};
+
+/** 已停止：按钮显示「▶ 播放」，预览容器不再挂 `.is-playing` */
+const expectStopped = () => {
+  expect(screen.getByRole("button", { name: /▶ 播放/ })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /停止/ })).toBeNull();
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(document.querySelector(".preview-image.is-playing")).toBeNull();
+};
+
+describe("播放中切换行：等价于点「停止」", () => {
+  test("切到没有动画的行（列表点行）：动画立刻停止，按钮可点、不卡死", () => {
+    const { rerender } = renderPreview(animatedRecord());
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+    expectPlaying();
+
+    // 剧情列表点另一行：父组件把新的 selectedRecord 传下来
+    rerender(previewElement(plainRecord()));
+
+    expectStopped();
+    // 目标行没有动画，但按钮仍然是可点的普通按钮（不是 disabled 卡死）
+    const play = screen.getByRole("button", { name: /▶ 播放/ }) as HTMLButtonElement;
+    expect(play.disabled).toBe(false);
+    // 点下去给的是"为什么没得播"的说明，而不是毫无反应
+    fireEvent.click(play);
+    expect(screen.getByRole("status").textContent).toContain("没有镜头动画");
+  });
+
+  test("切到没有动画的行（预览里的时间轴）：同样先停止", () => {
+    render(<PreviewWithRows records={[animatedRecord(), plainRecord()]} />);
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+    expectPlaying();
+
+    clickTimelineRow(1);
+
+    expectStopped();
+  });
+
+  test("下标变了也算切行（即使两行复用了同一个 uuid）", () => {
+    const first = animatedRecord();
+    // 同 uuid、不同下标：只要"当前行"换了，停止就必须执行
+    const second = { ...baseRecord(), uuid: first.uuid };
+    const { rerender } = render(previewAtRow([first, second], 0));
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+    expectPlaying();
+
+    rerender(previewAtRow([first, second], 1));
+
+    expectStopped();
+  });
+
+  test("切到也有动画的行：原动画停止，目标行不自动播；要自己点播放", () => {
+    render(<PreviewWithRows records={[animatedRecord(), otherAnimatedRecord()]} />);
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+    expectPlaying();
+
+    clickTimelineRow(1);
+
+    // 不是"接着播目标行的动画"，而是干净地停在静止帧
+    expectStopped();
+
+    // 目标行自己也有动画：手动点播放才播（按钮没被禁用）
+    fireEvent.click(screen.getByRole("button", { name: /▶ 播放/ }));
+    expectPlaying();
+  });
+
+  test("没在播放时切行：不会自动开始播", () => {
+    render(<PreviewWithRows records={[animatedRecord(), otherAnimatedRecord()]} />);
+
+    clickTimelineRow(1);
+
+    expectStopped();
+  });
+
+  test("播放中把这一行的动画删掉：停止按钮依旧可点（不会变成禁用死键）", () => {
+    const animated = animatedRecord();
+    const { rerender } = renderPreview(animated);
+    fireEvent.click(screen.getByRole("button", { name: /播放/ }));
+    expectPlaying();
+
+    // 同一条记录（uuid 不变）但动画被删掉：不算切行，播放不会被自动停掉
+    rerender(
+      previewElement({
+        ...animated,
+        chars: [{ ...animated.chars[0], anim: undefined }],
+      }),
+    );
+
+    const stop = screen.getByRole("button", { name: /停止/ });
+    expect(stop.getAttribute("aria-disabled")).toBe("false");
+    fireEvent.click(stop);
+    expectStopped();
   });
 });

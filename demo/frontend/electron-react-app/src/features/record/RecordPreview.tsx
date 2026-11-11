@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Record } from "@types";
 import ApiService from "@services/ApiService";
 import "./RecordEditor.css";
@@ -318,6 +325,13 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   }, [selectedRecord]);
   const hasPlayableAnimation =
     isAnimatedCamera(selectedRecord.camera) || hasSpriteAnimation || Boolean(shakeConfig);
+  /**
+   * 播放按钮此刻算不算"可用"（视觉 + `aria-disabled` + title）。
+   *
+   * <p>**播放中永远算可用**：停止是唯一出口，不能因为这一行现在算不出可播内容
+   * （切换行 / 编辑中把动画删掉…）就把停止按钮画成禁用态，否则又会出现"停不下来"。
+   */
+  const playToggleUsable = hasPlayableAnimation || playback.playing;
 
   /**
    * 世界视图里点了「▶ 播放」：临时切到**成片预览**（用同一个播放头播镜头 + 立绘动画），
@@ -339,12 +353,31 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   }, [playHint]);
 
   /**
+   * @function 停止播放
+   *
+   * <p>「⏹ 停止」按钮与下面的「切换记录」**共用这一条路径**：播放头（rAF）、
+   * "成片预览"状态一起收，少做一步就会留下"按钮写着停止、画面却还在动"的半停状态。
+   * 播放实例（rAF）只在这里被取消，所以两条入口的清理结果完全一致。
+   */
+  const stopTimelinePlayback = playback.stop;
+  const stopPlayback = useCallback(() => {
+    stopTimelinePlayback();
+    setPreviewingFromCamera(false);
+  }, [stopTimelinePlayback]);
+
+  /**
    * @function 播放 / 停止
    *
-   * <p>没有可动内容时给一段说明，而不是让按钮"点了没反应"（与改造前一致）。
+   * <p>**播放中永远先当停止处理**：即使这一行此刻已经算不出"可播内容"（例如动画刚被删掉），
+   * 也必须让用户停得下来——否则按钮会卡在"⏹ 停止 + 禁用"的死角。
+   * 没有可动内容时给一段说明，而不是让按钮"点了没反应"（与改造前一致）。
    * 在世界视图里播放时先把「运镜播放」停掉：两个播放头各推一版镜头会打架。
    */
   const handlePlayToggle = () => {
+    if (playback.playing) {
+      stopPlayback();
+      return;
+    }
     if (!hasPlayableAnimation) {
       setPlayHint(
         "没有镜头动画、预设或立绘动画，播放不会有变化。可在「立绘」「临时图片」加动画，或在「摄像机」设一个运镜 / 摇动。",
@@ -352,17 +385,55 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       return;
     }
     setPlayHint(null);
-    if (playback.playing) {
-      playback.stop();
-      setPreviewingFromCamera(false);
-      return;
-    }
     if (showCamera) {
       cameraEditor?.stop();
       setPreviewingFromCamera(true);
     }
     playback.play();
   };
+
+  /**
+   * 上一轮渲染时的那一行（下标 + uuid）。
+   *
+   * <p>两者任一变化都算"换了行"：
+   * <ul>
+   *   <li>`uuid` 变了 = 换了一条记录（导入 / 复制 / 删除后落到相邻行…）；</li>
+   *   <li>下标变了 = 列表里的"当前行"换了位置（即使某两份 fixture 复用了同一个 uuid）。</li>
+   * </ul>
+   * 只改同一行里的内容（打字、拖滑杆、调坐标）时两者都不变，播放不被打断——
+   * 那不算切行。预览 / 时间轴 / 剧情列表 / 撤销…任何一条切行入口最终都会把新的
+   * `selectedRecord` + `selectedRecordIndex` 传进来，所以在这里观察就覆盖了全部切换场景。
+   */
+  const playingRowRef = useRef({
+    index: selectedRecordIndex,
+    uuid: selectedRecord.uuid,
+  });
+
+  /**
+   * 切换行 = 点一次「⏹ 停止」。
+   *
+   * <p>以前播放中切到别的行，播放头还挂在旧记录的时间轴上：目标行没有动画时按钮被判成
+   * "不可播"（灰掉 / `aria-disabled`），用户点不到停止、播放状态卡死；目标行有动画时，
+   * 它的动画又会按旧帧号接着渲染，看起来像"自动播了"。
+   *
+   * <p>所以这里**不看目标行有没有动画**：只要切行时还在播，就先走一遍与停止按钮完全相同的
+   * 收尾（{@link stopPlayback}），再让新记录按静止帧渲染（第 0 帧 / 代表帧）。目标行即使
+   * 自带动画也不自动开播，等用户自己点 ▶。
+   *
+   * <p>用 `useLayoutEffect`：在浏览器把新记录画出来之前就停，不会闪一帧"新记录的动画"。
+   */
+  useLayoutEffect(() => {
+    const previous = playingRowRef.current;
+    if (
+      previous.index === selectedRecordIndex &&
+      previous.uuid === selectedRecord.uuid
+    ) {
+      return;
+    }
+    playingRowRef.current = { index: selectedRecordIndex, uuid: selectedRecord.uuid };
+    if (!playback.playing) return;
+    stopPlayback();
+  }, [selectedRecordIndex, selectedRecord.uuid, playback.playing, stopPlayback]);
 
   /** 播完（停在最后一帧）或播放被停掉时，从"成片预览"回到世界视图 */
   useEffect(() => {
@@ -878,13 +949,13 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         <button
           type="button"
           className={`${playback.playing ? "active" : ""}${
-            hasPlayableAnimation ? "" : " is-inactive"
+            playToggleUsable ? "" : " is-inactive"
           }`.trim()}
           onClick={handlePlayToggle}
-          aria-disabled={!hasPlayableAnimation}
+          aria-disabled={!playToggleUsable}
           aria-describedby={playHint ? "preview-play-hint" : undefined}
           title={
-            hasPlayableAnimation
+            playToggleUsable
               ? showCamera
                 ? `播放一遍成片效果（共 ${playback.totalFrames} 帧）；停止后回到世界视图`
                 : `播放一遍这条记录（共 ${playback.totalFrames} 帧；镜头 + 立绘/图片动画，DOM 近似；台词不参与动画）`
