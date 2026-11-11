@@ -9,6 +9,11 @@
  * <p>数据约定：所有编辑都是**不可变更新**（改完返回新对象交给上层写回记录），
  * 撤销栈才能正常工作；`anim` 没有任何 clip 时上层应当把它置为 `undefined`，
  * 这样渲染端会走"完全没有动画"的原路径（旧工程逐像素不变）。
+ *
+ * <p>布局约定：**每一行都是可换行的 flex 组**（`.anim-toolbar` / `.anim-fields` + `.anim-field`），
+ * 控件宽度一律显式给（原生 `input[type=number]` 默认约 170px、`select` 的 min-width 默认是 auto，
+ * 不写宽度就会把属性面板顶出横向滚动）。面板自己是一个 container，窄了由 CSS 的
+ * `@container` 改成整行布局——见 CharacterAnimationPanel.css 顶部的"自适应口径"。
  */
 import React, { useState } from "react";
 
@@ -142,183 +147,212 @@ const CharacterAnimationPanel: React.FC<CharacterAnimationPanelProps> = ({
 
       {!collapsed && (
         <div id={panelBodyId} className="animation-panel-body">
-      {!plot && (
-        <div className="global-hint" role="note">
-          人格故事模式下动画不参与渲染，切回「剧情」自动生效。
-        </div>
-      )}
-      <div className="char-row" style={{ alignItems: "center", gap: 6 }}>
-        <span className="char-label-fixed">添加</span>
-        <select
-          value={addKind}
-          onChange={(e) => setAddKind(e.target.value as "preset" | "keyframes")}
-          aria-label={`${elementLabel} 新增动画类型`}
-        >
-          <option value="preset">预设</option>
-          <option value="keyframes">关键帧</option>
-        </select>
-        {addKind === "preset" && (
-          <select
-            value={addPreset}
-            onChange={(e) => setAddPreset(e.target.value as PresetId)}
-            aria-label={`${elementLabel} 选择预设`}
-          >
-            {PRESET_IDS.map((preset) => (
-              <option key={preset} value={preset}>
-                {presetLabel(preset)}
-              </option>
-            ))}
-          </select>
-        )}
-        <button type="button" onClick={handleAdd}>
-          ＋ 添加
-        </button>
-      </div>
-
-      {clips.length === 0 && (
-        <div className="global-hint">
-          还没有动画：选一个预设加进来，再用预览上方的 ▶ 播放看效果。
-        </div>
-      )}
-
-      {clips.map((clip, index) => {
-        const expanded = clip.id === selectedClipId;
-        return (
-          <div
-            key={clip.id}
-            className={`animation-clip-card${expanded ? " is-selected" : ""}`}
-            data-testid={`animation-clip-${index + 1}`}
-          >
-            <div className="animation-clip-header">
-              <input
-                type="checkbox"
-                checked={isClipEnabled(clip)}
-                title="启用/停用这条动画（数据保留）"
-                aria-label={`${elementLabel} 动画 ${index + 1} 启用`}
-                onChange={(e) => updateClip(clip.id, { enabled: e.target.checked })}
-              />
-              <button
-                type="button"
-                className="animation-clip-title"
-                onClick={() => setSelectedClipId(expanded ? null : clip.id)}
-                aria-expanded={expanded}
-              >
-                {expanded ? "▾" : "▸"} {index + 1}. {clipTitle(clip)}
-                <span className="animation-clip-meta">
-                  {" "}
-                  · {clip.durationFrames} 帧 · {clip.loop ?? "once"}
-                </span>
-              </button>
-              <button type="button" onClick={() => handleRemove(clip.id)} title="删除这条动画">
-                ✕
-              </button>
+          {!plot && (
+            <div className="global-hint" role="note">
+              人格故事模式下动画不参与渲染，切回「剧情」自动生效。
             </div>
+          )}
 
-            {expanded && (
-              <div className="animation-clip-body">
-                <div className="char-row" style={{ gap: 6 }}>
-                  <span className="char-label-fixed">时长(帧)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={3000}
-                    value={clip.durationFrames}
-                    aria-label={`${elementLabel} 动画 ${index + 1} 时长`}
-                    onChange={(e) =>
-                      updateClip(clip.id, {
-                        durationFrames: Math.max(1, Math.round(Number(e.target.value) || 1)),
-                      })
-                    }
-                  />
-                  <span className="char-label-fixed">延迟(帧)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={clip.startFrame ?? 0}
-                    aria-label={`${elementLabel} 动画 ${index + 1} 延迟`}
-                    onChange={(e) =>
-                      updateClip(clip.id, {
-                        startFrame: Math.max(0, Math.round(Number(e.target.value) || 0)),
-                      })
-                    }
-                  />
-                  <span className="char-label-fixed">循环</span>
-                  <select
-                    value={clip.loop ?? "once"}
-                    aria-label={`${elementLabel} 动画 ${index + 1} 循环`}
-                    onChange={(e) => updateClip(clip.id, { loop: e.target.value as AnimationClip["loop"] })}
-                  >
-                    <option value="once">播放一次</option>
-                    <option value="loop">循环</option>
-                    <option value="pingpong">往返</option>
-                    <option value="hold">停在末帧</option>
-                  </select>
-                </div>
-
-                {clip.kind === "preset" && clip.preset && (
-                  <PresetParams
-                    clip={clip}
-                    elementLabel={elementLabel}
-                    onParam={(key, value) =>
-                      commitClips(
-                        clips.map((item) =>
-                          item.id === clip.id ? withClipParam(item, key, value) : item,
-                        ),
-                      )
-                    }
-                  />
-                )}
-
-                {clip.kind !== "preset" && (
-                  <KeyframeTimeline
-                    key={clip.id}
-                    clip={clip}
-                    elementLabel={elementLabel}
-                    currentFrame={previewFrame}
-                    onSeekFrame={onSeekFrame}
-                    lineFrames={lineFrames}
-                    onChange={(next) =>
-                      commitClips(clips.map((item) => (item.id === clip.id ? next : item)))
-                    }
-                  />
-                )}
-
-                <div
-                  className="global-hint"
-                  title="循环模式下淡出会让每轮接缝闪一下，填 0 即可"
-                >
-                  通道：{(clip.kind === "preset" && clip.preset
-                    ? presetChannels(clip.preset as PresetId)
-                    : clip.channels ?? []
-                  ).join(" / ")}
-                  ；循环模式淡出填 0。
-                </div>
-                <div className="char-row" style={{ gap: 6 }}>
-                  <span className="char-label-fixed">淡入/淡出(帧)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={clip.fadeInFrames ?? 0}
-                    aria-label={`${elementLabel} 动画 ${index + 1} 淡入`}
-                    onChange={(e) =>
-                      updateClip(clip.id, { fadeInFrames: Math.max(0, Math.round(Number(e.target.value) || 0)) })
-                    }
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    value={clip.fadeOutFrames ?? 0}
-                    aria-label={`${elementLabel} 动画 ${index + 1} 淡出`}
-                    onChange={(e) =>
-                      updateClip(clip.id, { fadeOutFrames: Math.max(0, Math.round(Number(e.target.value) || 0)) })
-                    }
-                  />
-                </div>
-              </div>
+          {/* 「添加」行：类型 / 预设 / 添加按钮。窄面板里按组换行，
+              不会把原生下拉挤出可视区。 */}
+          <div className="anim-toolbar">
+            <span className="anim-toolbar-label">添加</span>
+            <select
+              value={addKind}
+              onChange={(e) => setAddKind(e.target.value as "preset" | "keyframes")}
+              aria-label={`${elementLabel} 新增动画类型`}
+            >
+              <option value="preset">预设</option>
+              <option value="keyframes">关键帧</option>
+            </select>
+            {addKind === "preset" && (
+              <select
+                value={addPreset}
+                onChange={(e) => setAddPreset(e.target.value as PresetId)}
+                aria-label={`${elementLabel} 选择预设`}
+              >
+                {PRESET_IDS.map((preset) => (
+                  <option key={preset} value={preset}>
+                    {presetLabel(preset)}
+                  </option>
+                ))}
+              </select>
             )}
+            <button type="button" className="anim-btn" onClick={handleAdd}>
+              ＋ 添加
+            </button>
           </div>
-        );
-      })}
+
+          {clips.length === 0 && (
+            <div className="global-hint">
+              还没有动画：选一个预设加进来，再用预览上方的 ▶ 播放看效果。
+            </div>
+          )}
+
+          {clips.map((clip, index) => {
+            const expanded = clip.id === selectedClipId;
+            return (
+              <div
+                key={clip.id}
+                className={`animation-clip-card${expanded ? " is-selected" : ""}`}
+                data-testid={`animation-clip-${index + 1}`}
+              >
+                <div className="animation-clip-header">
+                  <input
+                    type="checkbox"
+                    checked={isClipEnabled(clip)}
+                    title="启用/停用这条动画（数据保留）"
+                    aria-label={`${elementLabel} 动画 ${index + 1} 启用`}
+                    onChange={(e) => updateClip(clip.id, { enabled: e.target.checked })}
+                  />
+                  <button
+                    type="button"
+                    className="animation-clip-title"
+                    onClick={() => setSelectedClipId(expanded ? null : clip.id)}
+                    aria-expanded={expanded}
+                  >
+                    {/* 箭头 + 序号 + 名字整块不拆行；帧数/循环塞不下就整体换到第二行 */}
+                    <span className="animation-clip-name">
+                      {expanded ? "▾" : "▸"} {index + 1}. {clipTitle(clip)}
+                    </span>
+                    <span className="animation-clip-meta">
+                      · {clip.durationFrames} 帧 · {clip.loop ?? "once"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="anim-icon-btn"
+                    onClick={() => handleRemove(clip.id)}
+                    title="删除这条动画"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {expanded && (
+                  <div className="animation-clip-body">
+                    {/* 时长 / 延迟 / 循环：三个「标签 + 控件」组，按可用宽度 1~3 组一行 */}
+                    <div className="anim-fields">
+                      <div className="anim-field">
+                        <span className="anim-field-label">时长(帧)</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={3000}
+                          value={clip.durationFrames}
+                          aria-label={`${elementLabel} 动画 ${index + 1} 时长`}
+                          onChange={(e) =>
+                            updateClip(clip.id, {
+                              durationFrames: Math.max(1, Math.round(Number(e.target.value) || 1)),
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="anim-field">
+                        <span className="anim-field-label">延迟(帧)</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={clip.startFrame ?? 0}
+                          aria-label={`${elementLabel} 动画 ${index + 1} 延迟`}
+                          onChange={(e) =>
+                            updateClip(clip.id, {
+                              startFrame: Math.max(0, Math.round(Number(e.target.value) || 0)),
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="anim-field is-wide">
+                        <span className="anim-field-label">循环</span>
+                        <select
+                          value={clip.loop ?? "once"}
+                          aria-label={`${elementLabel} 动画 ${index + 1} 循环`}
+                          onChange={(e) =>
+                            updateClip(clip.id, { loop: e.target.value as AnimationClip["loop"] })
+                          }
+                        >
+                          <option value="once">播放一次</option>
+                          <option value="loop">循环</option>
+                          <option value="pingpong">往返</option>
+                          <option value="hold">停在末帧</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {clip.kind === "preset" && clip.preset && (
+                      <PresetParams
+                        clip={clip}
+                        elementLabel={elementLabel}
+                        onParam={(key, value) =>
+                          commitClips(
+                            clips.map((item) =>
+                              item.id === clip.id ? withClipParam(item, key, value) : item,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+
+                    {clip.kind !== "preset" && (
+                      <KeyframeTimeline
+                        key={clip.id}
+                        clip={clip}
+                        elementLabel={elementLabel}
+                        currentFrame={previewFrame}
+                        onSeekFrame={onSeekFrame}
+                        lineFrames={lineFrames}
+                        onChange={(next) =>
+                          commitClips(clips.map((item) => (item.id === clip.id ? next : item)))
+                        }
+                      />
+                    )}
+
+                    <div
+                      className="global-hint"
+                      title="循环模式下淡出会让每轮接缝闪一下，填 0 即可"
+                    >
+                      通道：{(clip.kind === "preset" && clip.preset
+                        ? presetChannels(clip.preset as PresetId)
+                        : clip.channels ?? []
+                      ).join(" / ")}
+                      ；循环模式淡出填 0。
+                    </div>
+
+                    <div className="anim-fields">
+                      <div className="anim-field is-pair">
+                        <span className="anim-field-label">淡入/淡出(帧)</span>
+                        {/* 两个数值框是一个整体：换行时一起换，不会一个在上一行一个在下一行 */}
+                        <div className="anim-number-pair">
+                          <input
+                            type="number"
+                            min={0}
+                            value={clip.fadeInFrames ?? 0}
+                            aria-label={`${elementLabel} 动画 ${index + 1} 淡入`}
+                            onChange={(e) =>
+                              updateClip(clip.id, {
+                                fadeInFrames: Math.max(0, Math.round(Number(e.target.value) || 0)),
+                              })
+                            }
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            value={clip.fadeOutFrames ?? 0}
+                            aria-label={`${elementLabel} 动画 ${index + 1} 淡出`}
+                            onChange={(e) =>
+                              updateClip(clip.id, {
+                                fadeOutFrames: Math.max(0, Math.round(Number(e.target.value) || 0)),
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -334,12 +368,12 @@ const PresetParams: React.FC<{
   const preset = clip.preset as PresetId;
   const params = PRESET_PARAMS[preset] ?? [];
   return (
-    <div style={{ marginTop: 4 }}>
+    <div className="anim-fields">
       {params.map((meta) => {
         const current = Number(clip.params?.[meta.key] ?? meta.default);
         return (
-          <div className="char-row" key={meta.key} style={{ gap: 6 }}>
-            <span className="char-label-fixed" title={meta.hint}>
+          <div className="anim-field is-slider" key={meta.key}>
+            <span className="anim-field-label" title={meta.hint}>
               {meta.label}
               {meta.unit ? `(${meta.unit})` : ""}
             </span>
@@ -363,7 +397,6 @@ const PresetParams: React.FC<{
               value={current}
               aria-label={`${elementLabel} ${presetLabel(preset)} ${meta.label} 滑块`}
               onChange={(e) => onParam(meta.key, Number(e.target.value))}
-              className="char-slider-auto"
             />
           </div>
         );

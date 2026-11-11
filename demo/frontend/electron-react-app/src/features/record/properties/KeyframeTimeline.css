@@ -1,0 +1,88 @@
+/**
+ * 关键帧时间轴的样式（挂在 `CharacterAnimationPanel.css` 的 `.animation-panel` 里）。
+ *
+ * <p>原来这些样式是写在 TSX 的 inline style 里的，能画出来但没法自适应：
+ * 内联的 `height` / `padding` / `width` 优先级最高，容器查询改不动它们。
+ * 现在只留**随数据变化**的左偏移（刻度 / 菱形 / 播放头）在 inline style 里，其余全在这里。
+ *
+ * <p>宽度口径与面板一致：标尺是块级元素（自动吃满可用宽度），
+ * 轴上的菱形与播放头用百分比定位，所以窄面板只会"挤"不会"溢出"。
+ */
+
+.keyframe-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 标尺：深色底，配浅色刻度 */
+.keyframe-ruler {
+  position: relative;
+  height: 34px;
+  border-radius: 4px;
+  background: #1b1b1b;
+  border: 1px solid #444;
+  cursor: crosshair;
+  user-select: none;
+}
+
+/* 刻度文字贴顶，不跟中间的菱形抢视觉 */
+.keyframe-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding-left: 4px;
+  border-left: 1px dashed #3a3a3a;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #8a8a8a;
+  pointer-events: none;
+}
+
+/* 首刻度不画虚线；末刻度右对齐（否则文字会顶出标尺右边界） */
+.keyframe-tick.is-first {
+  border-left: none;
+}
+
+.keyframe-tick.is-last {
+  transform: translateX(-100%);
+  padding-right: 4px;
+}
+
+/* 关键帧菱形：居中在所在的帧上 */
+.keyframe-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  line-height: 16px;
+  font-size: 11px;
+  color: #9ad1ff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.keyframe-marker.is-selected {
+  color: #ffd166;
+}
+
+/* 播放头 */
+.keyframe-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ff5c5c;
+  pointer-events: none;
+}
+
+.keyframe-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}

@@ -13,6 +13,17 @@
   background: #fdfef7;
 }
 
+/* 说明文字与上面的移动动画面板统一成 12px 小字：`.global-hint` 在属性面板里
+   本来没有基础样式，默认 16px 正文会把这块卡片撑得比控件还高。 */
+.emotion-picker .global-hint {
+  margin: 0;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8c8c8c;
+  overflow-wrap: anywhere;
+}
+
 .emotion-picker-body {
   margin-top: 6px;
   display: flex;

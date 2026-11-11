@@ -3,25 +3,44 @@
  *
  * 配色跟随属性面板的浅色主题（与 CharactersProperties.css 的 #ddd / #555 一套），
  * 不要用深色，否则在白色面板里像一块补丁。
+ *
+ * <h2>自适应口径（窗口 / 停靠面板被拖窄时必须守住）</h2>
+ * 1. 这里的每一行都是 `flex-wrap`，**任何控件都不允许把面板撑宽**：
+ *    属性内容区（.property-content）只要横向滚起来，整页控件都会"跑出可视范围"，
+ *    这是本面板以前最难受的地方——一行里塞三个默认宽度的数字框，纵向看着正常，
+ *    实际内容宽度接近 700px。
+ * 2. 控件宽度必须显式给：`input[type="number"]` 不写宽度时浏览器默认约 170px，
+ *    `select` 的 `min-width` 默认是 auto（= 最长选项的宽度），两个都会把行顶开。
+ * 3. 「标签 + 控件」是一组（.anim-field）：**整组一起换行**，标签不会被拆到别的行去，
+ *    也不会出现"标签在左、控件跑到下一行最左边"的错位。
+ * 4. 面板自己就是容器（`container-type: inline-size`），窄的时候按**面板宽度**再收紧
+ *    内边距——属性面板可以被拖成 300px 的窄条，也可以单独浮成一个小窗口，
+ *    按窗口宽度做媒体查询是不准的。
  */
-
 .animation-panel {
   margin-top: 10px;
+  padding: 8px;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  padding: 8px;
   background: #fafafa;
+  box-sizing: border-box;
+  min-width: 0;
+  /* 下面的 @container 按"这块面板"的宽度判断，而不是按整个窗口 */
+  container-type: inline-size;
 }
 
+/* ===== 标题栏：折叠开关 + 摘要 ===== */
 .animation-panel-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   min-height: 22px;
 }
 
 /* 折叠开关：看起来像标题，不像按钮 */
 .animation-panel-toggle {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -31,6 +50,7 @@
   color: #333;
   font-weight: 600;
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -38,8 +58,11 @@
   color: #1890ff;
 }
 
-/* 收起时也要看得到"这个元素上有没有动画" */
+/* 收起时也要看得到"这个元素上有没有动画"。
+   min-width: 0 是关键：不然 nowrap 的摘要会按"整句话的宽度"参与布局，把标题栏顶开。 */
 .animation-panel-summary {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 12px;
   color: #8c8c8c;
   overflow: hidden;
@@ -48,17 +71,199 @@
 }
 
 .animation-panel-body {
-  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  min-width: 0;
 }
 
-/* 一条动画 = 一张卡片 */
+/* 说明文字：这块面板里全是 12px 的小字，没有基础样式的 .global-hint 是 16px，
+   在窄面板里会被折成 5~6 行，把卡片撑得比控件还高。 */
+.animation-panel .global-hint {
+  margin: 0;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8c8c8c;
+  overflow-wrap: anywhere;
+}
+
+/* ===== 工具行（「添加」一行、时间轴按钮一行） ===== */
+.anim-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.anim-toolbar-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* 行内按钮永远整字显示：默认会在窄行里被压成"一个汉字一行"的细条 */
+.anim-btn,
+.anim-icon-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: #333;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.anim-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.anim-icon-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.anim-btn:hover {
+  color: #1890ff;
+  border-color: #91caff;
+  background: #f0f8ff;
+}
+
+.anim-icon-btn:hover {
+  color: #ff4d4f;
+  border-color: #ffa39e;
+  background: #fff1f0;
+}
+
+/* ===== 控件尺寸 ===== */
+.animation-panel select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.anim-toolbar select {
+  /* 两个下拉各占一半；再窄就各占一行（整字可读，不会被压到只剩一个箭头）。
+     面板很宽时也不无限拉伸——工具栏整齐地待在左边就够了。 */
+  flex: 0 1 auto;
+  min-width: 72px;
+  max-width: 200px;
+}
+
+.animation-panel input[type="number"] {
+  flex: 1 1 68px;
+  width: auto;
+  min-width: 56px;
+  max-width: 110px;
+  padding: 2px 5px;
+  font-size: 12px;
+  text-align: right;
+  color: #333;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.animation-panel input[type="number"]:focus,
+.animation-panel select:focus {
+  outline: 1px solid #91caff;
+  outline-offset: 0;
+}
+
+/* ===== 「标签 + 控件」组 ===== */
+.anim-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.anim-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 132px;
+  /* 面板很宽时不要把一个数值框拉成半个屏幕：一组最多 190px */
+  max-width: 190px;
+  min-width: 0;
+}
+
+.anim-field-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* 预设参数：标签 | 数值 | 滑块。滑块自己可以掉到下一行，窄面板里才有地方拖。 */
+.anim-field.is-slider {
+  flex: 1 1 220px;
+  max-width: none;
+}
+
+.anim-field.is-slider input[type="range"] {
+  flex: 1 1 90px;
+  min-width: 48px;
+  margin: 0;
+}
+
+/* 下拉独占的组（循环 / 缓动）：选择框吃掉剩余宽度 */
+.anim-field.is-wide {
+  flex: 1 1 130px;
+  max-width: none;
+}
+
+.anim-field.is-wide select {
+  flex: 1 1 auto;
+}
+
+/* 一行里放两个数值（淡入 / 淡出）：两个框打包成一组，换行时一起换 */
+.anim-field.is-pair {
+  flex: 0 1 auto;
+  max-width: none;
+}
+
+.anim-number-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.anim-number-pair input[type="number"] {
+  flex: 0 1 68px;
+}
+
+/* ===== 一条动画 = 一张卡片 ===== */
 .animation-clip-card {
-  margin-top: 8px;
   padding: 6px 8px;
   border: 1px solid #e6e6e6;
   border-left: 3px solid #1890ff;
   border-radius: 6px;
   background: #fff;
+  min-width: 0;
 }
 
 .animation-clip-card.is-selected {
@@ -68,28 +273,116 @@
 
 .animation-clip-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
+  min-width: 0;
+}
+
+.animation-clip-header > input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  cursor: pointer;
 }
 
 .animation-clip-title {
-  flex: 1;
-  text-align: left;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 3px;
   padding: 0;
+  text-align: left;
   background: none;
   border: none;
   color: inherit;
   font-size: 12px;
+  line-height: 1.5;
   cursor: pointer;
+}
+
+.animation-clip-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .animation-clip-meta {
   opacity: 0.6;
+  white-space: nowrap;
 }
 
 .animation-clip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 6px;
-  padding-left: 18px;
+  padding: 6px 0 0 12px;
   border-top: 1px dashed #e8e8e8;
-  padding-top: 6px;
+  min-width: 0;
+}
+
+/* ===== 关键帧检查器：5 个通道按格子铺，窄了自动少列 ===== */
+.anim-channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.anim-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.anim-channel-label {
+  font-size: 11px;
+  color: #8c8c8c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.anim-channel input[type="number"] {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+/* ===== 窄面板（属性面板被拖窄 / 浮窗变窄）=====
+ * 面板本身不足 360px 时：内边距和缩进各让出 2~6px，
+ * 关键帧/时间轴那一列才不至于只剩半个输入框。 */
+@container (max-width: 360px) {
+  .animation-panel {
+    padding: 6px;
+  }
+
+  .animation-clip-card {
+    padding: 5px 6px;
+  }
+
+  .animation-clip-body {
+    padding-left: 6px;
+  }
+
+  .anim-field {
+    /* 一整行：标签在左、控件在右，不再并排挤在一起 */
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .anim-field.is-wide,
+  .anim-field.is-slider {
+    flex: 1 1 100%;
+  }
+
+  /* 检查器里「帧号 / 缓动 / 删除」三件套：缓动这一组收回自然宽度，
+     删除按钮就能跟它待在同一行，不用单独占一行。 */
+  .keyframe-inspector .anim-field.is-wide {
+    flex: 1 1 auto;
+  }
 }

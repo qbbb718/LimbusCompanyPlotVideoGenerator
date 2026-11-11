@@ -31,6 +31,7 @@ import {
   withKeyframeMeta,
   withKeyframeValue,
 } from "../animation/clipEditing";
+import "./KeyframeTimeline.css";
 
 /** 关键帧可编辑的通道（顺序 = 检查器里的顺序） */
 export const KEYFRAME_CHANNELS: (keyof TransformState)[] = [
@@ -167,7 +168,6 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
       className="keyframe-timeline"
       role="group"
       aria-label={`${elementLabel} 关键帧时间轴`}
-      style={{ marginTop: 6 }}
     >
       <div
         ref={rulerRef}
@@ -175,36 +175,17 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
         aria-label={`${elementLabel} 时间轴标尺`}
         title="点击定位到这一帧（预览会跳到该帧）"
         onClick={handleRulerClick}
-        style={{
-          position: "relative",
-          height: 34,
-          marginTop: 2,
-          borderRadius: 4,
-          background: "#1b1b1b",
-          border: "1px solid #444",
-          cursor: "crosshair",
-          userSelect: "none",
-        }}
       >
-        {/* 刻度：首尾 + 三等分 */}
+        {/* 刻度：首尾 + 三等分（宽度自适应：标尺是块级元素，位置用百分比） */}
         {Array.from({ length: TICK_COUNT }, (_, index) => {
           const value = Math.round((duration * index) / (TICK_COUNT - 1));
           return (
             <span
               key={`tick-${index}`}
-              className="keyframe-tick"
-              style={{
-                position: "absolute",
-                left: `${(index / (TICK_COUNT - 1)) * 100}%`,
-                top: 0,
-                bottom: 0,
-                borderLeft: index === 0 ? "none" : "1px dashed #3a3a3a",
-                paddingLeft: index === 0 ? 4 : 4,
-                fontSize: 10,
-                color: "#8a8a8a",
-                pointerEvents: "none",
-                transform: index === TICK_COUNT - 1 ? "translateX(-100%)" : undefined,
-              }}
+              className={`keyframe-tick${index === 0 ? " is-first" : ""}${
+                index === TICK_COUNT - 1 ? " is-last" : ""
+              }`}
+              style={{ left: `${(index / (TICK_COUNT - 1)) * 100}%` }}
             >
               {value}
             </span>
@@ -216,7 +197,7 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
           <button
             key={`key-${key.f}-${index}`}
             type="button"
-            className="keyframe-marker"
+            className={`keyframe-marker${key.f === selectedFrame ? " is-selected" : ""}`}
             aria-label={`${elementLabel} 关键帧 ${index + 1} 第 ${key.f} 帧`}
             title={`第 ${key.f} 帧：点击选中并把预览跳到这一帧`}
             onClick={(event) => {
@@ -224,21 +205,7 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
               setSelectedFrame(key.f);
               seek(key.f);
             }}
-            style={{
-              position: "absolute",
-              left: percentOf(key.f),
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              padding: 0,
-              width: 16,
-              height: 16,
-              lineHeight: "16px",
-              fontSize: 11,
-              color: key.f === selectedFrame ? "#ffd166" : "#9ad1ff",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-            }}
+            style={{ left: percentOf(key.f) }}
           >
             ◆
           </button>
@@ -249,24 +216,16 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
           <div
             className="keyframe-playhead"
             data-testid="keyframe-playhead"
-            style={{
-              position: "absolute",
-              left: percentOf(playheadLocal as number),
-              top: 0,
-              bottom: 0,
-              width: 2,
-              background: "#ff5c5c",
-              pointerEvents: "none",
-            }}
+            style={{ left: percentOf(playheadLocal as number) }}
           />
         )}
       </div>
 
-      <div className="char-row" style={{ gap: 6, marginTop: 4 }}>
-        <button type="button" onClick={handleAdd}>
+      <div className="anim-toolbar">
+        <button type="button" className="anim-btn" onClick={handleAdd}>
           ＋ 加关键帧
         </button>
-        <span className="global-hint" style={{ marginTop: 0 }}>
+        <span className="global-hint">
           共 {keys.length} 帧 / 时长 {duration} 帧
           {playheadVisible ? "（加点会落在播放头）" : ""}
         </span>
@@ -274,13 +233,12 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
 
       {/* 轴长应当 = 这句话本身的长度（语音/文字二选一，取长的） */}
       {typeof lineFrames === "number" && lineFrames > 0 && (
-        <div className="char-row" style={{ gap: 6, marginTop: 2 }}>
-          <span className="global-hint" style={{ marginTop: 0 }}>
-            台词长度 {lineFrames} 帧（max(语音, 文字)）
-          </span>
+        <div className="anim-toolbar">
+          <span className="global-hint">台词长度 {lineFrames} 帧（max(语音, 文字)）</span>
           {lineFrames !== duration && (
             <button
               type="button"
+              className="anim-btn"
               title="把动画时长对齐到这句台词的长度"
               onClick={() => onChange({ ...clip, durationFrames: lineFrames })}
             >
@@ -291,42 +249,46 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
       )}
 
       {selectedKey ? (
-        <div className="keyframe-inspector" style={{ marginTop: 4, fontSize: 12 }}>
-          <div className="char-row" style={{ gap: 6 }}>
-            <span className="char-label-fixed">帧号</span>
-            <input
-              type="number"
-              min={0}
-              max={duration}
-              value={selectedKey.f}
-              aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} 帧号`}
-              style={{ width: 64 }}
-              onChange={(e) => {
-                const next = Math.max(0, Math.round(Number(e.target.value) || 0));
-                setSelectedFrame(next);
-                onChange(withKeyframeMeta(clip, selectedIndex, { f: next }));
-              }}
-            />
-            <span className="char-label-fixed">缓动</span>
-            <select
-              value={selectedKey.ease ?? "easeInOut"}
-              aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} 缓动`}
-              onChange={(e) =>
-                onChange(
-                  withKeyframeMeta(clip, selectedIndex, {
-                    ease: e.target.value as Keyframe["ease"],
-                  }),
-                )
-              }
-            >
-              {EASING_NAMES.map((name) => (
-                <option key={name} value={name}>
-                  {EASING_LABELS[name]}
-                </option>
-              ))}
-            </select>
+        <div className="keyframe-inspector">
+          <div className="anim-fields">
+            <div className="anim-field">
+              <span className="anim-field-label">帧号</span>
+              <input
+                type="number"
+                min={0}
+                max={duration}
+                value={selectedKey.f}
+                aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} 帧号`}
+                onChange={(e) => {
+                  const next = Math.max(0, Math.round(Number(e.target.value) || 0));
+                  setSelectedFrame(next);
+                  onChange(withKeyframeMeta(clip, selectedIndex, { f: next }));
+                }}
+              />
+            </div>
+            <div className="anim-field is-wide">
+              <span className="anim-field-label">缓动</span>
+              <select
+                value={selectedKey.ease ?? "easeInOut"}
+                aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} 缓动`}
+                onChange={(e) =>
+                  onChange(
+                    withKeyframeMeta(clip, selectedIndex, {
+                      ease: e.target.value as Keyframe["ease"],
+                    }),
+                  )
+                }
+              >
+                {EASING_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {EASING_LABELS[name]}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
+              className="anim-icon-btn"
               title="删除这一帧"
               aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} 删除`}
               onClick={() => {
@@ -338,29 +300,31 @@ const KeyframeTimeline: React.FC<KeyframeTimelineProps> = ({
             </button>
           </div>
 
-          {KEYFRAME_CHANNELS.map((channel) => (
-            <div className="char-row" key={channel} style={{ gap: 6 }}>
-              <span className="char-label-fixed">{channel}</span>
-              <input
-                type="number"
-                value={selectedKey.v?.[channel] ?? ""}
-                placeholder="—"
-                aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} ${channel}`}
-                style={{ width: 72 }}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  onChange(
-                    withKeyframeValue(
-                      clip,
-                      selectedIndex,
-                      channel,
-                      raw === "" ? null : Number(raw),
-                    ),
-                  );
-                }}
-              />
-            </div>
-          ))}
+          {/* 5 个通道：格子按可用宽度自动少列（窄面板里竖排也不会撑破卡片） */}
+          <div className="anim-channel-grid">
+            {KEYFRAME_CHANNELS.map((channel) => (
+              <div className="anim-channel" key={channel}>
+                <span className="anim-channel-label">{channel}</span>
+                <input
+                  type="number"
+                  value={selectedKey.v?.[channel] ?? ""}
+                  placeholder="—"
+                  aria-label={`${elementLabel} 关键帧 ${selectedIndex + 1} ${channel}`}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    onChange(
+                      withKeyframeValue(
+                        clip,
+                        selectedIndex,
+                        channel,
+                        raw === "" ? null : Number(raw),
+                      ),
+                    );
+                  }}
+                />
+              </div>
+            ))}
+          </div>
           <div className="global-hint">
             留空的通道 = 这一帧不写它（沿用插值）。
           </div>

@@ -14,6 +14,24 @@
   padding: 12px;
   margin-bottom: 12px;
   background: #fff;
+  /* 卡片自己就是容器：下面的 @container 按"这张卡片的宽度"（= 属性面板宽度）
+     决定要不要收紧标签、把滑块换行，而不是按整个窗口宽度。 */
+  container-type: inline-size;
+}
+
+/* 卡片窄于 340px（窗口缩小 / 面板被拖窄）时：标签从 85px 收到 72px、间距 10→6。
+   省下的这 20 多像素刚好够"标签 + 数值框 + 复原按钮"待在同一个行里，
+   滑块整行换到下一行，行内不会再挤出卡片。 */
+@container (max-width: 340px) {
+  .characters-properties .char-row,
+  .characters-properties .transform-row {
+    column-gap: 6px;
+  }
+
+  .characters-properties .transform-label,
+  .characters-properties .char-label-fixed {
+    flex: 0 0 72px;
+  }
 }
 
 .character-header {
@@ -176,6 +194,33 @@
   margin: 0;
 }
 
+/* 窄面板（窗口缩小 / 属性面板被拖窄）下的坐标行：
+ * 「标签 + 数值框」占掉前面的位置之后，滑杆只剩几十像素，
+ * 而滑杆上方还有 9 个 16px 的快速定位按钮（最小 144px）——不换行的话
+ * 这一行会从标签右边一直挤到卡片外面，滑杆拇指和快速定位按钮被裁掉。
+ * 换成"滑块 / 快速定位整行换到下一行"，宽度就永远够用。
+ * 「临时图片」页签共用同一套 .char-row / .char-slider-auto，所以选择器里带上它。 */
+.characters-properties .char-row,
+.characters-properties .transform-row,
+.temp-images-properties .char-row {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.characters-properties .char-row .char-slider-auto,
+.characters-properties .transform-row .transform-slider,
+.temp-images-properties .char-row .char-slider-auto {
+  flex: 1 1 140px;
+}
+
+.characters-properties .char-slider-auto input[type="range"],
+.characters-properties .transform-slider input[type="range"],
+.temp-images-properties .char-slider-auto input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
 /* ===== X偏移滑块样式 ===== */
 .adjX-slider {
   width: 100%;
@@ -190,8 +235,12 @@
   margin-bottom: 2px;
 }
 
+/* flex: 0 1 16px：9 个按钮固定 16px 宽，行内宽度不够时按比例收窄（min-width: 0），
+   而不是一起挤出滑杆那一列（见上面 .char-row 换行那条说明）。 */
 .adjX-quick-btn {
+  flex: 0 1 16px;
   width: 16px;
+  min-width: 0;
   height: 12px;
   padding: 0;
   background-color: #d0d0d0;

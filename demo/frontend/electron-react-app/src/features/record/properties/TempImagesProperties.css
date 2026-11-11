@@ -25,6 +25,22 @@
   padding: 10px;
   margin-bottom: 10px;
   background: #fafafa;
+  /* 与立绘卡片同一套窄面板口径：卡片自己当容器，
+     下面的 @container 按卡片宽度（= 属性面板宽度）收紧标签，而不是按窗口宽度。 */
+  container-type: inline-size;
+}
+
+/* 卡片窄于 340px（窗口缩小 / 面板被拖窄）时：标签 85→72px、间距 10→6。
+   省下的宽度刚好让「标签 + 数值框 + 滑杆」这一行不挤出卡片
+   （滑杆整行换行的规则见 CharactersProperties.css，两个页签共用）。 */
+@container (max-width: 340px) {
+  .temp-images-properties .char-row {
+    column-gap: 6px;
+  }
+
+  .temp-images-properties .char-label-fixed {
+    flex: 0 0 72px;
+  }
 }
 
 .temp-image-header {
