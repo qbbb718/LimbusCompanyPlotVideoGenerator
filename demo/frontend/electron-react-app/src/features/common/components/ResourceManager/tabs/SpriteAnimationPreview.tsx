@@ -32,9 +32,22 @@
  * 但下一帧已经换成另一张了）。所以播放中锁住拖拽/滚轮，暂停或停止后恢复可编辑。
  *
  * <h3>为什么记录的是"相对头部"而不是屏幕坐标</h3>
- * 同一段动画要能挂到不同角色身上。头部方框（立绘裁剪框）在场景里恒为
+ * 同一段动画要能挂到不同角色身上。**基准取角色头部的裁剪区域**——也就是立绘裁剪配置
+ * `portrait.faceX / faceY / length` 映射到画布后的正方形方框（`previewLayout.characterHeadBox`），
+ * 而不是整张立绘的矩形、也不是画布本身。头部方框在场景里恒为
  * `183 × 用户缩放`（与角色身高、站位、裁剪框大小无关），所以把偏移存成
  * **头部长度的倍数**、把大小存成**缩放倍率**，换任何角色都落在同一个相对位置。
+ *
+ * 换角色时只重算一次方框（`characterLayout` 只看裁剪配置 + 身高，**不需要立绘原图的像素尺寸**），
+ * 动画立刻落到新头部上；偏移量 `offsetX/offsetY/scale` 一个字节都不改。
+ *
+ * <h3>「角色」为什么是带缩略图的自定义下拉</h3>
+ * 换角色本身就是"对着脸调位置"的活，而一套动画要挂到谁身上，光看名字经常挑错
+ * （同一角色有好几张立绘、名字又长又像）。所以这里不再用原生 `<select>`
+ * （`<option>` 里放不了图片），改用与剧情编辑「说话人 / 立绘」同一个 `CharacterSelect`：
+ * **每个选项都是默认立绘缩略图 + 名字**，触发器上也带着当前角色的头像。
+ * 注意"可选的角色"仍然只限**带立绘的角色**——没有立绘的角色在舞台上什么都不显示，
+ * 让它出现在下拉里只会让人以为预览坏了。
  *
  * <h3>视图缩放（与摆放参数严格分离）</h3>
  * 缩略图摆放是"对着画面调"的活：16:9 舞台放进预览栏后通常只有原图的 50%~80%，
@@ -57,14 +70,11 @@ import log from "electron-log";
 
 import ApiService from "@services/ApiService";
 import type { Background, CharacterVisual, MyCharacter } from "@types";
-import { buildPortraitImageUrl } from "@features/common/utils/portraitUtils";
 import { useElementSize } from "@features/record/preview/useElementSize";
-import { useImageSizes } from "@features/record/preview/useImageSizes";
 import {
   DEFAULT_CAMERA,
-  characterFaceCenter,
-  characterHeadSize,
-  characterWorldRect,
+  characterHeadBox,
+  characterLayout,
   sceneToOutput,
   worldToScene,
 } from "@features/record/preview/previewLayout";
@@ -84,6 +94,8 @@ import {
   parseZoomPercent,
   wheelZoomFactor,
 } from "@features/common/utils/referenceView";
+import CharacterSelect from "@features/record/properties/CharacterSelect";
+import type { CharacterSelectOption } from "@features/record/properties/CharacterSelect";
 import { fitStage } from "./stageFit";
 import type { BoxSize } from "./stageFit";
 import {
@@ -128,6 +140,12 @@ interface SpriteAnimationPreviewProps {
 /** 预览渲染的输出尺寸（不跟成片走：这里只求"看得清、渲得快"；16:9 与成片一致） */
 const PREVIEW_WIDTH = 1280;
 const PREVIEW_HEIGHT = 720;
+
+/**
+ * 输出尺寸对象。**模块级常量**：几何 `useMemo` 依赖它的两个字段，
+ * 写成组件内的字面量会让每次渲染都新建一个对象（依赖不稳定，lint 也会报 missing dependency）。
+ */
+const OUTPUT = { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT } as const;
 
 /** 舞台的固定长宽比（CSS 兜底用；量到视口尺寸后由 `fitStage` 算出 px） */
 const PREVIEW_ASPECT = `${PREVIEW_WIDTH} / ${PREVIEW_HEIGHT}`;
@@ -353,6 +371,24 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
     [characters],
   );
 
+  /**
+   * 「角色」下拉的选项。
+   *
+   * <p>原生 `<select>` 的 `<option>` 放不了图片，而这里恰恰是"按脸挑人"的场合
+   * （一套动画要挂到不同角色身上、同一角色还可能有好几张立绘），光看名字容易挑错。
+   * 所以改用与剧情编辑里「说话人 / 立绘」同一个带缩略图的自定义下拉
+   * （`CharacterSelect`：选项 = 默认立绘缩略图 + 名字，触发器也带当前角色的头像）。
+   */
+  const characterOptions = useMemo<CharacterSelectOption[]>(
+    () =>
+      usableCharacters.map((item) => ({
+        value: item.characterID,
+        label: item.characterName,
+        avatarCharacter: item,
+      })),
+    [usableCharacters],
+  );
+
   // 还没选（或原选择被删了）时自动落到第一个可用角色 / 第一张背景
   useEffect(() => {
     if (usableCharacters.length === 0) {
@@ -510,14 +546,6 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
 
   /* ==================== 几何 ==================== */
 
-  /** 立绘原图尺寸（算立绘矩形要用；没有它就算不出脸框中心） */
-  const portraitUrl = useMemo(
-    () => (portrait ? buildPortraitImageUrl(portrait.imagePath) : ""),
-    [portrait],
-  );
-  const { sizes } = useImageSizes(portraitUrl ? [portraitUrl] : []);
-  const portraitSize = portraitUrl ? sizes[portraitUrl] : undefined;
-
   /** 预览用的立绘视觉元素（与记录里同构，但没有用户偏移/缩放） */
   const characterVisual: CharacterVisual | null = useMemo(() => {
     if (!character || !portrait) return null;
@@ -538,18 +566,27 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
     } as CharacterVisual;
   }, [character, portrait]);
 
-  const output = { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT };
-
-  /** 立绘矩形（世界）→ 脸框中心 → 头部边长 → 缩略图矩形（输出像素） */
+  /**
+   * 舞台几何：**以角色头部裁剪区域为基准**算缩略图矩形（输出像素）。
+   *
+   * <p>基准 = {@link characterHeadBox}，即立绘裁剪配置 `faceX / faceY / length`
+   * 映射到画布后的正方形方框（见 `previewLayout.characterLayout`，与后端
+   * `CharacterVisual.updatePos()` 逐行对应）。位置 = 方框中心 + 偏移 × 方框边长，
+   * 所以换角色时只要拿新角色的方框重算，**相对位置一点不变**。
+   *
+   * <p>刻意只依赖裁剪配置（不需要立绘原图的像素尺寸）：头部方框的位置由
+   * `(faceX/faceY, length)` 与身高决定，与整张立绘多大无关。这样换角色的瞬间
+   * 缩略图就已经落在新头部上，不会出现"图还没量到尺寸 → 动画先消失一下"的空窗。
+   */
   const geometry = useMemo(() => {
-    if (!characterVisual || !portraitSize) return null;
-    const rect = characterWorldRect(characterVisual, portraitSize);
-    const faceCenter = characterFaceCenter(characterVisual, rect);
-    const head = characterHeadSize(characterVisual);
+    if (!characterVisual) return null;
+    const layout = characterLayout(characterVisual);
+    const headBox = characterHeadBox(characterVisual, layout);
+    const headCenter = { x: headBox.x + headBox.w / 2, y: headBox.y + headBox.h / 2 };
     const world = spriteRect(
-      faceCenter.x,
-      faceCenter.y,
-      head,
+      headCenter.x,
+      headCenter.y,
+      headBox.w,
       clip.canvasWidth,
       clip.canvasHeight,
       poster.scale,
@@ -557,14 +594,14 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
       poster.offsetX,
       poster.offsetY,
     );
-    const out = sceneToOutput(worldToScene(world, DEFAULT_CAMERA), output);
+    const out = sceneToOutput(worldToScene(world, DEFAULT_CAMERA), OUTPUT);
     // 头部在预览图上的像素宽：拖拽时把像素位移换算回"几个头宽"
     const headOut = sceneToOutput(
-      worldToScene({ x: 0, y: 0, w: head, h: head }, DEFAULT_CAMERA),
-      output,
+      worldToScene({ x: 0, y: 0, w: headBox.w, h: headBox.h }, DEFAULT_CAMERA),
+      OUTPUT,
     ).w;
-    return { out, headOut, headWorld: head, faceCenter };
-  }, [characterVisual, portraitSize, clip.canvasWidth, clip.canvasHeight, poster, output.width, output.height]);
+    return { out, headOut, headWorld: headBox.w, faceCenter: headCenter, headBox };
+  }, [characterVisual, clip.canvasWidth, clip.canvasHeight, poster]);
 
   /** 舞台 = 视口里能放下的最大 16:9 矩形（px）。量不到时退回 CSS 兜底 */
   const stageSize = useMemo(
@@ -687,8 +724,8 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
     const rect = stage.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
     // 客户端像素 → 输出像素：舞台是等比缩放的
-    const scaleX = output.width / rect.width;
-    const scaleY = output.height / rect.height;
+    const scaleX = OUTPUT.width / rect.width;
+    const scaleY = OUTPUT.height / rect.height;
     const dx = ((event.clientX - drag.startX) * scaleX) / Math.max(1e-6, geometry.headOut);
     const dy = ((event.clientY - drag.startY) * scaleY) / Math.max(1e-6, geometry.headOut);
     onPosterChange({
@@ -781,10 +818,10 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   };
 
   const stageStyle = (rect: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
-    left: `${(rect.x / output.width) * 100}%`,
-    top: `${(rect.y / output.height) * 100}%`,
-    width: `${(rect.w / output.width) * 100}%`,
-    height: `${(rect.h / output.height) * 100}%`,
+    left: `${(rect.x / OUTPUT.width) * 100}%`,
+    top: `${(rect.y / OUTPUT.height) * 100}%`,
+    width: `${(rect.w / OUTPUT.width) * 100}%`,
+    height: `${(rect.h / OUTPUT.height) * 100}%`,
   });
 
   const canPreview = usableCharacters.length > 0 && backgrounds.length > 0;
@@ -798,22 +835,21 @@ const SpriteAnimationPreview: React.FC<SpriteAnimationPreviewProps> = ({
   return (
     <div className="sprite-preview">
       <div className="sprite-preview-toolbar">
-        <label className="sprite-preview-field">
-          角色
-          <select
-            value={characterId}
-            onChange={(e) => setCharacterId(e.target.value)}
-            aria-label="预览角色"
-            title={usableCharacters.find((item) => item.characterID === characterId)?.characterName}
-          >
-            {usableCharacters.length === 0 && <option value="">（还没有带立绘的角色）</option>}
-            {usableCharacters.map((item) => (
-              <option key={item.characterID} value={item.characterID}>
-                {item.characterName}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* 用 div 而不是 label：触发器是 button（label 管不着它），下拉内部也还会渲染 div */}
+        <div className="sprite-preview-field">
+          <span className="sprite-preview-field-label">角色</span>
+          {/* 带缩略图的自定义下拉：原生 <select> 的选项里放不了图片 */}
+          {usableCharacters.length > 0 ? (
+            <CharacterSelect
+              value={characterId}
+              options={characterOptions}
+              onChange={setCharacterId}
+              ariaLabel="预览角色"
+            />
+          ) : (
+            <span className="sprite-preview-field-empty">（还没有带立绘的角色）</span>
+          )}
+        </div>
         <label className="sprite-preview-field">
           背景
           <select

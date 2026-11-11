@@ -233,11 +233,84 @@ const scaleRect = (rect: PreviewRect, kx: number, ky: number): PreviewRect => ({
 /* ============================ 各图层的世界矩形 ============================ */
 
 /**
+ * 立绘的**布局参数**（只由裁剪框 + 身高 + 手动偏移/缩放决定，**不需要原图尺寸**）。
+ *
+ * <p>与 {@code CharacterVisual.updatePos()} 逐行对应：裁剪框（faceX, faceY, length）决定缩放与锚点，
+ * {@link CharacterLayout#x} / {@link CharacterLayout#y} 就是后端的 posX/posY（缩放后立绘的左上角）。
+ *
+ * <p><b>为什么单独抽出来：</b>「头部裁剪区域」在画布上的位置只跟这份布局有关，与立绘原图有几千像素
+ * 毫无关系。情绪动画的位置以头部为基准，就必须能在**图还没解码出来**时也算对——否则换角色的瞬间
+ * 动画会躲起来（或换角色前先按旧图算一遍），看起来正是"位置不对"。
+ */
+export interface CharacterLayout {
+  /** 缩放后立绘左上角 X（= 后端 posX，已取整） */
+  x: number;
+  /** 缩放后立绘左上角 Y（= 后端 posY，已取整） */
+  y: number;
+  /** 裁剪缩放 = 183 / length（后端 portraitScale()） */
+  baseScale: number;
+  /** 最终缩放 = 裁剪缩放 × 用户缩放（后端 getRenderScale()） */
+  renderScale: number;
+  /** 只有用户滑杆那一层缩放（1 = 未缩放） */
+  userScale: number;
+  /** 裁剪框左上角 X（原图像素，负数归零） */
+  faceX: number;
+  /** 裁剪框左上角 Y（原图像素，负数归零） */
+  faceY: number;
+  /** 裁剪框边长（原图像素，正方形） */
+  length: number;
+}
+
+/**
+ * 算立绘布局（= {@code CharacterVisual.updatePos()} 的镜像）。
+ *
+ * @param character 记录里的立绘视觉元素（chara / portrait / adjX / adjY / scale）
+ */
+export function characterLayout(character: CharacterVisual): CharacterLayout {
+  const portrait = character?.portrait;
+  // 裁剪框边长：没配 / 非法 / ≤0 都按 ProjectConfig 的默认头长兜底（与 Portrait 的智能默认值一致）
+  const rawLength = finite(portrait?.length, 0);
+  const length = rawLength > 0 ? rawLength : CHARACTER_HEAD_LENGTH;
+  const faceX = Math.max(0, finite(portrait?.faceX, 0));
+  const faceY = Math.max(0, finite(portrait?.faceY, 0));
+  const height = finite(character?.chara?.height, CHARACTER_HEIGHT);
+
+  const baseScale = CHARACTER_HEAD_LENGTH / length; // portraitScale()
+  const userScale = normalizeScale(character?.scale);
+  const renderScale = baseScale * userScale; // getRenderScale()
+  const halfLength = length / 2;
+
+  const anchorX =
+    DESIGN_WIDTH / 2 + finite(portrait?.adjX, 0) + finite(character?.adjX, 0);
+  // Java: (int)((DEFAULT_CHARACTER_HEIGHT - height) * Pixels_per_centimeter) —— 向零截断
+  const anchorY =
+    CHARACTER_HEIGHT_PIXELS +
+    Math.trunc((CHARACTER_HEIGHT - height) * PIXELS_PER_CENTIMETER) +
+    finite(portrait?.adjY, 0) +
+    finite(character?.adjY, 0);
+
+  return {
+    x: Math.round(
+      anchorX + halfLength * baseScale - (faceX + halfLength) * renderScale,
+    ),
+    y: Math.round(
+      anchorY + halfLength * baseScale - (faceY + halfLength) * renderScale,
+    ),
+    baseScale,
+    renderScale,
+    userScale,
+    faceX,
+    faceY,
+    length,
+  };
+}
+
+/**
  * 立绘的世界矩形（左上角 + 缩放后的绘制尺寸）。
  *
- * <p>与 {@code CharacterVisual.updatePos()} 逐行对应：
- * 裁剪框（faceX, faceY, length）决定缩放与锚点，posX/posY 是缩放后立绘的**左上角**。
- * 用户缩放 {@code scale} 以裁剪框中心为基准，所以 scale=1 时结果与旧公式完全一致。
+ * <p>与 {@code CharacterVisual.updatePos()} 逐行对应：裁剪框（faceX, faceY, length）决定缩放与锚点，
+ * posX/posY 是缩放后立绘的**左上角**。用户缩放 {@code scale} 以裁剪框中心为基准，
+ * 所以 scale=1 时结果与旧公式完全一致。
  *
  * @param character 记录里的立绘视觉元素（chara / portrait / adjX / adjY / scale）
  * @param imageSize 立绘原图像素尺寸（缺了就画不出来，调用方负责跳过）
@@ -246,40 +319,13 @@ export function characterWorldRect(
   character: CharacterVisual,
   imageSize: ImageSize,
 ): PreviewRect {
-  const portrait = character.portrait;
-  const length = finite(portrait?.length, 0) > 0
-    ? finite(portrait.length, CHARACTER_HEAD_LENGTH)
-    : CHARACTER_HEAD_LENGTH;
-  const faceX = Math.max(0, finite(portrait?.faceX, 0));
-  const faceY = Math.max(0, finite(portrait?.faceY, 0));
-  const height = finite(character?.chara?.height, CHARACTER_HEIGHT);
-
-  const baseScale = CHARACTER_HEAD_LENGTH / length; // portraitScale()
-  const renderScale = baseScale * normalizeScale(character.scale); // getRenderScale()
-  const halfLength = length / 2;
-
-  const anchorX =
-    DESIGN_WIDTH / 2 + finite(portrait?.adjX, 0) + finite(character.adjX, 0);
-  // Java: (int)((DEFAULT_CHARACTER_HEIGHT - height) * Pixels_per_centimeter) —— 向零截断
-  const anchorY =
-    CHARACTER_HEIGHT_PIXELS +
-    Math.trunc((CHARACTER_HEIGHT - height) * PIXELS_PER_CENTIMETER) +
-    finite(portrait?.adjY, 0) +
-    finite(character.adjY, 0);
-
-  const x = Math.round(
-    anchorX + halfLength * baseScale - (faceX + halfLength) * renderScale,
-  );
-  const y = Math.round(
-    anchorY + halfLength * baseScale - (faceY + halfLength) * renderScale,
-  );
-
+  const layout = characterLayout(character);
   return {
-    x,
-    y,
+    x: layout.x,
+    y: layout.y,
     // 后端用 RenderQualityUtils.scaleImageHighQuality(image, scale)：尺寸取四舍五入
-    w: Math.max(1, Math.round(imageSize.width * renderScale)),
-    h: Math.max(1, Math.round(imageSize.height * renderScale)),
+    w: Math.max(1, Math.round(imageSize.width * layout.renderScale)),
+    h: Math.max(1, Math.round(imageSize.height * layout.renderScale)),
   };
 }
 
@@ -296,14 +342,38 @@ export function characterScales(character: CharacterVisual): {
   renderScale: number;
   userScale: number;
 } {
-  const length =
-    finite(character?.portrait?.length, 0) > 0
-      ? finite(character.portrait.length, CHARACTER_HEAD_LENGTH)
-      : CHARACTER_HEAD_LENGTH;
-  const userScale = normalizeScale(character?.scale);
+  const { renderScale, userScale } = characterLayout(character);
+  return { renderScale, userScale };
+}
+
+/**
+ * 角色**头部裁剪区域**在场景里的方框（世界坐标，正方形）。
+ *
+ * <p>这就是需求里说的"角色头部（立绘被裁剪的区域）"：数据来源是立绘裁剪配置
+ * `portrait.faceX / faceY / length`（正方形裁剪框，见「资源管理 → 角色 → 编辑立绘」的
+ * 按截图校准），经 {@link characterLayout} 映射到画布坐标。
+ *
+ * <p>它是**情绪动画唯一的坐标基准**：位置 = 方框 + 相对方框的偏移（单位 = 方框边长）。
+ * 方框边长恒为 `183 × 用户缩放`（见 {@link characterHeadSize}），所以同一份偏移量换任何角色
+ * 都落在相同的相对位置。
+ *
+ * @param character 记录里的立绘视觉元素
+ * @param layout    可选：已经算好的布局（调用方通常已经为了别的用途算过一次）
+ */
+export function characterHeadBox(
+  character: CharacterVisual,
+  layout: CharacterLayout = characterLayout(character),
+): PreviewRect {
+  // 方框边长 = length · renderScale，恒为 183 × 用户缩放（见 characterHeadSize）
+  const size = headSize(layout.length, layout.renderScale);
+  // faceOffset 给的是**中心**相对立绘左上角的位移（见 sequenceTiming.faceOffset），
+  // 方框左上角要再退半个边长——否则整个头部会往右下偏半头。
+  const halfSize = size / 2;
   return {
-    renderScale: (CHARACTER_HEAD_LENGTH / length) * userScale,
-    userScale,
+    x: layout.x + faceOffset(layout.faceX, layout.length, layout.renderScale) - halfSize,
+    y: layout.y + faceOffset(layout.faceY, layout.length, layout.renderScale) - halfSize,
+    w: size,
+    h: size,
   };
 }
 
@@ -313,19 +383,16 @@ export function characterScales(character: CharacterVisual): {
  * <p>与后端 `EmotionAnimPlacement.faceOffset` 同源；两者靠夹具
  * `animation-fixtures.json` 的 `emotionPlacement` 段对拍。
  *
+ * <p>等于 {@link characterHeadBox} 的中心；这里保留"给一个立绘矩形"的签名，
+ * 是因为成片预览已经拿到了 `characterWorldRect` 的结果，不必再算一遍布局。
+ *
  * @param rect 立绘的世界矩形（{@link characterWorldRect} 的结果）
  */
 export function characterFaceCenter(
   character: CharacterVisual,
   rect: PreviewRect,
 ): { x: number; y: number } {
-  const length =
-    finite(character?.portrait?.length, 0) > 0
-      ? finite(character.portrait.length, CHARACTER_HEAD_LENGTH)
-      : CHARACTER_HEAD_LENGTH;
-  const faceX = Math.max(0, finite(character?.portrait?.faceX, 0));
-  const faceY = Math.max(0, finite(character?.portrait?.faceY, 0));
-  const { renderScale } = characterScales(character);
+  const { renderScale, faceX, faceY, length } = characterLayout(character);
   return {
     x: rect.x + faceOffset(faceX, length, renderScale),
     y: rect.y + faceOffset(faceY, length, renderScale),
@@ -340,11 +407,7 @@ export function characterFaceCenter(
  * 所以同一套配置换任何角色都落在相同的相对位置。
  */
 export function characterHeadSize(character: CharacterVisual): number {
-  const length =
-    finite(character?.portrait?.length, 0) > 0
-      ? finite(character.portrait.length, CHARACTER_HEAD_LENGTH)
-      : CHARACTER_HEAD_LENGTH;
-  const { renderScale } = characterScales(character);
+  const { length, renderScale } = characterLayout(character);
   return headSize(length, renderScale);
 }
 

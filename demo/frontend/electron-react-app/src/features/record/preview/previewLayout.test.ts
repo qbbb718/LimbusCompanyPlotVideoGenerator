@@ -12,6 +12,10 @@ import {
   DEFAULT_CAMERA,
   buildPreviewGeometry,
   backgroundWorldRect,
+  characterFaceCenter,
+  characterHeadBox,
+  characterHeadSize,
+  characterLayout,
   characterWorldRect,
   clampCamera,
   layerAt,
@@ -227,6 +231,85 @@ describe("预览几何 → 立绘", () => {
     ).toMatchObject({ x: 660, y: 261 });
   });
 });
+
+/* ============================ 头部裁剪区域（情绪动画的坐标基准） ============================ */
+
+describe("预览几何 → 头部裁剪区域", () => {
+  test("方框边长恒为 183（裁剪框被归一化），中心与脸框中心重合", () => {
+    // 三个"身形"完全不同的立绘：裁剪框边长 / 脸框位置 / 身高都不同
+    const cases: Array<[{ height: number }, Record<string, unknown>]> = [
+      [{ height: 171 }, {}],
+      [{ height: 195 }, { length: 300, faceX: 20, faceY: 10 }],
+      [{ height: 140 }, { length: 120, faceX: 5, faceY: 5 }],
+    ];
+
+    for (const [chara, portrait] of cases) {
+      const character = makeCharacter(chara, portrait);
+      const rect = characterWorldRect(character as any, IMAGE_PORTRAIT);
+      const box = characterHeadBox(character as any);
+      const center = characterFaceCenter(character as any, rect);
+
+      expect(box.w).toBeCloseTo(183, 6);
+      expect(box.h).toBeCloseTo(183, 6);
+      // 方框中心 == 脸框中心：情绪动画"以头部为基准"就是拿它当原点
+      expect(box.x + box.w / 2).toBeCloseTo(center.x, 6);
+      expect(box.y + box.h / 2).toBeCloseTo(center.y, 6);
+    }
+  });
+
+  test("头部方框不需要立绘原图尺寸：换多大的图，方框都一模一样", () => {
+    // 这正是"以头部为基准、而不是以整张立绘为基准"的可操作定义：
+    // 位置只由裁剪配置 + 身高决定（faceX=12/faceY=30/length=200/height=160 手算）。
+    const character = makeCharacter(
+      { height: 160 },
+      { length: 200, faceX: 12, faceY: 30 },
+    );
+    const box = characterHeadBox(character as any);
+
+    // baseScale = 183/200 = 0.915；半长 100 → 91.5
+    // posX = round(960 + 91.5 − (12+100)·0.915) = 949 → 中心 = 949 + 102.48 = 1051.48
+    // posY = round(312 + 91.5 − (30+100)·0.915) = 285 → 中心 = 285 + 118.95 = 403.95
+    expect(box.w).toBeCloseTo(183, 6);
+    expect(box.x).toBeCloseTo(1051.48 - 91.5, 6);
+    expect(box.y).toBeCloseTo(403.95 - 91.5, 6);
+
+    // 同一份配置，原图尺寸换成 10 倍：立绘矩形变大了，脸框中心/头部方框不变
+    const tiny = characterFaceCenter(
+      character as any,
+      characterWorldRect(character as any, { width: 300, height: 500 }),
+    );
+    const huge = characterFaceCenter(
+      character as any,
+      characterWorldRect(character as any, { width: 3000, height: 5000 }),
+    );
+    expect(huge).toEqual(tiny);
+  });
+
+  test("用户缩放 2×：方框跟着放大一倍（尺子也变大），中心不动", () => {
+    const normal = characterHeadBox(makeCharacter() as any);
+    const doubled = characterHeadBox(makeCharacter({}, {}, { scale: 2 }) as any);
+    expect(normal.w).toBeCloseTo(183, 6);
+    expect(doubled.w).toBeCloseTo(366, 6);
+    // 缩放以裁剪框中心为基准，posX/posY 取整残差 ≤1px
+    expect(Math.abs(doubled.x + doubled.w / 2 - (normal.x + normal.w / 2))).toBeLessThanOrEqual(
+      1,
+    );
+    expect(characterHeadSize(makeCharacter({}, {}, { scale: 2 }) as any)).toBeCloseTo(366, 6);
+  });
+
+  test("布局只含裁剪配置与身高：posX/posY 与 characterWorldRect 同一套取整", () => {
+    const character = makeCharacter({ height: 151 }, { length: 366, faceX: 40, faceY: 0 });
+    const layout = characterLayout(character as any);
+    const rect = characterWorldRect(character as any, IMAGE_PORTRAIT);
+    expect(layout.x).toBe(rect.x);
+    expect(layout.y).toBe(rect.y);
+    // 裁剪缩放 = 183 / length；用户缩放只有滑杆那一层
+    expect(layout.baseScale).toBeCloseTo(183 / 366, 9);
+    expect(layout.userScale).toBe(1);
+    expect(layout.renderScale).toBeCloseTo(0.5, 9);
+  });
+});
+
 
 /* ============================ 临时图片 ============================ */
 

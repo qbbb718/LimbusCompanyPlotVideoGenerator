@@ -1,13 +1,16 @@
 /**
- * @component 立绘「情绪动画（序列帧）」选择器
+ * @component 立绘「情绪动画（序列帧）」
  *
- * 剧情编辑页里**只负责"用哪一段"**：选一套在「资源管理 → 序列帧动画」里做好的动画，
- * 或者跳过去编辑。动画的导入、每帧时长、代表帧摆放全部在资源管理里，这里一个都不做。
+ * <h3>职责边界：做动画在资源管理，用哪一段 + 摆在哪在这里</h3>
+ * 动画的**制作**（导入帧序列、每帧时长、播放参数、素材上的原始摆放）全部在
+ * 「资源管理 → 序列帧动画」里，这里一个都不做——一段动画要被多条记录、多个角色复用，
+ * 逐条记录改它的节奏会产生"同一段动画在不同记录里长得不一样"的碎片状态。
  *
- * <h3>为什么这里只读</h3>
- * 一段动画要被多条记录、多个角色复用，逐条记录改它的节奏/位置会产生"同一段动画在不同记录里长得不一样"
- * 的碎片状态。把编排收口到资源管理之后，记录里只留一份**内联快照**（渲染端不读盘、画面稳定），
- * 素材改了也不回溯老工程——要同步由用户在这里点「从素材同步」。
+ * <p>唯一的例外是**摆放**（位置 + 缩放）：记录里本来就存了一份内联快照
+ * （见 `animationClipAsset.ts` 的"素材是模板，记录是快照"），而"这条记录里角色的站位/缩放"
+ * 只有在这里才看得见。所以这里提供「摆放」三行控件，改的只是本记录的
+ * `offsetX / offsetY / scale`，并提供一个「还原」回到素材上的值
+ * （见 {@link EmotionPlacementEditor}）。
  *
  * <h3>为什么不用原生 &lt;select&gt;</h3>
  * 原生 `<option>` 里放不了图片，而"看缩略图挑动画"正是这里最需要的能力（几段花开/怒气符号
@@ -19,17 +22,19 @@ import React, { useEffect, useRef, useState } from "react";
 
 import ApiService from "@services/ApiService";
 import type { EmotionAnim } from "../animation/animationTypes";
-import { isEmotionAnimUsable } from "../animation/animationTypes";
+import { emotionPlacementOf, isEmotionAnimUsable } from "../animation/animationTypes";
 import type { AnimationClipDto } from "../animation/animationClipAsset";
 import {
   LOOP_MODE_LABELS,
+  assetPlacementOf,
   emotionAnimFromAsset,
-  isSequenceInSync,
+  isContentInSync,
   syncSequenceFromAsset,
   totalFramesOf,
 } from "../animation/animationClipAsset";
 import { useAnimationClipLibrary } from "../animation/useAnimationClipLibrary";
 import { preloadClipFrames } from "../animation/framePreloader";
+import EmotionPlacementEditor from "./EmotionPlacementEditor";
 import "./EmotionAnimPicker.css";
 
 interface EmotionAnimPickerProps {
@@ -104,7 +109,9 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
 
   const hasAnimation = isEmotionAnimUsable(emotionAnim);
   const asset = library.find(emotionAnim?.clipId);
-  const inSync = hasAnimation ? isSequenceInSync(emotionAnim!, asset) : true;
+  // "与素材不一致"只针对**时序/播放参数**：摆放是允许按记录微调的（见组件注释），
+  // 微调过摆放不该弹"从素材同步"的警告，否则每次挪一下动画都像把素材改坏了
+  const inSync = hasAnimation ? isContentInSync(emotionAnim!, asset) : true;
   const currentValue = hasAnimation ? emotionAnim!.clipId : "";
 
   // 帧图提前拉一遍：预览播放是"每帧换 src"，不预热开头几轮会闪白
@@ -354,13 +361,18 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
                 <div>
                   播放：{loopLabelOf(emotionAnim!.loop)} · 代表帧 第 {(emotionAnim!.posterFrame ?? 0) + 1} 张
                 </div>
-                <div>
-                  位置：横向 {(emotionAnim!.offsetX ?? 0).toFixed(2)} 头宽、纵向{" "}
-                  {(emotionAnim!.offsetY ?? 0).toFixed(2)} 头宽 · 缩放{" "}
-                  {Math.round((emotionAnim!.scale ?? 1) * 100)}%
-                </div>
               </div>
             </div>
+          )}
+
+          {/* 摆放：这条记录的微调入口。「还原」回到素材上的摆放，见 EmotionPlacementEditor */}
+          {hasAnimation && (
+            <EmotionPlacementEditor
+              elementLabel={elementLabel}
+              value={emotionPlacementOf(emotionAnim)}
+              baseline={asset ? assetPlacementOf(asset) : null}
+              onChange={(patch) => onChange({ ...emotionAnim!, ...patch })}
+            />
           )}
 
           {hasAnimation && !asset && (
@@ -368,6 +380,7 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
               素材已不在资源管理里（可能被删除）。成片里不会画出这段动画，但记录本身没有损坏。
             </div>
           )}
+          {/* 提示只针对时序/播放参数：摆放微调属于正常的按记录调整，不算"不一致" */}
           {hasAnimation && asset && !inSync && (
             <div className="emotion-picker-warn">
               这条记录里的配置与素材当前版本不一致。

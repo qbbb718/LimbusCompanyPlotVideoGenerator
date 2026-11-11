@@ -1,0 +1,197 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>情绪动画「摆放」排版自检</title>
+    <!--
+      离屏排版自检：用**真实的 CSS 文件** + 与 EmotionAnimPicker / EmotionPlacementEditor
+      相同的一套 class 结构，看摆放三行在属性面板最窄（300px）时会不会挤坏。
+      只用于这次改动的目视验收，不参与构建。
+    -->
+    <link rel="stylesheet" href="../../demo/frontend/electron-react-app/src/features/record/RecordEditor.css" />
+    <link rel="stylesheet" href="../../demo/frontend/electron-react-app/src/features/record/properties/CharactersProperties.css" />
+    <link rel="stylesheet" href="../../demo/frontend/electron-react-app/src/features/record/properties/TransformControls.css" />
+    <link rel="stylesheet" href="../../demo/frontend/electron-react-app/src/features/record/properties/CharacterAnimationPanel.css" />
+    <link rel="stylesheet" href="../../demo/frontend/electron-react-app/src/features/record/properties/EmotionAnimPicker.css" />
+    <link rel="stylesheet" href="../../demo/frontend/electron-react-app/src/features/record/properties/EmotionPlacementEditor.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 12px;
+        font-family: "Microsoft YaHei", system-ui, sans-serif;
+        color: #333;
+        background: #eef0e6;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .stage {
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 8px;
+      }
+      .stage h6 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 400;
+        color: #888;
+      }
+      .thumb {
+        width: 48px;
+        height: 48px;
+        border: 1px solid #e3e6cc;
+        border-radius: 4px;
+        background: repeating-conic-gradient(#f2f4e8 0% 25%, #ffffff 0% 50%) 50% / 12px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 300px：属性面板允许的最窄宽度（外面套上真实的 15px + 12px 卡片内边距） -->
+    <div class="stage" style="width: 300px">
+      <h6>300px 面板（最窄）· 含真实卡片内边距</h6>
+      <div class="characters-properties">
+       <div class="character-item">
+        <div class="character-details">
+        <div class="emotion-picker">
+          <div class="animation-panel-header">
+            <button type="button" class="animation-panel-toggle">▾ 情绪动画（序列帧）</button>
+            <span class="animation-panel-summary">花开 · 3 张 / 6 帧</span>
+          </div>
+          <div class="emotion-picker-body">
+            <div class="char-row" style="gap: 6px; align-items: center">
+              <span class="char-label-fixed">选用动画</span>
+              <div class="emotion-anim-select">
+                <button type="button" class="emotion-anim-select-trigger">
+                  <span class="emotion-anim-select-thumb is-empty">—</span>
+                  <span class="emotion-anim-select-label">花开</span>
+                  <span class="emotion-anim-select-arrow">▾</span>
+                </button>
+              </div>
+            </div>
+            <div class="emotion-picker-summary">
+              <span class="thumb"></span>
+              <div>播放：播一次 · 代表帧 第 2 张</div>
+            </div>
+            <div class="emotion-placement">
+              <div class="emotion-placement-head">
+                <span class="emotion-placement-title">摆放（相对头部区域）</span>
+                <button type="button" class="transform-reset-btn">还原</button>
+              </div>
+              <p class="emotion-placement-hint">已微调 · 素材摆放：X 0.25 · Y -0.40 头宽 · 缩放 120%</p>
+              <div class="transform-row">
+                <span class="transform-label">X 位置</span>
+                <input type="text" class="transform-number" value="1.25" />
+                <button type="button" class="transform-reset-icon-btn">↺</button>
+                <div class="transform-slider"><input type="range" min="-3" max="3" step="0.01" value="1.25" /></div>
+              </div>
+              <div class="transform-row">
+                <span class="transform-label">Y 位置</span>
+                <input type="text" class="transform-number" value="-0.40" />
+                <button type="button" class="transform-reset-icon-btn" disabled>↺</button>
+                <div class="transform-slider"><input type="range" min="-3" max="3" step="0.01" value="-0.4" /></div>
+              </div>
+              <div class="transform-row">
+                <span class="transform-label">缩放</span>
+                <input type="text" class="transform-number" value="0.35" />
+                <button type="button" class="transform-reset-icon-btn">↺</button>
+                <div class="transform-slider"><input type="range" min="0.05" max="2" step="0.01" value="0.35" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+       </div>
+      </div>
+    </div>
+
+    <!-- 420px：常见的属性栏宽度 -->
+    <div class="stage" style="width: 420px">
+      <h6>420px 面板</h6>
+      <div class="characters-properties">
+       <div class="character-item">
+        <div class="character-details">
+        <div class="emotion-picker">
+          <div class="animation-panel-header">
+            <button type="button" class="animation-panel-toggle">▾ 情绪动画（序列帧）</button>
+            <span class="animation-panel-summary">花开 · 3 张 / 6 帧</span>
+          </div>
+          <div class="emotion-picker-body">
+            <div class="emotion-picker-summary">
+              <span class="thumb"></span>
+              <div>播放：播一次 · 代表帧 第 2 张</div>
+            </div>
+            <div class="emotion-placement">
+              <div class="emotion-placement-head">
+                <span class="emotion-placement-title">摆放（相对头部区域）</span>
+                <button type="button" class="transform-reset-btn">还原</button>
+              </div>
+              <p class="emotion-placement-hint">素材摆放：X 0.25 · Y -0.40 头宽 · 缩放 120%</p>
+              <div class="transform-row">
+                <span class="transform-label">X 位置</span>
+                <input type="text" class="transform-number" value="1.25" />
+                <button type="button" class="transform-reset-icon-btn">↺</button>
+                <div class="transform-slider"><input type="range" min="-3" max="3" step="0.01" value="1.25" /></div>
+              </div>
+              <div class="transform-row">
+                <span class="transform-label">Y 位置</span>
+                <input type="text" class="transform-number" value="-0.40" />
+                <button type="button" class="transform-reset-icon-btn">↺</button>
+                <div class="transform-slider"><input type="range" min="-3" max="3" step="0.01" value="-0.4" /></div>
+              </div>
+              <div class="transform-row">
+                <span class="transform-label">缩放</span>
+                <input type="text" class="transform-number" value="0.35" />
+                <button type="button" class="transform-reset-icon-btn">↺</button>
+                <div class="transform-slider"><input type="range" min="0.05" max="2" step="0.01" value="0.35" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+       </div>
+      </div>
+    </div>
+
+    <!-- 素材缺失：提示换成"没有原摆放可比" -->
+    <div class="stage" style="width: 300px">
+      <h6>300px 宽 · 素材已删除</h6>
+      <div class="characters-properties">
+        <div class="emotion-picker">
+          <div class="animation-panel-header">
+            <button type="button" class="animation-panel-toggle">▾ 情绪动画（序列帧）</button>
+            <span class="animation-panel-summary">花开 · 3 张 / 6 帧</span>
+          </div>
+          <div class="emotion-picker-body">
+            <div class="emotion-placement">
+              <div class="emotion-placement-head">
+                <span class="emotion-placement-title">摆放（相对头部区域）</span>
+                <button type="button" class="transform-reset-btn" disabled>还原</button>
+              </div>
+              <p class="emotion-placement-hint">素材已删除：还原回居中、原始尺寸</p>
+              <div class="transform-row">
+                <span class="transform-label">X 位置</span>
+                <input type="text" class="transform-number" value="0" />
+                <button type="button" class="transform-reset-icon-btn" disabled>↺</button>
+                <div class="transform-slider"><input type="range" min="-3" max="3" step="0.01" value="0" /></div>
+              </div>
+              <div class="transform-row">
+                <span class="transform-label">Y 位置</span>
+                <input type="text" class="transform-number" value="0" />
+                <button type="button" class="transform-reset-icon-btn" disabled>↺</button>
+                <div class="transform-slider"><input type="range" min="-3" max="3" step="0.01" value="0" /></div>
+              </div>
+              <div class="transform-row">
+                <span class="transform-label">缩放</span>
+                <input type="text" class="transform-number" value="1" />
+                <button type="button" class="transform-reset-icon-btn" disabled>↺</button>
+                <div class="transform-slider"><input type="range" min="0.05" max="2" step="0.01" value="1" /></div>
+              </div>
+            </div>
+            <div class="emotion-picker-warn" role="alert">素材已不在资源管理里（可能被删除）。成片里不会画出这段动画，但记录本身没有损坏。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

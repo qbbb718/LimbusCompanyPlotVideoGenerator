@@ -254,6 +254,9 @@ export interface CharacterVisual {
    * <p>它是立绘的**子级**：以脸框中心为锚点，跟着立绘一起位移/旋转/缩放。
    * 时序（每张图占几帧）随记录内联保存，只有像素按 `clipId` 去
    * `assets/animation-clips/<id>/frames/` 取。
+   *
+   * <p>摆放（`offsetX / offsetY / scale`）同样内联保存：初值抄自素材的 `poster`，
+   * 之后可在「剧情编辑 → 立绘 → 情绪动画 → 摆放」按记录微调（不影响素材与别的记录）。
    */
   emotionAnim?: EmotionAnim;
 }

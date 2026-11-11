@@ -7,10 +7,18 @@
  */
 import { normalizeRecord } from "../projectFile";
 import type { EmotionAnim } from "./animationTypes";
-import { isEmotionAnimUsable } from "./animationTypes";
+import {
+  defaultEmotionPlacement,
+  emotionPlacementOf,
+  isEmotionAnimUsable,
+  isSamePlacement,
+} from "./animationTypes";
 import {
   ANIMATION_CLIP_MAX_TOTAL_FRAMES,
+  assetPlacementOf,
   emotionAnimFromAsset,
+  isContentInSync,
+  isPlacementInSync,
   isSequenceInSync,
   normalizeFrameHolds,
   syncSequenceFromAsset,
@@ -106,6 +114,71 @@ describe("素材与记录的时序同步", () => {
     expect(next.offsetY).toBeCloseTo(-0.2, 6);
     expect(next.scale).toBeCloseTo(0.8, 6);
     expect(next.posterFrame).toBe(1);
+  });
+});
+
+/*
+ * 摆放（位置 + 缩放）与"素材模板 / 记录快照"的关系。
+ *
+ * 剧情编辑页允许按记录微调摆放，于是"与素材同步与否"必须拆成两问：
+ *  - 时序/播放参数有没有被改过（→ 要提示「从素材同步」）；
+ *  - 摆放有没有被改过（→ 只是"已微调"，属于正常操作，不该报警）。
+ */
+describe("摆放：素材上的原始值 vs 记录里的快照", () => {
+  test("assetPlacementOf 读素材的 poster；没有 poster / 没有素材时回落到缺省摆放", () => {
+    expect(assetPlacementOf(asset({ poster: { frame: 1, offsetX: 0.25, offsetY: -0.4, scale: 1.2 } }))).toEqual(
+      { offsetX: 0.25, offsetY: -0.4, scale: 1.2 },
+    );
+    // 素材没有 poster（早期素材 / 手写 clip.json）：原作没摆过，就是居中 + 原始尺寸
+    expect(assetPlacementOf(asset({ poster: undefined }))).toEqual(defaultEmotionPlacement());
+    // 素材整个不在了：同样回落到缺省值（= 没有摆放信息时渲染端会画的位置）
+    expect(assetPlacementOf(undefined)).toEqual(defaultEmotionPlacement());
+  });
+
+  test("emotionPlacementOf 对非法值兜底：非数字按 0、非正缩放按 1", () => {
+    expect(emotionPlacementOf({ offsetX: Number.NaN, offsetY: undefined, scale: 0 })).toEqual({
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+    });
+    expect(emotionPlacementOf(null)).toEqual(defaultEmotionPlacement());
+  });
+
+  test("isSamePlacement 吃掉浮点尾数，但 0.01 头宽的差别要算改动", () => {
+    expect(
+      isSamePlacement({ offsetX: 0.3, offsetY: -0.4, scale: 1.2 }, {
+        offsetX: 0.30000000000000004,
+        offsetY: -0.4,
+        scale: 1.2,
+      }),
+    ).toBe(true);
+    expect(
+      isSamePlacement({ offsetX: 0.3, offsetY: -0.4, scale: 1.2 }, {
+        offsetX: 0.31,
+        offsetY: -0.4,
+        scale: 1.2,
+      }),
+    ).toBe(false);
+  });
+
+  test("只挪了摆放：isPlacementInSync = false，但 isContentInSync 仍为 true", () => {
+    const anim = emotionAnimFromAsset(asset({ poster: { frame: 0, offsetX: 0, offsetY: 0, scale: 1 } }));
+    const moved: EmotionAnim = { ...anim, offsetX: 1.5, offsetY: -0.75, scale: 0.4 };
+
+    expect(isPlacementInSync(moved, asset())).toBe(false);
+    expect(isContentInSync(moved, asset())).toBe(true);
+    // 全量判据（含摆放）仍然是"不同步"——工具/测试用得到
+    expect(isSequenceInSync(moved, asset())).toBe(false);
+  });
+
+  test("时序被改过：isContentInSync 也要为 false（这才是要弹「从素材同步」的情况）", () => {
+    const anim = emotionAnimFromAsset(asset());
+    expect(isContentInSync({ ...anim, frameHolds: [1, 1, 1, 1] }, asset())).toBe(false);
+    expect(isContentInSync({ ...anim, loop: "loop" }, asset())).toBe(false);
+    expect(isContentInSync({ ...anim, posterFrame: 2 }, asset())).toBe(false);
+    // 素材缺失时无从比较：两个判据都为 false
+    expect(isContentInSync(anim, undefined)).toBe(false);
+    expect(isPlacementInSync(anim, undefined)).toBe(false);
   });
 });
 

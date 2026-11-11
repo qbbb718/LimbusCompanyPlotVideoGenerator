@@ -1,0 +1,85 @@
+/**
+ * @module 情绪动画「摆放」编辑器样式
+ *
+ * 控件本体复用 `TransformControls.css` 的 .transform-row / .transform-number /
+ * .transform-reset-icon-btn / .transform-slider —— 与本页签的立绘缩放、背景偏移
+ * 是同一套观感。这里只做三件事：
+ * ① 与上方的「选用动画」分隔开；② 窄面板下把标签/数值框收窄一点（属性栏最窄 300px）；
+ * ③ 给禁用态的 ↺ 一个明确的"已经等于素材值"的样子。
+ */
+
+.emotion-placement {
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px dashed #e3e6cc;
+}
+
+.emotion-placement-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.emotion-placement-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #55603c;
+}
+
+.emotion-placement-hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8a9270;
+}
+
+/*
+ * 三行摆放控件：比立绘那几行更紧凑（这里的标签只有 "X 位置"/"缩放" 这种短语）。
+ *
+ * <p>允许换行：属性栏拉窄到极限时（内含宽度只剩 ~190px），
+ * 标签 + 数值框 + ↺ 先占一行，滑杆整个落到第二行——比把滑杆挤成 20px 的"看得见摸不着"要好。
+ * 面板够宽时（默认布局）仍然是一行一个字段，与本页签其它控件同一套观感。
+ */
+.emotion-placement .transform-row {
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+
+.emotion-placement .transform-slider {
+  /* 120px 以下就换行；换到第二行时自动撑满整行 */
+  flex: 1 1 120px;
+}
+
+.emotion-placement .transform-label {
+  flex: 0 0 52px;
+  font-size: 12px;
+}
+
+.emotion-placement .transform-number {
+  flex: 0 0 60px;
+  width: 60px;
+  padding: 4px 4px;
+  font-size: 12px;
+}
+
+/*
+ * 禁用态：值已经等于素材上的摆放，点它不会有任何变化。
+ * 只在本组件里生效（BackgroundProperties 也用了同一组类名，别把它的按钮弄灰）。
+ */
+.emotion-placement .transform-reset-btn:disabled,
+.emotion-placement .transform-reset-icon-btn:disabled {
+  color: #b8bdb0;
+  background-color: #fafbf4;
+  border-color: #e3e6cc;
+  cursor: default;
+}
+
+.emotion-placement .transform-reset-btn:disabled:hover,
+.emotion-placement .transform-reset-icon-btn:disabled:hover {
+  color: #b8bdb0;
+  border-color: #e3e6cc;
+  background-color: #fafbf4;
+}

@@ -16,6 +16,7 @@ import {
   TempImageVisual,
 } from "@types";
 import ApiService from "@services/ApiService";
+import * as libraryModule from "../animation/useAnimationClipLibrary";
 import CharactersProperties from "./CharactersProperties";
 
 /**
@@ -401,6 +402,90 @@ describe("CharactersProperties 添加表单挑选初始立绘", () => {
     const [, updatedRecord] = updateRecord.mock.calls[0];
     expect(updatedRecord.chars).toHaveLength(1);
     expect(updatedRecord.chars[0].portrait.portraitID).toBe("p2");
+  });
+});
+
+/* ===================== 序列帧动画（情绪动画）的摆放 ===================== */
+
+describe("CharactersProperties 立绘的序列帧动画摆放", () => {
+  /**
+   * 素材库里什么都没有：摆放编辑必须**只凭记录里的内联快照**就能工作
+   * （素材被删 / 换机器没带素材时正是这种情况）。
+   *
+   * <p>这个 spy 只在本 describe 里生效并逐个用例还原：文件顶部那个
+   * `getCharacters` spy 要靠 `resetMocks` 之后的 `mockResolvedValue` 续命，
+   * 不能整份 `restoreAllMocks`。
+   */
+  let librarySpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    librarySpy = jest
+      .spyOn(libraryModule, "useAnimationClipLibrary")
+      .mockReturnValue({
+        clips: [],
+        loading: false,
+        error: null,
+        reload: jest.fn(),
+        find: () => undefined,
+      });
+  });
+
+  afterEach(() => {
+    librarySpy.mockRestore();
+  });
+
+  const withEmotionAnim = (overrides: Record<string, unknown> = {}) =>
+    makeCharacter({
+      emotionAnim: {
+        version: 1,
+        clipId: "flow_1",
+        name: "花开",
+        canvasWidth: 600,
+        canvasHeight: 400,
+        frameHolds: [3, 1, 2],
+        loop: "once",
+        offsetX: 0,
+        offsetY: 0,
+        scale: 1,
+        posterFrame: 0,
+        ...overrides,
+      },
+    });
+
+  it("拖摆放滑杆把位置写回这条记录的 emotionAnim，其余字段原样保留", async () => {
+    const updateRecord = renderPanel(makeRecord([withEmotionAnim()]));
+
+    fireEvent.change(screen.getByLabelText("测试角色 动画 Y 位置滑块"), {
+      target: { value: "0.75" },
+    });
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [index, updatedRecord] = updateRecord.mock.calls[0];
+    expect(index).toBe(0);
+    expect(updatedRecord.chars[0].emotionAnim.offsetY).toBe(0.75);
+    // 动画的时序快照与立绘自己的缩放都不该被这次微调改掉
+    expect(updatedRecord.chars[0].emotionAnim.frameHolds).toEqual([3, 1, 2]);
+    expect(updatedRecord.chars[0].scale).toBe(1);
+  });
+
+  it("微调后点「还原」把摆放收回缺省值（素材已删时没有原摆放可比）", async () => {
+    const updateRecord = renderPanel(
+      makeRecord([withEmotionAnim({ offsetX: 1.5, offsetY: -0.5, scale: 2 })]),
+    );
+
+    fireEvent.click(screen.getByLabelText("测试角色 还原动画摆放"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.chars[0].emotionAnim.offsetX).toBe(0);
+    expect(updatedRecord.chars[0].emotionAnim.offsetY).toBe(0);
+    expect(updatedRecord.chars[0].emotionAnim.scale).toBe(1);
+  });
+
+  it("没挂序列帧动画的立绘不显示摆放控件", () => {
+    renderPanel(makeRecord([makeCharacter()]));
+
+    expect(screen.queryByText("摆放（相对头部区域）")).toBeNull();
   });
 });
 

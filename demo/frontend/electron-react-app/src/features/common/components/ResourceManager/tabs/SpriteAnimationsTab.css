@@ -707,7 +707,9 @@
   color: #55603c;
 }
 
-.sprite-preview-toolbar button {
+/* 只给工具栏自己的按钮：下拉框（CharacterSelect）内部的触发器和选项自带样式，
+   不能被这套按钮规则波及 —— 否则每个选项都会长出边框 */
+.sprite-preview-toolbar > button {
   flex: 0 0 auto;
   font-size: 12px;
   padding: 3px 8px;
@@ -719,11 +721,11 @@
   cursor: pointer;
 }
 
-.sprite-preview-toolbar button:hover:not(:disabled) {
+.sprite-preview-toolbar > button:hover:not(:disabled) {
   background: #f7f9ea;
 }
 
-.sprite-preview-toolbar button:disabled {
+.sprite-preview-toolbar > button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -745,6 +747,80 @@
   border-radius: 4px;
   font-size: 12px;
   text-overflow: ellipsis;
+}
+
+.sprite-preview-field-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* 一个带立绘的角色都没有时：不给一个空气下拉，直接说明原因（舞台里另有大字提示） */
+.sprite-preview-field-empty {
+  color: #8a9270;
+  white-space: nowrap;
+}
+
+/* ===== 「角色」下拉：带缩略图（复用剧情编辑页的 CharacterSelect，按工具栏尺寸收一档） =====
+   原生 <select> 的 <option> 放不了图片，所以这里必须是自定义下拉；宽高、圆角、配色都按
+   预览工具栏的紧凑尺度（12px 字 + 20px 头像）覆盖，菜单的悬停色改成本页的橄榄绿。 */
+.sprite-preview-field .character-select {
+  flex: 0 1 auto;
+  /* 与背景下拉同一个宽度：两个字段并排时不会被名字长短拉得忽宽忽窄 */
+  width: 150px;
+  max-width: 150px;
+  min-width: 0;
+}
+
+.sprite-preview-field .character-select-trigger {
+  gap: 5px;
+  padding: 1px 4px;
+  border-color: #d9ddc0;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sprite-preview-field .character-select-trigger:hover {
+  border-color: #b8c46a;
+}
+
+.sprite-preview-field .character-select-trigger:focus-visible {
+  border-color: #b8c46a;
+  outline: 2px solid rgba(184, 196, 106, 0.55);
+  outline-offset: 1px;
+}
+
+/* 20px 的圆角方块比圆形更不容易把脸切掉 */
+.sprite-preview-field .character-select-avatar {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.sprite-preview-field .character-select-menu {
+  /* 菜单在预览区顶部长开，别把舞台顶出去；窄窗口下预览区本身可滚动 */
+  min-width: 190px;
+  max-height: 236px;
+  overscroll-behavior: contain;
+  border-color: #d9ddc0;
+}
+
+.sprite-preview-field .character-select-option {
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.sprite-preview-field .character-select-option:hover {
+  background: #f7f9ea;
+}
+
+.sprite-preview-field .character-select-option.selected {
+  background: #f2f7dd;
+  color: #3f4a2a;
+  font-weight: 600;
 }
 
 /* 播放控制条 */

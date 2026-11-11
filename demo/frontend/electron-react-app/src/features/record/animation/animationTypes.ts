@@ -145,11 +145,20 @@ export interface EmotionAnim {
   iterations?: number | null;
   /** 延迟启动（帧，相对记录开头） */
   startFrame?: number;
-  /** 相对脸框中心的水平偏移（场景画布像素） */
+  /**
+   * 相对脸框中心的水平偏移，单位 = **头宽**（1.0 = 一个头宽，见 {@link EmotionPlacement}）。
+   *
+   * <p>挂上素材时由 `emotionAnimFromAsset` 照抄素材的 poster；剧情编辑页允许对**这一条记录**
+   * 再微调（「立绘 → 情绪动画 → 摆放」），改的只是本记录的快照，素材本身不受影响。
+   */
   offsetX?: number;
-  /** 相对脸框中心的垂直偏移（场景画布像素） */
+  /** 相对脸框中心的垂直偏移（单位：头宽，+ 向下） */
   offsetY?: number;
-  /** 素材整体缩放倍率（1 = 原始尺寸） */
+  /**
+   * 素材整体缩放倍率（1 = 原始像素）。
+   *
+   * <p>与 `offsetX/offsetY` 同属"摆放"：可以从素材带来，也可以被剧情编辑页按记录微调。
+   */
   scale?: number;
   /** 淡入帧数（序列局部时间） */
   fadeInFrames?: number;
@@ -169,6 +178,84 @@ export function isEmotionAnimUsable(anim: EmotionAnim | null | undefined): boole
     anim.clipId.trim() !== "" &&
     Array.isArray(anim.frameHolds) &&
     anim.frameHolds.length > 0
+  );
+}
+
+/**
+ * 情绪动画的**摆放**：画在哪、多大。
+ *
+ * <p>它是 {@link EmotionAnim} 的一个子集，单独抽出来是因为摆放有**两个来源**：
+ * 素材上的 `poster`（作者在「资源管理 → 序列帧动画」里对着脸调好的原始摆放）和
+ * 记录里的 `offsetX / offsetY / scale`（这条记录此刻用的摆放）。剧情编辑页允许就地微调
+ * 后者，于是"这条记录有没有动过摆放"就退化成两个摆放的一次比较
+ * （{@link isSamePlacement}；与素材对账在 `animationClipAsset.isPlacementInSync`）。
+ */
+export interface EmotionPlacement {
+  /** 相对脸框中心的水平偏移，单位 = 头宽（1.0 = 一个头宽） */
+  offsetX: number;
+  /** 相对脸框中心的垂直偏移（+ 向下），单位 = 头宽 */
+  offsetY: number;
+  /** 素材缩放倍率（1 = 原始像素） */
+  scale: number;
+}
+
+/**
+ * 摆放的取值范围：与 `projectFile.normalizeEmotionAnim` 的夹取边界、
+ * 「资源管理 → 序列帧动画」预览（拖动夹 ±20、滚轮夹 0.01~20）保持一致。
+ * 三处只需一个**下限/上限口径**，UI 的滑杆再在这个范围内选一段好用的区间。
+ */
+export const EMOTION_OFFSET_LIMIT = 20;
+export const EMOTION_SCALE_MIN = 0.01;
+export const EMOTION_SCALE_MAX = 20;
+
+/** 摆放等价判据的容差：与 {@link isSequenceInSync} 用的同一套（1e-6，远小于一个输出像素） */
+export const PLACEMENT_EPSILON = 1e-6;
+
+/** 摆放的缺省值：贴脸框中心、素材原始尺寸（素材没有 poster / 手写工程缺字段时用它兜底） */
+export function defaultEmotionPlacement(): EmotionPlacement {
+  return { offsetX: 0, offsetY: 0, scale: 1 };
+}
+
+/**
+ * 从记录（或素材的 poster）里读摆放。
+ *
+ * <p>兜底口径与后端 `EmotionAnim.safeScale()` / `Poster.safeOffsetX()` 一致：
+ * 非数字按 0（缩放按 1），非正缩放按 1。**不做上下限夹取**——夹取发生在归一化
+ * （`projectFile.normalizeEmotionAnim`）与写回时，这里只回答"现在画在哪"。
+ *
+ * @param source 带 offsetX / offsetY / scale 的对象（记录里的 EmotionAnim 或素材的 poster）
+ */
+export function emotionPlacementOf(
+  source:
+    | Partial<Pick<EmotionAnim, "offsetX" | "offsetY" | "scale">>
+    | null
+    | undefined,
+): EmotionPlacement {
+  const offsetX = source?.offsetX;
+  const offsetY = source?.offsetY;
+  const scale = source?.scale;
+  return {
+    offsetX: typeof offsetX === "number" && Number.isFinite(offsetX) ? offsetX : 0,
+    offsetY: typeof offsetY === "number" && Number.isFinite(offsetY) ? offsetY : 0,
+    scale: typeof scale === "number" && Number.isFinite(scale) && scale > 0 ? scale : 1,
+  };
+}
+
+/**
+ * 两份摆放是否等价。
+ *
+ * <p>用途：判断"这条记录改过摆放吗"（决定「还原」按钮是否可点、要不要提示已微调）。
+ * 用容差而不是 `===`：滑杆/素材的浮点尾数（0.25000000000000006）不该算成一次改动。
+ */
+export function isSamePlacement(
+  a: EmotionPlacement,
+  b: EmotionPlacement,
+  epsilon: number = PLACEMENT_EPSILON,
+): boolean {
+  return (
+    Math.abs(a.offsetX - b.offsetX) <= epsilon &&
+    Math.abs(a.offsetY - b.offsetY) <= epsilon &&
+    Math.abs(a.scale - b.scale) <= epsilon
   );
 }
 

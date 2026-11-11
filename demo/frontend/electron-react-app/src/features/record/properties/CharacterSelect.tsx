@@ -47,6 +47,10 @@ const CharacterAvatar: React.FC<{ character: MyCharacter }> = ({
         <img
           src={buildPortraitThumbnailUrl(thumbnail)}
           alt=""
+          // 角色可能有几十个：展开菜单时别一次性把几十张缩略图都解码，
+          // 交给浏览器按"滚到可见"再加载（与角色列表里的头像同一套考虑）
+          loading="lazy"
+          decoding="async"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).style.display = "none";
           }}
@@ -69,8 +73,15 @@ const AvatarBadge: React.FC<{ text: string }> = ({ text }) => (
 /**
  * 带角色缩略图的下拉选择框。
  *
- * 原生 <select>/<option> 无法在选项里放图片，所以"说话人"和"立绘"tab 的角色选择
- * 统一用这个自定义下拉框，保证两处样式一致。
+ * <p>原生 `<select>`/`<option>` 无法在选项里放图片，所以凡是"要按脸挑角色"的地方都用这个
+ * 自定义下拉：剧情编辑的「说话人」与「立绘」、资源管理 → 序列帧动画预览的「角色」，
+ * 三处共用同一个组件，观感与交互保持一致。
+ *
+ * <h3>键盘</h3>
+ * 触发器上 `↓`/`↑` 直接展开（原生 select 的肌肉记忆），`Esc` 收起；展开后焦点自动落到
+ * **当前选中项**，`↑↓`/`Home`/`End` 移动、`Enter` 选定（选项本身是 button，原生行为）、
+ * `Esc` 收起并把焦点还回触发器、`Tab` 离开顺手收起。这套交互与「情绪动画」下拉
+ * （`EmotionAnimPicker`）完全一致，两处共用一个手感。
  */
 const CharacterSelect: React.FC<CharacterSelectProps> = ({
   value,
@@ -82,6 +93,22 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  /** 每个选项的 DOM，用来在键盘导航时搬焦点 */
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const selectedIndex = options.findIndex((option) => option.value === value);
+  const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
+  const triggerLabel = selected?.label ?? fallbackLabel ?? "请选择角色";
+  const triggerBadge =
+    selected?.badge ?? (triggerLabel ? triggerLabel.slice(0, 1) : "?");
+
+  /** 收起菜单；`focusTrigger` 用于键盘操作（Esc / 选定后把焦点交回去） */
+  const closeMenu = (focusTrigger = false) => {
+    setOpen(false);
+    if (focusTrigger) triggerRef.current?.focus();
+  };
 
   // 点击下拉框以外 / 按 Esc：关闭菜单
   useEffect(() => {
@@ -102,10 +129,62 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({
     };
   }, [open]);
 
-  const selected = options.find((option) => option.value === value);
-  const triggerLabel = selected?.label ?? fallbackLabel ?? "请选择角色";
-  const triggerBadge =
-    selected?.badge ?? (triggerLabel ? triggerLabel.slice(0, 1) : "?");
+  // 展开时把焦点落到当前选中项：键盘用户一进来就在自己那一项，不用从头数。
+  // 菜单与 open 是同一次提交渲染出来的，effect 里 ref 已经挂好，不需要 setTimeout。
+  useEffect(() => {
+    if (!open) return;
+    const index = selectedIndex >= 0 ? selectedIndex : 0;
+    setActiveIndex(index);
+    optionRefs.current[index]?.focus();
+    // 只在"刚展开"时定位一次：选中后重渲染不需要重新抢焦点
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  /** 菜单里真正拿到焦点的是哪一项（找不到时退回 activeIndex） */
+  const focusedIndex = () => {
+    const found = optionRefs.current.findIndex(
+      (node) => node !== null && node === document.activeElement,
+    );
+    return found >= 0 ? found : activeIndex;
+  };
+
+  const moveActive = (next: number) => {
+    const clamped = Math.max(0, Math.min(options.length - 1, next));
+    setActiveIndex(clamped);
+    optionRefs.current[clamped]?.focus();
+  };
+
+  /** 菜单内的键盘导航：↑↓/Home/End 移动焦点，Esc 关闭，Tab 离开即收起 */
+  const handleMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        moveActive(focusedIndex() + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        moveActive(focusedIndex() - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        moveActive(0);
+        break;
+      case "End":
+        event.preventDefault();
+        moveActive(options.length - 1);
+        break;
+      case "Escape":
+        event.preventDefault();
+        closeMenu(true);
+        break;
+      case "Tab":
+        // 不拦默认行为：焦点照常离开，菜单顺手收起
+        setOpen(false);
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div
@@ -114,11 +193,23 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({
     >
       <button
         type="button"
+        ref={triggerRef}
         className="character-select-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
+        // 名字长时触发器会省略号，悬浮看全名
+        title={triggerLabel}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          // ↓/↑ 直接展开（原生 select 的肌肉记忆）；Esc 收起
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+          } else if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
       >
         {selected?.avatarCharacter ? (
           <CharacterAvatar character={selected.avatarCharacter} />
@@ -130,8 +221,14 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({
       </button>
 
       {open && (
-        <div className="character-select-menu" role="listbox">
-          {options.map((option) => (
+        <div
+          className="character-select-menu"
+          role="listbox"
+          // 名字刻意与触发器不同：两个元素都叫"说话人"时，`getByLabelText("说话人")` 会撞车
+          aria-label={ariaLabel ? `${ariaLabel}选项列表` : undefined}
+          onKeyDown={handleMenuKeyDown}
+        >
+          {options.map((option, index) => (
             <React.Fragment key={option.value || "__empty__"}>
               {option.dividerBefore && (
                 <div className="character-select-divider" />
@@ -140,12 +237,17 @@ const CharacterSelect: React.FC<CharacterSelectProps> = ({
                 type="button"
                 role="option"
                 aria-selected={option.value === value}
+                // 选项不进 Tab 序：Tab 应该直接离开这个下拉（见 handleMenuKeyDown）
+                tabIndex={-1}
+                ref={(node) => {
+                  optionRefs.current[index] = node;
+                }}
                 title={option.label}
                 className={`character-select-option${
                   option.value === value ? " selected" : ""
                 }`}
                 onClick={() => {
-                  setOpen(false);
+                  closeMenu(true);
                   onChange(option.value);
                 }}
               >
