@@ -405,6 +405,88 @@ describe("CharactersProperties 添加表单挑选初始立绘", () => {
   });
 });
 
+/* ===================== 角色下拉的检索（名字 / 阵营 / 标签） ===================== */
+
+/**
+ * 素材库里的两个角色：名字 / 阵营 / 标签都不一样，用来验证"输入阵营、标签也能找到人"。
+ * 立绘卡片的「角色」与「添加新立绘」表单的「角色」共用同一份 `characterOptions`，
+ * 所以两处的检索来自同一份数据。
+ */
+const libraryCharacters = (): MyCharacter[] => [
+  {
+    characterID: "c-rot",
+    characterName: "罗佳",
+    height: 171,
+    faction: "LCCB",
+    colorBg: "#FFFFFF",
+    colorText: "#000000",
+    tags: ["主角"],
+    portraits: [{ ...makePortrait("p-rot", "罗佳-默认"), characterID: "c-rot" }],
+  },
+  {
+    characterID: "c-sin",
+    characterName: "辛克莱",
+    height: 171,
+    faction: "N公司",
+    colorBg: "#FFFFFF",
+    colorText: "#000000",
+    tags: ["反派"],
+    portraits: [{ ...makePortrait("p-sin", "辛克莱-默认"), characterID: "c-sin" }],
+  },
+];
+
+/** 打开「角色」下拉，并等素材库里的角色回来（挂载后才异步拉取） */
+const openCharacterMenu = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: "角色" }));
+  await screen.findByRole("option", { name: /罗佳/ });
+};
+
+/** 在下拉的检索框里打字 */
+const typeCharacterSearch = (text: string) =>
+  fireEvent.change(screen.getByLabelText("角色检索"), {
+    target: { value: text },
+  });
+
+describe("CharactersProperties 角色下拉支持检索", () => {
+  it("立绘卡片的「角色」下拉：按阵营找到人，选中后写回这条立绘的角色", async () => {
+    getCharacters.mockResolvedValue(libraryCharacters());
+    const updateRecord = renderPanel(makeRecord([makeCharacter()]));
+    await openCharacterMenu();
+
+    // 名字里没有"N公司"：命中的是阵营，罗佳被过滤掉
+    typeCharacterSearch("N公司");
+    expect(screen.queryByRole("option", { name: /罗佳/ })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: /辛克莱/ }));
+
+    expect(updateRecord).toHaveBeenCalledTimes(1);
+    const [index, updated] = updateRecord.mock.calls[0];
+    expect(index).toBe(0);
+    expect(updated.chars[0].chara).toMatchObject({
+      characterID: "c-sin",
+      characterName: "辛克莱",
+      faction: "N公司",
+    });
+  });
+
+  it("「添加新立绘」表单的「角色」下拉：按标签找到人，并带出他的默认立绘", async () => {
+    getCharacters.mockResolvedValue(libraryCharacters());
+    renderPanel(makeRecord([]));
+
+    fireEvent.click(screen.getByText("+ 添加立绘"));
+    await openCharacterMenu();
+
+    // 名字里没有"反派"：命中的是标签
+    typeCharacterSearch("反派");
+    expect(screen.queryByRole("option", { name: /罗佳/ })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: /辛克莱/ }));
+
+    // 选完角色自动带出默认立绘（添加表单里的按钮标题跟着变）
+    expect(
+      screen.getByRole("button", { name: "选择立绘（当前：辛克莱-默认）" }),
+    ).toBeTruthy();
+  });
+});
+
 /* ===================== 序列帧动画（情绪动画）的摆放 ===================== */
 
 describe("CharactersProperties 立绘的序列帧动画摆放", () => {

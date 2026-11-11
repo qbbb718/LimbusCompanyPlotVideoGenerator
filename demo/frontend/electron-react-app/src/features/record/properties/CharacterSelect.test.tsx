@@ -3,12 +3,14 @@
  *
  * <p>原生 `<select>` 的 `<option>` 放不了图片，所以"要按脸挑角色"的三处
  * （剧情编辑的「说话人」「立绘」、资源管理 → 序列帧动画预览的「角色」）共用这个
- * 自己实现的 listbox。这里锁住四件事：
+ * 自己实现的 listbox。这里锁住五件事：
  * <ol>
  *   <li>选项里是**角色默认立绘的缩略图**；没有缩略图时退回名字首字，不留破图标；</li>
  *   <li>点选项 = 选中并收起，焦点回到触发器（不然焦点会掉到 body 上，键盘用户就丢了位置）；</li>
  *   <li>键盘全程可用：`↓`/`↑` 展开并落在当前项、`↑↓`/`Home`/`End` 移动、`Esc` 收起还焦点；</li>
- *   <li>`Tab` 离开与点外部同样收起（菜单不能粘在屏幕上）。</li>
+ *   <li>`Tab` 离开与点外部同样收起（菜单不能粘在屏幕上）；</li>
+ *   <li>开了 `searchable`（说话人下拉）时，菜单顶部的检索框按**名字 / 阵营 / 标签**过滤，
+ *       命中的关键词会解释在名字下面，键盘与选定行为不受影响；不开的下拉没有检索框。</li>
  * </ol>
  *
  * <p>（`Enter` 选定不用测：选项本身就是 `<button>`，那是浏览器的原生行为，
@@ -85,6 +87,34 @@ const OPTIONS: CharacterSelectOption[] = [ROT, SIN, NO_THUMB].map((character) =>
   avatarCharacter: character,
 }));
 
+/**
+ * 开了检索的选项表（与「说话人」下拉同一种形状：名字 + 阵营 / 标签关键词）。
+ * 关键词刻意一个中文、一个英文，好验证大小写不敏感与"多个词都要命中"。
+ */
+const SEARCH_OPTIONS: CharacterSelectOption[] = [
+  { value: "", label: "旁白", badge: "旁" },
+  { value: "free", label: "自由文本", badge: "文" },
+  {
+    value: ROT.characterID,
+    label: ROT.characterName,
+    avatarCharacter: ROT,
+    dividerBefore: true,
+    searchKeywords: ["LCCB", "Rodion", "主角"],
+  },
+  {
+    value: SIN.characterID,
+    label: SIN.characterName,
+    avatarCharacter: SIN,
+    searchKeywords: ["N公司", "Sinclair", "反派"],
+  },
+  {
+    value: NO_THUMB.characterID,
+    label: NO_THUMB.characterName,
+    avatarCharacter: NO_THUMB,
+    searchKeywords: ["中立"],
+  },
+];
+
 /* ==================== 渲染与读数 ==================== */
 
 /** 带本地状态的下拉：选完回写，才看得出"触发器换了没有" */
@@ -115,6 +145,50 @@ const option = (name: string) => screen.getByRole("option", { name });
 const triggerThumbSrc = () =>
   trigger().querySelector<HTMLImageElement>(".character-select-avatar img")?.getAttribute("src") ??
   null;
+
+/* ==================== 检索 ==================== */
+
+/** 开了检索的下拉：本地状态回写，才看得出"选完触发器换了没有" */
+const renderSearchSelect = (initial = "") => {
+  const onChange = jest.fn();
+  const Harness: React.FC = () => {
+    const [value, setValue] = useState(initial);
+    return (
+      <CharacterSelect
+        value={value}
+        options={SEARCH_OPTIONS}
+        ariaLabel="角色"
+        searchable
+        searchPlaceholder="搜索角色名 / 阵营 / 标签…"
+        onChange={(next) => {
+          setValue(next);
+          onChange(next);
+        }}
+      />
+    );
+  };
+  render(<Harness />);
+  return { onChange };
+};
+
+/** 检索框（名字与触发器刻意不同，见 CharacterSelect 的 aria-label） */
+const searchBox = () => screen.getByLabelText("角色检索") as HTMLInputElement;
+/** 在检索框里打字（受控输入，必须走 change） */
+const typeSearch = (text: string) =>
+  fireEvent.change(searchBox(), { target: { value: text } });
+/** 当前列表里显示的**名字**（按顺序）；不含头像首字与命中说明 */
+const visibleNames = () =>
+  screen
+    .queryAllByRole("option")
+    .map((node) => node.querySelector(".character-select-option-name")?.textContent ?? "");
+/**
+ * 唯一命中的选项。
+ *
+ * <p>用正则是为了容错：靠阵营 / 标签命中时，选项的可访问名字会变成"名字 + 命中关键词"，
+ * 精确匹配那一长串只会让用例跟着文案一起碎。
+ */
+const optionMatching = (pattern: RegExp) =>
+  screen.getByRole("option", { name: pattern });
 
 /* ==================== 用例 ==================== */
 
@@ -250,5 +324,146 @@ describe("带缩略图的角色下拉", () => {
     expect(within(trigger()).getByText("（还没有角色）")).toBeTruthy();
     fireEvent.click(trigger());
     expect(screen.getByText("暂无角色")).toBeTruthy();
+  });
+
+  test("没开 searchable：菜单里没有检索框（立绘 / 序列帧维持原样）", () => {
+    renderSelect("c-rot");
+    fireEvent.click(trigger());
+
+    expect(screen.queryByLabelText("角色检索")).toBeNull();
+    expect(menu()!.querySelector("input")).toBeNull();
+    // 焦点照旧落在当前选中项
+    expect(document.activeElement).toBe(option("罗佳"));
+  });
+});
+
+describe("角色下拉的检索（说话人）", () => {
+  test("展开就有检索框，焦点直接落在框里（进来就能打字）", () => {
+    renderSearchSelect("c-rot");
+    fireEvent.click(trigger());
+
+    expect(searchBox()).toHaveValue("");
+    expect(searchBox().placeholder).toBe("搜索角色名 / 阵营 / 标签…");
+    expect(document.activeElement).toBe(searchBox());
+    // 还没输入 = 全部选项，顺序不变
+    expect(visibleNames()).toEqual(["旁白", "自由文本", "罗佳", "辛克莱", "无缩略图角色"]);
+  });
+
+  test("按角色名过滤；一个都没命中时给出提示", () => {
+    renderSearchSelect();
+    fireEvent.click(trigger());
+
+    typeSearch("罗");
+    expect(visibleNames()).toEqual(["罗佳"]);
+
+    // 旁白 / 自由文本也一起被过滤（只有名字命中才留下）
+    expect(screen.queryByRole("option", { name: "旁白" })).toBeNull();
+
+    typeSearch("查无此人");
+    expect(visibleNames()).toEqual([]);
+    expect(screen.getByText("没有匹配的选项")).toBeTruthy();
+
+    // 清空检索词 = 恢复完整列表
+    typeSearch("");
+    expect(visibleNames()).toEqual(["旁白", "自由文本", "罗佳", "辛克莱", "无缩略图角色"]);
+  });
+
+  test("按阵营 / 标签匹配，并把命中的关键词写在名字下面（说明它为什么还在）", () => {
+    renderSearchSelect();
+    fireEvent.click(trigger());
+
+    // 名字里没有"N公司"，命中的是阵营
+    typeSearch("N公司");
+    expect(visibleNames()).toEqual(["辛克莱"]);
+    expect(within(optionMatching(/辛克莱/)).getByText("N公司")).toBeTruthy();
+
+    // 标签同样参与匹配
+    typeSearch("主角");
+    expect(visibleNames()).toEqual(["罗佳"]);
+    expect(within(optionMatching(/罗佳/)).getByText("主角")).toBeTruthy();
+  });
+
+  test("大小写不敏感；空格分隔的多个词要同时命中", () => {
+    renderSearchSelect();
+    fireEvent.click(trigger());
+
+    typeSearch("rodion");
+    expect(visibleNames()).toEqual(["罗佳"]);
+
+    // "N公司" + "sinclair" 都落在辛克莱身上
+    typeSearch("N公司 sinclair");
+    expect(visibleNames()).toEqual(["辛克莱"]);
+
+    // 两个词分别落在不同角色身上 = 没有结果
+    typeSearch("N公司 主角");
+    expect(visibleNames()).toEqual([]);
+  });
+
+  test("点检索结果里的选项：写回值、收起、检索词清空", () => {
+    const { onChange } = renderSearchSelect();
+    fireEvent.click(trigger());
+
+    typeSearch("反派");
+    fireEvent.click(optionMatching(/辛克莱/));
+
+    expect(onChange).toHaveBeenCalledWith("c-sin");
+    expect(menu()).toBeNull();
+    expect(within(trigger()).getByText("辛克莱")).toBeTruthy();
+    expect(document.activeElement).toBe(trigger());
+
+    // 再展开 = 完整列表（上次的检索词不残留）
+    fireEvent.click(trigger());
+    expect(searchBox()).toHaveValue("");
+    expect(visibleNames()).toEqual(["旁白", "自由文本", "罗佳", "辛克莱", "无缩略图角色"]);
+  });
+
+  test("键盘：↓ 进列表挑、第一项再 ↑ 回到检索框，Esc 收起还焦点", () => {
+    renderSearchSelect("c-rot");
+    fireEvent.click(trigger());
+    typeSearch("公司");
+
+    // ↓ 落到第一个可见项（不是"当前选中项"：列表已经变了）
+    fireEvent.keyDown(searchBox(), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(optionMatching(/辛克莱/));
+
+    // 第一项再 ↑ 回到输入框
+    fireEvent.keyDown(optionMatching(/辛克莱/), { key: "ArrowUp" });
+    expect(document.activeElement).toBe(searchBox());
+
+    // Home / End 在检索框里是光标键：不能被列表导航抢走（焦点留在输入框、也没 preventDefault）
+    expect(fireEvent.keyDown(searchBox(), { key: "Home" })).toBe(true);
+    expect(document.activeElement).toBe(searchBox());
+    expect(fireEvent.keyDown(searchBox(), { key: "End" })).toBe(true);
+    expect(document.activeElement).toBe(searchBox());
+
+    // Esc 收起，焦点交回触发器
+    fireEvent.keyDown(searchBox(), { key: "Escape" });
+    expect(menu()).toBeNull();
+    expect(document.activeElement).toBe(trigger());
+  });
+
+  test("只剩一个结果时，回车直接选定", () => {
+    const { onChange } = renderSearchSelect();
+    fireEvent.click(trigger());
+
+    typeSearch("无缩略图");
+    expect(visibleNames()).toEqual(["无缩略图角色"]);
+    fireEvent.keyDown(searchBox(), { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith("c-nothumb");
+    expect(menu()).toBeNull();
+    expect(within(trigger()).getByText("无缩略图角色")).toBeTruthy();
+  });
+
+  test("结果不止一个时回车不选定（不替用户猜挑哪个）", () => {
+    const { onChange } = renderSearchSelect();
+    fireEvent.click(trigger());
+
+    typeSearch("");
+    expect(visibleNames().length).toBe(5);
+    fireEvent.keyDown(searchBox(), { key: "Enter" });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(menu()).not.toBeNull();
   });
 });

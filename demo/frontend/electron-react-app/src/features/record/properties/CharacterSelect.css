@@ -75,6 +75,59 @@
   white-space: nowrap;
 }
 
+/* 名字 + 命中说明竖着排；min-width:0 是省略号生效的前提（flex 子项默认不肯缩） */
+.character-select-option-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 靠「阵营 / 标签」命中时补的那一行：名字里没有输入内容，得让用户看懂它为什么还在 */
+.character-select-option-match {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #8a8a8a;
+}
+
+/* ===== 检索框（仅 searchable 的下拉有：菜单顶部吸附一行输入框） ===== */
+.character-select-search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* 顶到菜单内边缘：菜单自带 4px 内边距，不这样贴上去会让滚动的选项从缝里透出来 */
+  margin: -4px -4px 4px;
+  padding: 6px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.character-select-search-input {
+  display: block;
+  width: 100%;
+  /* 全局没有 box-sizing 重置：不写这行，width:100% + padding/border 会比菜单宽出一截 */
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+}
+
+.character-select-search-input::placeholder {
+  color: #aaa;
+}
+
+.character-select-search-input:focus {
+  border-color: #1890ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.12);
+}
+
 .character-select-divider {
   height: 1px;
   margin: 4px 2px;

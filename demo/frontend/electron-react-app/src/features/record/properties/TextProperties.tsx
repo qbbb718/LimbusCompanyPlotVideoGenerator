@@ -339,7 +339,9 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
     });
   };
 
-  // 说话人下拉选项：旁白 / 自由文本 / 角色（角色项带默认立绘小头像）
+  // 说话人下拉选项：旁白 / 自由文本 / 角色（角色项带默认立绘小头像）。
+  // 角色多时列表要翻很久，所以菜单里带检索：名字之外，阵营与标签也参与匹配
+  // （`searchKeywords` 就是"名字以外"的来源）。
   const speakerOptions: CharacterSelectOption[] = [
     { value: "", label: "旁白", badge: "旁" },
     { value: FREE_TEXT_SPEAKER, label: "自由文本", badge: "文" },
@@ -348,6 +350,7 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
       label: chara.characterName,
       avatarCharacter: chara,
       dividerBefore: index === 0,
+      searchKeywords: [chara.faction ?? "", ...(chara.tags ?? [])],
     })),
   ];
 
@@ -433,6 +436,8 @@ const TextProperties: React.FC<TextPropertiesProps> = ({
             onChange={handleSpeakerSelect}
             fallbackLabel={speakerFallbackLabel}
             ariaLabel="说话人"
+            searchable
+            searchPlaceholder="搜索角色名 / 阵营 / 标签…"
           />
           {!isFreeText && !isNarrator && (
             <input

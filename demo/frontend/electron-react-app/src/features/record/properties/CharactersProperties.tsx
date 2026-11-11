@@ -163,11 +163,13 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   // 批量删除的选中态：与预览选中（activeIndex）是两套状态，互不干扰
   const batch = useBatchSelection(currentCharacters.length, selectedRecord.uuid);
 
-  // 角色下拉选项（带默认立绘小头像），与"说话人"下拉框使用同一个组件
+  // 角色下拉选项（带默认立绘小头像），与"说话人"下拉框使用同一个组件。
+  // 角色多时靠菜单里的检索找：名字之外，阵营与标签也参与匹配。
   const characterOptions: CharacterSelectOption[] = characters.map((chara) => ({
     value: chara.characterID,
     label: chara.characterName,
     avatarCharacter: chara,
+    searchKeywords: [chara.faction ?? "", ...(chara.tags ?? [])],
   }));
 
   /**
@@ -455,6 +457,8 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                     options={characterOptions}
                     fallbackLabel={char.chara.characterName}
                     ariaLabel="角色"
+                    searchable
+                    searchPlaceholder="搜索角色名 / 阵营 / 标签…"
                     onChange={(characterID) => {
                       const selectedChara = characters.find(
                         (c) => c.characterID === characterID,
@@ -665,6 +669,8 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                       ...characterOptions,
                     ]}
                     ariaLabel="角色"
+                    searchable
+                    searchPlaceholder="搜索角色名 / 阵营 / 标签…"
                     onChange={(characterID) => {
                       if (!characterID) {
                         setNewChara(null);
