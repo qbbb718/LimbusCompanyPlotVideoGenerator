@@ -297,12 +297,28 @@ REM runtime with a confusing error (or an export that never progresses), so
 REM fail the build here instead of shipping such an installer.
 REM The previous output is still at PACK_OLD at this point, so a failed check
 REM keeps the last good installer around.
+REM
+REM Two classes of failure are checked:
+REM   1. a known-critical file (ui/*.png, fonts/ChineseFont.ttf) is missing,
+REM      or effects/ has no image at all;
+REM   2. the payload silently dropped files: every file under demo\assets is
+REM      looked up again by its relative path in resources\assets. This is the
+REM      catch-all for a broken extraResources filter.
+REM
+REM The effects count MUST recurse: since the speech-bubble assets landed, the
+REM images live in subfolders (effects\speech_bubble\...), so a non-recursive
+REM "Get-ChildItem -File" always returns 0 and failed a good build.
+REM
+REM Get-ChildItem/-Test-Path use -LiteralPath everywhere and the comparison
+REM uses a lower-cased relative-path table: asset names legitimately contain
+REM characters that matter to PowerShell wildcards (brackets) and to Windows
+REM path lookups (case), and neither may make this check lie.
 echo        Verifying bundled assets...
-powershell -NoProfile -Command "$a=Join-Path '%PACK_OUTPUT%' 'win-unpacked\resources\assets'; if (-not (Test-Path $a)) { Write-Host ('[ERROR] assets were not packaged: ' + $a); exit 1 }; $need=@('ui\border_1080p.png','ui\dialogBox.png','ui\speaker-camp.png','ui\speaker-name.png','ui\location.png','fonts\ChineseFont.ttf'); $miss=@($need | Where-Object { -not (Test-Path (Join-Path $a $_)) }); $fx=@(Get-ChildItem (Join-Path $a 'effects') -File -ErrorAction SilentlyContinue).Count; if ($miss.Count -gt 0) { Write-Host ('[ERROR] required assets missing from the package: ' + ($miss -join ', ')); exit 1 }; if ($fx -lt 1) { Write-Host ('[ERROR] effects folder is empty in the packaged assets'); exit 1 }; $n=@(Get-ChildItem $a -Recurse -File).Count; Write-Host ('       assets ok: ' + $n + ' files, effects: ' + $fx + ', fonts: ok')"
+powershell -NoProfile -Command "$a=Join-Path '%PACK_OUTPUT%' 'win-unpacked\resources\assets'; $src=Join-Path '%DEMO_DIR%' 'assets'; if (-not (Test-Path -LiteralPath $a)) { Write-Host ('[ERROR] assets were not packaged: ' + $a); exit 1 }; $srcFiles=@(Get-ChildItem -LiteralPath $src -Recurse -File -Force); if ($srcFiles.Count -lt 1) { Write-Host ('[ERROR] source assets are empty, nothing to verify: ' + $src); exit 1 }; $need=@('ui\border_1080p.png','ui\dialogBox.png','ui\speaker-camp.png','ui\speaker-name.png','ui\location.png','fonts\ChineseFont.ttf'); $miss=@($need | Where-Object { -not (Test-Path -LiteralPath (Join-Path $a $_)) }); if ($miss.Count -gt 0) { Write-Host ('[ERROR] required assets missing from the package: ' + ($miss -join ', ')); exit 1 }; $fxDir=Join-Path $a 'effects'; $fx=@(Get-ChildItem -LiteralPath $fxDir -Recurse -File -ErrorAction SilentlyContinue); if ($fx.Count -lt 1) { Write-Host ('[ERROR] effects folder is empty in the packaged assets: ' + $fxDir); exit 1 }; $pkgFiles=@(Get-ChildItem -LiteralPath $a -Recurse -File -Force); $pkgRel=@{}; foreach ($f in $pkgFiles) { $pkgRel[$f.FullName.Substring($a.Length).TrimStart('\').ToLowerInvariant()] = 1 }; $lostRels=@($srcFiles | ForEach-Object { $_.FullName.Substring($src.Length).TrimStart('\') } | Where-Object { -not $pkgRel.ContainsKey($_.ToLowerInvariant()) }); if ($lostRels.Count -gt 0) { $sample=($lostRels | Select-Object -First 5) -join ', '; Write-Host ('[ERROR] packaged assets are incomplete: ' + $lostRels.Count + ' of ' + $srcFiles.Count + ' files from demo\assets were not packaged (e.g. ' + $sample + ')'); exit 1 }; Write-Host ('       assets ok: ' + $pkgFiles.Count + ' files packaged (' + $srcFiles.Count + ' in demo\assets), effects: ' + $fx.Count + ', fonts: ok')"
 if errorlevel 1 (
     echo.
     echo [ERROR] Packaged assets check failed.
-    echo         The installer would ship without assets/ui or assets/effects,
+    echo         The installer would ship with missing or incomplete asset files,
     echo         which breaks preview rendering and video export.
     echo         Previous output was kept as: %PACK_OLD%
     goto :FATAL
