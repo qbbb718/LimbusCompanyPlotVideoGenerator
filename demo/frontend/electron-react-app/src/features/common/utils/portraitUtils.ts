@@ -46,6 +46,65 @@ export const getDefaultPortrait = (
 };
 
 /**
+ * 情绪标识归一化：只做"大小写 + 首尾空格"的整理，**不做**中英文关键词猜测。
+ *
+ * <p>立绘的名称（`罗佳-开心.png`、`face_happy_L`）是人写的、会改名，也不是唯一来源；
+ * 情绪的真实来源只有 {@link Portrait.emotion} 这个从立绘编辑里存下来的字段。
+ * 后端 JSON 里是 `@JsonValue` 的小写 code（normal / happy …），而数据库存的是大写枚举名
+ * （`EmotionMapper` 用 `Emotion.valueOf`），旧工程文件两种写法都可能出现，所以按小写比。
+ *
+ * @returns 归一化后的标识；缺失 / 不是字符串时为空串（= 没有情绪，按"无匹配"处理）
+ */
+const normalizeEmotionCode = (
+  emotion: Portrait["emotion"] | string | null | undefined,
+): string => (typeof emotion === "string" ? emotion.trim().toLowerCase() : "");
+
+/**
+ * 在立绘列表里找一张**情绪一致**的立绘。
+ *
+ * <p>只认 {@link Portrait.emotion}（见 {@link normalizeEmotionCode}），不按名字猜。
+ *
+ * @param portraits 候选立绘（一般是新角色的全部立绘）
+ * @param emotion   要匹配的情绪；缺失（旧数据 / 立绘没设情绪）时一律当"无匹配"
+ * @returns 第一张同情绪的立绘；没有情绪、列表为空或找不到时返回 null
+ */
+export const findPortraitByEmotion = (
+  portraits: Portrait[] | undefined | null,
+  emotion: Portrait["emotion"] | string | null | undefined,
+): Portrait | null => {
+  const code = normalizeEmotionCode(emotion);
+  if (!portraits || portraits.length === 0 || !code) {
+    return null;
+  }
+  return (
+    portraits.find(
+      (portrait) => normalizeEmotionCode(portrait.emotion) === code,
+    ) ?? null
+  );
+};
+
+/**
+ * 换角色时的立绘匹配规则：**先找同情绪的，找不到就用默认立绘**。
+ *
+ * <p>用于「剧情编辑 → 立绘」里给某张立绘换角色：旧立绘的情绪是 happy，
+ * 新角色也有 happy 的就换成那张；新角色没有 happy 就退回它的默认立绘
+ * （默认标记见 {@link getDefaultPortrait}），而不是随手抓列表第一张。
+ *
+ * <p>语义与后端 `CharacterServiceImpl.findPortraitByEmotion()` / 文本解析里的
+ * `(情绪)` 处理保持一致：同情绪 → 默认立绘。两者都没有（新角色一张立绘都没有）时返回
+ * `null`，由调用方决定空态怎么显示。
+ *
+ * @param portraits 新角色的全部立绘
+ * @param emotion   旧立绘的情绪标识
+ * @returns 匹配到的立绘；没有可选立绘时返回 null
+ */
+export const resolvePortraitForEmotion = (
+  portraits: Portrait[] | undefined | null,
+  emotion: Portrait["emotion"] | string | null | undefined,
+): Portrait | null =>
+  findPortraitByEmotion(portraits, emotion) ?? getDefaultPortrait(portraits);
+
+/**
  * 把默认立绘排到列表第一位（返回新数组，不改动入参）。
  *
  * <p>只管**显示顺序**，不参与"谁是默认"的判定 —— 判定仍然只由

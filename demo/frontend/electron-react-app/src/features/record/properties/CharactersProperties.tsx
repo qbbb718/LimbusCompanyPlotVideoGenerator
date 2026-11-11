@@ -10,6 +10,7 @@ import {
   MISSING_THUMBNAIL_PLACEHOLDER,
   buildPortraitThumbnailUrl,
   getDefaultPortrait,
+  resolvePortraitForEmotion,
 } from "@features/common/utils/portraitUtils";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
@@ -220,6 +221,60 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
           : "素材库里这个角色还没有立绘：下面是这条记录当前使用的立绘",
       emptyHint: "",
     };
+  };
+
+  /**
+   * @function 把某张立绘卡片的角色换成另一个角色
+   *
+   * <p>**已有立绘时，立绘要跟着换**（规则见 {@link resolvePortraitForEmotion}）：
+   * 旧立绘的情绪是 happy、新角色也有 happy 的立绘 → 换成那张；没有同情绪的 →
+   * 换成新角色的默认立绘。这样换完角色，立绘和角色不会对不上。
+   *
+   * <p>新角色**一张立绘都没有**（或连默认立绘都没有）时清空立绘，卡片回到"未选择"空态：
+   * 既不能把上一个角色的立绘留在新角色名下（那正是这次要消除的不一致），
+   * 也没有一张真实存在的图可以选。空态的表现与"这条记录本来就没有立绘"完全一致
+   * （缩略图显示 `?`、名称显示"未选择"、预览/成片不画这个角色、弹窗给"这个角色还没有立绘"的提示），
+   * 不会报错。
+   *
+   * <p>记录本来就没有立绘时不触发匹配：没有"旧立绘的情绪"可对照，保持空态。
+   * 换回同一个角色（下拉里点了当前那一项）时也不动立绘，只刷新角色快照。
+   */
+  const switchCharacter = (index: number, selectedChara: MyCharacter) => {
+    const current = currentCharacters[index];
+    if (!current) return;
+
+    // 换回同一个角色 = 只刷新角色快照，立绘不动：
+    // 那不是"换角色"，不该把用户手选的那张立绘换成同情绪的别一张。
+    const sameCharacter =
+      current.chara?.characterID === selectedChara.characterID;
+    // 记录本来就没有立绘时也不触发匹配：没有可对照的情绪，保持空态。
+    let nextPortrait = current.portrait;
+    if (!sameCharacter && current.portrait) {
+      nextPortrait =
+        resolvePortraitForEmotion(
+          selectedChara.portraits,
+          current.portrait.emotion,
+        ) ?? undefined;
+    }
+
+    const updatedChars = [...currentCharacters];
+    updatedChars[index] = {
+      ...current,
+      chara: {
+        characterID: selectedChara.characterID,
+        characterName: selectedChara.characterName,
+        height: selectedChara.height,
+        faction: selectedChara.faction,
+        colorBg: selectedChara.colorBg,
+        colorText: selectedChara.colorText,
+      },
+      // 匹配不到（新角色一张立绘都没有）→ 清空 = 空态；JSON 里这个字段直接省略
+      portrait: nextPortrait,
+    };
+    updateRecord(selectedRecordIndex, {
+      ...selectedRecord,
+      chars: updatedChars,
+    });
   };
 
   const updateCharacter = (index: number, field: string, value: any) => {
@@ -464,14 +519,8 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
                         (c) => c.characterID === characterID,
                       );
                       if (selectedChara) {
-                        updateCharacter(index, "chara", {
-                          characterID: selectedChara.characterID,
-                          characterName: selectedChara.characterName,
-                          height: selectedChara.height,
-                          faction: selectedChara.faction,
-                          colorBg: selectedChara.colorBg,
-                          colorText: selectedChara.colorText,
-                        });
+                        // 换角色时立绘按情绪跟着换（见 switchCharacter）
+                        switchCharacter(index, selectedChara);
                       }
                     }}
                   />

@@ -56,7 +56,8 @@
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.0,
-    "visible" : true
+    "visible" : true,
+    "dim" : false
   } ]
 }, {
   "uuid" : "96497792-85b3-45b7-b982-462eedb3ce2b",
@@ -139,7 +140,8 @@
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.0,
-    "visible" : true
+    "visible" : true,
+    "dim" : false
   } ]
 }, {
   "uuid" : "e9bcac67-8fae-4389-b4a5-8be7e0c01c41",
@@ -239,7 +241,8 @@
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.0,
-    "visible" : true
+    "visible" : true,
+    "dim" : false
   } ]
 }, {
   "uuid" : "faeac8f8-bc9b-47a8-a692-dce0ff203a39",
@@ -403,7 +406,8 @@
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.0,
-    "visible" : true
+    "visible" : true,
+    "dim" : false
   } ]
 }, {
   "uuid" : "c8348405-f1ab-4451-988d-e2811ec8328a",
@@ -536,6 +540,7 @@
     "posX" : 0,
     "posY" : 0,
     "scale" : 1.0,
-    "visible" : true
+    "visible" : true,
+    "dim" : false
   } ]
 } ]

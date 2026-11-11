@@ -24,8 +24,13 @@
  *
  * <h3>层级（z-order）</h3>
  * 背景 / 立绘 / 临时图片的**数组顺序就是叠放顺序**，首项在最上层（与后端倒序绘制一致）。
- * 本模块为背景产出图层时按"从底层到顶层"的绘制顺序 push（数组末尾先画、首项最后画），
+ * 本模块产出图层时一律按"从底层到顶层"的绘制顺序 push（数组末尾先画、首项最后画），
  * z 值随之反向；「剧情编辑 → 背景」列表的 ↑ / ↓ 就是交换数组里相邻的两项。
+ *
+ * <p><b>这条约定不能只对背景成立：</b>{@code layers} 的数组顺序就是 DOM 场景层（播放 / 拖拽 /
+ * 对位自检）与摄像机世界视图的叠放顺序，而 z 只管命中检测。两者一旦反向，就会出现
+ * "预览图里在前的立绘，播放时跑到别的立绘后面"——所以三类世界图层（背景 / 立绘 / 临时图片）
+ * 都必须倒序 push，让「数组末尾 = 最上层 = z 最大」同时成立。
  *
  * <h3>为什么要在前端重算一遍</h3>
  * 预览图是后端渲染的栅格图，没有 DOM 结构，点不到任何东西。要能点中元素，
@@ -695,44 +700,52 @@ export function buildPreviewGeometry(
 
   /* ---- 立绘：后端逆序绘制（数组末尾在底层、首项在最上层）；人格故事模式不渲染 ---- */
   const characters = options.plot ? record?.chars ?? [] : [];
-  characters.forEach((character, index) => {
+  // 倒序 push（与背景同一套规则）：`layers` 的数组顺序 = DOM 场景层的叠放顺序，
+  // 首项必须最后画才盖在最上面。后端 RenderOfImage.renderCharacters 就是从末尾往前画，
+  // 这里正序 push 会让播放 / 拖拽时的立绘层级与预览图**整段反过来**。
+  for (let index = characters.length - 1; index >= 0; index -= 1) {
+    const character = characters[index];
     const key = sceneLayerKey("character", index);
     const size = sizeOf(key);
     if (!size) {
       missingSizes.push(key);
-      return;
+      continue;
     }
     push({
       key,
       kind: "character",
       index,
       label: `立绘 ${index + 1} · ${character?.chara?.characterName ?? "未命名"}`,
+      // 首项在最上层：索引越小 z 越大，命中检测（layerAt / layersAt）才会先拿到列表最上面那个立绘
       z: 100 + (characters.length - 1 - index),
       space: "world",
       baseRect: characterWorldRect(character, size),
       dim: character.dim === true,
     });
-  });
+  }
 
   /* ---- 临时图片：同样逆序，且整体画在立绘之上 ---- */
-  (record?.tempImages ?? []).forEach((temp, index) => {
+  const tempImages = record?.tempImages ?? [];
+  for (let index = tempImages.length - 1; index >= 0; index -= 1) {
+    const temp = tempImages[index];
     const key = sceneLayerKey("tempImage", index);
     const size = sizeOf(key);
     if (!size) {
       missingSizes.push(key);
-      return;
+      continue;
     }
     push({
       key,
       kind: "tempImage",
       index,
       label: `临时图片 ${index + 1}`,
-      z: 200 + ((record?.tempImages?.length ?? 1) - 1 - index),
+      // 同上：索引越小 z 越大；整组 z 高于立绘，所以临时图片始终压在立绘之上
+      z: 200 + (tempImages.length - 1 - index),
       space: "world",
       baseRect: tempImageWorldRect(temp, size),
       dim: temp.dim === true,
     });
-  });
+  }
 
   /* ---- UI 层：设计画布坐标，不受摄像机影响 ---- */
   if (shouldRenderUiLayer(dialogue)) {

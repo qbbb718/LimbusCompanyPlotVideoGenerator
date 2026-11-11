@@ -487,6 +487,226 @@ describe("CharactersProperties 角色下拉支持检索", () => {
   });
 });
 
+/* ===================== 切换角色：立绘按情绪跟着换 ===================== */
+
+/**
+ * 换角色的语境：记录里当前是「罗佳」＋她的一张 happy 立绘，
+ * 素材库里还有一个「辛克莱」，他的立绘随用例给定。
+ *
+ * <p>规则（与后端 `CharacterServiceImpl.findPortraitByEmotion()` 一致）：
+ * 新角色有同情绪的立绘就用那张，没有就用新角色的默认立绘；
+ * 新角色一张立绘都没有 → 立绘清空走"未选择"空态。
+ */
+const libraryPortrait = (
+  characterID: string,
+  portraitID: string,
+  emotion: Emotion,
+  defaultPortrait = false,
+): Portrait => ({
+  portraitID,
+  characterID,
+  imagePath: `${characterID}/${portraitID}.png`,
+  portName: `${characterID}-${portraitID}`,
+  emotion,
+  faceX: 0,
+  faceY: 0,
+  length: 183,
+  adjX: 0,
+  adjY: 0,
+  thumbnailPath: `/assets/characters/${characterID}/thumbnails/${portraitID}.png`,
+  defaultPortrait,
+});
+
+const libraryPerson = (
+  characterID: string,
+  characterName: string,
+  portraits: Portrait[],
+): MyCharacter => ({
+  characterID,
+  characterName,
+  height: 171,
+  faction: "未设定",
+  colorBg: "#FFFFFF",
+  colorText: "#000000",
+  tags: [],
+  portraits,
+});
+
+/** 记录里当前的角色（罗佳），立绘是 happy 那张 */
+const rojaPortrait = libraryPortrait("c-rot", "p-rot-happy", Emotion.HAPPY);
+const currentCard = (): CharacterVisual =>
+  makeCharacter({
+    chara: {
+      characterID: "c-rot",
+      characterName: "罗佳",
+      height: 171,
+      faction: "未设定",
+      colorBg: "#FFFFFF",
+      colorText: "#000000",
+    },
+    portrait: rojaPortrait,
+  });
+
+/** 打开「角色」下拉并选辛克莱（素材库挂载后才异步回来） */
+const switchToSinclair = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: "角色" }));
+  fireEvent.click(await screen.findByRole("option", { name: /辛克莱/ }));
+};
+
+const withRoja = (sinPortraits: Portrait[]) => [
+  libraryPerson("c-rot", "罗佳", [
+    libraryPortrait("c-rot", "p-rot-default", Emotion.NORMAL, true),
+    rojaPortrait,
+  ]),
+  libraryPerson("c-sin", "辛克莱", sinPortraits),
+];
+
+describe("CharactersProperties 切换角色时立绘按情绪跟着换", () => {
+  it("新角色有同情绪的立绘：换成那张（不是默认立绘）", async () => {
+    const sinHappy = libraryPortrait("c-sin", "p-sin-happy", Emotion.HAPPY);
+    getCharacters.mockResolvedValue(
+      withRoja([
+        libraryPortrait("c-sin", "p-sin-default", Emotion.NORMAL, true),
+        sinHappy,
+      ]),
+    );
+    const updateRecord = renderPanel(makeRecord([currentCard()]));
+
+    await switchToSinclair();
+
+    expect(updateRecord).toHaveBeenCalledTimes(1);
+    const [index, updated] = updateRecord.mock.calls[0];
+    expect(index).toBe(0);
+    // 角色换了
+    expect(updated.chars[0].chara).toMatchObject({
+      characterID: "c-sin",
+      characterName: "辛克莱",
+    });
+    // 立绘跟着换成同情绪的那张，而不是默认立绘
+    expect(updated.chars[0].portrait?.portraitID).toBe("p-sin-happy");
+  });
+
+  it("新角色没有同情绪的立绘：换成他的默认立绘", async () => {
+    getCharacters.mockResolvedValue(
+      withRoja([
+        libraryPortrait("c-sin", "p-sin-angry", Emotion.ANGRY),
+        libraryPortrait("c-sin", "p-sin-default", Emotion.NORMAL, true),
+      ]),
+    );
+    const updateRecord = renderPanel(makeRecord([currentCard()]));
+
+    await switchToSinclair();
+
+    expect(updateRecord.mock.calls[0][1].chars[0].portrait?.portraitID).toBe(
+      "p-sin-default",
+    );
+  });
+
+  it("旧立绘没有情绪标识：按无匹配处理，用新角色的默认立绘", async () => {
+    getCharacters.mockResolvedValue(
+      withRoja([
+        libraryPortrait("c-sin", "p-sin-happy", Emotion.HAPPY),
+        libraryPortrait("c-sin", "p-sin-default", Emotion.NORMAL, true),
+      ]),
+    );
+    // 老数据：立绘没有情绪字段
+    const noEmotionCard = currentCard();
+    noEmotionCard.portrait = {
+      ...rojaPortrait,
+      emotion: undefined as unknown as Emotion,
+    };
+    const updateRecord = renderPanel(makeRecord([noEmotionCard]));
+
+    await switchToSinclair();
+
+    expect(updateRecord.mock.calls[0][1].chars[0].portrait?.portraitID).toBe(
+      "p-sin-default",
+    );
+  });
+
+  it("新角色一张立绘都没有：立绘清空（空态），不报错、也不留下上一个角色的立绘", async () => {
+    getCharacters.mockResolvedValue(withRoja([]));
+    const updateRecord = renderPanel(makeRecord([currentCard()]));
+
+    await switchToSinclair();
+
+    const [index, updated] = updateRecord.mock.calls[0];
+    expect(index).toBe(0);
+    expect(updated.chars[0].chara.characterName).toBe("辛克莱");
+    // 空态 = 没有立绘（卡片显示「?」+「未选择」，预览/成片不画这个角色）
+    expect(updated.chars[0].portrait).toBeUndefined();
+  });
+
+  it("记录本来就没有立绘：切换角色后仍然没有立绘（不硬塞一张）", async () => {
+    getCharacters.mockResolvedValue(
+      withRoja([libraryPortrait("c-sin", "p-sin-happy", Emotion.HAPPY)]),
+    );
+    const noPortraitCard = currentCard();
+    noPortraitCard.portrait = undefined;
+    const updateRecord = renderPanel(makeRecord([noPortraitCard]));
+
+    await switchToSinclair();
+
+    expect(updateRecord.mock.calls[0][1].chars[0].portrait).toBeUndefined();
+  });
+
+  it("换回同一个角色：立绘保持用户手选的那张，不被同情绪的别一张顶掉", async () => {
+    getCharacters.mockResolvedValue(
+      withRoja([libraryPortrait("c-sin", "p-sin-happy", Emotion.HAPPY)]),
+    );
+    const updateRecord = renderPanel(makeRecord([currentCard()]));
+
+    // 下拉里点了当前就已经选中的「罗佳」
+    fireEvent.click(await screen.findByRole("button", { name: "角色" }));
+    fireEvent.click(await screen.findByRole("option", { name: /罗佳/ }));
+
+    expect(updateRecord.mock.calls[0][1].chars[0].portrait?.portraitID).toBe(
+      "p-rot-happy",
+    );
+  });
+
+  it("换完角色后卡片显示新立绘，且仍能手动换成任意一张", async () => {
+    getCharacters.mockResolvedValue(
+      withRoja([
+        libraryPortrait("c-sin", "p-sin-default", Emotion.NORMAL, true),
+        libraryPortrait("c-sin", "p-sin-happy", Emotion.HAPPY),
+      ]),
+    );
+
+    /**
+     * 有状态的外壳：把写回的记录重新喂回面板。
+     * 真实链路里是 RecordEditor 的 `setRecords` —— 少了这一步，切换结果就不会反映到卡片和预览上。
+     */
+    const Harness: React.FC = () => {
+      const [record, setRecord] = React.useState(makeRecord([currentCard()]));
+      return (
+        <CharactersProperties
+          selectedRecord={record}
+          selectedRecordIndex={0}
+          updateRecord={(_index, updated) => setRecord(updated)}
+        />
+      );
+    };
+    render(<Harness />);
+
+    await switchToSinclair();
+
+    // 卡片上的立绘跟着换成了同情绪的那张
+    const trigger = await screen.findByRole("button", {
+      name: "更换立绘（当前：c-sin-p-sin-happy）",
+    });
+
+    // 手动换立绘仍然有效：换成新角色的默认立绘
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByTitle("c-sin-p-sin-default（normal）"));
+    expect(
+      await screen.findByRole("button", {
+        name: "更换立绘（当前：c-sin-p-sin-default）",
+      }),
+    ).toBeTruthy();
+  });
+});
+
 /* ===================== 序列帧动画（情绪动画）的摆放 ===================== */
 
 describe("CharactersProperties 立绘的序列帧动画摆放", () => {

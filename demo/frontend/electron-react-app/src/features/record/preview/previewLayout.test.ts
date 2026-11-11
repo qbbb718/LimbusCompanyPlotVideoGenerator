@@ -235,6 +235,72 @@ describe("预览几何 → 背景层级", () => {
   });
 });
 
+/* ==================== 立绘 / 临时图片层级（z-order） ==================== */
+
+/**
+ * 回归：「预览图里在前的立绘，播放时跑到了别的立绘后面」。
+ *
+ * <p>DOM 场景层（播放 / 拖拽 / 对位自检）与摄像机世界视图**直接按 `layers` 数组顺序叠**，
+ * 而后端 `RenderOfImage.renderCharacters` 是从数组末尾往前画（首项最后画 = 最上层）。
+ * 几何模块当初只给背景做了倒序 push、立绘/临时图片仍是正序，两边正好相反 ——
+ * 于是播放时叠放层次整段反过来（命中检测按 z 走，点击是对的，只有"画"反了）。
+ */
+describe("预览几何 → 立绘与临时图片层级", () => {
+  const sizeOf = (key: string) =>
+    key.startsWith("background") ? IMAGE_16_9 : IMAGE_PORTRAIT;
+
+  /** 三个立绘 + 两张临时图片：矩形完全重叠，只有叠放顺序能决定谁盖住谁 */
+  const layeredRecord = () =>
+    makeRecord({
+      bg: [makeBackground() as any],
+      chars: [
+        makeCharacter({ characterName: "罗佳" }) as any,
+        makeCharacter({ characterName: "希斯克利夫" }) as any,
+        makeCharacter({ characterName: "浮士德" }) as any,
+      ],
+      tempImages: [makeTempImage() as any, makeTempImage({ posX: 200 }) as any],
+    });
+
+  const geometry = buildPreviewGeometry(layeredRecord(), {
+    plot: true,
+    videoWidth: 1920,
+    videoHeight: 1080,
+    sizeOf,
+  });
+
+  const keysOf = (kind: string) =>
+    geometry.layers.filter((layer) => layer.kind === kind).map((layer) => layer.key);
+
+  test("立绘首项最后画（最上层）：数组顺序 = 后端倒序绘制的绘制顺序", () => {
+    // 后端从 chars 末尾往前画，所以 char[0] 是画面最前。DOM 按数组顺序叠，
+    // 数组就必须是 [末项 … 首项]，让 char:0 排最后（最后画 = 盖在最上面）。
+    expect(keysOf("character")).toEqual([
+      "character:2",
+      "character:1",
+      "character:0",
+    ]);
+  });
+
+  test("临时图片整体画在立绘之上，组内同样是首项最后画", () => {
+    expect(keysOf("tempImage")).toEqual(["tempImage:1", "tempImage:0"]);
+
+    const indexOf = (key: string) =>
+      geometry.layers.findIndex((layer) => layer.key === key);
+    // 最后画的立绘之后才是第一张临时图片：两组不会交错
+    expect(indexOf("tempImage:1")).toBeGreaterThan(indexOf("character:0"));
+  });
+
+  test("数组顺序恒为 z 升序：DOM 叠放顺序与命中检测用的是同一套层级", () => {
+    const zs = geometry.layers.map((layer) => layer.z);
+    expect(zs).toEqual([...zs].sort((a, b) => a - b));
+  });
+
+  test("三个立绘完全重叠时，命中的是最后画的那一个（列表首项）", () => {
+    // 立绘矩形 (960, 284.8, 320, 640) 中心点：三张完全重叠，只有层级能区分
+    expect(layerAt(geometry.layers, { x: 1000, y: 300 })?.key).toBe("character:0");
+  });
+});
+
 /* ============================ 立绘几何 ============================ */
 
 describe("预览几何 → 立绘", () => {

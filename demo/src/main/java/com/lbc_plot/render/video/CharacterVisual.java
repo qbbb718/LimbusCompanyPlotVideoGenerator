@@ -222,6 +222,12 @@ public class CharacterVisual extends VisualElement {
 
     @JsonIgnore
     private BufferedImage loadImage() {
+        // 没有立绘 = 这个角色不画，返回 null；不要抛 NPE 把整帧渲染一起打断。
+        // 前端「剧情编辑 → 立绘」把角色换成素材库里一张立绘都没有的角色时会清空 portrait
+        // （不把上一个角色的立绘留在新角色名下），这种记录就是"角色在、立绘空"的状态。
+        if (portrait == null) {
+            return null;
+        }
         // 从Portrait获取图片
         BufferedImage img = portrait.getImage();
         if (img == null) {

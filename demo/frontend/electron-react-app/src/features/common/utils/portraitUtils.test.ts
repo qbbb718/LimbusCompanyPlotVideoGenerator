@@ -3,10 +3,12 @@ import { Emotion, Portrait } from "@types";
 import {
   MISSING_THUMBNAIL_PLACEHOLDER,
   buildPortraitThumbnailUrl,
+  findPortraitByEmotion,
   getDefaultPortrait,
   isDefaultPortraitId,
   markDefaultPortrait,
   orderPortraitsDefaultFirst,
+  resolvePortraitForEmotion,
 } from "./portraitUtils";
 
 /**
@@ -67,12 +69,16 @@ describe("MISSING_THUMBNAIL_PLACEHOLDER", () => {
 });
 
 /** 造一个只带立绘判定会用到的字段的立绘 */
-const portrait = (portraitID: string, defaultPortrait = false): Portrait => ({
+const portrait = (
+  portraitID: string,
+  defaultPortrait = false,
+  emotion: Emotion = Emotion.NORMAL,
+): Portrait => ({
   portraitID,
   characterID: "char_order_test",
   imagePath: `char_order_test/${portraitID}.png`,
   portName: `立绘-${portraitID}`,
-  emotion: Emotion.NORMAL,
+  emotion,
   faceX: 0,
   faceY: 0,
   length: 100,
@@ -156,5 +162,102 @@ describe("markDefaultPortrait", () => {
     expect(ids(next)).toEqual(["a", "b"]);
     expect(next.every((p) => !p.defaultPortrait)).toBe(true);
     expect(getDefaultPortrait(next)?.portraitID).toBe("a");
+  });
+});
+
+/**
+ * 换角色时的立绘匹配：**同情绪优先，没有就用默认立绘**。
+ *
+ * 剧情编辑 → 立绘 → 把某张立绘的角色换掉时用它，规则与后端
+ * `CharacterServiceImpl.findPortraitByEmotion()` / 文本解析里的 `(情绪)` 一致。
+ */
+describe("findPortraitByEmotion", () => {
+  it("按情绪标识找同一张，与名字无关", () => {
+    // 名字里写着"开心"、情绪字段却是 normal 的那张**不能**被选中：只认字段，不猜名字
+    const list = [
+      { ...portrait("n", false, Emotion.NORMAL), portName: "罗佳-开心" },
+      portrait("h", false, Emotion.HAPPY),
+      portrait("a", false, Emotion.ANGRY),
+    ];
+
+    expect(findPortraitByEmotion(list, Emotion.HAPPY)?.portraitID).toBe("h");
+    expect(findPortraitByEmotion(list, Emotion.ANGRY)?.portraitID).toBe("a");
+  });
+
+  it("同情绪有多张时取第一张（默认立绘排在前面）", () => {
+    const list = [
+      portrait("first", true, Emotion.HAPPY),
+      portrait("second", false, Emotion.HAPPY),
+    ];
+
+    expect(findPortraitByEmotion(list, Emotion.HAPPY)?.portraitID).toBe("first");
+  });
+
+  it("没有同情绪 / 旧立绘没有情绪 / 列表为空，都返回 null", () => {
+    const list = [portrait("n", false, Emotion.NORMAL)];
+
+    expect(findPortraitByEmotion(list, Emotion.SAD)).toBeNull();
+    // 旧数据没有情绪字段：按"无匹配"处理，绝不按名字猜
+    expect(findPortraitByEmotion(list, undefined)).toBeNull();
+    expect(findPortraitByEmotion(list, null)).toBeNull();
+    expect(findPortraitByEmotion(list, "" as Emotion)).toBeNull();
+    expect(findPortraitByEmotion([], Emotion.NORMAL)).toBeNull();
+    expect(findPortraitByEmotion(undefined, Emotion.NORMAL)).toBeNull();
+    expect(findPortraitByEmotion(null, Emotion.NORMAL)).toBeNull();
+  });
+
+  it("情绪标识大小写不敏感（后端 JSON 是小写 code，库里存的是大写枚举名）", () => {
+    const list = [portrait("h", false, Emotion.HAPPY)];
+
+    expect(findPortraitByEmotion(list, "HAPPY" as Emotion)?.portraitID).toBe("h");
+    expect(findPortraitByEmotion(list, " Happy " as Emotion)?.portraitID).toBe(
+      "h",
+    );
+  });
+});
+
+describe("resolvePortraitForEmotion", () => {
+  it("新角色有同情绪的立绘：用它（即使它不是默认立绘）", () => {
+    const list = [
+      portrait("default", true, Emotion.NORMAL),
+      portrait("happy", false, Emotion.HAPPY),
+    ];
+
+    const matched = resolvePortraitForEmotion(list, Emotion.HAPPY);
+
+    expect(matched?.portraitID).toBe("happy");
+    expect(matched?.defaultPortrait).toBe(false);
+  });
+
+  it("新角色没有同情绪的立绘：退回默认立绘（默认标记，不是列表首项）", () => {
+    const list = [
+      portrait("angry", false, Emotion.ANGRY),
+      portrait("default", true, Emotion.NORMAL),
+    ];
+
+    expect(resolvePortraitForEmotion(list, Emotion.HAPPY)?.portraitID).toBe(
+      "default",
+    );
+  });
+
+  it("默认标记缺失时退回首项约定（旧数据）", () => {
+    const list = [portrait("a", false, Emotion.ANGRY), portrait("b")];
+
+    expect(resolvePortraitForEmotion(list, Emotion.SAD)?.portraitID).toBe("a");
+  });
+
+  it("旧立绘没有情绪：按无匹配处理，直接用默认立绘", () => {
+    const list = [portrait("default", true, Emotion.NORMAL)];
+
+    expect(resolvePortraitForEmotion(list, undefined)?.portraitID).toBe(
+      "default",
+    );
+    expect(resolvePortraitForEmotion(list, null)?.portraitID).toBe("default");
+  });
+
+  it("新角色一张立绘都没有：返回 null，由调用方处理空态", () => {
+    expect(resolvePortraitForEmotion([], Emotion.HAPPY)).toBeNull();
+    expect(resolvePortraitForEmotion(undefined, Emotion.HAPPY)).toBeNull();
+    expect(resolvePortraitForEmotion(null, undefined)).toBeNull();
   });
 });

@@ -242,7 +242,12 @@ export interface Portrait {
 // 角色视觉元素
 export interface CharacterVisual {
   chara: CharacterRef;
-  portrait: Portrait;
+  /**
+   * 这张立绘。**可以为空**：在「立绘」页签里把角色换成一个素材库里**一张立绘都没有**的角色时，
+   * 立绘会被清空（绝不把上一个角色的立绘留在新角色名下），卡片回到"未选择"空态，
+   * 预览 / 成片里这个角色不参与渲染，等用户到「资源管理 → 角色」补上立绘再选。
+   */
+  portrait?: Portrait;
   posX: number;
   posY: number;
   adjX: number;

@@ -233,7 +233,7 @@ describe("触发时机：只有移动立绘 / 切换说话人", () => {
     const recropped = makeRecord({
       chars: [
         makeSpeaker({
-          portrait: { ...base.chars[0].portrait, faceX: 200, length: 400 },
+          portrait: { ...base.chars[0].portrait!, faceX: 200, length: 400 },
         }),
       ],
     });

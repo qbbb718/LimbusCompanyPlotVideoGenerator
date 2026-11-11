@@ -1,6 +1,7 @@
 package com.lbc_plot.render.video;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Disabled;
@@ -205,6 +206,39 @@ class CharacterVisualPositionTest {
 
         assertEquals(0, noPortrait.getPosX());
         assertEquals(0, noPortrait.getPosY());
+    }
+
+    /**
+     * 「剧情编辑 → 立绘」把角色换成素材库里一张立绘都没有的角色时会清空 portrait
+     * （前端 `CharacterVisual.portrait` 是可选字段，序列化后这个键直接消失）。
+     *
+     * <p>这种记录必须只是"这个角色不画"：`getImage()` 返回 null，
+     * 渲染端 `RenderOfImage.validateCharacterVisual` 据此跳过它；
+     * 以前这里会在 `loadImage()` 里抛 NPE，把整帧预览/导出一起打断。
+     */
+    @Test
+    @DisplayName("portrait 为 null（角色没有立绘）时：getImage 返回 null，不抛 NPE")
+    void nullPortraitHasNoImageInsteadOfThrowing() throws Exception {
+        String json = """
+                {
+                  "chara": {
+                    "characterID": "c-test",
+                    "characterName": "测试角色",
+                    "height": 171,
+                    "faction": "未设定",
+                    "colorBg": "#FFFFFF",
+                    "colorText": "#000000"
+                  },
+                  "portrait": null
+                }
+                """;
+
+        CharacterVisual cv = new ObjectMapper().readValue(json, CharacterVisual.class);
+
+        assertNull(cv.getImage(), "没有立绘时应返回 null（渲染端跳过这个角色），而不是抛异常");
+        assertNull(cv.getPortrait());
+        assertEquals(0, cv.getPosX());
+        assertEquals(0, cv.getPosY());
     }
 
     // ===== 用户手动缩放（剧情编辑 → 立绘 → 缩放） =====
