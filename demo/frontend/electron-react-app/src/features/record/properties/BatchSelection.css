@@ -1,0 +1,133 @@
+/*
+ * 素材页签的批量选择样式（立绘 / 临时图片 / 背景 / 音效共用）。
+ *
+ * 两套"选中"必须一眼分得清：
+ * - 预览选中（点卡片得到）：青色描边，与预览画面里的选中框同色 #38bdf8；
+ * - 批量勾选（勾复选框得到）：淡蓝底 + 复选框打勾。
+ */
+
+/* ===== 顶部工具条：全选 / 已选计数 / 批量删除 / 取消选择 ===== */
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  padding: 5px 8px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.batch-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.batch-select-all input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.batch-select-all input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.batch-count {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* 「点卡片定位预览 / 勾选批量删除」的说明：字号小、颜色淡，不抢控件 */
+.batch-hint {
+  font-size: 11px;
+  color: #999;
+}
+
+/* 批量删除：危险操作用红色，且只在选中了素材时出现 */
+.batch-delete-btn {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: #fff;
+  background: #ff4d4f;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.batch-delete-btn:hover {
+  background: #ff7875;
+}
+
+.batch-clear-btn {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #333;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.batch-clear-btn:hover {
+  background: #e8e8e8;
+}
+
+/* ===== 卡片上的勾选框（批量选择） ===== */
+.batch-card-checkbox {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.batch-card-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #1890ff;
+}
+
+/*
+ * 预览选中：青色描边（和预览里的 .preview-hit.selected 同色）。
+ * 选择器写成"卡片类 + 状态类"，避免与各页签自己的 border 规则打架、也不依赖 import 顺序。
+ */
+.character-item.visual-card-preview-selected,
+.temp-image-item.visual-card-preview-selected,
+.backgrounds-list .background-item.visual-card-preview-selected,
+.audio-properties .audio-item.visual-card-preview-selected {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
+}
+
+/* 批量勾选：淡蓝底（不动描边，免得和预览选中混淆） */
+.character-item.visual-card-batch-selected,
+.temp-image-item.visual-card-batch-selected,
+.backgrounds-list .background-item.visual-card-batch-selected,
+.audio-properties .audio-item.visual-card-batch-selected {
+  background: #f0f8ff;
+}
+
+/*
+ * 卡片可点"预览选中"：只在标题区给出提示手型。
+ * 卡片里的控件（滑杆、按钮…）自己保留默认光标，所以不给整张卡片加 cursor:pointer。
+ */
+.character-item.visual-card-clickable .character-header h5,
+.temp-image-item.visual-card-clickable .temp-image-title,
+.backgrounds-list .background-item.visual-card-clickable .background-item-info,
+.audio-properties .audio-item.visual-card-clickable .audio-header h5 {
+  cursor: pointer;
+}

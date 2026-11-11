@@ -63,9 +63,11 @@ import {
   keepsActiveTabOnSelect,
   PreviewSelection,
   PropertyFocusRequest,
+  selectionAfterRemoval,
   selectionOfLayer,
+  selectionOfVisual,
 } from "./preview/previewTargets";
-import type { PreviewLayer } from "./preview/previewLayout";
+import type { PreviewLayer, SceneLayerKind } from "./preview/previewLayout";
 import type { RecordCamera } from "@types";
 import { writeLayerPosition } from "./preview/previewDrag";
 import type { DragPoint } from "./preview/previewDrag";
@@ -127,6 +129,18 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
    */
   const [propertyFocus, setPropertyFocus] =
     useState<PropertyFocusRequest | null>(null);
+  /**
+   * 属性面板点卡片 → 预览定位的一次性请求。
+   *
+   * <p>与 `propertyFocus` 方向相反：那个是"预览 → 面板"，这个是"面板 → 预览"。
+   * `nonce` 用自增计数器（同一毫秒连点同一张卡片也要重新定位一次）。
+   * 预览收到后会保证这个元素在画面里可见——必要时临时切到世界视图。
+   */
+  const [previewReveal, setPreviewReveal] = useState<{
+    key: string;
+    nonce: number;
+  } | null>(null);
+  const revealNonceRef = useRef(0);
 
   // 视频生成进度状态
   const [videoProgress, setVideoProgress] = useState<{
@@ -247,6 +261,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       setGroups(snapshot.groups);
       groupsRef.current = snapshot.groups;
       setPreviewSelection(null);
+      // 撤销可能把刚删掉的素材又变回来：旧的定位请求已经对不上了，一并作废
+      setPreviewReveal(null);
       setPreviewRefreshToken((value) => value + 1);
     },
     [setRecords, setGroups],
@@ -496,6 +512,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     historyRef.current = createHistory();
     setPreviewSelection(null);
     setPropertyFocus(null);
+    setPreviewReveal(null);
   }, [projectGeneration]);
 
   /**
@@ -587,6 +604,45 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     setPreviewSelection(null);
   }, []);
 
+  /**
+   * @function 属性面板里点了一张素材卡片（立绘 / 临时图片 / 背景）
+   *
+   * <p>和 {@link handlePreviewSelect} 相反方向：这里不动页签（用户本来就在那个页签里），
+   * 只做两件事——记下预览选中态（预览里画出选中框），并下发一次定位请求，
+   * 让预览在"它不在画面里"时自动切到世界视图（见 RecordPreview 的 revealRequest）。
+   *
+   * <p>选中态与批量删除的勾选态是**两套状态**：这里只改预览，不碰任何页签内部的批量选择。
+   */
+  const handleVisualCardSelect = useCallback(
+    (kind: SceneLayerKind, index: number) => {
+      const selection = selectionOfVisual(kind, index);
+      setPreviewSelection(selection);
+      revealNonceRef.current += 1;
+      setPreviewReveal({ key: selection.key, nonce: revealNonceRef.current });
+    },
+    [],
+  );
+
+  /**
+   * @function 素材被删除（单条删除与批量删除都走这里）
+   *
+   * <p>属性面板删除的是**记录里的条目**，下标会整体前移，所以预览选中态必须跟着改：
+   * 删掉的正是选中项 → 清空；删的是它前面的若干条 → 下标前移（key 重新拼），
+   * 否则选中框会画到"下一张"上。规则见 {@link selectionAfterRemoval}。
+   *
+   * <p>顺手清掉面板里的一次性高亮：那个下标可能已经不存在了。
+   */
+  const handleVisualsRemoved = useCallback(
+    (kind: SceneLayerKind, removed: number[]) => {
+      setPreviewSelection((current) =>
+        selectionAfterRemoval(kind, current, removed),
+      );
+      setPreviewReveal(null);
+      setPropertyFocus(null);
+    },
+    [],
+  );
+
   /* ===================== 预览里拖动元素 ===================== */
 
   /** 本次拖动的起点（Esc / 指针取消时还原）；null 表示没在拖 */
@@ -650,6 +706,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   useEffect(() => {
     setPreviewSelection(null);
     setPropertyFocus(null);
+    // 换记录：上一张卡片下发的定位请求对新记录毫无意义（key 会指到别的元素上）
+    setPreviewReveal(null);
   }, [selectedUuid]);
 
   /**
@@ -1027,6 +1085,18 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
             focusRequest={propertyFocus}
+            // 点击卡片 → 预览选中 / 定位（与页签内的批量勾选互不影响）
+            activeIndex={
+              previewSelection?.kind === "character"
+                ? previewSelection.index
+                : null
+            }
+            onSelectVisual={(index) =>
+              handleVisualCardSelect("character", index)
+            }
+            onVisualsRemoved={(removed) =>
+              handleVisualsRemoved("character", removed)
+            }
             // 人格故事模式下立绘不参与渲染 → 动画区置灰（S4 收尾②）
             plot={plotOf(projectSettings)}
             // 关键帧时间轴：播放头 + 点击跳帧 + 轴长按语音/文字时长
@@ -1046,6 +1116,17 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
             focusRequest={propertyFocus}
+            activeIndex={
+              previewSelection?.kind === "tempImage"
+                ? previewSelection.index
+                : null
+            }
+            onSelectVisual={(index) =>
+              handleVisualCardSelect("tempImage", index)
+            }
+            onVisualsRemoved={(removed) =>
+              handleVisualsRemoved("tempImage", removed)
+            }
             plot={plotOf(projectSettings)}
             previewFrame={previewFrame}
             onSeekFrame={handleSeekPreview}
@@ -1061,6 +1142,17 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             videoWidth={projectSettings.videoWidth}
             videoHeight={projectSettings.videoHeight}
             focusRequest={propertyFocus}
+            activeIndex={
+              previewSelection?.kind === "background"
+                ? previewSelection.index
+                : null
+            }
+            onSelectVisual={(index) =>
+              handleVisualCardSelect("background", index)
+            }
+            onVisualsRemoved={(removed) =>
+              handleVisualsRemoved("background", removed)
+            }
           />
         );
       case "camera":
@@ -1131,6 +1223,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           selectedElementKey={previewSelection?.key ?? null}
           onSelectElement={handlePreviewSelect}
           onClearSelection={clearPreviewSelection}
+          // 属性面板点卡片 → 定位到预览：画面里看不到就临时切世界视图（见 RecordPreview）
+          revealRequest={previewReveal}
           onElementDragStart={handleElementDragStart}
           onElementDragMove={handleElementDragMove}
           onElementDragEnd={handleElementDragEnd}

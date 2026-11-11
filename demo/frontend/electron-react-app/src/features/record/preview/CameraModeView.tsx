@@ -360,6 +360,19 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
     [worldLayers, sceneImages],
   );
 
+  /**
+   * 选中的世界图层：世界视图里补一层**不可交互**的选中框。
+   *
+   * <p>负责画 `.preview-hit.selected` 的热区层只在「移元素」工具下挂载；
+   * 而"属性面板点卡片 → 临时切世界视图定位"走进来时工具仍是「移镜」，
+   * 不画这一层的话用户看不到自己刚点的是哪张素材。
+   * 「移元素」工具下热区层自己会画，这里不重复。
+   */
+  const selectedWorldLayer =
+    effectiveTool === "elements"
+      ? null
+      : worldLayers.find((layer) => layer.key === selectedKey) ?? null;
+
   return (
     <div
       ref={stageRef}
@@ -384,6 +397,16 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
         <div className="camera-world-ref" style={rectStyle(worldRef, worldBox)} />
 
         <PreviewSceneLayer items={sceneItems} frame={worldSize} />
+
+        {/* 选中框：只做提示，不吃事件（拖动仍然交给下面的热区层 / 取景框边框） */}
+        {selectedWorldLayer && (
+          <div
+            className="camera-selected-outline"
+            style={rectStyle(selectedWorldLayer.outRect, worldBox)}
+            data-testid="camera-selected-outline"
+            title={`已选中：${selectedWorldLayer.label}`}
+          />
+        )}
 
         {effectiveTool === "elements" && (
           <PreviewHitLayer

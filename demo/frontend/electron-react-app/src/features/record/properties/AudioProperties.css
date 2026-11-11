@@ -83,6 +83,49 @@
   gap: 15px;
 }
 
+/* 记录里的音频卡片标题行：勾选框 + 名称在左，删除按钮在右（选择弹窗的卡片没有这一行） */
+.audio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.audio-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.audio-heading h5 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-header button {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 记录列表里的音频卡片不做"上浮"动画：它是设置面板，不是可选列表 */
+.audio-properties .audio-item:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.audio-properties .audio-item {
+  cursor: default;
+}
+
 .audio-item {
   border: 1px solid #ddd;
   border-radius: 4px;

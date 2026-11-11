@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Record, Background, BackgroundVisual } from "@types";
 import ApiService from "@services/ApiService";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import NumberField from "./NumberField";
 import ModalPortal from "./ModalPortal";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
+import {
+  isInteractiveClickTarget,
+  normalizeIndexes,
+  useBatchSelection,
+  VisualPanelLinkProps,
+} from "./batchSelection";
+import {
+  BatchCardCheckbox,
+  BatchSelectionBar,
+} from "./BatchSelectionBar";
 import {
   MAX_BACKGROUND_SCALE,
   MIN_VISUAL_SCALE,
@@ -17,7 +28,7 @@ import "../RecordEditor.css";
 import "./TransformControls.css";
 import "./BackgroundProperties.css";
 
-interface BackgroundPropertiesProps {
+interface BackgroundPropertiesProps extends VisualPanelLinkProps {
   selectedRecord: Record;
   selectedRecordIndex: number;
   updateRecord: (index: number, updatedRecord: Record) => void;
@@ -58,6 +69,12 @@ const handleThumbnailError = (
   if (img.src !== fallbackSrc) img.src = fallbackSrc;
 };
 
+/**
+ * 「背景」页签。
+ *
+ * <p>列表里的每一张背景既可以被**批量勾选删除**（勾选框 + 顶部工具条），
+ * 也可以**点卡片在预览里选中**——两套状态分开管理，互不影响。
+ */
 const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   selectedRecord,
   selectedRecordIndex,
@@ -65,6 +82,9 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   videoWidth,
   videoHeight,
   focusRequest,
+  activeIndex = null,
+  onSelectVisual,
+  onVisualsRemoved,
 }) => {
   // 滑杆/数值框按设置页选的输出尺寸显示，写回记录时换算回 1080p 设计画布
   const { uiWidth, uiHeight, toUiX, toUiY, toDesignX, toDesignY } =
@@ -104,6 +124,9 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   }, [searchTerm, backgrounds]);
 
   const currentBackgrounds = selectedRecord.bg || [];
+
+  // 批量删除的选中态：与预览选中（activeIndex）分开管理
+  const batch = useBatchSelection(currentBackgrounds.length, selectedRecord.uuid);
 
   const fetchBackgrounds = async () => {
     try {
@@ -148,9 +171,57 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
     updateRecord(selectedRecordIndex, { ...selectedRecord, bg: updatedBgs });
   };
 
-  const deleteBackground = (index: number) => {
-    const updatedBgs = currentBackgrounds.filter((_, i) => i !== index);
+  /**
+   * @function 删除背景（单个「删除」按钮与批量删除共用）
+   *
+   * <p>背景只是记录里的引用（素材文件仍在资源管理里），所以和单条删除一样：
+   * 过滤掉这些下标后一次写回 `updateRecord`。删除后清空批量勾选，
+   * 并把删掉的下标告诉上层，让它同步预览选中态。
+   *
+   * @param indexes 要删掉的下标（重复 / 越界会被忽略）
+   */
+  const removeBackgrounds = (indexes: number[]) => {
+    const removed = normalizeIndexes(indexes, currentBackgrounds.length);
+    if (removed.length === 0) return;
+    const removedSet = new Set(removed);
+    const updatedBgs = currentBackgrounds.filter((_, i) => !removedSet.has(i));
     updateRecord(selectedRecordIndex, { ...selectedRecord, bg: updatedBgs });
+    batch.clear();
+    onVisualsRemoved?.(removed);
+  };
+
+  /** @function 删除一条背景（卡片上的「删除」按钮） */
+  const deleteBackground = (index: number) => {
+    removeBackgrounds([index]);
+  };
+
+  /** @function 批量删除勾选的背景（先二次确认） */
+  const handleBatchDelete = async () => {
+    const removed = batch.indexes;
+    if (removed.length === 0) return;
+    const names = removed
+      .map((index) => currentBackgrounds[index]?.background?.name)
+      .filter((name): name is string => Boolean(name));
+    const confirmed = await askConfirm({
+      title: "批量删除背景",
+      message: `确定删除选中的 ${removed.length} 张背景吗？`,
+      detail: names.length
+        ? `将从这条记录里移除：${names.join("、")}。\n素材本身仍在「资源管理 → 背景」里，可随时再加回来。`
+        : undefined,
+      confirmLabel: "删除",
+      danger: true,
+    });
+    if (!confirmed) return;
+    removeBackgrounds(removed);
+  };
+
+  /**
+   * @function 点击卡片本体 → 在预览里选中这张背景
+   * 卡片里的控件（按钮 / 滑杆 / 数值框 / 勾选框）不参与，见 {@link isInteractiveClickTarget}。
+   */
+  const handleCardClick = (event: React.MouseEvent, index: number) => {
+    if (isInteractiveClickTarget(event.target)) return;
+    onSelectVisual?.(index);
   };
 
   /**
@@ -178,8 +249,19 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
         <p className="transform-hint">
           缩放以画面中心为基准；位置 0 = 居中，可超出画面；每行 ↺ 只复原该行。
         </p>
+        {/* 批量删除工具条：勾选后才出现「批量删除」 */}
+        <BatchSelectionBar
+          label="背景"
+          total={currentBackgrounds.length}
+          selectedCount={batch.count}
+          onToggleAll={batch.toggleAll}
+          onClear={batch.clear}
+          onDelete={handleBatchDelete}
+          previewHint="点卡片 = 预览定位 · 勾选框 = 批量删除"
+        />
         <div className="backgrounds-list">
           {currentBackgrounds.map((bg, index) => {
+            const isPreviewSelected = activeIndex === index;
             // 老工程文件可能没有这些字段：按默认值（1.0 / 居中）显示，不出现 NaN
             const scale = normalizeBackgroundScale(bg.scale);
             const offsetX = bg.posX ?? 0;
@@ -205,11 +287,21 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                 }}
                 className={`background-item${
                   flashingIndex === index ? " property-focus-flash" : ""
-                }`}
+                }${isPreviewSelected ? " visual-card-preview-selected" : ""}${
+                  batch.has(index) ? " visual-card-batch-selected" : ""
+                }${onSelectVisual ? " visual-card-clickable" : ""}`}
+                // 点卡片 = 在预览里选中这张背景（与批量勾选无关）
+                onClick={(event) => handleCardClick(event, index)}
+                data-preview-selected={isPreviewSelected ? "true" : undefined}
               >
                 <div className="background-header">
-                  {/* 缩略图 + 名称：不看名字也能一眼认出是哪张背景 */}
+                  {/* 勾选框 + 缩略图 + 名称：不看名字也能一眼认出是哪张背景 */}
                   <div className="background-item-info">
+                    <BatchCardCheckbox
+                      checked={batch.has(index)}
+                      label={`选择背景 ${index + 1}`}
+                      onToggle={() => batch.toggle(index)}
+                    />
                     <div className="background-item-thumb">
                       <img
                         src={thumbnailSrc(bg.background)}

@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   Audio as AudioItem,
+  AudioCommand,
   AudioType,
   DialogueAlign,
   Emotion,
@@ -34,7 +35,7 @@ beforeEach(() => {
   mockedApi.getAudios.mockResolvedValue(mockAudios);
 });
 
-const makeRecord = (): PlotRecord => ({
+const makeRecord = (audioCommands: AudioCommand[] = []): PlotRecord => ({
   uuid: "r1",
   durationFrames: 120,
   dialogue: {
@@ -51,7 +52,7 @@ const makeRecord = (): PlotRecord => ({
   chars: [],
   tempImages: [],
   effects: [],
-  audioCommands: [],
+  audioCommands,
 });
 
 /** 打开「添加音频」弹窗，并等到列表渲染出音频卡片 */
@@ -150,5 +151,121 @@ describe("剧情编辑 → 音效 → 添加音频", () => {
     await openSelector();
 
     expect(screen.getByText(/双击列表项可直接添加/)).toBeTruthy();
+  });
+});
+
+/* ===================== 批量删除 ===================== */
+
+const makeCommands = (): AudioCommand[] => [
+  {
+    type: AudioType.BGM,
+    path: "bgm/theme.mp3",
+    volume: 1,
+    startTime: 0,
+    duration: 5,
+  },
+  {
+    type: AudioType.SFX,
+    path: "sfx/rain.wav",
+    volume: 0.8,
+    startTime: 1,
+    duration: 2,
+  },
+  {
+    type: AudioType.VOICE,
+    path: "voice/line.wav",
+    volume: 1,
+    startTime: 0,
+    duration: 3,
+  },
+];
+
+describe("剧情编辑 → 音效 → 批量删除", () => {
+  test("勾选两条：确认后一次写回记录并清空勾选", async () => {
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    const updateRecord = jest.fn();
+    render(
+      <AudioProperties
+        selectedRecord={makeRecord(makeCommands())}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    // 未勾选时没有批量删除入口
+    expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("选择音效 1"));
+    fireEvent.click(screen.getByLabelText("选择音效 3"));
+    expect(screen.getByText("已选 2 / 3")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    const [recordIndex, updatedRecord] = updateRecord.mock.calls[0];
+    expect(recordIndex).toBe(0);
+    expect(
+      updatedRecord.audioCommands.map((audio: AudioCommand) => audio.path),
+    ).toEqual(["sfx/rain.wav"]);
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull(),
+    );
+    expect(screen.getByText("已选 0 / 3")).toBeTruthy();
+  });
+
+  test("确认框里点取消 → 不写回记录", async () => {
+    jest.spyOn(window, "confirm").mockReturnValue(false);
+    const updateRecord = jest.fn();
+    render(
+      <AudioProperties
+        selectedRecord={makeRecord(makeCommands())}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选择音效 2"));
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() => expect(screen.getByText("已选 1 / 3")).toBeTruthy());
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
+  test("全选 / 取消全选；单条删除仍然只删自己那一条", () => {
+    const updateRecord = jest.fn();
+    render(
+      <AudioProperties
+        selectedRecord={makeRecord(makeCommands())}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("全选"));
+    expect(screen.getByText("已选 3 / 3")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("取消全选"));
+    expect(screen.getByText("已选 0 / 3")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByText("删除")[1]);
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(
+      updatedRecord.audioCommands.map((audio: AudioCommand) => audio.path),
+    ).toEqual(["bgm/theme.mp3", "voice/line.wav"]);
+  });
+
+  test("音效页签不与预览联动：卡片上没有预览选中态", () => {
+    const { container } = render(
+      <AudioProperties
+        selectedRecord={makeRecord(makeCommands())}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+      />,
+    );
+
+    // 卡片只有勾选态，没有"预览选中"描边
+    expect(container.querySelector(".visual-card-preview-selected")).toBeNull();
+    expect(container.querySelectorAll(".audio-item")).toHaveLength(3);
   });
 });

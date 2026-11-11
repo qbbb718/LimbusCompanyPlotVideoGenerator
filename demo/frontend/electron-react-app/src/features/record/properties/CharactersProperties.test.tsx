@@ -403,3 +403,192 @@ describe("CharactersProperties 添加表单挑选初始立绘", () => {
     expect(updatedRecord.chars[0].portrait.portraitID).toBe("p2");
   });
 });
+
+/* ===================== 批量删除 ===================== */
+
+const makeSecondCharacter = (name: string): CharacterVisual =>
+  makeCharacter({
+    chara: {
+      characterID: "c2",
+      characterName: name,
+      height: 171,
+      faction: "未设定",
+      colorBg: "#FFFFFF",
+      colorText: "#000000",
+    },
+    portrait: {
+      portraitID: "p2",
+      characterID: "c2",
+      imagePath: "",
+      portName: "第二张",
+      emotion: Emotion.NORMAL,
+      faceX: 0,
+      faceY: 0,
+      length: 183,
+      adjX: 0,
+      adjY: 0,
+      thumbnailPath: "",
+    },
+  });
+
+describe("CharactersProperties 批量删除", () => {
+  it("勾选两条 → 出现「批量删除」；确认后一次写回记录、清空勾选、通知预览态", async () => {
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    const onVisualsRemoved = jest.fn();
+    const updateRecord = jest.fn();
+    render(
+      <CharactersProperties
+        selectedRecord={makeRecord([
+          makeCharacter(),
+          makeSecondCharacter("第二个角色"),
+        ])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+        onVisualsRemoved={onVisualsRemoved}
+      />,
+    );
+
+    // 没勾选时没有批量删除入口
+    expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("选择立绘 1"));
+    fireEvent.click(screen.getByLabelText("选择立绘 2"));
+    expect(screen.getByText("已选 2 / 2")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    const [recordIndex, updatedRecord] = updateRecord.mock.calls[0];
+    expect(recordIndex).toBe(0);
+    expect(updatedRecord.chars).toEqual([]);
+    expect(onVisualsRemoved).toHaveBeenCalledWith([0, 1]);
+    // 勾选清空 → 批量删除入口消失
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull(),
+    );
+    expect(screen.getByText("已选 0 / 2")).toBeTruthy();
+  });
+
+  it("确认框里点取消 → 不写回记录", async () => {
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+    const updateRecord = jest.fn();
+    render(
+      <CharactersProperties
+        selectedRecord={makeRecord([makeCharacter()])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选择立绘 1"));
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
+  it("全选 / 取消全选只动勾选，不动素材本身", () => {
+    const updateRecord = jest.fn();
+    render(
+      <CharactersProperties
+        selectedRecord={makeRecord([
+          makeCharacter(),
+          makeSecondCharacter("第二个角色"),
+        ])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("全选"));
+    expect(screen.getByText("已选 2 / 2")).toBeTruthy();
+    expect(screen.getByText("取消全选")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("取消全选"));
+    expect(screen.getByText("已选 0 / 2")).toBeTruthy();
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
+  it("单条「删除」也走同一套逻辑：通知预览态并清空勾选", async () => {
+    const onVisualsRemoved = jest.fn();
+    const updateRecord = jest.fn();
+    render(
+      <CharactersProperties
+        selectedRecord={makeRecord([
+          makeCharacter(),
+          makeSecondCharacter("第二个角色"),
+        ])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+        onVisualsRemoved={onVisualsRemoved}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByText("删除")[0]);
+
+    expect(updateRecord).toHaveBeenCalledTimes(1);
+    expect(updateRecord.mock.calls[0][1].chars).toHaveLength(1);
+    expect(onVisualsRemoved).toHaveBeenCalledWith([0]);
+  });
+});
+
+/* ===================== 点卡片 → 预览选中 ===================== */
+
+describe("CharactersProperties 点卡片 → 预览选中", () => {
+  it("点卡片本体请求预览选中；不会顺手勾上批量删除的复选框", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <CharactersProperties
+        selectedRecord={makeRecord([makeCharacter()])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("heading", { name: "测试角色" }));
+
+    expect(onSelectVisual).toHaveBeenCalledWith(0);
+    expect(
+      (screen.getByLabelText("选择立绘 1") as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  it("点卡片里的控件（滑杆 / 勾选框 / 删除按钮）不触发预览选中", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <CharactersProperties
+        selectedRecord={makeRecord([makeCharacter()])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("立绘 1 缩放滑块"));
+    fireEvent.click(screen.getByLabelText("选择立绘 1"));
+    fireEvent.click(screen.getAllByText("删除")[0]);
+
+    expect(onSelectVisual).not.toHaveBeenCalled();
+  });
+
+  it("activeIndex 指向的那张卡片显示预览选中态（与批量勾选态分开）", () => {
+    const { container } = render(
+      <CharactersProperties
+        selectedRecord={makeRecord([
+          makeCharacter(),
+          makeSecondCharacter("第二个角色"),
+        ])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        activeIndex={1}
+      />,
+    );
+
+    const items = container.querySelectorAll(".character-item");
+    expect(items[0].getAttribute("data-preview-selected")).toBeNull();
+    expect(items[1].getAttribute("data-preview-selected")).toBe("true");
+    expect(items[1].className).toContain("visual-card-preview-selected");
+  });
+});

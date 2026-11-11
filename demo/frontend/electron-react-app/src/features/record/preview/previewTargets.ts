@@ -13,6 +13,8 @@
  */
 import type { PropertyTab } from "../useProjectWorkspace";
 import type { PreviewLayer, PreviewLayerKind } from "./previewLayout";
+import { sceneLayerKey } from "./previewLayout";
+import type { SceneLayerKind } from "./previewLayout";
 
 /** 属性面板里需要"滚过去 + 闪一下"的目标类型（= 页签 key，text 用字段区分） */
 export type PropertyFocusKind =
@@ -55,6 +57,65 @@ export const selectionOfLayer = (layer: PreviewLayer): PreviewSelection => ({
   kind: layer.kind,
   index: layer.index,
 });
+
+/**
+ * @function 素材页签里的一张卡片 → 预览选中态
+ *
+ * <p>与 {@link selectionOfLayer} 是同一个形状，只是来源不同：那边来自"在预览里点中"，
+ * 这边来自"在属性面板里点卡片"。key 必须用 {@link sceneLayerKey} 拼，
+ * 否则预览热区层按 key 找不到这一层，选中框不会出现。
+ *
+ * @param kind  素材种类（只有世界图层：立绘 / 临时图片 / 背景）
+ * @param index 在所属数组里的下标
+ */
+export const selectionOfVisual = (
+  kind: SceneLayerKind,
+  index: number,
+): PreviewSelection => ({
+  key: sceneLayerKey(kind, index),
+  kind,
+  index,
+});
+
+/** @function 是不是世界图层种类（立绘 / 临时图片 / 背景） */
+export function isSceneLayerKind(
+  kind: PreviewLayerKind,
+): kind is SceneLayerKind {
+  return kind === "background" || kind === "character" || kind === "tempImage";
+}
+
+/**
+ * @function 删掉若干素材之后，预览选中态该变成什么
+ *
+ * <p>三种情况：
+ * 1. 删的正是选中的那条 → 选中态清空（预览里已经没有这个元素了）；
+ * 2. 删的是它**前面**的若干条 → 下标整体前移，key 必须跟着重算，
+ *    否则选中框会指到"下一张"上；
+ * 3. 其它情况 → 原样返回（同一个引用，避免无意义的重渲染）。
+ *
+ * @param kind      这次被删的素材种类
+ * @param selection 当前预览选中态
+ * @param removed   删掉的下标（可以乱序 / 重复 / 越界）
+ * @returns 新的预览选中态；null = 选中项已被删除
+ */
+export function selectionAfterRemoval(
+  kind: SceneLayerKind,
+  selection: PreviewSelection | null,
+  removed: number[],
+): PreviewSelection | null {
+  if (!selection || selection.kind !== kind || selection.index < 0) {
+    return selection;
+  }
+  const removedIndexes = Array.from(
+    new Set(removed.filter((index) => Number.isInteger(index) && index >= 0)),
+  ).sort((a, b) => a - b);
+  if (removedIndexes.length === 0) return selection;
+  if (removedIndexes.includes(selection.index)) return null;
+
+  const shift = removedIndexes.filter((index) => index < selection.index).length;
+  if (shift === 0) return selection;
+  return selectionOfVisual(kind, selection.index - shift);
+}
 
 /**
  * 元素种类 → 页签 + 定位目标。

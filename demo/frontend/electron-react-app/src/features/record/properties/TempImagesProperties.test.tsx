@@ -208,3 +208,156 @@ describe("TempImagesProperties 控件写回记录", () => {
     delete (window as any).electronAPI;
   });
 });
+
+/* ===================== 批量删除 ===================== */
+
+describe("TempImagesProperties 批量删除", () => {
+  const makeThree = () =>
+    makeRecord([
+      makeTempImage({ uuid: "t1" }),
+      makeTempImage({
+        uuid: "t2",
+        imagePath: "./projects/temp/images/第二张.png",
+      }),
+      makeTempImage({ uuid: "t3" }),
+    ]);
+
+  it("勾选两张：确认后逐张删后端文件，一次写回记录并清空勾选", async () => {
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    const deleteTempImage = jest
+      .spyOn(ApiService, "deleteTempImage")
+      .mockResolvedValue({ success: true });
+    const onVisualsRemoved = jest.fn();
+    const updateRecord = jest.fn();
+    render(
+      <TempImagesProperties
+        selectedRecord={makeThree()}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+        onVisualsRemoved={onVisualsRemoved}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选择临时图片 1"));
+    fireEvent.click(screen.getByLabelText("选择临时图片 3"));
+    expect(screen.getByText("已选 2 / 3")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    // 与单条删除一致：先删后端文件（每张一个 uuid）
+    await waitFor(() => expect(deleteTempImage).toHaveBeenCalledTimes(2));
+    expect(deleteTempImage).toHaveBeenNthCalledWith(1, "t1");
+    expect(deleteTempImage).toHaveBeenNthCalledWith(2, "t3");
+
+    // 再写回记录：只剩中间那张
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.tempImages.map((temp: TempImageVisual) => temp.uuid)).toEqual([
+      "t2",
+    ]);
+    expect(onVisualsRemoved).toHaveBeenCalledWith([0, 2]);
+
+    // 勾选清空：批量删除入口消失
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull(),
+    );
+    expect(screen.getByText("已选 0 / 3")).toBeTruthy();
+  });
+
+  it("确认框里点取消 → 既不删文件也不写记录", async () => {
+    jest.spyOn(window, "confirm").mockReturnValue(false);
+    const deleteTempImage = jest
+      .spyOn(ApiService, "deleteTempImage")
+      .mockResolvedValue({ success: true });
+    const updateRecord = jest.fn();
+    render(
+      <TempImagesProperties
+        selectedRecord={makeThree()}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选择临时图片 1"));
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() => expect(updateRecord).not.toHaveBeenCalled());
+    expect(deleteTempImage).not.toHaveBeenCalled();
+  });
+
+  it("全选 / 取消全选", () => {
+    const updateRecord = jest.fn();
+    render(
+      <TempImagesProperties
+        selectedRecord={makeThree()}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("全选"));
+    expect(screen.getByText("已选 3 / 3")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("取消全选"));
+    expect(screen.getByText("已选 0 / 3")).toBeTruthy();
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+});
+
+/* ===================== 点卡片 → 预览选中 ===================== */
+
+describe("TempImagesProperties 点卡片 → 预览选中", () => {
+  it("点卡片本体请求预览选中；不会勾上批量删除的复选框", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <TempImagesProperties
+        selectedRecord={makeRecord([makeTempImage({})])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("临时图片 1"));
+
+    expect(onSelectVisual).toHaveBeenCalledWith(0);
+    expect(
+      (screen.getByLabelText("选择临时图片 1") as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  it("点卡片里的控件（滑杆 / 勾选框）不触发预览选中", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <TempImagesProperties
+        selectedRecord={makeRecord([makeTempImage({})])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("临时图片 1 缩放滑块"));
+    fireEvent.click(screen.getByLabelText("选择临时图片 1"));
+
+    expect(onSelectVisual).not.toHaveBeenCalled();
+  });
+
+  it("activeIndex 指向的那张卡片显示预览选中态", () => {
+    const { container } = render(
+      <TempImagesProperties
+        selectedRecord={makeRecord([
+          makeTempImage({ uuid: "t1" }),
+          makeTempImage({ uuid: "t2" }),
+        ])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        activeIndex={0}
+      />,
+    );
+
+    const items = container.querySelectorAll(".temp-image-item");
+    expect(items[0].getAttribute("data-preview-selected")).toBe("true");
+    expect(items[0].className).toContain("visual-card-preview-selected");
+    expect(items[1].getAttribute("data-preview-selected")).toBeNull();
+  });
+});

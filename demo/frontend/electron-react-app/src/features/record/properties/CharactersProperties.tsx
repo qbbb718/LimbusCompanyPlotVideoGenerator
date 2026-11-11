@@ -13,6 +13,7 @@ import {
 } from "@features/common/utils/portraitUtils";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import CharacterSelect, {
   CharacterSelectOption,
 } from "./CharacterSelect";
@@ -20,6 +21,16 @@ import NumberField from "./NumberField";
 import CharacterAnimationPanel from "./CharacterAnimationPanel";
 import EmotionAnimPicker from "./EmotionAnimPicker";
 import PortraitPickerDialog from "./PortraitPickerDialog";
+import {
+  normalizeIndexes,
+  isInteractiveClickTarget,
+  useBatchSelection,
+  VisualPanelLinkProps,
+} from "./batchSelection";
+import {
+  BatchCardCheckbox,
+  BatchSelectionBar,
+} from "./BatchSelectionBar";
 import {
   DESIGN_CANVAS_WIDTH,
   MAX_VISUAL_SCALE,
@@ -56,7 +67,7 @@ const stepToPercent = (n: number) => 50 + (n * 100) / 6;
  */
 const stepToUiAdjX = (n: number, uiWidth: number) => (uiWidth * n) / 6;
 
-interface CharactersPropertiesProps {
+interface CharactersPropertiesProps extends VisualPanelLinkProps {
   selectedRecord: Record;
   selectedRecordIndex: number;
   updateRecord: (index: number, updatedRecord: Record) => void;
@@ -86,6 +97,14 @@ interface CharactersPropertiesProps {
   onOpenAnimationLibrary?: () => void;
 }
 
+/**
+ * 「立绘」页签。
+ *
+ * <p>每张立绘卡片支持两套互不干扰的选中：
+ * 1. **批量删除**：左上角勾选框 + 顶部「全选 / 批量删除」（见 {@link useBatchSelection}）；
+ * 2. **预览选中**：点卡片本体（标题 / 空白，不含卡片里的控件）→ 让预览高亮这张立绘，
+ *    必要时预览会自动切到世界视图把它显示出来（见 RecordPreview 的 revealRequest）。
+ */
 const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   selectedRecord,
   selectedRecordIndex,
@@ -98,6 +117,9 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   onSeekFrame,
   lineFrames,
   onOpenAnimationLibrary,
+  activeIndex = null,
+  onSelectVisual,
+  onVisualsRemoved,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -137,6 +159,9 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   };
 
   const currentCharacters = selectedRecord.chars || [];
+
+  // 批量删除的选中态：与预览选中（activeIndex）是两套状态，互不干扰
+  const batch = useBatchSelection(currentCharacters.length, selectedRecord.uuid);
 
   // 角色下拉选项（带默认立绘小头像），与"说话人"下拉框使用同一个组件
   const characterOptions: CharacterSelectOption[] = characters.map((chara) => ({
@@ -202,14 +227,37 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
     updateRecord(selectedRecordIndex, updatedRecord);
   };
 
-  const deleteCharacter = (index: number) => {
-    const deletedChar = currentCharacters[index];
-    const updatedChars = currentCharacters.filter((_, i) => i !== index);
+  /**
+   * @function 删除立绘（单条与批量共用同一套逻辑）
+   *
+   * <p>一次写回记录（与单条删除以前一样走 `updateRecord`），再从 `speakerC` 里摘掉
+   * **已经没有立绘在用的**角色引用——同一角色还有别的卡片时说话人/名片保持不变。
+   * 删除后清空批量勾选，并把删掉的下标告诉上层，让它同步预览选中态。
+   *
+   * @param indexes 要删掉的下标（重复 / 越界会被忽略）
+   */
+  const deleteCharacters = (indexes: number[]) => {
+    const removed = normalizeIndexes(indexes, currentCharacters.length);
+    if (removed.length === 0) return;
+    const removedSet = new Set(removed);
+    const updatedChars = currentCharacters.filter((_, i) => !removedSet.has(i));
 
-    // 同时从 speakerC 中移除对应角色
+    // 同时从 speakerC 中移除对应角色：只摘掉"删完之后一张立绘都没有"的角色
+    const removedCharacterIds = new Set(
+      removed
+        .map((index) => currentCharacters[index]?.chara?.characterID)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const remainingCharacterIds = new Set(
+      updatedChars
+        .map((char) => char.chara?.characterID)
+        .filter((id): id is string => Boolean(id)),
+    );
     const currentSpeakerC = selectedRecord.dialogue.speakerC || [];
     const updatedSpeakerC = currentSpeakerC.filter(
-      (ref) => ref.characterID !== deletedChar?.chara?.characterID,
+      (ref) =>
+        !removedCharacterIds.has(ref.characterID) ||
+        remainingCharacterIds.has(ref.characterID),
     );
 
     updateRecord(selectedRecordIndex, {
@@ -217,6 +265,47 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
       chars: updatedChars,
       dialogue: { ...selectedRecord.dialogue, speakerC: updatedSpeakerC },
     });
+
+    batch.clear();
+    onVisualsRemoved?.(removed);
+  };
+
+  /** @function 删除一条立绘（卡片上的「删除」按钮） */
+  const deleteCharacter = (index: number) => {
+    deleteCharacters([index]);
+  };
+
+  /**
+   * @function 批量删除勾选的立绘
+   * 破坏性操作先二次确认（应用内确认框，不用原生 confirm：Electron 里关掉后会丢焦点）。
+   */
+  const handleBatchDelete = async () => {
+    const removed = batch.indexes;
+    if (removed.length === 0) return;
+    const names = removed
+      .map((index) => currentCharacters[index]?.chara?.characterName)
+      .filter((name): name is string => Boolean(name));
+    const confirmed = await askConfirm({
+      title: "批量删除立绘",
+      message: `确定删除选中的 ${removed.length} 个立绘吗？`,
+      detail: names.length
+        ? `将被移除：${names.join("、")}。\n删除后可用「+ 添加立绘」重新加回来。`
+        : undefined,
+      confirmLabel: "删除",
+      danger: true,
+    });
+    if (!confirmed) return;
+    deleteCharacters(removed);
+  };
+
+  /**
+   * @function 点击卡片本体 → 在预览里选中这张立绘
+   * 卡片里全是编辑控件，点它们（按钮 / 滑杆 / 数值框 / 勾选框）不能顺带选中预览，
+   * 判定见 {@link isInteractiveClickTarget}。
+   */
+  const handleCardClick = (event: React.MouseEvent, index: number) => {
+    if (isInteractiveClickTarget(event.target)) return;
+    onSelectVisual?.(index);
   };
 
   const addCharacter = () => {
@@ -280,6 +369,16 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
   return (
     <div className="characters-properties">
       <h4>角色立绘</h4>
+      {/* 批量删除工具条：只在勾选后多出「批量删除」按钮，未勾选时只剩「全选」 */}
+      <BatchSelectionBar
+        label="立绘"
+        total={currentCharacters.length}
+        selectedCount={batch.count}
+        onToggleAll={batch.toggleAll}
+        onClear={batch.clear}
+        onDelete={handleBatchDelete}
+        previewHint="点卡片 = 预览定位 · 勾选框 = 批量删除"
+      />
       <div className="characters-list">
         {currentCharacters.map((char, index) => (
           <div
@@ -289,10 +388,23 @@ const CharactersProperties: React.FC<CharactersPropertiesProps> = ({
             }}
             className={`character-item${
               flashingIndex === index ? " property-focus-flash" : ""
-            }`}
+            }${activeIndex === index ? " visual-card-preview-selected" : ""}${
+              batch.has(index) ? " visual-card-batch-selected" : ""
+            }${onSelectVisual ? " visual-card-clickable" : ""}`}
+            // 点卡片 = 在预览里选中这张立绘（与批量勾选无关）
+            onClick={(event) => handleCardClick(event, index)}
+            data-preview-selected={activeIndex === index ? "true" : undefined}
           >
             <div className="character-header">
-              <h5>{char.chara.characterName}</h5>
+              <div className="character-heading">
+                {/* 勾选框只负责批量删除，点它不会触发上面的"预览选中" */}
+                <BatchCardCheckbox
+                  checked={batch.has(index)}
+                  label={`选择立绘 ${index + 1}`}
+                  onToggle={() => batch.toggle(index)}
+                />
+                <h5>{char.chara.characterName}</h5>
+              </div>
               <div className="character-controls">
                 <div className="character-order-controls">
                   <button

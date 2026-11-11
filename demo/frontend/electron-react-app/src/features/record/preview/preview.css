@@ -391,6 +391,20 @@
   pointer-events: none;
 }
 
+/*
+ * 选中的世界图层：与成片视图里的 .preview-hit.selected 同一套配色（青色描边）。
+ * 「移元素」工具下热区层自己会画选中框，这一层只用在「移镜」工具下
+ * （属性面板点卡片 → 临时世界视图定位时就是这种情况），且不吃鼠标事件。
+ */
+.camera-selected-outline {
+  position: absolute;
+  z-index: 11;
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+  background: rgba(56, 189, 248, 0.1);
+  pointer-events: none;
+}
+
 /* 取景框：框外一圈压暗（用超大 box-shadow 实现，不占布局、不吃事件） */
 .camera-frame {
   position: absolute;

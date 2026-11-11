@@ -26,6 +26,7 @@ import type { CameraEditor } from "./preview/useCameraEditor";
 import { DEFAULT_CAMERA } from "./preview/previewLayout";
 import { applyCameraShake, cameraShakeConfigOf } from "./preview/cameraShake";
 import { useTimelinePlayback } from "./preview/useTimelinePlayback";
+import { shouldRevealInWorld } from "./preview/reveal";
 import { anchorOf, durationEndFrameOf, isAnimated } from "./animation/spriteAnimator";
 import { evaluate as evaluateSpriteAnim } from "./animation/spriteAnimator";
 import { childSpriteDomStyle, sharedTransformOrigin, spriteDomStyle } from "./preview/domTransform";
@@ -57,6 +58,17 @@ interface RecordPreviewProps {
   onSelectElement?: (layer: PreviewLayer) => void;
   /** 点击空白处：取消选中 */
   onClearSelection?: () => void;
+  /**
+   * 属性面板里点了一张素材卡片 → 让预览把它**指出来**。
+   *
+   * <p>与 `onSelectElement`（预览 → 属性面板）方向相反：这边只负责"看到它"。
+   * `key` 是目标图层（`character:0` / `tempImage:1` / `background:0`），
+   * `nonce` 每次点击都变——连点同一张卡片也要重新定位一次。
+   *
+   * <p>处理规则见下面 `revealRequest` 的 effect：画面里看得到就只画选中框；
+   * 看不到（拖出画面 / 推镜后跑到取景框外）才临时切到世界视图。
+   */
+  revealRequest?: { key: string; nonce: number } | null;
 
   /* ===== P2 拖拽：四个都用上才开启拖动 ===== */
   /** 真正开始拖动（越过阈值）时回调一次，带上起点，供 Esc 还原 */
@@ -148,6 +160,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   selectedElementKey = null,
   onSelectElement,
   onClearSelection,
+  revealRequest = null,
   onElementDragStart,
   onElementDragMove,
   onElementDragEnd,
@@ -178,11 +191,20 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   /**
    * 是否显示摄像机世界视图。
    *
-   * <p>由**页签**决定（RecordEditor 传 `viewMode`）：世界视图不显示栅格图（那张图是取景后的
-   * 结果，没法用来显示世界全图），也**不发预览图请求**——镜头一动记录就变，
-   * 每动一下都让后端重渲一遍纯属浪费。没有摄像机编辑状态时退回最终效果。
+   * <p>两种来源：① 由**页签**决定（RecordEditor 传 `viewMode`，进「摄像机」页签 = 世界视图）；
+   * ② 属性面板点了某张卡片、而它在成片画面里看不到，**临时**切过来定位（见 revealRequest）。
+   * 世界视图不显示栅格图（那张图是取景后的结果，没法用来显示世界全图），
+   * 也**不发预览图请求**——镜头一动记录就变，每动一下都让后端重渲一遍纯属浪费。
+   * 没有摄像机编辑状态时退回最终效果。
    */
-  const showCamera = viewMode === "camera" && Boolean(cameraEditor);
+  const [revealedInWorld, setRevealedInWorld] = useState(false);
+  /** 已经处理过的定位请求 nonce：同一个请求不要反复切视图 */
+  const handledRevealNonceRef = useRef<number | null>(null);
+  /** 这次临时世界视图是为哪个图层切的：选中态换成别的元素就退出 */
+  const revealedKeyRef = useRef<string | null>(null);
+
+  const showCamera =
+    (viewMode === "camera" || revealedInWorld) && Boolean(cameraEditor);
   /** 运镜时长（帧）：预览与成片用同一个数字，这里只是把它读出来 */
   const moveFrames = cameraMoveFrames(selectedRecord.camera);
   /** 记录比运镜还短时按记录播（与导出一样会被截断） */
@@ -597,6 +619,49 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   const frameSize = { width: videoWidth || 1920, height: videoHeight || 1080 };
 
   /**
+   * 属性面板点卡片 → 预览定位（`revealRequest`）。
+   *
+   * <p>先在成片里找这个图层：
+   * - **看得到**（露出面积 ≥ 8%，门槛见 `preview/reveal.ts`）→ 留在成片视图，
+   *   高亮交给热区层（`PreviewHitLayer` 画 `.preview-hit.selected`），这里什么都不用做；
+   * - **看不到**（被拖出画面 / 推镜后跑到取景框外）→ 临时切到世界视图：那里画的是整个世界，
+   *   素材才有地方显示。切之前先"适配视图"一次（`resetView`），否则可能停在上次放大的视野里，
+   *   一样看不到。
+   *
+   * <p>原图尺寸还没量到（几何里没有这一层）时**先不处理**：`geometry.layers`
+   * 一更新这个 effect 就会重跑，别让人还没看清画面就被切走。
+   */
+  useEffect(() => {
+    if (!revealRequest || !cameraEditor) return;
+    if (handledRevealNonceRef.current === revealRequest.nonce) return;
+    const layer = geometry.layers.find((item) => item.key === revealRequest.key);
+    if (!layer) return;
+
+    handledRevealNonceRef.current = revealRequest.nonce;
+    if (shouldRevealInWorld(layer.outRect, frameSize)) {
+      cameraEditor.resetView();
+      revealedKeyRef.current = revealRequest.key;
+      setRevealedInWorld(true);
+    } else {
+      setRevealedInWorld(false);
+    }
+    // cameraEditor / frameSize 每次渲染都是新对象，放进依赖会让这个 effect 每帧都跑；
+    // 真正的触发源只有"新的定位请求"与"几何更新"（原图尺寸到齐）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealRequest, geometry.layers]);
+
+  /**
+   * 退出"临时世界视图"：选中态被清掉（点空白 / 换记录）或换成别的元素时，
+   * 世界视图已经不是用户想看的东西了，回到成片。
+   */
+  useEffect(() => {
+    if (!revealedInWorld) return;
+    if (!selectedElementKey || selectedElementKey !== revealedKeyRef.current) {
+      setRevealedInWorld(false);
+    }
+  }, [selectedElementKey, revealedInWorld]);
+
+  /**
    * 场景框在输出图里的矩形：设计画布中间 80%（`0.8` 缩放 + (192,108) 偏移）。
    *
    * <p>成片里场景只画到这一块，四周是黑边；DOM 场景层（播放/对位/拖动）必须按它裁剪，
@@ -783,7 +848,9 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       <div className="preview-mode-bar" role="group" aria-label="预览模式">
         <span className="preview-mode-chip active">
           {showWorldView
-            ? "🎥 摄像机 · 世界视图"
+            ? revealedInWorld && viewMode !== "camera"
+              ? "🔍 世界视图 · 定位素材"
+              : "🎥 摄像机 · 世界视图"
             : previewingFromCamera
               ? "🖼 成片预览中"
               : "🖼 最终效果"}
@@ -806,6 +873,16 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         >
           {playback.playing ? "⏹ 停止" : "▶ 播放"}
         </button>
+        {/* 临时世界视图的出口：定位完就回成片，不必去切页签 */}
+        {revealedInWorld && viewMode !== "camera" && (
+          <button
+            type="button"
+            onClick={() => setRevealedInWorld(false)}
+            title="素材已经定位到了：回到后端渲染的成片预览"
+          >
+            ↩ 回到成片
+          </button>
+        )}
       </div>
       {/* 没有动画时点 ▶ 的说明：写在按钮下方而不是弹窗，不打断编辑 */}
       {playHint && (

@@ -230,3 +230,160 @@ describe("BackgroundProperties 缩放与位置控制", () => {
     expect(updatedRecord.bg[0].posX).toBe(300);
   });
 });
+
+/* ===================== 批量删除 ===================== */
+
+const streetBackground: Background = {
+  uuid: "bg2",
+  name: "街道",
+  path: "/assets/backgrounds/街道.png",
+  thumbnailPath: "/assets/backgrounds/thumbnails/thumb_bg2.png",
+  tags: [],
+};
+
+describe("BackgroundProperties 批量删除", () => {
+  it("勾选两张 → 出现「批量删除」；确认后一次写回记录、清空勾选、通知预览态", async () => {
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+    const onVisualsRemoved = jest.fn();
+    const updateRecord = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground, streetBackground])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+        onVisualsRemoved={onVisualsRemoved}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("选择背景 1"));
+    fireEvent.click(screen.getByLabelText("选择背景 2"));
+    expect(screen.getByText("已选 2 / 2")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    const [recordIndex, updatedRecord] = updateRecord.mock.calls[0];
+    expect(recordIndex).toBe(0);
+    expect(updatedRecord.bg).toEqual([]);
+    expect(onVisualsRemoved).toHaveBeenCalledWith([0, 1]);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /批量删除/ })).toBeNull(),
+    );
+  });
+
+  it("确认框里点取消 → 不写回记录", async () => {
+    jest.spyOn(window, "confirm").mockReturnValue(false);
+    const updateRecord = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("选择背景 1"));
+    fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText("已选 1 / 1")).toBeTruthy(),
+    );
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
+  it("全选 / 取消全选", () => {
+    const updateRecord = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground, streetBackground])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("全选"));
+    expect(screen.getByText("已选 2 / 2")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("取消全选"));
+    expect(screen.getByText("已选 0 / 2")).toBeTruthy();
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
+  it("单条「删除」也通知预览态（与批量删除同一套逻辑）", () => {
+    const onVisualsRemoved = jest.fn();
+    const updateRecord = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground, streetBackground])}
+        selectedRecordIndex={0}
+        updateRecord={updateRecord}
+        onVisualsRemoved={onVisualsRemoved}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByText("删除")[0]);
+
+    expect(updateRecord).toHaveBeenCalledTimes(1);
+    expect(updateRecord.mock.calls[0][1].bg).toHaveLength(1);
+    expect(onVisualsRemoved).toHaveBeenCalledWith([0]);
+  });
+});
+
+/* ===================== 点卡片 → 预览选中 ===================== */
+
+describe("BackgroundProperties 点卡片 → 预览选中", () => {
+  it("点卡片本体请求预览选中；不会勾上批量删除的复选框", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("办公室"));
+
+    expect(onSelectVisual).toHaveBeenCalledWith(0);
+    expect(
+      (screen.getByLabelText("选择背景 1") as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  it("点卡片里的控件（滑杆 / 复原按钮 / 勾选框）不触发预览选中", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("背景 1 缩放滑块"));
+    fireEvent.click(screen.getByLabelText("复原背景 1 缩放"));
+    fireEvent.click(screen.getByLabelText("选择背景 1"));
+
+    expect(onSelectVisual).not.toHaveBeenCalled();
+  });
+
+  it("activeIndex 指向的那张卡片显示预览选中态", () => {
+    const { container } = render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground, streetBackground])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        activeIndex={1}
+      />,
+    );
+
+    const items = container.querySelectorAll(".backgrounds-list .background-item");
+    expect(items[0].getAttribute("data-preview-selected")).toBeNull();
+    expect(items[1].getAttribute("data-preview-selected")).toBe("true");
+    expect(items[1].className).toContain("visual-card-preview-selected");
+  });
+});

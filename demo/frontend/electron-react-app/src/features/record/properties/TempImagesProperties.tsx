@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
 import { Record, TempImageVisual } from "@types";
 import ApiService from "@services/ApiService";
+import { askConfirm } from "@features/common/components/ConfirmDialog";
 import NumberField from "./NumberField";
 import { useFocusFlash } from "../preview/useFocusFlash";
 import type { PropertyFocusRequest } from "../preview/previewTargets";
@@ -15,6 +16,16 @@ import "../RecordEditor.css";
 import "./CharactersProperties.css";
 import "./TempImagesProperties.css";
 import CharacterAnimationPanel from "./CharacterAnimationPanel";
+import {
+  isInteractiveClickTarget,
+  normalizeIndexes,
+  useBatchSelection,
+  VisualPanelLinkProps,
+} from "./batchSelection";
+import {
+  BatchCardCheckbox,
+  BatchSelectionBar,
+} from "./BatchSelectionBar";
 
 /*
  * 坐标系说明：和「立绘」页签完全一致 —— 记录里的 posX/posY 存的是 1080p 设计画布像素，
@@ -64,7 +75,7 @@ const TempImageThumb: React.FC<{ imagePath: string; label: string }> = ({
   );
 };
 
-interface TempImagesPropertiesProps {
+interface TempImagesPropertiesProps extends VisualPanelLinkProps {
   selectedRecord: Record;
   selectedRecordIndex: number;
   updateRecord: (index: number, updatedRecord: Record) => void;
@@ -89,6 +100,8 @@ interface TempImagesPropertiesProps {
  *
  * <p>内容从原来的「立绘」页签原样拆出（缩略图、缩放、压暗、X / Y 坐标、添加 / 删除），
  * 只有承载它的页签变了，记录里的 tempImages 数据与后端渲染逻辑完全没动。
+ *
+ * <p>与「立绘」页签一样接两套互不干扰的选中：批量删除（勾选框 + 全选）与预览选中（点卡片）。
  */
 const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
   selectedRecord,
@@ -101,6 +114,9 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
   previewFrame,
   onSeekFrame,
   lineFrames,
+  activeIndex = null,
+  onSelectVisual,
+  onVisualsRemoved,
 }) => {
   // 滑杆/数值框的坐标系 = 设置页选的视频大小（预览图就是这个尺寸）；
   // 写回记录时统一换算回 1080p 设计画布，换分辨率后构图不变。
@@ -108,6 +124,9 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
     createCoordinateMapper(videoWidth, videoHeight);
 
   const currentTempImages: TempImageVisual[] = selectedRecord.tempImages || [];
+
+  // 批量删除的选中态：与预览选中（activeIndex）分开管理
+  const batch = useBatchSelection(currentTempImages.length, selectedRecord.uuid);
 
   // 每张临时图片卡片的 DOM 节点：从预览点中时滚到它
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -124,18 +143,73 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
     console.log(`[TempImagesProperties] updateTempImage[${index}]: ${field}=${value}`);
   };
 
-  const deleteTempImage = async (index: number) => {
-    const temp = currentTempImages[index];
-    if (temp.uuid) {
-      try {
-        await ApiService.deleteTempImage(temp.uuid);
-      } catch (e) {
-        console.error("[TempImagesProperties] 删除临时图片文件失败:", e);
-      }
-    }
-    const updated = currentTempImages.filter((_, i) => i !== index);
+  /**
+   * @function 删除临时图片（单个「删除」按钮与批量删除共用）
+   *
+   * <p>与以前单条删除的顺序一致：**先删后端文件**（`ApiService.deleteTempImage`，
+   * 拿 uuid 删；失败只记日志，不影响记录），再从记录里移除并一次写回。
+   * 删除后清空批量勾选，并把删掉的下标告诉上层，让它同步预览选中态。
+   *
+   * @param indexes 要删掉的下标（重复 / 越界会被忽略）
+   */
+  const removeTempImages = async (indexes: number[]) => {
+    const removed = normalizeIndexes(indexes, currentTempImages.length);
+    if (removed.length === 0) return;
+    const removedSet = new Set(removed);
+    const targets = removed.map((index) => currentTempImages[index]);
+
+    await Promise.all(
+      targets.map(async (temp) => {
+        if (!temp?.uuid) return;
+        try {
+          await ApiService.deleteTempImage(temp.uuid);
+        } catch (e) {
+          console.error("[TempImagesProperties] 删除临时图片文件失败:", e);
+        }
+      }),
+    );
+
+    const updated = currentTempImages.filter((_, i) => !removedSet.has(i));
     updateRecord(selectedRecordIndex, { ...selectedRecord, tempImages: updated });
-    console.log(`[TempImagesProperties] deleteTempImage[${index}]: uuid=${temp.uuid}`);
+    console.log(
+      `[TempImagesProperties] removeTempImages: indexes=${removed.join(",")}`,
+    );
+
+    batch.clear();
+    onVisualsRemoved?.(removed);
+  };
+
+  /** @function 删除一条临时图片（卡片上的「删除」按钮） */
+  const deleteTempImage = (index: number) => {
+    void removeTempImages([index]);
+  };
+
+  /**
+   * @function 批量删除勾选的临时图片
+   * 二次确认后走同一套删除逻辑（连后端文件一起删）。
+   */
+  const handleBatchDelete = async () => {
+    const removed = batch.indexes;
+    if (removed.length === 0) return;
+    const confirmed = await askConfirm({
+      title: "批量删除临时图片",
+      message: `确定删除选中的 ${removed.length} 张临时图片吗？`,
+      detail:
+        "会同时删除工程目录里的图片文件。\n删除后可以用「添加临时图片」重新导入。",
+      confirmLabel: "删除",
+      danger: true,
+    });
+    if (!confirmed) return;
+    await removeTempImages(removed);
+  };
+
+  /**
+   * @function 点击卡片本体 → 在预览里选中这张临时图片
+   * 卡片里的控件（按钮 / 滑杆 / 数值框 / 勾选框）不参与，见 {@link isInteractiveClickTarget}。
+   */
+  const handleCardClick = (event: React.MouseEvent, index: number) => {
+    if (isInteractiveClickTarget(event.target)) return;
+    onSelectVisual?.(index);
   };
 
   const addTempImage = async () => {
@@ -176,6 +250,16 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
   return (
     <div className="temp-images-properties">
       <h4>临时图片（路人/道具）</h4>
+      {/* 批量删除工具条：勾选后才出现「批量删除」 */}
+      <BatchSelectionBar
+        label="临时图片"
+        total={currentTempImages.length}
+        selectedCount={batch.count}
+        onToggleAll={batch.toggleAll}
+        onClear={batch.clear}
+        onDelete={handleBatchDelete}
+        previewHint="点卡片 = 预览定位 · 勾选框 = 批量删除"
+      />
       {currentTempImages.map((temp, index) => (
         <div
           key={temp.uuid || index}
@@ -184,11 +268,21 @@ const TempImagesProperties: React.FC<TempImagesPropertiesProps> = ({
           }}
           className={`temp-image-item${
             flashingIndex === index ? " property-focus-flash" : ""
-          }`}
+          }${activeIndex === index ? " visual-card-preview-selected" : ""}${
+            batch.has(index) ? " visual-card-batch-selected" : ""
+          }${onSelectVisual ? " visual-card-clickable" : ""}`}
+          // 点卡片 = 在预览里选中这张临时图片（与批量勾选无关）
+          onClick={(event) => handleCardClick(event, index)}
+          data-preview-selected={activeIndex === index ? "true" : undefined}
         >
           <div className="temp-image-header">
-            {/* 缩略图 + 名称：不看图片也能确认是哪一张路人/道具 */}
+            {/* 勾选框 + 缩略图 + 名称：不看图片也能确认是哪一张路人/道具 */}
             <div className="temp-image-title">
+              <BatchCardCheckbox
+                checked={batch.has(index)}
+                label={`选择临时图片 ${index + 1}`}
+                onToggle={() => batch.toggle(index)}
+              />
               <TempImageThumb
                 imagePath={temp.imagePath}
                 label={`临时图片 ${index + 1}`}

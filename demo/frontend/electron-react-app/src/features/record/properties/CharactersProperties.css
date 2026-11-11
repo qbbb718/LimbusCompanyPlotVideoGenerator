@@ -23,6 +23,20 @@
   margin-bottom: 8px;
 }
 
+/* 标题行左侧：批量勾选框 + 角色名（名称过长时省略，别把右侧按钮挤出去） */
+.character-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.character-heading h5 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .character-header h5 {
   margin: 0;
   font-size: 14px;
