@@ -320,6 +320,17 @@ export const EFFECT_TYPE_FADE_FROM_WHITE = "FADE_FROM_WHITE";
  */
 export const EFFECT_TYPE_CAMERA_SHAKE = "CAMERA_SHAKE";
 
+/**
+ * 特效类型：T 巢滤镜（「剧情编辑 → 特效」里的画面层调色开关）。
+ *
+ * <p>把整幅画面压成 T 巢那种棕褐色老照片：先算亮度（Rec.601），再把亮度映射成一条
+ * "暗部偏红褐、亮部偏米白"的单色带。**只作用于画面层**（背景 / 立绘 / 临时图片）——
+ * 后端在场景画布上就染完了，UI 与台词是第二趟才叠上去的，所以按钮/面板/文本框
+ * 天然不会被染色（见 `render/video/TCorpFilter.java`）。
+ * 取值与后端 EffectVisual.TYPE_T_CORP_FILTER 一致（曲线见 preview/tCorpFilter.ts）。
+ */
+export const EFFECT_TYPE_T_CORP_FILTER = "T_CORP_FILTER";
+
 // 特效视觉元素（记录级特效条目）
 export interface EffectVisual {
   /**

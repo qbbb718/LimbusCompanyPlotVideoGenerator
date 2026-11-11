@@ -70,6 +70,11 @@ interface CameraModeViewProps {
   onLayerMove: (layer: PreviewLayer, position: DragPoint) => void;
   onLayerDragEnd: (layer: PreviewLayer) => void;
   onLayerDragCancel: (layer: PreviewLayer) => void;
+  /**
+   * T 巢滤镜（画面层染色）：世界视图里也把它画出来，
+   * 否则「摄像机」页签构图时看到的配色和成片不是同一个，取景会误判。
+   */
+  tone?: boolean;
 }
 
 const FRAME_EDGES = ["n", "s", "e", "w"] as const;
@@ -105,6 +110,7 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
   onLayerMove,
   onLayerDragEnd,
   onLayerDragCancel,
+  tone = false,
 }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [altHeld, setAltHeld] = useState(false);
@@ -396,7 +402,7 @@ const CameraModeView: React.FC<CameraModeViewProps> = ({
         {/* 世界参考框：背景归位范围，镜头夹取的基准 */}
         <div className="camera-world-ref" style={rectStyle(worldRef, worldBox)} />
 
-        <PreviewSceneLayer items={sceneItems} frame={worldSize} />
+        <PreviewSceneLayer items={sceneItems} frame={worldSize} tone={tone} />
 
         {/* 选中框：只做提示，不吃事件（拖动仍然交给下面的热区层 / 取景框边框） */}
         {selectedWorldLayer && (

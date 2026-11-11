@@ -3,9 +3,11 @@ import {
   EFFECT_TYPE_CROSS_DISSOLVE,
   EFFECT_TYPE_FADE_FROM_BLACK,
   EFFECT_TYPE_FADE_FROM_WHITE,
+  EFFECT_TYPE_T_CORP_FILTER,
   Record,
   START_TRANSITION_FRAMES,
 } from "@types";
+import { isTCorpFilterEnabled, toggleTCorpFilter } from "../preview/tCorpFilter";
 import "../RecordEditor.css";
 import "./EffectsProperties.css";
 
@@ -18,7 +20,7 @@ interface EffectsPropertiesProps {
 /** 导出视频的帧率（与 RecordEditor 里 generateVideo 传的 30 一致），只用于把帧数换算成秒来提示 */
 const EXPORT_FRAME_RATE = 30;
 
-interface TransitionOption {
+interface EffectOption {
   /** 特效类型，与后端 EffectVisual.TYPE_* 一致 */
   type: string;
   /** 面板上的名称 */
@@ -31,7 +33,7 @@ interface TransitionOption {
  * 三种起始转场：叠的内容不同，淡出规则完全一样（见 START_TRANSITION_FRAMES）。
  * 顺序即优先级，与后端 StartTransition.kindOf 保持一致。
  */
-const TRANSITION_OPTIONS: TransitionOption[] = [
+const TRANSITION_OPTIONS: EffectOption[] = [
   {
     type: EFFECT_TYPE_CROSS_DISSOLVE,
     name: "交叉溶解转场",
@@ -52,6 +54,21 @@ const TRANSITION_OPTIONS: TransitionOption[] = [
 /** 该类型是不是起始转场（互斥组） */
 const isTransitionType = (type: string | undefined): boolean =>
   TRANSITION_OPTIONS.some((option) => option.type === type);
+
+/**
+ * 画面滤镜：整幅画面调色，<b>不互斥</b>、可以与起始转场同时开。
+ *
+ * <p>与转场不同的是它改的是"画面内容"而不是"开头那几帧"，所以它同时影响
+ * 预览图、播放和导出成片（转场只影响成片开头）。
+ */
+const FILTER_OPTIONS: EffectOption[] = [
+  {
+    type: EFFECT_TYPE_T_CORP_FILTER,
+    name: "T巢滤镜",
+    description:
+      "整幅画面压成 T 巢的棕褐色调（老照片）：暗部偏红褐、亮部偏米白。只染画面层，UI 与台词不受影响。",
+  },
+];
 
 /**
  * @function 取记录当前生效的起始转场类型
@@ -89,6 +106,13 @@ const activeTransitionType = (record: Record): string | undefined => {
  * <p><b>镜头摇动不在这个页签</b>：它是镜头层的动态效果，已归到「摄像机 → 预设」
  * （见 `preview/cameraPresets.ts`）。数据同样写在 `record.effects` 里，只是按 `type` 区分，
  * 所以两个页签共用同一个数组、互不干扰。
+ *
+ * <p><b>T 巢滤镜</b>（{@link FILTER_OPTIONS}）与三种转场不同：它不是"开头几帧的叠加层"，
+ * 而是把<b>整幅画面</b>调成棕褐色。勾选 = `record.effects` 里加一条
+ * `{ type: "T_CORP_FILTER", enabled: true }`（读写在 `preview/tCorpFilter.ts`），
+ * 影响的是预览图、播放与导出成片，但<b>只染画面层</b>（背景/立绘/临时图片），
+ * UI 与台词不受影响——层次边界在后端合成时就定死了，见 `render/video/TCorpFilter.java`。
+ * 它与起始转场<b>不互斥</b>，可以同时开。
  */
 const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
   selectedRecord,
@@ -97,6 +121,7 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
 }) => {
   const effects = selectedRecord.effects || [];
   const activeType = activeTransitionType(selectedRecord);
+  const toneEnabled = isTCorpFilterEnabled(effects);
   const seconds = (START_TRANSITION_FRAMES / EXPORT_FRAME_RATE).toFixed(2);
 
   /**
@@ -127,7 +152,6 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
       <p className="effects-hint">
         {`只作用于导出视频：开头 ${START_TRANSITION_FRAMES} 帧（约 ${seconds} 秒）叠一层图像淡出，记录时长与预览图不变；三种互斥。`}
       </p>
-
       <div className="effects-list">
         {TRANSITION_OPTIONS.map((option) => {
           const checked = activeType === option.type;
@@ -158,9 +182,40 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
           </p>
         )}
 
+      <h4 style={{ marginTop: 18 }}>画面滤镜</h4>
+      <p className="effects-hint">
+        只作用于画面层（背景 / 立绘 / 临时图片）：预览图与导出视频都会跟着变。
+        对话框、地点牌、角色名片与台词文字不受影响。
+      </p>
+      <div className="effects-list">
+        {FILTER_OPTIONS.map((option) => {
+          // 目前只有一种画面滤镜；以后加第二种时这里改成按 option.type 分别判断即可
+          const checked = toneEnabled;
+          return (
+            <div key={option.type} className={`effect-item${checked ? " active" : ""}`}>
+              <label className="effect-item-head">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    updateRecord(selectedRecordIndex, {
+                      ...selectedRecord,
+                      effects: toggleTCorpFilter(effects, e.target.checked),
+                    })
+                  }
+                  aria-label={option.name}
+                />
+                <span className="effect-item-name">{option.name}</span>
+              </label>
+              <p className="effect-item-desc">{option.description}</p>
+            </div>
+          );
+        })}
+      </div>
+
       {/* 指路而不是入口：镜头摇动是镜头层效果，控件已经搬到「摄像机 → 预设」 */}
       <p className="effects-hint" style={{ marginTop: 12, marginBottom: 0 }}>
-        镜头摇动在「摄像机」页签的「预设」区域；这里只管起始转场。
+        镜头摇动在「摄像机」页签的「预设」区域；这里只管起始转场与画面滤镜。
       </p>
     </div>
   );

@@ -122,3 +122,77 @@ describe("PreviewSceneLayer", () => {
     expect(images[1].className).not.toContain("dim");
   });
 });
+
+/**
+ * T 巢滤镜（画面层染色）：
+ * - 只罩住世界层那一组：UI 与边框暗角不进染色组，否则对话框/名片会被一起染黄；
+ * - 关的时候一个节点都不多（DOM 与没有这个功能时一致，旧测试/快照不受影响）。
+ */
+describe("PreviewSceneLayer T巢滤镜", () => {
+  const worldTwo: SceneLayerItem[] = [
+    background,
+    { ...background, key: "character:0", src: "/assets/characters/c.png" },
+    border,
+    dialogBox,
+  ];
+
+  test("开启后：染色组里只有世界层，UI 与边框在外面", () => {
+    const { container } = render(
+      <PreviewSceneLayer items={worldTwo} frame={FRAME} clipRect={SCENE_BOX} tone />,
+    );
+    const tone = container.querySelector(".preview-scene-tone") as HTMLElement;
+    expect(tone).toBeTruthy();
+    expect(tone.style.filter).toBe("url(#dsh-t-corp-filter)");
+
+    // 染色组里只有背景 + 立绘
+    expect(tone.querySelectorAll(".preview-scene-item").length).toBe(2);
+
+    // 对话框不在染色组里（否则 UI 会被染成棕色）
+    const dialog = container.querySelector(
+      '.preview-scene-item[src*="dialogBox"]',
+    ) as HTMLImageElement;
+    expect(dialog).toBeTruthy();
+    expect(tone.contains(dialog)).toBe(false);
+
+    // 边框暗角也不染色（保持纯黑）
+    const borderEl = container.querySelector(
+      ".preview-scene-shape.preview-scene-border",
+    ) as HTMLElement;
+    expect(tone.contains(borderEl)).toBe(false);
+  });
+
+  test("关闭时：不渲染染色组，DOM 与原来一致", () => {
+    const { container } = render(
+      <PreviewSceneLayer items={worldTwo} frame={FRAME} clipRect={SCENE_BOX} />,
+    );
+    expect(container.querySelector(".preview-scene-tone")).toBeNull();
+    // 世界层仍然在裁剪容器里
+    const clip = container.querySelector(".preview-scene-clip") as HTMLElement;
+    expect(clip.querySelectorAll(".preview-scene-item").length).toBe(2);
+  });
+
+  test("摄像机模式（无 clipRect）下同样只染世界层", () => {
+    const { container } = render(
+      <PreviewSceneLayer items={worldTwo} frame={FRAME} tone />,
+    );
+    const tone = container.querySelector(".preview-scene-tone") as HTMLElement;
+    expect(tone).toBeTruthy();
+    expect(tone.querySelectorAll(".preview-scene-item").length).toBe(2);
+    expect(container.querySelector(".preview-scene-tone .preview-scene-border")).toBeNull();
+
+    // 绘制顺序不变：染色组在最前，边框与 UI 依次在后
+    const layer = container.querySelector(".preview-scene-layer") as HTMLElement;
+    const classes = Array.from(layer.children).map((el) => el.className);
+    expect(classes[0]).toContain("preview-scene-tone");
+    expect(classes.slice(1).length).toBe(2);
+  });
+
+  test("没有世界层时不渲染空染色组", () => {
+    const { container } = render(
+      <PreviewSceneLayer items={[border, dialogBox]} frame={FRAME} tone />,
+    );
+    expect(container.querySelector(".preview-scene-tone")).toBeNull();
+    // UI 照常画出来，只是没有画面层需要染色
+    expect(container.querySelectorAll(".preview-scene-item").length).toBe(1);
+  });
+});

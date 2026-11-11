@@ -42,6 +42,7 @@ import com.lbc_plot.render.audio.model.AudioCommand;
 import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.EffectVisual;
+import com.lbc_plot.render.video.TCorpFilter;
 import com.lbc_plot.render.engine.RenderOfImage;
 import com.lbc_plot.render.engine.BatchVideoProcessor;
 import com.lbc_plot.render.engine.VideoProgressTracker;
@@ -422,7 +423,7 @@ public class RecordController {
             // 也必须带上情绪动画签名：动画是"贴上去的第二层"，改了素材/偏移/代表帧时
             // 记录里其它字段可能一个都没变，只按 uuid 缓存的话预览图会一直显示旧动画。
             String cacheFileName = previewCacheFileName(record.getUuid(), width, height, plot,
-                    emotionAnimSignature(record));
+                    previewSignature(record));
             Path cacheDir = previewCacheDir();
 
             // 非强制刷新且缓存存在 → 直接返回
@@ -466,6 +467,28 @@ public class RecordController {
             String emotionSignature) {
         return String.format("preview_%s_%s_%dx%d_%s_%s.png",
                 PREVIEW_CACHE_VERSION, uuid, width, height, plot ? "plot" : "plain", emotionSignature);
+    }
+
+    /**
+     * 预览图的"画面内容签名"：除 uuid / 分辨率 / 剧情类型之外，还会改变像素的一切东西。
+     *
+     * <p>目前由两部分拼成：情绪动画签名 + T 巢滤镜开关。为什么要单独签名滤镜：
+     * 开/关滤镜时记录的 uuid、立绘、文本可能一个字节都没变，只按 uuid 缓存的话，
+     * <b>重新打开工程</b>（记录是干净的、不带 forceRefresh）会命中上一次渲的旧图，
+     * 用户会以为"开关不生效"。开滤镜时换一个文件名，两种情况各存一份，互不覆盖。
+     *
+     * <p>没开滤镜时返回的仍是 {@link #emotionAnimSignature} 的原值——
+     * 因此绝大多数记录的缓存键与加滤镜之前完全一致，老缓存不会被这次改动全部作废。
+     *
+     * @param record 记录（可为 null）
+     * @return 可直接拼进文件名的签名片段
+     */
+    static String previewSignature(com.lbc_plot.plot.model.Record record) {
+        String emotion = emotionAnimSignature(record);
+        if (!TCorpFilter.isActive(record)) {
+            return emotion;
+        }
+        return "tone" + ("none".equals(emotion) ? "" : "-" + emotion);
     }
 
     /**

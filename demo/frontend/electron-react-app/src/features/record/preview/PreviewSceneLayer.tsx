@@ -13,6 +13,7 @@
  */
 import React from "react";
 import type { ImageSize, PreviewRect } from "./previewLayout";
+import { tCorpFilterUrl } from "./tCorpFilter";
 
 /** 一个待绘制的场景元素 */
 export interface SceneLayerItem {
@@ -62,6 +63,17 @@ interface PreviewSceneLayerProps {
    * （设计画布中间的 80%），摄像机模式不传（世界视图要看全）。
    */
   clipRect?: PreviewRect;
+  /**
+   * T 巢滤镜（画面层染色）。
+   *
+   * <p>开的时候把<b>世界层那一组</b>（背景 / 立绘 / 临时图片）包进一个带 SVG 滤镜的容器：
+   * 滤镜作用在合成后的整组上，与后端"先合成场景画布再查表"的顺序一致。
+   * 边框暗角与 UI（对话框、地点牌）<b>不在这一组里</b>，所以不会被染色——
+   * 与成片的层次边界完全相同（见 `render/video/TCorpFilter.java`）。
+   *
+   * <p>关的时候不渲染任何多余节点：DOM 与没有这个功能时逐节点一致。
+   */
+  tone?: boolean;
   className?: string;
 }
 
@@ -83,6 +95,7 @@ const PreviewSceneLayer: React.FC<PreviewSceneLayerProps> = ({
   frame,
   className = "",
   clipRect,
+  tone = false,
 }) => {
   if (frame.width <= 0 || frame.height <= 0) return null;
 
@@ -150,14 +163,42 @@ const PreviewSceneLayer: React.FC<PreviewSceneLayerProps> = ({
   const clippedItems = clipRect ? items.filter((item) => item.clipWithScene) : [];
   const topItems = clipRect ? items.filter((item) => !item.clipWithScene) : items;
 
+  /** T 巢滤镜：一个滤镜根罩住整组画面层（见 tone 的说明） */
+  const toneStyle: React.CSSProperties | undefined = tone
+    ? { filter: tCorpFilterUrl() }
+    : undefined;
+
+  /** 画面层那一组：开滤镜时包一层，关时不额外加节点 */
+  const toneGroup = (list: SceneLayerItem[]) => {
+    if (!tone) return <>{list.map(renderItem)}</>;
+    // 没有画面层就不留空容器（世界视图里 UI 被裁掉时会出现这种情况）
+    if (list.length === 0) return null;
+    return (
+      <div className="preview-scene-tone" style={toneStyle} key="preview-scene-tone">
+        {list.map(renderItem)}
+      </div>
+    );
+  };
+
   return (
     <div className={`preview-scene-layer ${className}`.trim()} aria-hidden="true">
       {clipRect && (
         <div className="preview-scene-clip" style={clipStyle}>
-          {clippedItems.map(renderItem)}
+          {toneGroup(clippedItems)}
         </div>
       )}
-      {topItems.map(renderItem)}
+      {/*
+        无裁剪时（世界视图）所有图层平铺，顺序是「世界层 → 边框 → UI」；
+        染色只罩前面那一段，所以按 clipWithScene 切一刀，顺序不变。
+      */}
+      {clipRect
+        ? topItems.map(renderItem)
+        : tone
+          ? [
+              toneGroup(topItems.filter((item) => item.clipWithScene)),
+              ...topItems.filter((item) => !item.clipWithScene).map(renderItem),
+            ]
+          : topItems.map(renderItem)}
     </div>
   );
 };

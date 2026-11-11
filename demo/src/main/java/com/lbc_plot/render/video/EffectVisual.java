@@ -43,6 +43,15 @@ public class EffectVisual extends VisualElement {
      */
     public static final String TYPE_CAMERA_SHAKE = "CAMERA_SHAKE";
 
+    /**
+     * T 巢滤镜：把整幅画面压成 T 巢的棕褐色老照片色调。
+     *
+     * <p>只影响<b>画面层</b>（背景 / 立绘 / 临时图片）——调色作用在场景画布上，而 UI 与台词是
+     * 第二趟合成时才叠上去的，所以<b>UI 不被染色</b>是结构性的（见 {@link TCorpFilter}）。
+     * 与起始转场、镜头摇动都互不冲突，可以同时启用。
+     */
+    public static final String TYPE_T_CORP_FILTER = "T_CORP_FILTER";
+
     /** 特效类型，取值见 {@code TYPE_*} 常量 */
     private String type;
 
@@ -166,6 +175,23 @@ public class EffectVisual extends VisualElement {
     @JsonIgnore
     public boolean isCameraShake() {
         return isEnabledType(TYPE_CAMERA_SHAKE);
+    }
+
+    /**
+     * @function 创建"T 巢滤镜"特效条目
+     * @return 已启用的 T 巢滤镜特效
+     */
+    public static EffectVisual tCorpFilter() {
+        return new EffectVisual(TYPE_T_CORP_FILTER);
+    }
+
+    /**
+     * @function 判断这条特效是不是"已启用的 T 巢滤镜"
+     * @return 类型匹配且勾选时返回 true
+     */
+    @JsonIgnore
+    public boolean isTCorpFilter() {
+        return isEnabledType(TYPE_T_CORP_FILTER);
     }
 
     public Double getAmplitude() {

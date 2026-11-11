@@ -31,6 +31,7 @@ import com.lbc_plot.render.video.BackgroundVisual;
 import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterRef;
 import com.lbc_plot.render.video.CharacterVisual;
+import com.lbc_plot.render.video.TCorpFilter;
 import com.lbc_plot.render.video.TempImageVisual;
 import com.lbc_plot.render.video.anim.EmotionAnim;
 import com.lbc_plot.render.video.anim.EmotionAnimPlacement;
@@ -310,10 +311,7 @@ public class RenderOfImage {
                 renderCharacters(composer, record, camera, frameIndex, emotionPoster);
             }
             renderTempImages(composer, record, camera, frameIndex);
-            composer.addImageLayer(border, 0, 0);
-            BufferedImage coImage = composer.compose();
-            // 必须清空：否则场景图层会在第二趟里被重复绘制一遍
-            composer.clearLayers();
+            BufferedImage coImage = composeSceneCanvas(composer, record);
 
             // 第二趟：黑底 + 0.8 缩放的场景 + UI + 台词
             composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
@@ -356,9 +354,8 @@ public class RenderOfImage {
                 renderCharacters(composer, record, camera, frameIndex);
             }
             renderTempImages(composer, record, camera, frameIndex);
-            composer.addImageLayer(border, 0, 0);
-            BufferedImage coImage = composer.compose();
-            composer.clearLayers();
+            // 场景画布（滤镜只作用在这一层，UI 是下面第二趟才叠上去的）
+            BufferedImage coImage = composeSceneCanvas(composer, record);
 
             // 第二趟：黑底 + 0.8 缩放的场景 + UI（不含台词）
             composer.addImageLayerScaled(coImage, designW / 10, designH / 10, PLOT_SCENE_SCALE);
@@ -1137,6 +1134,52 @@ public class RenderOfImage {
             logger.error("添加对话文本失败", e);
             throw new IOException("对话文本渲染失败", e);
         }
+    }
+
+    /**
+     * 合成"场景画布"（第一趟）：背景 + 立绘 + 临时图片，按需调色，最后压边框暗角。
+     *
+     * <p><b>为什么把滤镜卡在这一步</b>：这一张画布是"画面层"的全部内容，UI 与台词是第二趟
+     * 才叠上去的（见 {@link #renderPreInternal}）。把调色放在这里，渲一帧只处理一张 1080p
+     * 场景图，而不是整张成片（含 UI）——既满足"UI 不染色"，也不会对同一块像素重复处理。
+     *
+     * <p><b>边框暗角为什么在调色之后压</b>：遮罩是纯黑的（{@code buildBorderMask}），调色会
+     * 把纯黑抬成 #070300。先调色再压遮罩，黑边就仍是真正的黑——与"遮罩不参与画面特效"的
+     * 一贯约定一致，前端 DOM 层（遮罩在染色组之外）也才是这么画的。
+     *
+     * <p>关滤镜时走的仍是老路径：把遮罩当普通图层加进去再 {@code compose()}，
+     * 与改造前逐像素一致（一张多余的中间图都不多分配）。
+     *
+     * @param composer 已经画好背景/立绘/临时图片的合成器
+     * @param record   当前记录（读 {@code record.effects} 判断滤镜是否开启）
+     * @return 场景画布（1080p 设计画布，含边框暗角）；调用方负责后续的缩放合成
+     */
+    private static BufferedImage composeSceneCanvas(FrameComposerService composer, Record record) {
+        if (!TCorpFilter.isActive(record)) {
+            composer.addImageLayer(border, 0, 0);
+            BufferedImage plain = composer.compose();
+            // 必须清空：否则场景图层会在第二趟里被重复绘制一遍
+            composer.clearLayers();
+            return plain;
+        }
+
+        // 调色：只作用在画面层上（此时 UI 还没画上来）
+        BufferedImage toned = composer.compose();
+        composer.clearLayers();
+        TCorpFilter.applyInPlace(toned);
+
+        // 遮罩最后压：保持纯黑，不跟着偏色
+        if (border != null) {
+            Graphics2D g2d = toned.createGraphics();
+            try {
+                RenderQualityUtils.setupHighQualityRendering(g2d);
+                g2d.setClip(0, 0, toned.getWidth(), toned.getHeight());
+                g2d.drawImage(border, 0, 0, null);
+            } finally {
+                g2d.dispose();
+            }
+        }
+        return toned;
     }
 
     /**

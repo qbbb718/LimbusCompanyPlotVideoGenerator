@@ -25,6 +25,8 @@ import {
 import type { CameraEditor } from "./preview/useCameraEditor";
 import { DEFAULT_CAMERA } from "./preview/previewLayout";
 import { applyCameraShake, cameraShakeConfigOf } from "./preview/cameraShake";
+import { isTCorpFilterEnabled } from "./preview/tCorpFilter";
+import TCorpFilterDefs from "./preview/TCorpFilterDefs";
 import { useTimelinePlayback } from "./preview/useTimelinePlayback";
 import { shouldRevealInWorld } from "./preview/reveal";
 import { anchorOf, durationEndFrameOf, isAnimated } from "./animation/spriteAnimator";
@@ -278,6 +280,22 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
    */
   const shakeConfig = useMemo(
     () => cameraShakeConfigOf(selectedRecord.effects),
+    [selectedRecord.effects],
+  );
+
+  /**
+   * T 巢滤镜是否开启（「特效」页签里的开关）。
+   *
+   * <p>三种画面来源都要跟着它走，缺一个就会出现"松手就变回彩色"这类不一致：
+   * <ol>
+   *   <li>栅格预览图：后端渲的时候已经染过，前端不用管；</li>
+   *   <li>DOM 场景层（拖拽 / 播放 / 对位自检）：由 {@link PreviewSceneLayer} 的 `tone` 染色；</li>
+   *   <li>摄像机视图（世界视图）：同样传 `tone`，构图时看到的配色就是成片的配色。</li>
+   * </ol>
+   * 染色范围只到画面层，UI 不在染色组里（见 `preview/tCorpFilter.ts` 的说明）。
+   */
+  const tCorpOn = useMemo(
+    () => isTCorpFilterEnabled(selectedRecord.effects),
     [selectedRecord.effects],
   );
 
@@ -841,6 +859,8 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
 
   return (
     <div className="preview-container">
+      {/* T 巢滤镜的 <filter> 定义：关的时候不渲染任何节点 */}
+      <TCorpFilterDefs enabled={tCorpOn} />
       {/*
         顶部状态条：只显示"当前在看什么" + 一个播放按钮。
         世界视图（「摄像机」页签）里点播放会临时切到成片预览，停止后自动回到世界视图。
@@ -914,6 +934,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
             onLayerMove={(layer, position) => onElementDragMove?.(layer, position)}
             onLayerDragEnd={(layer) => onElementDragEnd?.(layer)}
             onLayerDragCancel={(layer) => onElementDragCancel?.(layer)}
+            tone={tCorpOn}
           />
         ) : (
           stage && (
@@ -945,6 +966,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
                 items={sceneItems}
                 frame={frameSize}
                 clipRect={sceneBoxRect}
+                tone={tCorpOn}
               />
             )}
 

@@ -8,6 +8,7 @@ import {
   EFFECT_TYPE_CROSS_DISSOLVE,
   EFFECT_TYPE_FADE_FROM_BLACK,
   EFFECT_TYPE_FADE_FROM_WHITE,
+  EFFECT_TYPE_T_CORP_FILTER,
   EffectVisual,
   Emotion,
   Record as PlotRecord,
@@ -168,9 +169,9 @@ describe("EffectsProperties 起始转场", () => {
   it("不再提供「镜头摇动」开关（已迁到「摄像机 → 预设」）", () => {
     setupPanel(makeRecord([{ type: EFFECT_TYPE_CAMERA_SHAKE }]));
 
-    // 这个页签只剩三种起始转场
+    // 这个页签只剩三种起始转场 + 一个画面滤镜（T巢滤镜），没有镜头摇动
     expect(screen.queryByRole("checkbox", { name: "镜头摇动" })).toBeNull();
-    expect(screen.getAllByRole("checkbox")).toHaveLength(3);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(4);
     // 提示去「摄像机 → 预设」找
     expect(screen.getByText(/「摄像机」页签的「预设」/)).toBeInTheDocument();
   });
@@ -191,5 +192,80 @@ describe("EffectsProperties 起始转场", () => {
       { type: EFFECT_TYPE_CAMERA_SHAKE, enabled: true },
       { type: EFFECT_TYPE_FADE_FROM_BLACK, enabled: true },
     ]);
+  });
+});
+
+/**
+ * 画面滤镜（T巢滤镜）：
+ * - 与转场**不互斥**：可以同时开，勾转场不会把滤镜挤掉，反之亦然；
+ * - 写回形状 `{ type: "T_CORP_FILTER", enabled: true }`（与其它纯开关特效一致）；
+ * - 取消勾选只删自己。
+ */
+describe("EffectsProperties 画面滤镜（T巢滤镜）", () => {
+  it("默认不勾选，说明里写清只染画面层", () => {
+    setupPanel(makeRecord());
+    expect(checkbox("T巢滤镜")).not.toBeChecked();
+    expect(screen.getByText(/只作用于画面层/)).toBeInTheDocument();
+  });
+
+  it("记录里已有这条时回显为勾选（enabled 缺省也算）", () => {
+    setupPanel(makeRecord([{ type: EFFECT_TYPE_T_CORP_FILTER }]));
+    expect(checkbox("T巢滤镜")).toBeChecked();
+
+    setupPanel(makeRecord([{ type: EFFECT_TYPE_T_CORP_FILTER, enabled: false }]));
+    expect(screen.getAllByRole("checkbox", { name: "T巢滤镜" })[1]).not.toBeChecked();
+  });
+
+  it("勾选写回 { type, enabled: true }，不碰已有转场", async () => {
+    const updateRecord = setupPanel(
+      makeRecord([{ type: EFFECT_TYPE_FADE_FROM_BLACK, enabled: true }]),
+    );
+
+    fireEvent.click(checkbox("T巢滤镜"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [index, updatedRecord] = updateRecord.mock.calls[0];
+    expect(index).toBe(1);
+    expect(updatedRecord.effects).toEqual([
+      { type: EFFECT_TYPE_FADE_FROM_BLACK, enabled: true },
+      { type: EFFECT_TYPE_T_CORP_FILTER, enabled: true },
+    ]);
+    // 转场那三个复选框的状态不变
+    expect(checkbox("黑屏转场")).toBeChecked();
+  });
+
+  it("取消勾选只删自己，转场与未知特效原样保留", async () => {
+    const updateRecord = setupPanel(
+      makeRecord([
+        { type: "SOME_FUTURE_EFFECT" },
+        { type: EFFECT_TYPE_T_CORP_FILTER, enabled: true },
+        { type: EFFECT_TYPE_FADE_FROM_WHITE, enabled: true },
+      ]),
+    );
+
+    fireEvent.click(checkbox("T巢滤镜"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.effects).toEqual([
+      { type: "SOME_FUTURE_EFFECT" },
+      { type: EFFECT_TYPE_FADE_FROM_WHITE, enabled: true },
+    ]);
+  });
+
+  it("勾转场不会把滤镜挤掉（两者不互斥）", async () => {
+    const updateRecord = setupPanel(
+      makeRecord([{ type: EFFECT_TYPE_T_CORP_FILTER, enabled: true }]),
+    );
+
+    fireEvent.click(checkbox("白屏转场"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.effects).toEqual([
+      { type: EFFECT_TYPE_T_CORP_FILTER, enabled: true },
+      { type: EFFECT_TYPE_FADE_FROM_WHITE, enabled: true },
+    ]);
+    expect(checkbox("T巢滤镜")).toBeChecked();
   });
 });

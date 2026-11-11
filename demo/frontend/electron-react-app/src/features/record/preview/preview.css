@@ -74,6 +74,30 @@
   inset: 0;
 }
 
+/* T 巢滤镜的 <filter> 定义：不占布局、不可点，只被 filter: url(#...) 引用 */
+.t-corp-filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/**
+ * T 巢滤镜的染色组：只装世界层（背景 / 立绘 / 临时图片），滤镜挂在这一层上。
+ *
+ * 为什么单独包一层而不是给每个 `<img>` 各挂一个滤镜：
+ * 1. 滤镜作用在"整组合成后"的像素上，与后端"先合成场景画布再查表"的顺序一致，
+ *    立绘与背景交叠的半透明边缘才不会两次分别查表；
+ * 2. 一张画面只有一个滤镜根，比逐元素挂滤镜便宜（元素一多，合成层会明显变多）。
+ *
+ * `inset: 0` 让它与父容器同尺寸，子元素按百分比定位的结果因此完全不变。
+ */
+.preview-scene-tone {
+  position: absolute;
+  inset: 0;
+}
+
 .preview-scene-item {
   position: absolute;
   display: block;
