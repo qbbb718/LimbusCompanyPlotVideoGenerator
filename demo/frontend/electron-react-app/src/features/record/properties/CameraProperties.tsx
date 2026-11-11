@@ -9,6 +9,9 @@
  * <p>「预设」是一块独立的注册表驱动区块（`properties/CameraPresets.tsx` +
  * `preview/cameraPresets.ts`）：新增镜头层效果不需要改这个文件。
  *
+ * <p>最后一块「构图辅助」是本页签唯一的**工程级**开关（镜头自动跟随说话人）：控件放在这里，
+ * 但它写的是 `projectSettings`、作用于整个工程，规则见 `preview/cameraFollow.ts`。
+ *
  * <h3>为什么单独成一个页签</h3>
  * 这些控件原先浮在预览画面上的工具条里（遮住画面、和「最终效果」抢位置，而且不算"属性"）。
  * 挪到与「立绘」「背景」同级的页签后：进「摄像机」页签 = 预览切到世界视图，离开 = 回到成片，
@@ -53,6 +56,15 @@ interface CameraPropertiesProps {
   updateRecord: (index: number, updatedRecord: Record) => void;
   /** 摄像机编辑状态（与预览里的世界视图共用同一份，由 RecordEditor 持有） */
   editor: CameraEditor;
+  /**
+   * 工程级开关「镜头自动跟随说话人」（`projectSettings.cameraFollowSpeaker`）。
+   *
+   * <p>它作用于**整个工程**（不是这条记录），只是控件放在了这个页签里；
+   * 计算规则在 `preview/cameraFollow.ts`，由 RecordEditor 在写回记录时调用。
+   */
+  cameraFollowSpeaker: boolean;
+  /** 勾选 / 取消「镜头自动跟随说话人」（写回工程设置，与其它全局选项同一份） */
+  onCameraFollowSpeakerChange: (enabled: boolean) => void;
 }
 
 /** 缓动下拉的中文名（与后端 Camera.ease 的四种曲线一一对应） */
@@ -102,6 +114,8 @@ const CameraProperties: React.FC<CameraPropertiesProps> = ({
   selectedRecordIndex,
   updateRecord,
   editor,
+  cameraFollowSpeaker,
+  onCameraFollowSpeakerChange,
 }) => {
   const {
     camera,
@@ -428,6 +442,22 @@ const CameraProperties: React.FC<CameraPropertiesProps> = ({
       </div>
       <p className="camera-section-hint">
         「移元素」可直接拖动背景 / 立绘 / 临时图片；数值仍在各自页签。
+      </p>
+
+      {/* ===== 构图辅助：工程级开关（勾一次就一直用，所以放在面板最后） ===== */}
+      <h5>构图辅助</h5>
+      <label className="camera-follow-toggle">
+        <input
+          type="checkbox"
+          checked={cameraFollowSpeaker}
+          onChange={(event) => onCameraFollowSpeakerChange(event.target.checked)}
+          aria-label="镜头自动跟随说话人"
+          title="工程全局：勾上后，移动说话人立绘 / 切换说话人时自动把镜头对到说话人身上"
+        />
+        <span>镜头自动跟随说话人</span>
+      </label>
+      <p className="camera-section-hint">
+        工程全局选项：移动说话人立绘 / 切换说话人时自动对焦；手动调整优先。
       </p>
     </div>
   );

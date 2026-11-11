@@ -104,13 +104,16 @@ const animatedRecord = (camera: Partial<RecordCamera> = {}): PlotRecord =>
 /**
  * 带状态的测试壳：记录保存在这里，`useCameraEditor` 的写回直接落在这份记录上，
  * 与 RecordEditor 里的连接方式一致（那边只是多了撤销栈）。
- * `onRecord` 把每一次写回都交给用例断言"到底改了什么"。
+ * `onRecord` 把每一次写回都交给用例断言"到底改了什么"；
+ * 「镜头自动跟随说话人」是工程级开关，这里同样用一份本地状态模拟 projectSettings。
  */
 const Harness: React.FC<{
   initial: PlotRecord;
   onRecord?: (record: PlotRecord) => void;
-}> = ({ initial, onRecord }) => {
+  onFollowChange?: (enabled: boolean) => void;
+}> = ({ initial, onRecord, onFollowChange }) => {
   const [record, setRecord] = useState(initial);
+  const [followSpeaker, setFollowSpeaker] = useState(false);
   const updateRecord = (_index: number, next: PlotRecord) => {
     onRecord?.(next);
     setRecord(next);
@@ -128,6 +131,11 @@ const Harness: React.FC<{
       selectedRecordIndex={0}
       updateRecord={updateRecord}
       editor={editor}
+      cameraFollowSpeaker={followSpeaker}
+      onCameraFollowSpeakerChange={(enabled) => {
+        onFollowChange?.(enabled);
+        setFollowSpeaker(enabled);
+      }}
     />
   );
 };
@@ -331,5 +339,40 @@ describe("摄像机页签 → 拖动工具与视图按钮", () => {
 
     expect(screen.getByRole("region", { name: "摄像机预设" })).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: "镜头摇动" })).toBeTruthy();
+  });
+});
+
+describe("摄像机页签 → 构图辅助（镜头自动跟随说话人）", () => {
+  beforeEach(() => {
+    (global as any).Image = MockImage;
+  });
+
+  test("勾选框在页签里，默认关；勾选 / 取消都交给上层写工程设置", () => {
+    const onFollowChange = jest.fn();
+    render(
+      <Harness initial={makeRecord()} onFollowChange={onFollowChange} />,
+    );
+
+    const toggle = screen.getByLabelText(
+      "镜头自动跟随说话人",
+    ) as HTMLInputElement;
+    expect(toggle.type).toBe("checkbox");
+    expect(toggle.checked).toBe(false);
+
+    fireEvent.click(toggle);
+    expect(onFollowChange).toHaveBeenLastCalledWith(true);
+    expect(toggle.checked).toBe(true);
+
+    fireEvent.click(toggle);
+    expect(onFollowChange).toHaveBeenLastCalledWith(false);
+    expect(toggle.checked).toBe(false);
+  });
+
+  test("说明文字写清了「工程全局」与「手动调整优先」", () => {
+    setupPanel();
+
+    // 提示简化为一行，但必须点明两件事：作用于整个工程、手动调整优先
+    expect(screen.getByText(/工程全局选项：移动说话人立绘/)).toBeTruthy();
+    expect(screen.getByText(/手动调整优先/)).toBeTruthy();
   });
 });

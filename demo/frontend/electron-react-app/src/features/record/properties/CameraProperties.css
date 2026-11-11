@@ -372,3 +372,25 @@
   white-space: nowrap;
 }
 
+/* ===== 构图辅助：工程级开关（镜头自动跟随说话人） =====
+ * 勾选框 + 选项名整块可点；说明文字沿用 .camera-section-hint（12px 灰字）。 */
+
+.camera-follow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+}
+
+.camera-follow-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #1890ff;
+}
+

@@ -18,4 +18,11 @@ export interface ProjectSettings {
    * 与 `@features/common/types` 里的同名类型保持一致。
    */
   stayFrames?: number;
+  /**
+   * 镜头自动跟随说话人（工程级开关；控件在「摄像机」页签的「构图辅助」里）。
+   *
+   * <p>与 `@features/common/types` 里的同名字段保持一致：缺省 false（关），
+   * 由 `loadSettings` / `saveSettings` 随其它工程设置一起进 localStorage。
+   */
+  cameraFollowSpeaker?: boolean;
 }

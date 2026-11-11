@@ -138,6 +138,37 @@ export const normalizeStayFrames = (
   return Math.min(STAY_FRAMES_MAX, Math.max(STAY_FRAMES_MIN, Math.round(numeric)));
 };
 
+/* ==================== 镜头自动跟随说话人（工程级） ==================== */
+
+/**
+ * 镜头自动跟随说话人的默认值：**关**。
+ *
+ * <p>它改的是用户已经排好的镜头构图，开着就等于替用户做了一次决定，
+ * 所以默认必须是"关"（老工程 / 老 localStorage 里没有这个字段时也是关）。
+ * 与 `DEFAULT_PROJECT_SETTINGS.cameraFollowSpeaker` 一致。
+ */
+export const DEFAULT_CAMERA_FOLLOW_SPEAKER = false;
+
+/**
+ * @function 归一化"镜头自动跟随说话人"开关
+ *
+ * <p>来源可能是 localStorage / 旧工程文件 / 勾选框的 `checked`，
+ * 只认明确的"真"（true、"true"、1、"1"），其余一律按关处理——
+ * 开关默认关，宁可少跟随，也不能因为一个脏值把用户构图改掉。
+ *
+ * @param value 任意来源的开关值
+ * @return 是否开启
+ */
+export const normalizeCameraFollowSpeaker = (value: unknown): boolean => {
+  if (value === true) return true;
+  if (typeof value === "string") {
+    const text = value.trim().toLowerCase();
+    return text === "true" || text === "1";
+  }
+  if (typeof value === "number") return value === 1;
+  return DEFAULT_CAMERA_FOLLOW_SPEAKER;
+};
+
 /**
  * @function 把全局文字显示速度写到所有记录
  * "全局设置"里的"文字显示速度（全局）"修改后要统一覆盖每条记录的

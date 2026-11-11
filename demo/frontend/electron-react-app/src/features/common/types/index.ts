@@ -457,6 +457,20 @@ export interface ProjectSettings {
    * {@code ProjectConfig.DEFAULT_STAY_FRAMES} 一致）。改动后重新导出会强制重渲缓存片段。
    */
   stayFrames?: number;
+  /**
+   * 镜头自动跟随说话人（**工程级**开关；「摄像机」页签最下面「构图辅助」里的那个勾选框）。
+   *
+   * <p>勾上之后，用户**移动说话人的立绘**或**切换说话人**时，如果说话人已经不在可视范围里
+   * （背景宽于 16:9 或镜头被推进导致的），就自动把镜头对到说话人身上：
+   * 水平尽量居中立绘、垂直只做最小必要调整，并把镜头框整体夹在背景图片范围内。
+   *
+   * <p>手动调整镜头永远优先——自动跟随只在上述两个动作发生时重算一次，不会在后台覆盖用户的手动结果。
+   * 规则实现在 `record/preview/cameraFollow.ts`，写入的是**记录自己的** camera（随记录一起保存），
+   * 所以开关本身只影响编辑时的行为，不影响已有工程的成片。
+   *
+   * <p>缺省 false（老工程 / 老 localStorage 里没有这个字段）：不改变任何既有行为。
+   */
+  cameraFollowSpeaker?: boolean;
   bgmGain: number;
   voiceGain: number;
   sfxGain: number;
@@ -496,6 +510,8 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   textSpeed: 3,
   // 与后端 ProjectConfig.DEFAULT_STAY_FRAMES 一致（75 帧 = 2.5 秒 @30fps）
   stayFrames: 75,
+  // 镜头自动跟随说话人：缺省关（开着会改变用户已有的镜头构图，必须是显式选择）
+  cameraFollowSpeaker: false,
   bgmGain: 1.0,
   voiceGain: 1.0,
   sfxGain: 1.0,

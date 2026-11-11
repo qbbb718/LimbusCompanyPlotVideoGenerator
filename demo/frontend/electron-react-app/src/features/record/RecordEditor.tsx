@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import "./RecordEditor.css";
 import ApiService from "@services/ApiService";
 import {
@@ -21,6 +21,7 @@ import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
 import {
   normalizeTextSpeed,
+  normalizeCameraFollowSpeaker,
   plotOf,
   normalizeStayFrames,
   withGlobalTextSpeed,
@@ -46,6 +47,9 @@ import {
   cameraKeyframe,
   isIdentityCamera,
 } from "./preview/cameraView";
+import { autoFollowSpeaker } from "./preview/cameraFollow";
+import { buildSceneImageMap } from "./preview/previewAssets";
+import { useImageSizes } from "./preview/useImageSizes";
 import { useCameraEditor } from "./preview/useCameraEditor";
 import {
   EditorSnapshot,
@@ -217,6 +221,36 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   const lineFrames = Math.max(
     durationInfo.breakdown?.audioFrames ?? 0,
     durationInfo.breakdown?.textFrames ?? 0,
+  );
+
+  /**
+   * 当前记录里"世界场景"素材的原图尺寸（背景 / 立绘 / 临时图片）。
+   *
+   * <p>「镜头自动跟随说话人」要算背景的实际范围与立绘的矩形，都需要原图像素尺寸；
+   * `useImageSizes` 里是模块级缓存，预览与「摄像机」页签加载过的图这里能直接命中，
+   * 所以通常不会多发请求。尺寸还没到时按"拿不到"的兜底路径走（见 cameraFollow）。
+   */
+  const sceneImages = useMemo(
+    () => buildSceneImageMap(durationRecord),
+    [durationRecord],
+  );
+  const sceneImageSizes = useImageSizes(
+    useMemo(() => Object.values(sceneImages), [sceneImages]),
+  ).sizes;
+  const sceneImagesRef = useRef(sceneImages);
+  sceneImagesRef.current = sceneImages;
+  const sceneImageSizesRef = useRef(sceneImageSizes);
+  sceneImageSizesRef.current = sceneImageSizes;
+  /**
+   * 图层 key（`background:0` / `character:1`）→ 原图尺寸。
+   * 引用保持稳定（内部只读 ref），这样 {@link updateRecord} 的依赖数组不会每次渲染都变。
+   */
+  const sceneSizeOf = useCallback(
+    (key: string) => {
+      const url = sceneImagesRef.current[key];
+      return url ? sceneImageSizesRef.current[url] : undefined;
+    },
+    [],
   );
 
   /** 选中某一帧 → 让预览渲染那一帧（时间轴点击/关键帧点击都走这里） */
@@ -521,17 +555,47 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
    *
    * <p>用 useCallback 固定引用：下面 {@link updateCamera} 与摄像机页签都依赖它，
    * 属性面板每次渲染都换一个新函数会让下游的 effect 反复重挂。
+   *
+   * <h3>镜头自动跟随说话人（工程级开关）</h3>
+   * 记录写回之后顺手判断一次"这是不是移动说话人立绘 / 切换说话人"（见
+   * {@link autoFollowSpeaker}）。是的话，按需求重新算镜头位置再一起写回；不是的话原样写回。
+   *
+   * <p>放在**所有面板共用的写入口**上，而不是各处调用方里：预览拖立绘、立绘页签推滑杆、
+   * 文本页签换说话人…都能覆盖到，且只有这一个地方会动镜头，不会两处逻辑打架。
+   * 反过来，"手动改镜头"走的是 {@link updateCamera} → `updateRecord(只改了 camera)`，
+   * 不满足触发时机，所以**永远不会被自动逻辑覆盖**（手动优先）。
    */
   const updateRecord = useCallback(
     (index: number, updatedRecord: Record) => {
       pushUndo(true);
+      const previous = recordsRef.current[index];
+      const settings = projectSettingsRef.current;
+      const outcome = autoFollowSpeaker({
+        record: updatedRecord,
+        previous,
+        enabled: normalizeCameraFollowSpeaker(settings?.cameraFollowSpeaker),
+        plot: plotOf(settings),
+        sizeOf: sceneSizeOf,
+      });
+      const nextRecord = outcome.applied ? outcome.record : updatedRecord;
+      // 只在"切换说话人"时打一行日志：拖立绘时每帧都会走到这里，
+      // electron-log 的 console 传输是同步写，逐帧打日志会让拖动明显变卡。
+      if (outcome.applied && outcome.trigger === "speaker") {
+        console.log(
+          `[RecordEditor] 镜头自动跟随说话人（切换说话人）→ 镜头 ${Math.round(
+            nextRecord.camera?.centerX ?? 0,
+          )}, ${Math.round(nextRecord.camera?.centerY ?? 0)} · ${(
+            nextRecord.camera?.zoom ?? 1
+          ).toFixed(2)}×`,
+        );
+      }
       setRecords((prev) => {
         const newRecords = [...(prev || [])];
-        newRecords[index] = { ...updatedRecord, isDirty: true };
+        newRecords[index] = { ...nextRecord, isDirty: true };
         return newRecords;
       });
     },
-    [pushUndo, setRecords],
+    [pushUndo, setRecords, sceneSizeOf],
   );
 
   /**
@@ -746,6 +810,28 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
       setRecords((prev) => withGlobalTextSpeed(prev || [], normalized));
     },
     [pushUndo, setProjectSettings, setRecords],
+  );
+
+  /**
+   * @function 修改"镜头自动跟随说话人"（工程级开关，控件在「摄像机」页签的「构图辅助」里）
+   *
+   * <p>只写 projectSettings（与别的全局选项一样随设置持久化，见
+   * `loadSettings` / `saveSettings`）。已经排好的镜头不会被追溯修改：开关只在
+   * "移动说话人立绘 / 切换说话人"这两个动作发生时被 {@link updateRecord} 读到。
+   */
+  const handleCameraFollowSpeakerChange = useCallback(
+    (enabled: boolean) => {
+      setProjectSettings((prev) => ({
+        ...prev,
+        cameraFollowSpeaker: normalizeCameraFollowSpeaker(enabled),
+      }));
+    },
+    [setProjectSettings],
+  );
+
+  /** 当前开关状态（旧工程 / 旧 localStorage 里没有这个字段时按关处理） */
+  const cameraFollowSpeaker = normalizeCameraFollowSpeaker(
+    projectSettings.cameraFollowSpeaker,
   );
 
   const deleteRecord = (index: number) => {
@@ -1157,13 +1243,17 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
         );
       case "camera":
         // 镜头控件（起止 / 缓动 / 运镜时长 / 播放 / 复位 / 铺满背景 / 预设 / 拖动工具）；
-        // 状态与预览里的世界视图共用同一份（见 useCameraEditor）
+        // 状态与预览里的世界视图共用同一份（见 useCameraEditor）。
+        // 末尾的「构图辅助」是工程级开关「镜头自动跟随说话人」：控件在这里，
+        // 但它写的是 projectSettings（作用于整个工程），所以从编辑器层传下去。
         return (
           <CameraProperties
             selectedRecord={selectedRecord}
             selectedRecordIndex={selectedRecordIndex}
             updateRecord={updateRecord}
             editor={cameraEditor}
+            cameraFollowSpeaker={cameraFollowSpeaker}
+            onCameraFollowSpeakerChange={handleCameraFollowSpeakerChange}
           />
         );
       case "effects":

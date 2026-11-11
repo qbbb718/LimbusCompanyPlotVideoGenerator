@@ -1,10 +1,12 @@
 import {
+  DEFAULT_CAMERA_FOLLOW_SPEAKER,
   STORY_TYPE_PERSONALITY,
   STORY_TYPE_STORY,
   TEXT_SPEED_MAX,
   TEXT_SPEED_MIN,
   VIDEO_SIZE_OPTIONS,
   isPlotMode,
+  normalizeCameraFollowSpeaker,
   normalizeTextSpeed,
   parseVideoSizeKey,
   pickOutputDirectory,
@@ -12,6 +14,7 @@ import {
   videoSizeKey,
   withGlobalTextSpeed,
 } from "./projectSettings";
+import { DEFAULT_PROJECT_SETTINGS } from "@types";
 
 /**
  * 全局设置 tab 与设置页共用的这几条逻辑，直接决定"剧情类型"能不能作用到后端
@@ -102,6 +105,29 @@ describe("projectSettings 共用逻辑", () => {
     test("记录为空时返回空数组（工程刚建、还没有记录）", () => {
       expect(withGlobalTextSpeed([], 2)).toEqual([]);
       expect(withGlobalTextSpeed(undefined as any, 2)).toEqual([]);
+    });
+  });
+
+  describe("镜头自动跟随说话人（工程级开关）", () => {
+    test("默认关：与默认设置一致，老工程不会被它改掉构图", () => {
+      expect(DEFAULT_CAMERA_FOLLOW_SPEAKER).toBe(false);
+      expect(DEFAULT_PROJECT_SETTINGS.cameraFollowSpeaker).toBe(false);
+    });
+
+    test("只认明确的真值，其余（含缺失 / 脏值）一律按关处理", () => {
+      expect(normalizeCameraFollowSpeaker(true)).toBe(true);
+      expect(normalizeCameraFollowSpeaker("true")).toBe(true);
+      expect(normalizeCameraFollowSpeaker(" TRUE ")).toBe(true);
+      expect(normalizeCameraFollowSpeaker(1)).toBe(true);
+      expect(normalizeCameraFollowSpeaker("1")).toBe(true);
+
+      expect(normalizeCameraFollowSpeaker(false)).toBe(false);
+      expect(normalizeCameraFollowSpeaker("false")).toBe(false);
+      expect(normalizeCameraFollowSpeaker(0)).toBe(false);
+      expect(normalizeCameraFollowSpeaker(undefined)).toBe(false);
+      expect(normalizeCameraFollowSpeaker(null)).toBe(false);
+      expect(normalizeCameraFollowSpeaker("")).toBe(false);
+      expect(normalizeCameraFollowSpeaker("maybe")).toBe(false);
     });
   });
 
