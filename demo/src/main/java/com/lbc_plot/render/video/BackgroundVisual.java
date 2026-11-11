@@ -23,6 +23,9 @@ import com.lbc_plot.resource.model.Background;
  * </ul>
  * 具体绘制区域由 {@link #getDrawBounds(int, int)} 统一计算，渲染器只负责按这个矩形贴图，
  * 保证"预览 / 成片 / 不同输出分辨率"用的是同一套换算。
+ *
+ * <p>「压暗」（{@link #isDim()}）是这张背景自己的开关，只压它自己的像素：
+ * 画在它上面的立绘、临时图片、UI 与台词都不受影响。
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BackgroundVisual extends VisualElement {
@@ -38,6 +41,18 @@ public class BackgroundVisual extends VisualElement {
     private float scale = 1.0f;
     @JsonProperty
     private boolean visible = true;
+    /**
+     * 是否压暗（剧情编辑 → 背景 → 压暗）。
+     *
+     * <p>与立绘 / 临时图片的「压暗」是**同一个口径**：把 RGB 往黑色方向压、
+     * alpha 原样保留（{@code ImageDarkener.darkenImage(image, DIM_OPACITY)}），
+     * 前端 DOM 场景层对应的 CSS 是 {@code .preview-scene-item.dim { filter: brightness(0.5) }}。
+     *
+     * <p>缺省 false：旧工程 / 旧记录没有这个字段时行为与加压暗之前逐像素一致。
+     * 只影响这一张背景，画在它上面的立绘、临时图片与 UI 都不受影响。
+     */
+    @JsonProperty
+    private boolean dim;
 
     /**
      * 缩放上下限：与前端滑杆一致，同时防止异常数值生成超大 / 零尺寸中间图。
@@ -51,6 +66,15 @@ public class BackgroundVisual extends VisualElement {
      */
     public static final float MIN_SCALE = 0.1f;
     public static final float MAX_SCALE = 4.0f;
+
+    /**
+     * 压暗时叠加的黑色不透明度：0.5 = 压暗一半。
+     *
+     * <p>与「立绘压暗」「临时图片压暗」以及前端 {@code .preview-scene-item.dim} 的
+     * {@code brightness(0.5)} 是同一个数值。公开成常量是为了让测试/前端直接引用契约值，
+     * 而不是在三个地方各写一遍 0.5。
+     */
+    public static final float DIM_OPACITY = 0.5f;
 
     /**
      * 构造函数
@@ -114,6 +138,11 @@ public class BackgroundVisual extends VisualElement {
 
     public boolean isVisible() {
         return visible;
+    }
+
+    /** 是否压暗（缺省 false，见 {@link #DIM_OPACITY}） */
+    public boolean isDim() {
+        return dim;
     }
 
     /**
@@ -191,6 +220,10 @@ public class BackgroundVisual extends VisualElement {
         this.visible = visible;
     }
 
+    public void setDim(boolean dim) {
+        this.dim = dim;
+    }
+
     /**
      * 重新加载背景图像
      */
@@ -221,9 +254,9 @@ public class BackgroundVisual extends VisualElement {
 
     @Override
     public String toString() {
-        return String.format("BackgroundVisual{background=%s, visible=%s, position=(%d,%d), scale=%.2f}",
+        return String.format("BackgroundVisual{background=%s, visible=%s, position=(%d,%d), scale=%.2f, dim=%s}",
                 background != null ? background.getPath() : "null",
-                visible, posX, posY, scale);
+                visible, posX, posY, scale, dim);
     }
 
     /**
@@ -235,6 +268,7 @@ public class BackgroundVisual extends VisualElement {
         copy.posY = this.posY;
         copy.scale = this.scale;
         copy.visible = this.visible;
+        copy.dim = this.dim;
         copy.bgImage = this.bgImage; // BufferedImage通常是不可变的，可以共享引用
         return copy;
     }

@@ -150,6 +150,8 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
       posY: 0,
       scale: 1,
       visible: true,
+      // 新加的背景默认不压暗：加进来先看到原图，需要氛围时再勾
+      dim: false,
     };
     updateRecord(selectedRecordIndex, {
       ...selectedRecord,
@@ -247,7 +249,8 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
       <div className="background-properties">
         <h4>背景设置</h4>
         <p className="transform-hint">
-          缩放以画面中心为基准；位置 0 = 居中，可超出画面；每行 ↺ 只复原该行。
+          缩放以画面中心为基准；位置 0 = 居中，可超出画面；每行 ↺ 只复原该行；
+          「压暗」只压这张背景，不影响叠在上面的立绘与 UI。
         </p>
         {/* 批量删除工具条：勾选后才出现「批量删除」 */}
         <BatchSelectionBar
@@ -266,6 +269,8 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
             const scale = normalizeBackgroundScale(bg.scale);
             const offsetX = bg.posX ?? 0;
             const offsetY = bg.posY ?? 0;
+            // 压暗是可选字段：老工程没有 → 不压暗（与加这个开关之前的行为一致）
+            const dimmed = bg.dim === true;
             const currentUiX = toUiX(offsetX);
             const currentUiY = toUiY(offsetY);
             // 滑杆两端 = 背景刚好完全移出画面所需的偏移；随缩放变大，所以放大后仍能推出去。
@@ -432,6 +437,26 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                       }
                     />
                   </div>
+                </div>
+
+                {/* 压暗：与「立绘压暗」「临时图片压暗」同一个口径（压暗）。
+                    只压这张背景自己的像素，画在它上面的立绘、临时图片与 UI 都不受影响；
+                    位置/缩放的 ↺ 也不会碰它。 */}
+                <div className="transform-row background-dim-row">
+                  <span className="transform-label">压暗</span>
+                  <label
+                    className="background-dim-toggle"
+                    title="勾选后这张背景压暗（与「立绘压暗」同一口径），预览与成片都会变暗"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={dimmed}
+                      aria-label={`背景 ${index + 1} 压暗`}
+                      onChange={(e) =>
+                        updateBackground(index, "dim", e.target.checked)
+                      }
+                    />
+                  </label>
                 </div>
               </div>
             );

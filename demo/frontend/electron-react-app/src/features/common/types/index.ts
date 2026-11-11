@@ -202,6 +202,14 @@ export interface BackgroundVisual {
   /** 以「等比铺满设计画布」为 1.0 的缩放（1 = 与默认全屏背景一致，2 = 长宽各放大一倍） */
   scale: number;
   visible: boolean;
+  /**
+   * 是否压暗（剧情编辑 → 背景 → 压暗）。
+   *
+   * <p>与立绘 / 临时图片的「压暗」同一口径：压暗一半（后端 `ImageDarkener.darkenImage(image, 0.5f)`，
+   * 预览里对应 `.preview-scene-item.dim { filter: brightness(0.5) }`）。
+   * 旧工程没有这个字段时按 `false` 处理，行为与加压暗之前完全一致。
+   */
+  dim?: boolean;
 }
 
 // 立绘

@@ -536,6 +536,21 @@ describe("预览几何 → 图层与命中", () => {
     expect(partial.layers.map((layer) => layer.key)).not.toContain("background:0");
   });
 
+  test("背景的「压暗」标记原样带到图层上（DOM 场景层据此加 .dim 滤镜）", () => {
+    const plain = buildPreviewGeometry(
+      makeRecord({ bg: [makeBackground() as any] }),
+      { plot: true, videoWidth: 1920, videoHeight: 1080, sizeOf },
+    );
+    // 老工程没有 dim 字段 → 不压暗（与加这个开关之前一致）
+    expect(plain.layers.find((layer) => layer.key === "background:0")!.dim).toBe(false);
+
+    const dimmed = buildPreviewGeometry(
+      makeRecord({ bg: [makeBackground({ dim: true }) as any] }),
+      { plot: true, videoWidth: 1920, videoHeight: 1080, sizeOf },
+    );
+    expect(dimmed.layers.find((layer) => layer.key === "background:0")!.dim).toBe(true);
+  });
+
   test("人格故事模式（plot=false）不生成立绘与地点牌图层", () => {
     const plain = buildPreviewGeometry(record, {
       plot: false,

@@ -106,4 +106,19 @@ describe("PreviewSceneLayer", () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  test("压暗的图层加 .dim（背景 / 立绘 / 临时图片同一套滤镜）", () => {
+    const { container } = render(
+      <PreviewSceneLayer
+        items={[
+          { ...background, key: "background:0", dim: true },
+          { ...background, key: "background:1", dim: false },
+        ]}
+        frame={FRAME}
+      />,
+    );
+    const images = container.querySelectorAll(".preview-scene-item");
+    expect(images[0].className).toContain("dim");
+    expect(images[1].className).not.toContain("dim");
+  });
 });

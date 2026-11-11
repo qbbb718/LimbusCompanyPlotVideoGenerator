@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Background, DialogueAlign, Emotion, Record as PlotRecord } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
 import BackgroundProperties from "./BackgroundProperties";
@@ -228,6 +228,98 @@ describe("BackgroundProperties 缩放与位置控制", () => {
     expect(updatedRecord.bg[0].posY).toBe(0);
     expect(updatedRecord.bg[0].scale).toBe(2);
     expect(updatedRecord.bg[0].posX).toBe(300);
+  });
+});
+
+/* ===================== 压暗 ===================== */
+
+describe("BackgroundProperties 压暗", () => {
+  it("老工程没有 dim 字段时默认不压暗", () => {
+    renderPanel(makeRecord([officeBackground]));
+
+    const toggle = screen.getByLabelText("背景 1 压暗") as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    expect(screen.getByText("不压暗")).toBeTruthy();
+  });
+
+  it("勾上「压暗」把 dim 写回记录，不动缩放与偏移", async () => {
+    const record = makeRecord([officeBackground]);
+    record.bg[0].scale = 2;
+    record.bg[0].posX = 300;
+    const updateRecord = renderPanel(record);
+
+    fireEvent.click(screen.getByLabelText("背景 1 压暗"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.bg[0].dim).toBe(true);
+    expect(updatedRecord.bg[0].scale).toBe(2);
+    expect(updatedRecord.bg[0].posX).toBe(300);
+  });
+
+  it("已经压暗的背景回显为勾选，状态文字跟着变", () => {
+    const record = makeRecord([officeBackground]);
+    record.bg[0].dim = true;
+    renderPanel(record);
+
+    expect(
+      (screen.getByLabelText("背景 1 压暗") as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(screen.getByText("已压暗一半")).toBeTruthy();
+  });
+
+  it("取消勾选把 dim 写回 false", async () => {
+    const record = makeRecord([officeBackground]);
+    record.bg[0].dim = true;
+    const updateRecord = renderPanel(record);
+
+    fireEvent.click(screen.getByLabelText("背景 1 压暗"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    expect(updateRecord.mock.calls[0][1].bg[0].dim).toBe(false);
+  });
+
+  it("每张背景的压暗各自独立", () => {
+    const record = makeRecord([officeBackground, streetBackground]);
+    record.bg[0].dim = true;
+    renderPanel(record);
+
+    expect(
+      (screen.getByLabelText("背景 1 压暗") as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText("背景 2 压暗") as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  it("新添加的背景默认不压暗", async () => {
+    const updateRecord = renderPanel(makeRecord([]));
+    // 等挂载时拉的背景列表落地（选择器里的格子来自这次请求），再打开选择器
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "添加背景" }));
+    fireEvent.doubleClick(screen.getByText("办公室"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.bg).toHaveLength(1);
+    expect(updatedRecord.bg[0].dim).toBe(false);
+  });
+
+  it("点「压暗」勾选框不会触发预览选中", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("背景 1 压暗"));
+
+    expect(onSelectVisual).not.toHaveBeenCalled();
   });
 });
 

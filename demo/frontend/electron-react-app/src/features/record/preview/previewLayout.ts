@@ -171,7 +171,7 @@ export interface PreviewLayer {
   baseRect: PreviewRect;
   /** 预览图像素坐标（已含摄像机 + 0.8 场景变换 + 输出分辨率缩放） */
   outRect: PreviewRect;
-  /** 是否压暗（立绘 / 临时图片的 dim 字段），DOM 场景层用它还原滤镜 */
+  /** 是否压暗（背景 / 立绘 / 临时图片的 dim 字段），DOM 场景层用它还原滤镜 */
   dim?: boolean;
 }
 
@@ -677,6 +677,9 @@ export function buildPreviewGeometry(
       z: 10 + index,
       space: "world",
       baseRect: backgroundWorldRect(background, size),
+      // 压暗只压这张背景自己的像素：后端在同一层贴"压暗后的图"，
+      // 立绘/临时图片/UI 画在更上层，完全不受影响
+      dim: background.dim === true,
     });
   });
 

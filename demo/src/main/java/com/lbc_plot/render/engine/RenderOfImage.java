@@ -483,22 +483,42 @@ public class RenderOfImage {
                     logger.warn("背景绘制区域为空，跳过: {}", bg);
                     continue;
                 }
+                // 压暗在这里换成"压暗后的那张图"，绘制区域/size 一个像素都不变
+                BufferedImage image = backgroundImage(bg);
                 if (hasCamera) {
-                    composer.addImageLayerIntoRect(bg.getBgImage(),
+                    composer.addImageLayerIntoRect(image,
                             camera.screenX(bounds.x), camera.screenY(bounds.y),
                             Math.max(1, Math.round(bounds.width * zoom)),
                             Math.max(1, Math.round(bounds.height * zoom)));
                 } else {
-                    composer.addImageLayerIntoRect(bg.getBgImage(), bounds.x, bounds.y, bounds.width, bounds.height);
+                    composer.addImageLayerIntoRect(image, bounds.x, bounds.y, bounds.width, bounds.height);
                 }
                 if (logger.isDebugEnabled()) {
-                    logger.debug("添加背景图层: name={}, scale={}, pos=({},{}), 绘制区域={}",
-                            bg.getBackground().getName(), bg.getScale(), bg.getPosX(), bg.getPosY(), bounds);
+                    logger.debug("添加背景图层: name={}, scale={}, pos=({},{}), dim={}, 绘制区域={}",
+                            bg.getBackground().getName(), bg.getScale(), bg.getPosX(), bg.getPosY(),
+                            bg.isDim(), bounds);
                 }
             } catch (Exception e) {
                 logger.error("添加背景图层失败: {}", bg, e);
             }
         }
+    }
+
+    /**
+     * 这张背景<b>要画的</b>图像：勾了「压暗」就返回压暗版本，否则原图。
+     *
+     * <p>压暗走 {@link SpriteImageCache}（按"源图 + 比例"缓存，与立绘 / 临时图片同一条路径）：
+     * 动态镜头和立绘动画会让背景逐帧重画，不能每帧再遍历一遍整幅像素——一张 4K 背景
+     * 压暗一次要几十毫秒，150 帧就是好几秒，而结果每次都一样。
+     *
+     * <p>返回 null 表示这张背景压根没有图（调用方已由 {@link #validateBackgroundVisual} 挡掉）。
+     */
+    private static BufferedImage backgroundImage(BackgroundVisual bg) {
+        BufferedImage source = bg.getBgImage();
+        if (source == null || !bg.isDim()) {
+            return source;
+        }
+        return SpriteImageCache.darkened(source, BackgroundVisual.DIM_OPACITY);
     }
 
     /**
