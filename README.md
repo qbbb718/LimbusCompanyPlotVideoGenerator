@@ -135,7 +135,7 @@
 ### 环境要求
 - Java 21 或更高版本
 - Maven 3.6+
-- Node.js 18+ 和 npm
+- Node.js 22+ 和 npm 11（依赖里的 `@testing-library/jest-dom` 要求 node >= 22；`package-lock.json` 用 npm 11 生成，用 npm 10 执行 `npm ci` 会报锁文件不同步）
 - FFmpeg（用于视频处理）
 
 ### 一键启动（推荐）

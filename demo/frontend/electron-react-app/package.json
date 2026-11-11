@@ -6,6 +6,9 @@
   "author": "qbbb718",
   "main": "public/electron.js",
   "homepage": "./",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/qbbb718/LimbusCompanyPlotVideoGenerator"

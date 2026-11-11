@@ -43,10 +43,27 @@ jobs:
           java-version: "21"
           distribution: "temurin"
 
+      # Node 18 装不动现在的依赖：@testing-library/jest-dom@6.10 要求 node >= 22，
+      # brace-expansion@5 要求 20 || >= 22。Node 18 自带的 npm 10 还会以
+      # "Missing: yaml@2.9.1 from lock file" 判锁文件不同步（npm 11 生成的锁文件里，
+      # tailwindcss -> postcss-load-config 的可选 peer yaml@2 可以整条缺席），
+      # 这就是 0.6.0 打包失败的两个原因。
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: demo/frontend/electron-react-app/package-lock.json
+
+      # 锁文件是 npm 11 生成的，就固定用 npm 11 装；npm 10 对"可选 peer 依赖"的
+      # 完整性检查比 npm 11 严，版本混用会让同一份锁文件在 CI 上红、在本机绿。
+      - name: Pin npm 11
+        run: npm install --global npm@11
+
+      # 放在 Maven 之前：依赖装不上就立刻红，而不是先白等两分钟的后端构建。
+      - name: Install Frontend Dependencies
+        run: npm ci --no-audit --no-fund
+        working-directory: demo/frontend/electron-react-app
 
       - name: Build Backend (Maven)
         run: mvn clean package -DskipTests -q
@@ -59,10 +76,6 @@ jobs:
             jlink --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.sql,java.xml,jdk.unsupported,jdk.management,jdk.crypto.ec,jdk.zipfs,java.net.http,java.security.jgss,java.security.sasl --strip-debug --no-man-pages --no-header-files --compress=zip-6 --output demo\jre
           )
         shell: cmd
-
-      - name: Install Frontend Dependencies
-        run: npm ci
-        working-directory: demo/frontend/electron-react-app
 
       - name: Build Frontend (React)
         run: npm run build
