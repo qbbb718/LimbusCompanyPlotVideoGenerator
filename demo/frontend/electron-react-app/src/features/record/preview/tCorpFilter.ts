@@ -30,7 +30,7 @@
  */
 import type { EffectVisual } from "@types";
 import { EFFECT_TYPE_T_CORP_FILTER } from "@types";
-import { matchesEffectType } from "./effectType";
+import { isEffectEnabled, setEffectEnabled } from "../effects";
 
 /**
  * SVG 滤镜的 id。{@code filter: url(#...)} 直接引用这个 id，
@@ -159,13 +159,14 @@ export function tCorpFilterUrl(): string {
  * <p>`enabled` 缺省视为启用（手写的 `{"type":"T_CORP_FILTER"}` 也算开），
  * 与后端 `EffectVisual.enabled = true` 的初值一致。
  *
+ * <p>判断本身是通用的"某个只开关特效是否生效"，实现收口在
+ * {@link module:record/effects} 的 `isEffectEnabled`（与「特效」页签、批量编辑同一份），
+ * 这里只保留一个跟滤镜语义对得上的名字。
+ *
  * @param effects 记录的特效列表
  */
 export function isTCorpFilterEnabled(effects: EffectVisual[] | null | undefined): boolean {
-  if (!Array.isArray(effects)) return false;
-  return effects.some(
-    (effect) => effect && effect.enabled !== false && matchesEffectType(effect.type, EFFECT_TYPE_T_CORP_FILTER),
-  );
+  return isEffectEnabled(effects, EFFECT_TYPE_T_CORP_FILTER);
 }
 
 /**
@@ -174,7 +175,8 @@ export function isTCorpFilterEnabled(effects: EffectVisual[] | null | undefined)
  * <p>写回的条目形状与其它纯开关特效完全一致：勾选 = `{ type, enabled: true }`（不带参数），
  * 取消 = 把这一条删掉。其它特效（转场、镜头摇动…）原样保留。
  *
- * <p>例外：记录里已经有一条**停用**的同类型条目时，勾选只把开关打开，不重复追加。
+ * <p>实现复用 {@link module:record/effects} 的 `setEffectEnabled`：单条面板与批量编辑
+ * 走的是同一份规则，不会出现"单条取消只删自己、批量却把别的特效也清了"。
  *
  * @param effects 记录的特效列表
  * @param enabled 目标状态
@@ -184,17 +186,5 @@ export function toggleTCorpFilter(
   effects: EffectVisual[] | null | undefined,
   enabled: boolean,
 ): EffectVisual[] {
-  const list = Array.isArray(effects) ? effects : [];
-  const entry = list.find((effect) => effect && matchesEffectType(effect.type, EFFECT_TYPE_T_CORP_FILTER));
-
-  if (enabled) {
-    if (!entry) return [...list, { type: EFFECT_TYPE_T_CORP_FILTER, enabled: true }];
-    if (entry.enabled === false) {
-      return list.map((effect) => (effect === entry ? { ...effect, enabled: true } : effect));
-    }
-    return list;
-  }
-
-  if (!entry) return list;
-  return list.filter((effect) => effect !== entry);
+  return setEffectEnabled(effects, EFFECT_TYPE_T_CORP_FILTER, enabled);
 }

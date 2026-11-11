@@ -1,15 +1,35 @@
 import React from "react";
+import { EFFECT_TYPE_CROSS_DISSOLVE, Record, START_TRANSITION_FRAMES } from "@types";
 import {
-  EFFECT_TYPE_CROSS_DISSOLVE,
-  EFFECT_TYPE_FADE_FROM_BLACK,
-  EFFECT_TYPE_FADE_FROM_WHITE,
-  EFFECT_TYPE_T_CORP_FILTER,
-  Record,
-  START_TRANSITION_FRAMES,
-} from "@types";
-import { isTCorpFilterEnabled, toggleTCorpFilter } from "../preview/tCorpFilter";
+  activeTransitionType,
+  FILTER_OPTIONS,
+  isEffectEnabled,
+  removeEffectType,
+  setEffectEnabled,
+  setTransition,
+  TRANSITION_OPTIONS,
+} from "../effects";
 import "../RecordEditor.css";
 import "./EffectsProperties.css";
+
+/**
+ * @module 特效属性面板（"剧情编辑 → 特效"，单条记录）
+ *
+ * <p>三种起始转场共用同一套逻辑：勾选后<b>只影响这一条记录导出视频时的开头</b>——
+ * 开头 {@link START_TRANSITION_FRAMES} 帧在记录自己的画面上方叠一层图像，不透明度
+ * 从 100% 线性降到 0%，之后就是记录自己的画面。
+ *
+ * <p>数据模型：勾选 = 往 {@code record.effects} 里加一条 `{ type, enabled: true }`，
+ * 并把其它起始转场删掉（三者互斥）；取消勾选 = 把这一条删掉。
+ *
+ * <p><b>写法收口</b>：选项清单、三态判断与"勾选/取消"的写回形状都在
+ * {@link module:record/effects}，批量编辑（{@link module:properties/BatchEffectsEditor}）
+ * 与这个面板走同一份规则，不会出现两边行为不一致。
+ *
+ * <p><b>镜头摇动不在这个页签</b>：它是镜头层的动态效果，已归到「摄像机 → 预设」
+ * （见 `preview/cameraPresets.ts`）。数据同样写在 `record.effects` 里，只是按 `type` 区分，
+ * 所以两个页签共用同一个数组、互不干扰。
+ */
 
 interface EffectsPropertiesProps {
   selectedRecord: Record;
@@ -20,99 +40,13 @@ interface EffectsPropertiesProps {
 /** 导出视频的帧率（与 RecordEditor 里 generateVideo 传的 30 一致），只用于把帧数换算成秒来提示 */
 const EXPORT_FRAME_RATE = 30;
 
-interface EffectOption {
-  /** 特效类型，与后端 EffectVisual.TYPE_* 一致 */
-  type: string;
-  /** 面板上的名称 */
-  name: string;
-  /** 叠加的是什么、看起来是什么效果 */
-  description: string;
-}
-
 /**
- * 三种起始转场：叠的内容不同，淡出规则完全一样（见 START_TRANSITION_FRAMES）。
- * 顺序即优先级，与后端 StartTransition.kindOf 保持一致。
- */
-const TRANSITION_OPTIONS: EffectOption[] = [
-  {
-    type: EFFECT_TYPE_CROSS_DISSOLVE,
-    name: "交叉溶解转场",
-    description: "叠加「上一条记录的最后一帧」，把硬切变成叠化。",
-  },
-  {
-    type: EFFECT_TYPE_FADE_FROM_BLACK,
-    name: "黑屏转场",
-    description: "整屏叠一层纯黑，即从黑屏淡入。",
-  },
-  {
-    type: EFFECT_TYPE_FADE_FROM_WHITE,
-    name: "白屏转场",
-    description: "整屏叠一层纯白，即从白屏淡入。",
-  },
-];
-
-/** 该类型是不是起始转场（互斥组） */
-const isTransitionType = (type: string | undefined): boolean =>
-  TRANSITION_OPTIONS.some((option) => option.type === type);
-
-/**
- * 画面滤镜：整幅画面调色，<b>不互斥</b>、可以与起始转场同时开。
+ * @component 特效属性面板
  *
- * <p>与转场不同的是它改的是"画面内容"而不是"开头那几帧"，所以它同时影响
- * 预览图、播放和导出成片（转场只影响成片开头）。
- */
-const FILTER_OPTIONS: EffectOption[] = [
-  {
-    type: EFFECT_TYPE_T_CORP_FILTER,
-    name: "T巢滤镜",
-    description:
-      "整幅画面压成 T 巢的棕褐色调（老照片）：暗部偏红褐、亮部偏米白。只染画面层，UI 与台词不受影响。",
-  },
-];
-
-/**
- * @function 取记录当前生效的起始转场类型
- *
- * <p>与后端 {@code StartTransition.kindOf} 的优先级一致（交叉溶解 &gt; 黑屏 &gt; 白屏）：
- * 数据里同时存在多种时，面板上显示勾选的那一项就是导出视频时真正会用的那一项。
- * 正常情况下三种互斥，只会有一种。
- *
- * @param record 当前记录
- * @return 生效的特效类型；没有启用起始转场时返回 undefined
- */
-const activeTransitionType = (record: Record): string | undefined => {
-  const effects = record.effects || [];
-  const enabled = (type: string) =>
-    effects.some((effect) => effect?.type === type && effect.enabled !== false);
-
-  return TRANSITION_OPTIONS.find((option) => enabled(option.type))?.type;
-};
-
-/**
- * @component 特效属性面板（"剧情编辑 → 特效"）
- *
- * <p>三种起始转场共用同一套逻辑：勾选后<b>只影响这一条记录导出视频时的开头</b>——
- * 开头 {@link START_TRANSITION_FRAMES} 帧在记录自己的画面上方叠一层图像，不透明度
- * 从 100% 线性降到 0%，之后就是记录自己的画面。三者叠的内容不同：
- * 交叉溶解叠"上一条记录的最后一帧"；黑屏/白屏转场叠纯黑/纯白（从黑屏/白屏淡入）。
- * 记录时长不变，预览图也不变（预览图只是一张静态画面）。
- *
- * <p>数据模型：勾选 = 往 {@code record.effects} 里加一条
- * {@code { type: "CROSS_DISSOLVE" | "FADE_FROM_BLACK" | "FADE_FROM_WHITE", enabled: true }}，
- * 并把其它起始转场删掉（三者互斥）；取消勾选 = 直接把这一条删掉。
- * 后端渲染时读的就是这份列表（见 StartTransition#kindOf），因此工程文件和导出请求
- * 里的特效都会原样保留。
- *
- * <p><b>镜头摇动不在这个页签</b>：它是镜头层的动态效果，已归到「摄像机 → 预设」
- * （见 `preview/cameraPresets.ts`）。数据同样写在 `record.effects` 里，只是按 `type` 区分，
- * 所以两个页签共用同一个数组、互不干扰。
- *
- * <p><b>T 巢滤镜</b>（{@link FILTER_OPTIONS}）与三种转场不同：它不是"开头几帧的叠加层"，
- * 而是把<b>整幅画面</b>调成棕褐色。勾选 = `record.effects` 里加一条
- * `{ type: "T_CORP_FILTER", enabled: true }`（读写在 `preview/tCorpFilter.ts`），
- * 影响的是预览图、播放与导出成片，但<b>只染画面层</b>（背景/立绘/临时图片），
- * UI 与台词不受影响——层次边界在后端合成时就定死了，见 `render/video/TCorpFilter.java`。
- * 它与起始转场<b>不互斥</b>，可以同时开。
+ * <p>T 巢滤镜（{@link FILTER_OPTIONS}）与三种转场不同：它不是"开头几帧的叠加层"，
+ * 而是把<b>整幅画面</b>调成棕褐色。影响的是预览图、播放与导出成片，但<b>只染画面层</b>
+ * （背景/立绘/临时图片），UI 与台词不受影响——层次边界在后端合成时就定死了，
+ * 见 `render/video/TCorpFilter.java`。它与起始转场<b>不互斥</b>，可以同时开。
  */
 const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
   selectedRecord,
@@ -121,7 +55,6 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
 }) => {
   const effects = selectedRecord.effects || [];
   const activeType = activeTransitionType(selectedRecord);
-  const toneEnabled = isTCorpFilterEnabled(effects);
   const seconds = (START_TRANSITION_FRAMES / EXPORT_FRAME_RATE).toFixed(2);
 
   /**
@@ -133,16 +66,9 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
    * @param checked 勾选状态
    */
   const toggleTransition = (type: string, checked: boolean) => {
-    const nextEffects = checked
-      ? [
-          ...effects.filter((effect) => !isTransitionType(effect?.type)),
-          { type, enabled: true },
-        ]
-      : effects.filter((effect) => effect?.type !== type);
-
     updateRecord(selectedRecordIndex, {
       ...selectedRecord,
-      effects: nextEffects,
+      effects: checked ? setTransition(effects, type) : removeEffectType(effects, type),
     });
   };
 
@@ -189,8 +115,7 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
       </p>
       <div className="effects-list">
         {FILTER_OPTIONS.map((option) => {
-          // 目前只有一种画面滤镜；以后加第二种时这里改成按 option.type 分别判断即可
-          const checked = toneEnabled;
+          const checked = isEffectEnabled(effects, option.type);
           return (
             <div key={option.type} className={`effect-item${checked ? " active" : ""}`}>
               <label className="effect-item-head">
@@ -200,7 +125,7 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
                   onChange={(e) =>
                     updateRecord(selectedRecordIndex, {
                       ...selectedRecord,
-                      effects: toggleTCorpFilter(effects, e.target.checked),
+                      effects: setEffectEnabled(effects, option.type, e.target.checked),
                     })
                   }
                   aria-label={option.name}

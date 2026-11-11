@@ -9,13 +9,21 @@ import {
   RecordGroup,
 } from "./recordGroups";
 import { dialogueTextSummary } from "./utils";
+import type { RecordMultiSelection } from "./useRecordMultiSelect";
 
 interface RecordListProps {
   records: Record[];
   /** 分组定义（名称、折叠状态）；成员关系在 record.groupId 上 */
   groups: RecordGroup[];
   selectedRecordIndex: number;
-  setSelectedRecordIndex: (index: number) => void;
+  /**
+   * 多选集合（Ctrl 追加 / Shift 连选 / 全选）。
+   *
+   * <p>选中态由编辑器层持有，**不是**这个组件的内部状态：同一份集合还要给
+   * 「文本」「特效」页签的批量编辑用（见 `useRecordMultiSelect`）。
+   * 列表只负责把点击转给它（顺带更新"当前记录"），并按 `has(uuid)` 画选中态 / 决定拖几条。
+   */
+  multiSelection: RecordMultiSelection;
   createNewRecord: () => void;
   /** 新建分组：返回新分组，列表拿到后立刻进入重命名状态 */
   onCreateGroup: () => RecordGroup;
@@ -76,7 +84,7 @@ const RecordList: React.FC<RecordListProps> = ({
   records,
   groups,
   selectedRecordIndex,
-  setSelectedRecordIndex,
+  multiSelection,
   createNewRecord,
   onCreateGroup,
   onRenameGroup,
@@ -107,9 +115,9 @@ const RecordList: React.FC<RecordListProps> = ({
   // 用 ref 判断，避免同一个分组被提交两次
   const editingGroupIdRef = useRef<string | null>(null);
 
-  // 多选：按住 Ctrl 追加、Shift 连选，选中的记录可以一起拖进分组
-  const [selectedUuids, setSelectedUuids] = useState<string[]>([]);
-  const [anchorUuid, setAnchorUuid] = useState<string | null>(null);
+  // 多选：按住 Ctrl 追加、Shift 连选，选中的记录可以一起拖进分组、也可以在
+  // 「文本」「特效」页签里一起改内容。状态由编辑器层持有（见 useRecordMultiSelect）。
+  const selectedUuids = multiSelection.uuids;
 
   // 拖动状态：ref 供 dragstart/drop 同步读取（state 更新是异步的）
   const [dragging, setDragging] = useState(false);
@@ -190,24 +198,6 @@ const RecordList: React.FC<RecordListProps> = ({
 
     return map;
   }, [rows, records]);
-
-  // 外部切换当前记录（点时间轴、导入工程…）时，让列表的多选跟随它
-  const selectedUuid = records[selectedRecordIndex]?.uuid;
-  useEffect(() => {
-    if (!selectedUuid) return;
-    setSelectedUuids((prev) =>
-      prev.includes(selectedUuid) ? prev : [selectedUuid],
-    );
-  }, [selectedUuid]);
-
-  // 记录被删除/替换后，把已经不存在的 uuid 从选择里清掉
-  useEffect(() => {
-    const valid = new Set(records.map((record) => record.uuid));
-    setSelectedUuids((prev) => {
-      const next = prev.filter((uuid) => valid.has(uuid));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [records]);
 
   // 组件卸载（比如拖动中切换页面）时清掉"延迟显示放置区"的定时器与 body 标记
   useEffect(
@@ -299,38 +289,17 @@ const RecordList: React.FC<RecordListProps> = ({
 
   // ===== 点选：单击选中、Ctrl 追加、Shift 连选 =====
 
+  /**
+   * @function 点了一行
+   * 三种点法的具体规则（含锚点、Ctrl 再点取消）都在 {@link RecordMultiSelection.clickRow}，
+   * 选中集合与"当前记录"一起更新，所以列表、预览、属性面板看到的是同一份选中态。
+   */
   const handleRecordClick = (
     event: React.MouseEvent,
     record: Record,
     index: number,
   ) => {
-    if (event.shiftKey) {
-      // 锚点不在当前选择里（比如刚点过时间轴）时，从当前记录开始连选
-      const anchorIndex =
-        anchorUuid && selectedUuids.includes(anchorUuid)
-          ? records.findIndex((item) => item.uuid === anchorUuid)
-          : selectedRecordIndex;
-      if (anchorIndex >= 0) {
-        const from = Math.min(anchorIndex, index);
-        const to = Math.max(anchorIndex, index);
-        setSelectedUuids(records.slice(from, to + 1).map((item) => item.uuid));
-        setSelectedRecordIndex(index);
-        return;
-      }
-    }
-
-    if (event.ctrlKey || event.metaKey) {
-      setSelectedUuids((prev) =>
-        prev.includes(record.uuid) ? prev : [...prev, record.uuid],
-      );
-      setAnchorUuid(record.uuid);
-      setSelectedRecordIndex(index);
-      return;
-    }
-
-    setSelectedUuids([record.uuid]);
-    setAnchorUuid(record.uuid);
-    setSelectedRecordIndex(index);
+    multiSelection.clickRow(event, record, index);
   };
 
   // ===== 拖动 =====
@@ -656,7 +625,7 @@ const RecordList: React.FC<RecordListProps> = ({
       <div className="record-list-header">
         {/* 标题与"添加记录 / 添加分组"按钮放在一起：都是列表自身的操作，靠左更顺手 */}
         <div className="record-list-title">
-          <h3 title="点击选中；Ctrl / Shift 多选；拖动手柄（⠿）可调整顺序或拖进分组">
+          <h3 title="点击选中；Ctrl 追加 / 取消、Shift 连选；选中 2 条以上可在「文本」「特效」页签批量修改；拖动手柄（⠿）可调整顺序或拖进分组">
             剧情列表
           </h3>
           <button
@@ -674,6 +643,28 @@ const RecordList: React.FC<RecordListProps> = ({
             aria-label="新建分组"
           >
             📁+
+          </button>
+          {/* 多选状态：选了几条 + 一键全选 / 取消（批量修改的前提） */}
+          {multiSelection.count >= 2 && (
+            <span
+              className="record-multi-badge"
+              title="选中的记录可以一起拖动，也可以在「文本」「特效」页签里批量修改"
+            >
+              已选 {multiSelection.count} 条
+            </span>
+          )}
+          <button
+            type="button"
+            className="record-multi-toggle"
+            onClick={multiSelection.toggleAll}
+            disabled={records.length === 0}
+            title={
+              multiSelection.allSelected
+                ? `取消全选（当前 ${records.length} 条记录全部选中）`
+                : `全选当前列表里的 ${records.length} 条记录（之后可批量修改 / 一起拖动）`
+            }
+          >
+            {multiSelection.allSelected ? "取消选择" : "全选"}
           </button>
         </div>
         <div className="record-list-actions">
@@ -892,7 +883,7 @@ const RecordList: React.FC<RecordListProps> = ({
 
               const { record, index, groupId } = row;
               const isSelected = index === selectedRecordIndex;
-              const isMultiSelected = selectedUuids.includes(record.uuid);
+              const isMultiSelected = multiSelection.has(record.uuid);
               const isDragSource =
                 draggingUuids.includes(record.uuid) ||
                 (draggingGroupId !== null && groupId === draggingGroupId);

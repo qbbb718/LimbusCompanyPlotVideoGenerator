@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import RecordList from "./RecordList";
 import { RecordGroup } from "./recordGroups";
+import { useRecordMultiSelect } from "./useRecordMultiSelect";
 import { DialogueAlign, Emotion, Record } from "@types";
 
 const makeRecord = (uuid: string, text: string, groupId?: string): Record => ({
@@ -76,6 +77,25 @@ const makeProps = (overrides: { [key: string]: unknown } = {}) => ({
   ...overrides,
 });
 
+/**
+ * 多选状态不在列表组件里，由编辑器层（RecordEditor）持有：
+ * 测试里用一个壳组件提供它，这样点行 → 选中态更新 → 列表重渲染的链路与真实一致。
+ */
+const Harness: React.FC<{ base: ReturnType<typeof makeProps> }> = ({
+  base,
+}) => {
+  const multiSelection = useRecordMultiSelect(
+    base.records,
+    base.selectedRecordIndex,
+    base.setSelectedRecordIndex,
+  );
+  return <RecordList {...base} multiSelection={multiSelection} />;
+};
+
+/** 渲染剧情列表（带上真实的多选 hook） */
+const renderList = (base: ReturnType<typeof makeProps>) =>
+  render(<Harness base={base} />);
+
 /** 拖动事件用到的 dataTransfer 桩 */
 const makeDataTransfer = () => ({
   effectAllowed: "",
@@ -119,7 +139,7 @@ const fireDropAt = (element: HTMLElement, clientY: number) => {
 
 describe("剧情编辑 → 剧情列表分组", () => {
   test("新建分组按钮紧挨添加记录按钮，并且都在标题旁", () => {
-    render(<RecordList {...makeProps()} />);
+    renderList(makeProps());
 
     const title = document.querySelector(".record-list-title");
     expect(title?.querySelector(".add-record-btn")).toBeTruthy();
@@ -131,14 +151,16 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("点新建分组后立刻进入重命名状态（默认名已填好）", () => {
     const props = makeProps();
-    const { rerender } = render(<RecordList {...props} />);
+    const { rerender } = renderList(props);
 
     fireEvent.click(screen.getByRole("button", { name: "新建分组" }));
     expect(props.onCreateGroup).toHaveBeenCalledTimes(1);
 
     // 父组件把新分组写入 state 后重新渲染，输入框应处于编辑状态
     rerender(
-      <RecordList {...props} groups={[...groups, makeGroup("g-new", "分组 2")]} />,
+      <Harness
+        base={{ ...props, groups: [...groups, makeGroup("g-new", "分组 2")] }}
+      />,
     );
     const input = screen.getByLabelText("分组名称");
     expect(input).toHaveValue("分组 2");
@@ -146,7 +168,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("双击分组名 / 点 ✏️ 都能重命名，回车提交、Esc 取消", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
 
     fireEvent.doubleClick(screen.getByText("开头"));
     const input = screen.getByLabelText("分组名称");
@@ -172,7 +194,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
     const props = makeProps({
       groups: [makeGroup("g1", "开头", true)],
     });
-    render(<RecordList {...props} />);
+    renderList(props);
 
     expect(screen.queryByText("b 的内容")).toBeNull();
     expect(screen.getByText("2 条")).toBeTruthy();
@@ -185,7 +207,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("解散分组按钮回调", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
 
     fireEvent.click(
       screen.getByRole("button", { name: "解散分组 开头" }),
@@ -194,18 +216,14 @@ describe("剧情编辑 → 剧情列表分组", () => {
   });
 
   test("空分组显示为「空分组」", () => {
-    render(
-      <RecordList
-        {...makeProps({ groups: [makeGroup("empty", "空的")] })}
-      />,
-    );
+    renderList(makeProps({ groups: [makeGroup("empty", "空的")] }));
 
     expect(screen.getByText("空分组")).toBeTruthy();
   });
 
   test("把一条记录拖到分组表头：整体移入该分组", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(rowOf("a 的内容"), { dataTransfer });
@@ -222,7 +240,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("把记录拖到另一条记录前面：按插入位置移动（不换分组）", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(rowOf("a 的内容"), { dataTransfer });
@@ -238,7 +256,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("Ctrl 多选后拖动：一次把所有选中记录交给上层", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.click(screen.getByText("a 的内容"), { ctrlKey: true });
@@ -256,7 +274,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("拖动时出现末尾放置区，可把记录移出分组", async () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(rowOf("b 的内容"), { dataTransfer });
@@ -271,7 +289,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("点击记录切换当前记录（预览/属性面板跟随）", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
 
     fireEvent.click(screen.getByText("b 的内容"));
     expect(props.setSelectedRecordIndex).toHaveBeenCalledWith(1);
@@ -279,7 +297,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("Shift 连选：把锚点与点击位置之间的记录全部选中", () => {
     const props = makeProps({ selectedRecordIndex: 1 });
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.click(screen.getByText("d 的内容"), { shiftKey: true });
@@ -291,7 +309,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
   });
 
   test("当前记录有明显的选中标记，每行都有拖拽手柄", () => {
-    render(<RecordList {...makeProps({ selectedRecordIndex: 1 })} />);
+    renderList(makeProps({ selectedRecordIndex: 1 }));
 
     const selectedRow = rowOf("b 的内容");
     expect(selectedRow.className).toContain("selected");
@@ -303,7 +321,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
   });
 
   test("多选但非当前记录的行有独立的选中标记", () => {
-    render(<RecordList {...makeProps({ selectedRecordIndex: 0 })} />);
+    renderList(makeProps({ selectedRecordIndex: 0 }));
 
     fireEvent.click(screen.getByText("c 的内容"), { ctrlKey: true });
 
@@ -324,7 +342,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
       makeRecord("d", "d 的内容"),
     ];
     const props = makeProps({ records: groupFirst, selectedRecordIndex: 0 });
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(rowOf("d 的内容"), { dataTransfer });
@@ -346,7 +364,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("分组本身可以拖到列表最上方", async () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(groupRow("g1"), { dataTransfer });
@@ -360,7 +378,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
   });
 
   test("拖动记录时源行淡出（拖动反馈）", () => {
-    render(<RecordList {...makeProps()} />);
+    renderList(makeProps());
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(rowOf("a 的内容"), { dataTransfer });
@@ -368,7 +386,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
   });
 
   test("dragstart 不在同一轮渲染里把放置区插到源行上方（否则浏览器会取消拖拽）", async () => {
-    render(<RecordList {...makeProps()} />);
+    renderList(makeProps());
     const sourceRow = rowOf("a 的内容");
 
     fireEvent.dragStart(sourceRow, { dataTransfer: makeDataTransfer() });
@@ -389,7 +407,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("拖动分组表头：按目标记录所在的块插入", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(groupRow("g1"), { dataTransfer });
@@ -411,7 +429,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
     const props = makeProps({
       groups: [...groups, makeGroup("empty", "空分组")],
     });
-    render(<RecordList {...props} />);
+    renderList(props);
 
     // 有内容的分组拖到末尾
     const dataTransfer = makeDataTransfer();
@@ -435,7 +453,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 
   test("从分组表头的按钮/输入框起拖不会误触发分组排序", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
     const dataTransfer = makeDataTransfer();
 
     fireEvent.dragStart(
@@ -451,7 +469,7 @@ describe("剧情编辑 → 剧情列表分组", () => {
 describe("剧情编辑 → 工程操作（新建 / 导入 / 保存）", () => {
   test("「新建工程」按钮在工具条里，点击交给上层（真正的询问在上层）", () => {
     const props = makeProps();
-    render(<RecordList {...props} />);
+    renderList(props);
 
     const button = screen.getByRole("button", { name: "新建工程" });
     // 与导入 / 保存并排，且排在最前面（破坏性操作不挨着「导出视频」）
@@ -461,5 +479,57 @@ describe("剧情编辑 → 工程操作（新建 / 导入 / 保存）", () => {
 
     fireEvent.click(button);
     expect(props.onNewProject).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("剧情编辑 → 剧情列表多选（批量修改的前提）", () => {
+  test("标题旁有「全选」：点一下全选（徽标显示条数），再点变「取消选择」", () => {
+    renderList(makeProps());
+
+    // 未多选时没有徽标
+    expect(screen.queryByText(/已选 \d+ 条/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "全选" }));
+    expect(screen.getByText(`已选 ${records.length} 条`)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "取消选择" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "取消选择" }));
+    expect(screen.queryByText(/已选 \d+ 条/)).toBeNull();
+    expect(screen.getByRole("button", { name: "全选" })).toBeTruthy();
+  });
+
+  test("Ctrl 再点已选中的行 = 从批量里摘掉这一条", () => {
+    renderList(makeProps());
+
+    fireEvent.click(screen.getByText("c 的内容"), { ctrlKey: true });
+    expect(screen.getByText("已选 2 条")).toBeTruthy();
+    expect(rowOf("c 的内容").className).toContain("multi-selected");
+
+    // 再 Ctrl 点一次：取消勾选
+    fireEvent.click(screen.getByText("c 的内容"), { ctrlKey: true });
+    expect(rowOf("c 的内容").className).not.toContain("multi-selected");
+    expect(screen.queryByText(/已选 \d+ 条/)).toBeNull();
+  });
+
+  test("Shift 连选后徽标显示选中条数", () => {
+    renderList(makeProps({ selectedRecordIndex: 0 }));
+
+    fireEvent.click(screen.getByText("c 的内容"), { shiftKey: true });
+    // a → b → c 连着三条
+    expect(screen.getByText("已选 3 条")).toBeTruthy();
+  });
+
+  test("「全选」后拖动任意一行：一次把所有记录交给上层", () => {
+    const props = makeProps();
+    renderList(props);
+    const dataTransfer = makeDataTransfer();
+
+    fireEvent.click(screen.getByRole("button", { name: "全选" }));
+    fireEvent.dragStart(rowOf("c 的内容"), { dataTransfer });
+
+    expect(dataTransfer.setData).toHaveBeenCalledWith(
+      "text/plain",
+      "a,b,c,d",
+    );
   });
 });

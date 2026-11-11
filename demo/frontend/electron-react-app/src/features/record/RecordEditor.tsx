@@ -19,6 +19,10 @@ import CameraProperties from "./properties/CameraProperties";
 import EffectsProperties from "./properties/EffectsProperties";
 import AudioProperties from "./properties/AudioProperties";
 import GlobalProperties from "./properties/GlobalProperties";
+import BatchTextEditor from "./properties/BatchTextEditor";
+import BatchEffectsEditor from "./properties/BatchEffectsEditor";
+import type { BatchEditContext, RecordMutator } from "./properties/batchEdit";
+import { useRecordMultiSelect } from "./useRecordMultiSelect";
 import {
   normalizeTextSpeed,
   normalizeCameraFollowSpeaker,
@@ -613,6 +617,93 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
     [updateRecord],
   );
 
+  /* ===================== 剧情列表多选 → 批量编辑 ===================== */
+
+  /**
+   * 剧情列表的多选集合。
+   *
+   * <p>选中态放在编辑器层而不是列表里：同一份集合有两个消费方——列表（画多选态、决定一次拖几条）
+   * 与「文本」「特效」页签的批量面板（决定改哪几条）。点选规则（Ctrl 追加 / Shift 连选 / 跟随当前记录）
+   * 都在 {@link useRecordMultiSelect} 里，列表只负责把点击转过去。
+   */
+  const multiSelection = useRecordMultiSelect(
+    records || [],
+    selectedRecordIndex,
+    setSelectedRecordIndex,
+  );
+  /** 每次渲染同步一份到 ref：批量写回是事件回调，要读到最新的选中集合 */
+  const multiSelectionRef = useRef(multiSelection);
+  multiSelectionRef.current = multiSelection;
+
+  /**
+   * @function 把一次批量改动写到所有选中的记录上
+   *
+   * <p>三条约定：
+   * 1. **整批只压一次撤销快照**：否则"批量改 30 条"要按 30 次 Ctrl+Z；
+   * 2. **没有改动就不压栈**：改写器（见 properties/batchEdit）没改东西时原样返回记录，
+   *    这里数不到改动就直接返回 0，不会留下一堆空撤销；
+   * 3. **不走"镜头自动跟随说话人"**：那个逻辑按**当前记录**的背景尺寸算构图
+   *    （见 {@link autoFollowSpeaker} 的 `sizeOf`），一次改几十条、每条背景都不一样，
+   *    拿当前记录去推别人的镜头只会更错，所以批量改说话人时镜头一律不动。
+   *
+   * @param mutate 逐条改写器
+   * @return 真正被改写的记录条数（0 = 一条都没变）
+   */
+  const applyBatchEdit = useCallback(
+    (mutate: RecordMutator): number => {
+      const selected = new Set(multiSelectionRef.current.uuids);
+      if (selected.size === 0) return 0;
+
+      const current = recordsRef.current;
+      let changed = 0;
+      const nextRecords = current.map((record) => {
+        if (!selected.has(record.uuid)) return record;
+        const updated = mutate(record);
+        // 改写器"没变化时返回原对象"是整套批量编辑的契约，见 properties/batchEdit
+        if (!updated || updated === record) return record;
+        changed += 1;
+        return { ...updated, isDirty: true };
+      });
+      if (changed === 0) return 0;
+
+      pushUndo(false);
+      setRecords(nextRecords);
+      return changed;
+    },
+    [pushUndo, setRecords],
+  );
+
+  /**
+   * 批量编辑上下文：选中 **2 条以上**时才有值（1 条 = 原来的单条编辑）。
+   *
+   * <p>`records` / `indexes` 都按列表顺序给出：面板靠前者算"共同值"与三态，
+   * 靠后者判断"选中的记录里有没有第 1 条"（交叉溶解对第一条不生效，要提示）。
+   */
+  const batchContext = useMemo<BatchEditContext | null>(() => {
+    const selected = new Set(multiSelection.uuids);
+    if (selected.size < 2) return null;
+
+    const selectedRecords: Record[] = [];
+    const indexes: number[] = [];
+    (records || []).forEach((record, index) => {
+      if (!selected.has(record.uuid)) return;
+      selectedRecords.push(record);
+      indexes.push(index);
+    });
+    if (selectedRecords.length < 2) return null;
+
+    return {
+      records: selectedRecords,
+      indexes,
+      apply: applyBatchEdit,
+      // 「只编辑当前记录」：把选中集合收成当前这一条，页签就回到单条面板
+      exit: () => {
+        const uuid = recordsRef.current[selectedIndexRef.current]?.uuid;
+        if (uuid) multiSelectionRef.current.selectOnly(uuid);
+      },
+    };
+  }, [multiSelection.uuids, records, applyBatchEdit]);
+
   /**
    * 摄像机编辑状态（起止帧 / 工具 / 视图缩放 / 播放头）。
    *
@@ -1151,7 +1242,15 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   const renderPropertyContent = () => {
     switch (activePropertyTab) {
       case "text":
-        return (
+        // 选中 2 条以上 → 批量面板（一次改多条）；否则还是单条记录的表单。
+        // key = 选中集合：换一批记录就重挂，输入框的初值（"共同值"）才不会停在上一批的草稿上
+        return batchContext ? (
+          <BatchTextEditor
+            key={batchContext.indexes.join("-")}
+            batch={batchContext}
+            onOpenGlobalSpeed={openGlobalTextSpeed}
+          />
+        ) : (
           <TextProperties
             selectedRecord={selectedRecord}
             selectedRecordIndex={selectedRecordIndex}
@@ -1257,7 +1356,10 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           />
         );
       case "effects":
-        return (
+        // 与「文本」一样：选中 2 条以上改成批量勾选（三态复选框）
+        return batchContext ? (
+          <BatchEffectsEditor batch={batchContext} />
+        ) : (
           <EffectsProperties
             selectedRecord={selectedRecord}
             selectedRecordIndex={selectedRecordIndex}
@@ -1356,7 +1458,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
           records={currentRecords}
           groups={groups}
           selectedRecordIndex={selectedRecordIndex}
-          setSelectedRecordIndex={setSelectedRecordIndex}
+          multiSelection={multiSelection}
           createNewRecord={createNewRecord}
           onCreateGroup={createGroup}
           onRenameGroup={renameGroup}

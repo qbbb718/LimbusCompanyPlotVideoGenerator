@@ -1,0 +1,254 @@
+/* ===== 剧情记录批量编辑（剧情列表多选 → 「文本」「特效」页签） =====
+   两个批量面板共用这套样式。属性面板可以被拖成很窄的一条（甚至单独浮成小窗口），
+   所以每一行都是 flex-wrap、输入框可收缩，不能用固定宽度的"输入框 + 按钮" */
+.batch-edit {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* 批量特效面板的小标题：与「特效」单条面板的 `.effects-properties h4` 对齐 */
+.batch-edit h4 {
+  margin: 0 0 8px;
+}
+
+/* ===== 顶部说明条 ===== */
+.batch-edit-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #91caff;
+  border-radius: 6px;
+  background: #f0f8ff;
+}
+
+.batch-edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 「批量编辑」徽标：一眼分清现在改的是一批还是一条 */
+.batch-edit-badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #1890ff;
+  white-space: nowrap;
+}
+
+.batch-edit-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0050b3;
+  white-space: nowrap;
+}
+
+/* 「只编辑当前记录」：右对齐的次要按钮 */
+.batch-edit-exit {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #096dd9;
+  background: #fff;
+  border: 1px solid #91caff;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.batch-edit-exit:hover {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.batch-edit-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #595959;
+}
+
+/* 跳过提示（自由文本没有说话人名片）用警示色，别让人以为改动丢了 */
+.batch-edit-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b26a00;
+}
+
+/* 操作结果反馈 */
+.batch-edit-status {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  border-radius: 4px;
+}
+
+.batch-edit-status.success {
+  color: #237804;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+}
+
+.batch-edit-status.info {
+  color: #595959;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+}
+
+/* ===== 一行"字段 + 输入 + 应用" ===== */
+.batch-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.batch-edit-field > label,
+.batch-edit-field-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.batch-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.batch-edit-row input[type="text"],
+.batch-edit-row input[type="number"],
+.batch-edit-row textarea {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.batch-edit-row textarea {
+  flex-basis: 100%;
+  resize: vertical;
+  min-height: 88px;
+}
+
+.batch-edit-row input[type="range"] {
+  flex: 1 1 120px;
+  min-width: 0;
+  accent-color: #1890ff;
+}
+
+/* 应用按钮：只有真的能改什么的时候才亮 */
+.batch-edit-apply {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: #fff;
+  background: #1890ff;
+  border: 1px solid #1890ff;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.batch-edit-apply:hover:not(:disabled) {
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.batch-edit-apply:disabled {
+  color: #bfbfbf;
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  cursor: not-allowed;
+}
+
+.batch-edit-value {
+  font-weight: 600;
+  color: #1890ff;
+  white-space: nowrap;
+}
+
+.batch-edit-field-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #888;
+}
+
+/* 说明文字里的文字链接式按钮（"全局显示速度设置"）：不额外占一行 */
+.batch-edit-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1890ff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.batch-edit-link:hover {
+  color: #40a9ff;
+}
+
+.batch-edit-link:focus-visible {
+  outline: 2px solid #91d5ff;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* 对话内容：两种模式（统一设置 / 查找替换） */
+.batch-edit-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.batch-edit-modes label,
+.batch-edit-inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-edit-modes input[type="radio"],
+.batch-edit-inline-check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #1890ff;
+  cursor: pointer;
+}
+
+/* ===== 特效三态复选框 ===== */
+.batch-effect-state {
+  margin: 6px 0 0 24px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #888;
+}
+
+.batch-effect-state.mixed {
+  color: #d48806;
+}

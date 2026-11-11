@@ -45,6 +45,51 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 多选徽标 + 全选按钮也在这里：面板被拖窄时整组换行，不把标题挤成两行 */
+  flex-wrap: wrap;
+  row-gap: 6px;
+  min-width: 0;
+}
+
+/* 多选计数徽标：选中 2 条以上才出现（提示"现在改的是一批"） */
+.record-multi-badge {
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background-color: #1890ff;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* 全选 / 取消选择：与「新建分组」同一档的次要按钮 */
+.record-multi-toggle {
+  height: 24px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  color: #096dd9;
+  background-color: #fff;
+  border: 1px solid #91caff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.record-multi-toggle:hover:not(:disabled) {
+  color: #fff;
+  background-color: #1890ff;
+  border-color: #1890ff;
+}
+
+.record-multi-toggle:disabled {
+  color: #bfbfbf;
+  border-color: #e0e0e0;
+  cursor: not-allowed;
 }
 
 /* 添加记录按钮（显示为 "+"） */
