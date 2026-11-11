@@ -75,8 +75,9 @@ class BackgroundDimRenderingTest {
     @Test
     @DisplayName("压暗只压自己那一层：叠在上面的背景保持原色")
     void dimOnlyAffectsItsOwnLayer() throws Exception {
-        // 下层压暗、上层不压暗：探测点看到的是上层，必须一点都没变
-        BufferedImage image = render(background(BG_COLOR, true), background(TOP_COLOR, false));
+        // 数组首项 = 画面最上层（列表最上 = 画面最前）：把不压暗的那张放前面、压暗的放下层，
+        // 探测点看到的是上层，必须一点都没变
+        BufferedImage image = render(background(TOP_COLOR, false), background(BG_COLOR, true));
 
         assertColor(TOP_COLOR, image.getRGB(PROBE_X, PROBE_Y), 2, "上层背景");
     }

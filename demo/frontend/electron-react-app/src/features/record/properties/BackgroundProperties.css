@@ -109,6 +109,20 @@
   gap: 10px;
 }
 
+/* 标题行右侧：↑↓ 层级调整 + 删除（与「立绘」卡片的操作区同一套观感） */
+.background-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+/* 层级按钮成组：尺寸 / 间距抄「立绘」的 .character-order-controls，两个页签手感一致 */
+.background-order-controls {
+  display: flex;
+  gap: 2px;
+}
+
 /* 左侧「缩略图 + 名称」：名称过长时省略，别把删除按钮挤出去 */
 .background-item-info {
   display: flex;
@@ -176,6 +190,14 @@
   padding: 2px 8px;
   font-size: 12px;
   cursor: pointer;
+}
+
+/* 列表首项不能上移、末项不能下移：置灰 + 禁止点击，层级不会被挪出列表 */
+.backgrounds-list .background-order-controls button:disabled {
+  color: #bbb;
+  background-color: #f5f5f5;
+  border-color: #e5e5e5;
+  cursor: not-allowed;
 }
 
 .background-name {

@@ -26,6 +26,15 @@ import com.lbc_plot.resource.model.Background;
  *
  * <p>「压暗」（{@link #isDim()}）是这张背景自己的开关，只压它自己的像素：
  * 画在它上面的立绘、临时图片、UI 与台词都不受影响。
+ *
+ * <p><b>层级（z-order）</b>：一条记录里多张背景之间的前后关系由 {@code Record.bg} 列表的
+ * <b>数组顺序</b>决定——<b>首项在画面最前，末项在最底层</b>。这与「立绘」「临时图片」用的是
+ * 同一套约定（渲染时倒序遍历：末尾先画、首项后画，见
+ * {@code RenderOfImage#renderFullScreenBackground}）。前端「剧情编辑 → 背景」列表按数组顺序显示，
+ * 所以列表越靠上，画面里越靠前；上移 / 下移就是与前一项 / 后一项交换。
+ *
+ * <p>这里<b>不额外存 z 字段</b>：数组顺序本身就是层级（与 {@code chars} / {@code tempImages} 一致），
+ * 保存 / 加载、预览、播放、导出都直接复用这个顺序，不需要迁移旧数据。
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BackgroundVisual extends VisualElement {

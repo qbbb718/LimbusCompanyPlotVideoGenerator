@@ -183,6 +183,12 @@ export const DEFAULT_FREE_TEXT_COLOR = "#FBDBB3";
 export const DEFAULT_FREE_TEXT_FONT_SIZE = 36;
 
 // 背景视觉元素
+/**
+ * 背景视觉元素。
+ *
+ * <p>多张背景之间的**层级由 `Record.bg` 的数组顺序决定**（首项在画面最前），这个接口本身
+ * 不带 z 字段——与 `CharacterVisual` / `TempImageVisual` 同一套约定，见 {@link Record.bg}。
+ */
 export interface BackgroundVisual {
   /** 记录里内嵌的背景快照（后端只回这几个字段，没有 tags） */
   background: {
@@ -392,6 +398,11 @@ export interface Record {
   uuid: string;
   durationFrames: number;
   dialogue: Dialogue;
+  /**
+   * 背景视觉元素列表，**数组顺序就是层级**：首项在画面最前（「背景」列表最上 = 画面最前），
+   * 末项在最底层。与 `chars` / `tempImages` 是同一套约定（后端渲染时倒序遍历：末尾先画、首项后画），
+   * 所以「上移 / 下移」就是交换相邻两项，保存 / 加载、预览、播放、导出都直接用这个顺序。
+   */
   bg: BackgroundVisual[];
   chars: CharacterVisual[];
   tempImages: TempImageVisual[];

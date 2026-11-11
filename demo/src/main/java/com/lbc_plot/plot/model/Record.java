@@ -29,7 +29,7 @@ public class Record {
      * 就渲染不出用户设定的取景。缺省 (960,540,1.0) 是恒等变换，旧工程不受影响。
      */
     private Camera camera;
-    private List<BackgroundVisual> bg; // 背景视觉元素
+    private List<BackgroundVisual> bg; // 背景视觉元素（顺序即层级：首项在画面最前，见 getBackgroundVisuals）
     private List<CharacterVisual> chars; // 角色立绘列表
     private List<TempImageVisual> tempImages; // 临时图片（NPC、道具等）
     private List<EffectVisual> effects; // 特效列表（交叉溶解等，渲染视频时要读，所以随记录一起序列化）
@@ -113,6 +113,14 @@ public class Record {
         this.isDirty = true;
     }
 
+    /**
+     * 背景视觉元素列表。**顺序即层级**：首项在画面最前（顶层），末项在最底层；
+     * 渲染时倒序遍历（先画末尾），与前端「背景」列表顺序一致，见
+     * {@link com.lbc_plot.render.engine.RenderOfImage#renderPre} 与 {@link BackgroundVisual} 的类注释。
+     *
+     * <p>保存 / 加载、预览、播放、导出都直接用这个数组的顺序，没有单独的 z 字段，
+     * 所以调整层级只需要交换数组元素（前端「上移 / 下移」就是交换相邻两项）。
+     */
     @JsonProperty("bg")
     public List<BackgroundVisual> getBackgroundVisuals() {
         return bg;

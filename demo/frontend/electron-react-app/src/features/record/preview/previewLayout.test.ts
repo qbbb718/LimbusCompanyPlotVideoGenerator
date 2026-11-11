@@ -172,6 +172,69 @@ describe("预览几何 → 背景", () => {
   });
 });
 
+/* ============================ 背景层级（z-order） ============================ */
+
+describe("预览几何 → 背景层级", () => {
+  const sizeOf = (key: string) =>
+    key.startsWith("background") ? IMAGE_16_9 : undefined;
+
+  /** 两张铺满画布的背景：几何完全重叠，只有层级能决定谁在上面 */
+  const twoBackgrounds = () =>
+    makeRecord({
+      bg: [
+        makeBackground({
+          background: {
+            uuid: "bg-1",
+            path: "/assets/backgrounds/一.png",
+            name: "一",
+            thumbnailPath: "",
+          },
+        }) as any,
+        makeBackground({
+          background: {
+            uuid: "bg-2",
+            path: "/assets/backgrounds/二.png",
+            name: "二",
+            thumbnailPath: "",
+          },
+        }) as any,
+      ],
+    });
+
+  test("首项最后画（最上层）、末项先画（底层）：数组顺序 = 绘制顺序的倒序", () => {
+    const geometry = buildPreviewGeometry(twoBackgrounds(), {
+      plot: true,
+      videoWidth: 1920,
+      videoHeight: 1080,
+      sizeOf,
+    });
+    const keys = geometry.layers
+      .filter((layer) => layer.kind === "background")
+      .map((layer) => layer.key);
+
+    // 列表最上 = 画面最前：background:0 排在最后（最后画 = 盖在最上面）
+    expect(keys).toEqual(["background:1", "background:0"]);
+
+    const front = geometry.layers.find((layer) => layer.key === "background:0")!;
+    const back = geometry.layers.find((layer) => layer.key === "background:1")!;
+    expect(front.z).toBeGreaterThan(back.z);
+  });
+
+  test("命中检测优先拿到列表最上面那张（两张背景完全重叠时）", () => {
+    const geometry = buildPreviewGeometry(twoBackgrounds(), {
+      plot: true,
+      videoWidth: 1920,
+      videoHeight: 1080,
+      sizeOf,
+    });
+
+    // 画面中心落在两张背景里：应命中列表首项（background:0）
+    const hit = layerAt(geometry.layers, { x: 960, y: 300 });
+    expect(hit?.kind).toBe("background");
+    expect(hit?.index).toBe(0);
+  });
+});
+
 /* ============================ 立绘几何 ============================ */
 
 describe("预览几何 → 立绘", () => {

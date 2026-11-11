@@ -239,7 +239,6 @@ describe("BackgroundProperties 压暗", () => {
 
     const toggle = screen.getByLabelText("背景 1 压暗") as HTMLInputElement;
     expect(toggle.checked).toBe(false);
-    expect(screen.getByText("不压暗")).toBeTruthy();
   });
 
   it("勾上「压暗」把 dim 写回记录，不动缩放与偏移", async () => {
@@ -257,7 +256,7 @@ describe("BackgroundProperties 压暗", () => {
     expect(updatedRecord.bg[0].posX).toBe(300);
   });
 
-  it("已经压暗的背景回显为勾选，状态文字跟着变", () => {
+  it("已经压暗的背景回显为勾选", () => {
     const record = makeRecord([officeBackground]);
     record.bg[0].dim = true;
     renderPanel(record);
@@ -265,7 +264,6 @@ describe("BackgroundProperties 压暗", () => {
     expect(
       (screen.getByLabelText("背景 1 压暗") as HTMLInputElement).checked,
     ).toBe(true);
-    expect(screen.getByText("已压暗一半")).toBeTruthy();
   });
 
   it("取消勾选把 dim 写回 false", async () => {
@@ -477,5 +475,148 @@ describe("BackgroundProperties 点卡片 → 预览选中", () => {
     expect(items[0].getAttribute("data-preview-selected")).toBeNull();
     expect(items[1].getAttribute("data-preview-selected")).toBe("true");
     expect(items[1].className).toContain("visual-card-preview-selected");
+  });
+});
+
+/* ===================== 层级（上移 / 下移） ===================== */
+
+/** 第三张背景：验证「删中间那张后剩下顺序不变」 */
+const parkBackground: Background = {
+  uuid: "bg3",
+  name: "公园",
+  path: "/assets/backgrounds/公园.png",
+  thumbnailPath: "/assets/backgrounds/thumbnails/thumb_bg3.png",
+  tags: [],
+};
+
+describe("BackgroundProperties 背景层级", () => {
+  /** ↑ / ↓ 按钮：accessible name 就是箭头（与「立绘」页签的操作入口一致） */
+  const arrows = (glyph: "↑" | "↓") =>
+    screen.getAllByRole("button", { name: glyph }) as HTMLButtonElement[];
+
+  const renderLayers = (backgrounds: Background[]) => {
+    const updateRecord = renderPanel(makeRecord(backgrounds));
+    return { updateRecord };
+  };
+
+  it("每张背景都有 ↑ / ↓；首项上移、末项下移禁用（无越界）", () => {
+    renderLayers([officeBackground, streetBackground]);
+    const ups = arrows("↑");
+    const downs = arrows("↓");
+
+    expect(ups).toHaveLength(2);
+    expect(downs).toHaveLength(2);
+    expect(ups[0].disabled).toBe(true);
+    expect(downs[0].disabled).toBe(false);
+    expect(ups[1].disabled).toBe(false);
+    expect(downs[1].disabled).toBe(true);
+  });
+
+  it("只有一张背景时 ↑ / ↓ 都不可用", () => {
+    renderLayers([officeBackground]);
+    expect(arrows("↑")[0].disabled).toBe(true);
+    expect(arrows("↓")[0].disabled).toBe(true);
+  });
+
+  it("点 ↓：这张在列表里下移一位（画面里后移一层）", () => {
+    const { updateRecord } = renderLayers([officeBackground, streetBackground]);
+    fireEvent.click(arrows("↓")[0]);
+
+    expect(updateRecord).toHaveBeenCalledTimes(1);
+    const [recordIndex, updated] = updateRecord.mock.calls[0];
+    expect(recordIndex).toBe(0);
+    // 首项下移 = 与第二项交换：街道跑到列表最上（画面最前）
+    expect(updated.bg.map((bg: any) => bg.background.uuid)).toEqual([
+      "bg2",
+      "bg1",
+    ]);
+  });
+
+  it("点 ↑：这张在列表里上移一位（画面里前移一层）", () => {
+    const { updateRecord } = renderLayers([officeBackground, streetBackground]);
+    fireEvent.click(arrows("↑")[1]);
+
+    expect(updateRecord).toHaveBeenCalledTimes(1);
+    const [, updated] = updateRecord.mock.calls[0];
+    expect(updated.bg.map((bg: any) => bg.background.uuid)).toEqual([
+      "bg2",
+      "bg1",
+    ]);
+    // 交换的是位置：每张背景自己的缩放 / 偏移 / 压暗跟着它一起走
+    expect(updated.bg[0].background.name).toBe("街道");
+    expect(updated.bg[1].background.name).toBe("办公室");
+    expect(updated.bg[1].scale).toBe(1);
+  });
+
+  it("禁用按钮点了不写回记录（首项不能上移、末项不能下移）", () => {
+    const { updateRecord } = renderLayers([officeBackground, streetBackground]);
+    fireEvent.click(arrows("↑")[0]);
+    fireEvent.click(arrows("↓")[1]);
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
+  it("调整层级会清空批量勾选（下标含义变了，避免误删）", () => {
+    renderLayers([officeBackground, streetBackground]);
+    fireEvent.click(screen.getByLabelText("选择背景 1"));
+    expect(screen.getByText("已选 1 / 2")).toBeTruthy();
+
+    fireEvent.click(arrows("↓")[0]);
+    expect(screen.getByText("已选 0 / 2")).toBeTruthy();
+  });
+
+  it("点 ↑ / ↓ 不会触发「点卡片 → 预览选中」（它们和删除按钮一样是卡片里的控件）", () => {
+    const onSelectVisual = jest.fn();
+    render(
+      <BackgroundProperties
+        selectedRecord={makeRecord([officeBackground, streetBackground])}
+        selectedRecordIndex={0}
+        updateRecord={jest.fn()}
+        onSelectVisual={onSelectVisual}
+      />,
+    );
+
+    fireEvent.click(arrows("↓")[0]);
+    fireEvent.click(arrows("↑")[1]);
+
+    expect(onSelectVisual).not.toHaveBeenCalled();
+  });
+
+  it("删除中间那张后，剩下两张的相对顺序不变", () => {
+    const { updateRecord } = renderLayers([
+      officeBackground,
+      streetBackground,
+      parkBackground,
+    ]);
+
+    // 三张：首项只能下移、末项只能上移、中间项两个方向都能
+    expect(arrows("↑")[0].disabled).toBe(true);
+    expect(arrows("↓")[2].disabled).toBe(true);
+    expect(arrows("↑")[1].disabled).toBe(false);
+    expect(arrows("↓")[1].disabled).toBe(false);
+
+    // 删中间的「街道」→ 剩下 办公室、公园，顺序保持不变
+    fireEvent.click(screen.getAllByText("删除")[1]);
+    const [, updated] = updateRecord.mock.calls[0];
+    expect(updated.bg.map((bg: any) => bg.background.uuid)).toEqual([
+      "bg1",
+      "bg3",
+    ]);
+  });
+
+  it("新加的背景追加到列表末尾（画面最底层，与现有新增行为一致）", async () => {
+    getBackgrounds.mockResolvedValue([officeBackground, streetBackground]);
+    const { updateRecord } = renderLayers([officeBackground]);
+    // 等挂载时拉的背景列表落地（选择弹窗里的格子来自这次请求）
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "添加背景" }));
+    fireEvent.doubleClick(screen.getByText("街道"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updated] = updateRecord.mock.calls[0];
+    expect(updated.bg.map((bg: any) => bg.background.uuid)).toEqual([
+      "bg1",
+      "bg2",
+    ]);
   });
 });

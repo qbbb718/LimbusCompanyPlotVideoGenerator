@@ -22,6 +22,11 @@
  *   预览图 / 视频帧 W×H
  * </pre>
  *
+ * <h3>层级（z-order）</h3>
+ * 背景 / 立绘 / 临时图片的**数组顺序就是叠放顺序**，首项在最上层（与后端倒序绘制一致）。
+ * 本模块为背景产出图层时按"从底层到顶层"的绘制顺序 push（数组末尾先画、首项最后画），
+ * z 值随之反向；「剧情编辑 → 背景」列表的 ↑ / ↓ 就是交换数组里相邻的两项。
+ *
  * <h3>为什么要在前端重算一遍</h3>
  * 预览图是后端渲染的栅格图，没有 DOM 结构，点不到任何东西。要能点中元素，
  * 就必须知道它们在图上的矩形；公式的**唯一真源**是后端
@@ -661,27 +666,32 @@ export function buildPreviewGeometry(
     layers.push({ ...layer, outRect });
   };
 
-  /* ---- 背景：数组顺序即绘制顺序，靠后的在上层 ---- */
-  (record?.bg ?? []).forEach((background, index) => {
+  /* ---- 背景：数组顺序即层级，首项在最上层（与后端 renderFullScreenBackground 的倒序绘制一致） ---- */
+  const backgroundList = record?.bg ?? [];
+  // 倒序 push：`layers` 的顺序就是绘制顺序（末尾先画、首项最后画）。
+  // DOM 场景层 / 摄像机世界视图都直接按 `layers` 顺序叠，这样"列表最上 = 画面最前"在预览里也成立。
+  for (let index = backgroundList.length - 1; index >= 0; index -= 1) {
+    const background = backgroundList[index];
     const key = sceneLayerKey("background", index);
     const size = sizeOf(key);
     if (!size) {
       missingSizes.push(key);
-      return;
+      continue;
     }
     push({
       key,
       kind: "background",
       index,
       label: `背景 ${index + 1} · ${background?.background?.name ?? "未命名"}`,
-      z: 10 + index,
+      // 首项在最上层：索引越小 z 越大，命中检测（layerAt / layersAt）才会先拿到列表最上面那张
+      z: 10 + (backgroundList.length - 1 - index),
       space: "world",
       baseRect: backgroundWorldRect(background, size),
       // 压暗只压这张背景自己的像素：后端在同一层贴"压暗后的图"，
       // 立绘/临时图片/UI 画在更上层，完全不受影响
       dim: background.dim === true,
     });
-  });
+  }
 
   /* ---- 立绘：后端逆序绘制（数组末尾在底层、首项在最上层）；人格故事模式不渲染 ---- */
   const characters = options.plot ? record?.chars ?? [] : [];

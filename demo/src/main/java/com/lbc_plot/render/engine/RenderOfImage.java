@@ -455,6 +455,11 @@ public class RenderOfImage {
     /**
      * 渲染全屏背景：逐张按各自的 scale / posX / posY 画进设计画布。
      *
+     * <p><b>层级</b>：{@code bgList} 的顺序就是叠放顺序，<b>首项在画面最前</b>（见
+     * {@link BackgroundVisual} 的类注释），所以这里从末尾往前画：先画底层、最后画首项。
+     * 前端「剧情编辑 → 背景」列表的显示顺序与数组顺序一致（越靠上 = 越靠前），
+     * 预览几何 {@code preview/previewLayout.ts} 也按同一顺序产出图层，预览 / 播放 / 导出一致。
+     *
      * <p>缩放交给合成阶段完成（{@link FrameComposerService#addImageLayerIntoRect}），
      * 不再"先把背景缩进一张画布大小的透明图层"：
      * <ul>
@@ -470,7 +475,11 @@ public class RenderOfImage {
         final boolean hasCamera = camera != null && !camera.isIdentity();
         final float zoom = hasCamera ? camera.getZoomFactor() : 1f;
 
-        for (BackgroundVisual bg : bgList) {
+        // 逆序渲染：数组末尾先绘制（底层），数组开头后绘制（顶层），与前端「背景」列表顺序一致。
+        // 层级约定见 BackgroundVisual 的类注释：bg[0] 是画面最前的一层，用户点「↑」上移即往前挪一层
+        // （前端就是与前一项交换）。立绘 / 临时图片用的是同一套倒序规则，三者的「列表最上 = 画面最前」才能统一。
+        for (int i = bgList.size() - 1; i >= 0; i--) {
+            BackgroundVisual bg = bgList.get(i);
             if (!validateBackgroundVisual(bg))
                 continue;
 

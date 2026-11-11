@@ -93,9 +93,12 @@ public class RecordController {
      * <p>v13：对话内容支持换行（按 '\n' 硬换行排版，见 {@code TextLineBreaker}），
      * 同一段文字的画面与旧版不同（旧版把换行整个吞掉），旧缓存必须作废。
      *
+     * <p>v14：背景层级改为「列表最上 = 画面最前」（{@code RenderOfImage.renderFullScreenBackground}
+     * 改成倒序绘制），多张背景的叠放与旧版相反，旧缓存必须作废。
+     *
      * <p>以后任何会改变预览图观感的渲染改动，都要把这个版本号 +1。
      */
-    private static final String PREVIEW_CACHE_VERSION = "v13";
+    private static final String PREVIEW_CACHE_VERSION = "v14";
 
     /**
      * 同时渲染的预览图上限。

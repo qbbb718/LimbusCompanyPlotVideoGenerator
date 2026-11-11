@@ -24,6 +24,12 @@ import {
   createCoordinateMapper,
   normalizeBackgroundScale,
 } from "./visualCoordinates";
+import {
+  canMoveBackgroundLayer,
+  insertBackgroundLayer,
+  moveBackgroundLayer,
+} from "./backgroundLayers";
+import type { BackgroundLayerDirection } from "./backgroundLayers";
 import "../RecordEditor.css";
 import "./TransformControls.css";
 import "./BackgroundProperties.css";
@@ -74,6 +80,11 @@ const handleThumbnailError = (
  *
  * <p>列表里的每一张背景既可以被**批量勾选删除**（勾选框 + 顶部工具条），
  * 也可以**点卡片在预览里选中**——两套状态分开管理，互不影响。
+ *
+ * <p><b>层级</b>：列表顺序就是叠放顺序，**列表最上 = 画面最前**（见 `backgroundLayers.ts`）。
+ * 每张卡片标题行的 ↑ / ↓ 把这张背景往前 / 往后挪一层（与前一项 / 后一项交换），
+ * 列表首项不能上移、末项不能下移。顺序一变，预览、播放与导出立刻按新层级渲染；
+ * 顺序随 `record.bg` 一起保存 / 加载，删除素材后剩下各项的相对顺序保持不变。
  */
 const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   selectedRecord,
@@ -153,9 +164,11 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
       // 新加的背景默认不压暗：加进来先看到原图，需要氛围时再勾
       dim: false,
     };
+    // 默认插入位置：**追加到列表末尾 = 画面最底层**（与「立绘」「临时图片」的新增行为一致，
+    // 不会把用户已经调好的背景瞬间盖住）。想让它显示在前面，点这张卡片的「↑」即可。
     updateRecord(selectedRecordIndex, {
       ...selectedRecord,
-      bg: [...currentBackgrounds, newBackground],
+      bg: insertBackgroundLayer(currentBackgrounds, newBackground),
     });
     setSelectedBackground(null);
     setShowSelector(false);
@@ -170,6 +183,27 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
   const updateBackground = (index: number, field: string, value: any) => {
     const updatedBgs = [...currentBackgrounds];
     updatedBgs[index] = { ...updatedBgs[index], [field]: value };
+    updateRecord(selectedRecordIndex, { ...selectedRecord, bg: updatedBgs });
+  };
+
+  /**
+   * @function 调整背景层级（卡片上的 ↑ / ↓）
+   *
+   * <p>列表顺序就是层级：**上移 = 与前一项交换（画面里往前一层）**，
+   * **下移 = 与后一项交换（画面里往后一层）**。首项不能再上移、末项不能再下移，
+   * 越界由 {@link canMoveBackgroundLayer} 兜住（按钮本身也禁用，见 {@link moveBackgroundLayer}）。
+   *
+   * <p>写回记录后预览图会按新的 `record.bg` 重新渲染，播放 / 导出读的也是同一个顺序，
+   * 所以三处的叠放立刻一致；顺序随记录一起保存 / 加载，不需要额外的字段。
+   *
+   * @param index     要移动的背景下标（0 = 列表最上 = 画面最前）
+   * @param direction `up` = 上移，`down` = 下移
+   */
+  const moveLayer = (index: number, direction: BackgroundLayerDirection) => {
+    const updatedBgs = moveBackgroundLayer(currentBackgrounds, index, direction);
+    if (!updatedBgs) return;
+    // 批量勾选是按下标记的：位置一变就可能指到别的背景上，和删除一样先清空，避免误删
+    batch.clear();
     updateRecord(selectedRecordIndex, { ...selectedRecord, bg: updatedBgs });
   };
 
@@ -249,6 +283,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
       <div className="background-properties">
         <h4>背景设置</h4>
         <p className="transform-hint">
+          列表最上 = 画面最前：用卡片上的 ↑ / ↓ 调整背景之间的叠放顺序（首项不能再上移、末项不能再下移）；
           缩放以画面中心为基准；位置 0 = 居中，可超出画面；每行 ↺ 只复原该行；
           「压暗」只压这张背景，不影响叠在上面的立绘与 UI。
         </p>
@@ -316,7 +351,46 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                     </div>
                     <h5 title={bg.background.name}>{bg.background.name}</h5>
                   </div>
-                  <button onClick={() => deleteBackground(index)}>删除</button>
+                  <div className="background-controls">
+                    {/* 层级：↑ 往前一层 / ↓ 往后一层。首项不能上移、末项不能下移（禁用，防越界） */}
+                    <div
+                      className="background-order-controls"
+                      role="group"
+                      aria-label={`背景 ${index + 1} 层级`}
+                    >
+                      <button
+                        type="button"
+                        title="上移（往画面更前一层）"
+                        disabled={
+                          !canMoveBackgroundLayer(
+                            index,
+                            "up",
+                            currentBackgrounds.length,
+                          )
+                        }
+                        onClick={() => moveLayer(index, "up")}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        title="下移（往画面更后一层）"
+                        disabled={
+                          !canMoveBackgroundLayer(
+                            index,
+                            "down",
+                            currentBackgrounds.length,
+                          )
+                        }
+                        onClick={() => moveLayer(index, "down")}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    <button type="button" onClick={() => deleteBackground(index)}>
+                      删除
+                    </button>
+                  </div>
                 </div>
 
                 {/* 缩放：数值框 + 滑块 + 图标复原（↺ 只复位缩放） */}
