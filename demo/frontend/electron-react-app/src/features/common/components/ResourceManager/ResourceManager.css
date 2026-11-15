@@ -150,6 +150,86 @@
   background-color: #40a9ff;
 }
 
+/*
+ * 批量导入的进度 / 结果提示条（背景、音效共用，见 ResourceBatchStatus）。
+ *
+ * 一次选多个资源包时，逐个上传可能要几十秒：必须有"第几个 / 共几个、正在传哪个"的进度，
+ * 否则用户会以为没点上、再点一次又导入一遍。失败清单也可能很长，
+ * 所以文字区给个高度上限自己滚动，不把下面的素材列表挤没。
+ */
+.resource-batch-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  /* 素材列表是滚动区，这条不许被压扁 */
+  flex-shrink: 0;
+}
+
+.resource-batch-status--busy {
+  align-items: center;
+  background: #f0f6ff;
+  border-color: #cfe3ff;
+  color: #1d4ed8;
+}
+
+.resource-batch-status--success {
+  background: #f0fbf1;
+  border-color: #cfe9d3;
+  color: #1f7a33;
+}
+
+.resource-batch-status--info {
+  background: #fffbe6;
+  border-color: #ffe58f;
+  color: #874d00;
+}
+
+.resource-batch-status--error {
+  background: #fff2f0;
+  border-color: #ffccc7;
+  color: #a8071a;
+}
+
+.resource-batch-text {
+  flex: 1;
+  max-height: 132px;
+  overflow-y: auto;
+  /* 中文文件名与后端报错可能很长，按字符断行，别把提示条撑破 */
+  overflow-wrap: anywhere;
+}
+
+.resource-batch-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.resource-batch-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: resource-batch-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes resource-batch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* 角色相关样式 */
 .characters-grid {
   display: grid;

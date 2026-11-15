@@ -888,12 +888,27 @@ class ApiService {
     }
   }
 
-  /** 从一个 zip（图片序列 zip 或本功能导出的 .lcaf）导入 */
+  /**
+   * 从一个 zip / `.lcaf` 导入。
+   *
+   * <p>包里装的东西由后端**自动判断**：一个 `.lcaf`（或一串帧图）→ 一套动画；
+   * 装了好几个 `.lcaf`（别人把动画包解压后又重新打成的 zip）→ **逐套**导入。
+   * 所以回包既可能是单套也可能是多套：
+   * - `assets`：本次进来的每一套（单套时只有一个元素）；
+   * - `asset`：最后那套（老回包只有这个字段，界面默认选中它）；
+   * - `failures`：整包里坏掉的那几套，逐条形如 `动画「坏的.lcaf」导入失败：…`。
+   */
   async importAnimationClipZip(
     file: File,
     name?: string,
     options: { inferHolds?: boolean; maxGapFrames?: number } = {},
-  ): Promise<{ asset: any; warnings: string[] }> {
+  ): Promise<{
+    asset: any | null;
+    assets?: any[];
+    count?: number;
+    warnings: string[];
+    failures?: string[];
+  }> {
     try {
       const formData = new FormData();
       formData.append('file', file);

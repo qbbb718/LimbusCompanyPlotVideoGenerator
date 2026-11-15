@@ -617,6 +617,132 @@ describe("资源管理 · 序列帧动画", () => {
     }
   });
 
+  /* ---- 整包导入：一个 zip 里装多套 .lcaf ---- */
+
+  /** 装了几个 .lcaf 的整包 zip（对话框只带回路径，内容由后端判断） */
+  const mockBundlePick = (filePath = "D:/a/情绪气泡.zip") => {
+    const readFile = jest.fn().mockResolvedValue(new ArrayBuffer(8));
+    (window as any).electronAPI = {
+      openAnimationClip: jest.fn().mockResolvedValue({ canceled: false, filePath }),
+      readFile,
+    };
+    return readFile;
+  };
+
+  test("导入 .lcaf：zip 里装多套 .lcaf → 一次全导入，回执写套数与名字，并选中最后一套", async () => {
+    const joy: AnimationClipDto = { ...asset, id: "joy_aaaa1111", name: "开心" };
+    const surprise: AnimationClipDto = { ...asset, id: "spr_bbbb2222", name: "惊讶" };
+    mockLibrary([joy, surprise]);
+    const importSpy = jest.spyOn(ApiService, "importAnimationClipZip").mockResolvedValue({
+      asset: surprise,
+      assets: [joy, surprise],
+      count: 2,
+      warnings: [],
+      failures: [],
+    } as any);
+    mockBundlePick();
+
+    try {
+      renderTab();
+      fireEvent.click(screen.getByText("导入 .lcaf"));
+
+      await waitFor(() => expect(importSpy).toHaveBeenCalledTimes(1));
+      const summary = await screen.findByText(/已导入 2 套动画/);
+      expect(summary.textContent).toContain("「开心」");
+      expect(summary.textContent).toContain("「惊讶」");
+      // 选中最后导入的那套：列表按创建时间倒序，它就是最上面那张
+      expect((screen.getByLabelText("动画名称") as HTMLInputElement).value).toBe("惊讶");
+    } finally {
+      delete (window as any).electronAPI;
+    }
+  });
+
+  test("整包导入有坏的那套：成功照常进库，失败逐条写进提示（进错误态）", async () => {
+    const joy: AnimationClipDto = { ...asset, id: "joy_aaaa1111", name: "开心" };
+    mockLibrary([joy]);
+    jest.spyOn(ApiService, "importAnimationClipZip").mockResolvedValue({
+      asset: joy,
+      assets: [joy],
+      count: 1,
+      warnings: ["包里还有图片，已忽略（整包按 .lcaf 逐套导入）"],
+      failures: ["动画「坏的.lcaf」导入失败：压缩包里没有找到图片"],
+    } as any);
+    mockBundlePick();
+
+    try {
+      renderTab();
+      fireEvent.click(screen.getByText("导入 .lcaf"));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toContain("已导入「开心」");
+      expect(alert.textContent).toContain("坏的.lcaf");
+      // 后端的提示（比如"包里的图片被忽略"）也要让用户看到
+      expect(alert.textContent).toContain("已忽略");
+    } finally {
+      delete (window as any).electronAPI;
+    }
+  });
+
+  test("单个 .lcaf 的老回包（只有 asset、没有 assets）仍按一套显示", async () => {
+    mockLibrary([]);
+    jest
+      .spyOn(ApiService, "importAnimationClipZip")
+      .mockResolvedValue({ asset: { ...asset, id: "one_cccc3333" }, warnings: [] } as any);
+    mockBundlePick("D:/a/花开.lcaf");
+
+    try {
+      renderTab();
+      fireEvent.click(screen.getByText("导入 .lcaf"));
+
+      expect(await screen.findByText(/已导入「花开」（2 张图，共 4 帧）/)).toBeTruthy();
+    } finally {
+      delete (window as any).electronAPI;
+    }
+  });
+
+  test("批量导入：整包 zip 按**套数**累计，包里坏掉的那几套也一并回显", async () => {
+    mockLibrary([]);
+    const importSpy = jest
+      .spyOn(ApiService, "importAnimationClipZip")
+      // 第一个文件是整包：一次带进两套
+      .mockResolvedValueOnce({
+        asset: { ...asset, id: "bundle_2", name: "惊讶" },
+        assets: [
+          { ...asset, id: "bundle_1", name: "开心" },
+          { ...asset, id: "bundle_2", name: "惊讶" },
+        ],
+        count: 2,
+        warnings: [],
+        failures: [],
+      } as any)
+      // 第二个文件是单个 .lcaf：成功，但包里自己有一张坏图
+      .mockResolvedValueOnce({
+        asset: { ...asset, id: "single_3", name: "花开" },
+        warnings: [],
+        failures: ["动画「坏的.lcaf」导入失败：压缩包里没有找到图片"],
+      } as any);
+    const readFile = jest.fn().mockResolvedValue(new ArrayBuffer(8));
+    (window as any).electronAPI = {
+      openAnimationClips: jest.fn().mockResolvedValue({
+        canceled: false,
+        filePaths: ["D:/a/情绪气泡.zip", "D:/a/花开.lcaf"],
+      }),
+      readFile,
+    };
+
+    try {
+      renderTab();
+      fireEvent.click(screen.getByText("批量导入 .lcaf"));
+
+      await waitFor(() => expect(importSpy).toHaveBeenCalledTimes(2));
+      // 2 套 + 1 套 = 3 套（不是 2 个文件）
+      const summary = await screen.findByText(/已导入 3 套动画/);
+      expect(summary.textContent).toContain("坏的.lcaf");
+    } finally {
+      delete (window as any).electronAPI;
+    }
+  });
+
   test("多选导出：勾选 → 只弹一次目录框，把 ids + 目录交给后端批量写 .lcaf", async () => {
     mockLibrary([asset, otherClip]);
     const batch = jest.spyOn(ApiService, "exportAnimationClipsBatch").mockResolvedValue({

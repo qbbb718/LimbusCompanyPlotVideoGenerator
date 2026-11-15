@@ -36,6 +36,9 @@ jobs:
           # latest.yml 的解析：解析错了就是"永远发现不了新版本"，同样静默
           node scripts/update-manifest.test.mjs
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          # 打包载荷的组装：写错就是把开发用的素材/库打错进安装包，或者漏打
+          node scripts/pack-assets.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -83,11 +86,62 @@ jobs:
         env:
           CI: false
 
-      - name: Package Electron App
+      # 每次发版都出两个安装包（与 demo\build-package.bat 的流程、顺序完全一致）：
+      #   1/2 完整版 LCP<版本>.exe      带全部素材（含本地开发的角色 / 序列帧动画 / 工程库）
+      #   2/2 精简版 LCP<版本>-lite.exe 只有 ui/effects/fonts，没有任何角色/背景/音频/动画，也没有初始库
+      # 精简版必须**后**打包：它最后写 latest.yml，自动更新走小下载。
+      # 详细说明见 docs/打包说明.md 的「两个安装包：完整版 / 精简版」。
+      #
+      # 打包源是 demo/pack（scripts/pack-assets.mjs 合并 demo/assets + demo/data，
+      # 本地打包时还会叠上开发机上新建的角色 / 序列帧动画 / project.db）。
+      # CI 上没有本地开发数据，脚本会打印一行说明后按"只有 demo/assets + demo/data"构建。
+      # 这一步不能省：缺 demo/pack 时 electron-builder 只会警告 "file source doesn't exist"，
+      # 打出一个没有任何素材、装完必然白屏的安装包，所以后面每次打包完都紧跟一次硬校验。
+      - name: Assemble asset payload (full)
+        shell: pwsh
+        run: |
+          node scripts/pack-assets.mjs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          pwsh -NoProfile -File scripts/verify-packaged-assets.ps1 -Stage payload -Profile full -PayloadDir "$PWD/demo/pack"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Package full installer (with built-in resources)
         run: npx electron-builder --win --x64 --publish always
         working-directory: demo/frontend/electron-react-app
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify full installer
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File scripts/verify-packaged-assets.ps1 -Stage package -Profile full -PayloadDir "$PWD/demo/pack" -ResourcesDir "$PWD/demo/frontend/electron-react-app/release/win-unpacked/resources"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Assemble asset payload (lite)
+        shell: pwsh
+        run: |
+          node scripts/pack-assets.mjs --lite
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          pwsh -NoProfile -File scripts/verify-packaged-assets.ps1 -Stage payload -Profile lite -PayloadDir "$PWD/demo/pack"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      # 文件名用 -c.nsis.artifactName 覆盖（不能改 yml：完整版还要用原来的名字）。
+      # 单引号是必须的：${version} / ${ext} 是 electron-builder 的宏，PowerShell 双引号
+      # 会把 ${version} 当成变量展开成空串（实测会打出 LCP-lite.exe 这种名字）。
+      # 这一步同时会覆盖 latest.yml，让自动更新指向精简版。
+      - name: Package lite installer (no optional resources)
+        run: npx electron-builder --win --x64 --publish always '-c.nsis.artifactName=LCP${version}-lite.${ext}'
+        working-directory: demo/frontend/electron-react-app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 精简版必须真的精简：这里同时断言没有 characters / animation-clips / backgrounds /
+      # audios / thumbnails 与 resources/data（漏了就说明装错了包）。
+      - name: Verify lite installer
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File scripts/verify-packaged-assets.ps1 -Stage package -Profile lite -PayloadDir "$PWD/demo/pack" -ResourcesDir "$PWD/demo/frontend/electron-react-app/release/win-unpacked/resources"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       # 更新说明在打包之后再生成：changelog.json 要落在 electron-builder 的输出目录里被打包上传，
       # 而 electron-builder 自己会清理/重建 release/ 目录，先放进去会被删掉。

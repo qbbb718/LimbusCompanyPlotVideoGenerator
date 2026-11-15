@@ -1,13 +1,31 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Audio, AudioType } from "@types";
 import ApiService from "@services/ApiService";
 import {
   downloadBlob,
   describeTransferError,
   zipFileName,
+  runFileBatch,
+  describeBundleImportResult,
+  describeBatchAddResult,
+  appendRefreshWarning,
+  stripFileExtension,
+} from "@features/common/utils/resourceTransfer";
+import type {
+  BatchMessage,
+  BatchProgress,
 } from "@features/common/utils/resourceTransfer";
 import { askConfirm } from "@features/common/components/ConfirmDialog";
 import "../ResourceManager.css";
+import ResourceBatchStatus from "../ResourceBatchStatus";
+
+/**
+ * 当前进行中的批量操作是哪一种。
+ *
+ * <p>导入资源包与多选添加共用同一条进度 / 结果提示条，只有文案不同
+ * （「正在导入音频 2/5」 vs 「正在添加音频 2/5」）。
+ */
+type BatchKind = "import" | "add";
 
 interface AudiosTabProps {
   audios: Audio[];
@@ -33,7 +51,10 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
+  // 编辑弹窗里的「选择文件」：单个，用来替换当前这条音频
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 「➕ 添加音频」：多选，一次可以加好几个
+  const addFileRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // ===== 资源包导入 / 多选导出（与「角色」页面保持一致） =====
@@ -43,8 +64,13 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     new Set(),
   );
   const selectAllRef = useRef<HTMLInputElement>(null);
-  // 导入/导出进行中：按钮置灰，避免重复点击打出多个包
+  // 导入/导出/批量添加进行中：按钮置灰，避免重复点击打出多个包 / 重复添加
   const [transferring, setTransferring] = useState(false);
+
+  // 批量操作（导入资源包 / 多选添加）：共用一条进度条与结果提示
+  const [batchKind, setBatchKind] = useState<BatchKind>("import");
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
+  const [batchMessage, setBatchMessage] = useState<BatchMessage | null>(null);
 
   // 当前可见的音频（搜索过滤后的结果）：多选与"没勾选就导出全部"都以它为准
   const filteredAudios = audios.filter((audio) =>
@@ -69,6 +95,24 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
   const log = (message: string, data?: any) => {
     console.log(`[AudiosTab] ${message}`, data);
   };
+
+  /**
+   * 从后端重新拉一次音频列表（导入 / 多选添加 / 保存之后都走它）。
+   *
+   * <p>为什么不用本地列表拼：`audios` 是父组件**按搜索词过滤后**传下来的，
+   * 拿它拼新列表会把没显示出来的音频一起丢掉。
+   *
+   * @returns true 表示刷新失败（本地列表保持原样，调用方自己决定怎么兜底）
+   */
+  const refreshAudios = useCallback(async (): Promise<boolean> => {
+    try {
+      setAudios(await ApiService.getAudios());
+      return false;
+    } catch (error) {
+      console.error("刷新音频列表失败:", error);
+      return true;
+    }
+  }, [setAudios]);
 
   /** 退出多选模式时清空勾选 */
   const exitSelectionMode = () => {
@@ -127,27 +171,53 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     }
   };
 
-  /** 导入音频 — 选择 ZIP 文件后上传，成功后重新拉取列表 */
+  /**
+   * 导入音频 — **支持一次选多个资源包**，逐个上传。
+   *
+   * <p>三个约定（与「序列帧动画」的批量导入一致）：
+   * 1. 某个包坏了只记一条失败原因，不影响其它包；
+   * 2. 进度显示"第几个 / 共几个 + 正在传哪个包"；
+   * 3. 结果放在本页提示条里，不再 alert —— 失败清单可能有好几条，
+   *    而且 Electron 里 alert 一关掉就会抢走键盘焦点。
+   */
   const handleImportAudios = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    // 立刻清空 input：等异步走完再清的话，用户重选同一个文件不会触发 change
+    e.target.value = "";
+    if (files.length === 0) return;
 
     setTransferring(true);
+    setBatchKind("import");
+    setBatchMessage(null);
     try {
-      log("导入音频", file.name);
-      const importedAudios = await ApiService.importAudios(file);
-      const allAudios = await ApiService.getAudios();
-      setAudios(allAudios);
-      alert(`成功导入 ${importedAudios.length} 个音频`);
-    } catch (error) {
-      console.error("导入音频失败:", error);
-      alert(
-        describeTransferError(error, "导入音频失败，请检查文件是否为音频资源包"),
+      log("导入音频", files.map((file) => file.name));
+      const result = await runFileBatch(
+        files,
+        (file) => ApiService.importAudios(file),
+        {
+          onProgress: setBatchProgress,
+          // 后端返回的 message 优先（"不是 ZIP / 缺清单 / 包为空"都由它说清楚）；
+          // 连 message 都没有时（网络断了）至少要有这句兜底。
+          fallbackError: "导入失败",
+        },
       );
+      log("导入音频完成", result);
+
+      // 导入一律按"新增"处理（ID 冲突时后端分配新 ID），本地列表里没有这些新音频，
+      // 有包成功就重新拉一次列表；拉列表失败不影响"导入已成功"这个事实。
+      let refreshFailed = false;
+      if (result.succeededFiles > 0) {
+        refreshFailed = await refreshAudios();
+      }
+
+      const summary = describeBundleImportResult(result, {
+        unit: "个音频",
+        bundle: "音频资源包",
+      });
+      setBatchMessage(appendRefreshWarning(summary, refreshFailed));
     } finally {
+      setBatchProgress(null);
       setTransferring(false);
-      // 重置 input，便于再次选择同一个文件
-      e.target.value = "";
     }
   };
 
@@ -162,27 +232,113 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     }
   }, [audioRef.current, audioPlayer]);
 
-  const handleAddAudio = () => {
-    log("添加新音频");
-    // 创建一个新的音频对象（暂不加入 audios 列表，等保存成功后再添加）
-    const newAudio: Audio = {
+  /** 用一首音频打开「添加音频」窗口（名称先取文件名，类型 / 标签还能改） */
+  const openNewAudioModal = (file: File) => {
+    const draft: Audio = {
       uuid: `audio_${Date.now()}`,
-      name: "新音频",
+      name: stripFileExtension(file.name) || "新音频",
+      // 真正的站内路径要等保存时上传完才有，这里留空
       path: "",
+      // 类型没有可靠线索（文件名不一定带 sfx），默认背景音乐，保存后可改
       type: AudioType.BGM,
       tags: [],
     };
 
-    setSelectedAudio(newAudio);
-    setEditingAudio(newAudio);
-    setIsEditing(true);
+    setSelectedAudio(null);
+    setAudioFile(file);
+    setEditingAudio(draft);
+    // 新音频：弹窗标题显示「添加音频」（改已有音频才是「编辑音频」）
+    setIsEditing(false);
     setShowAudioModal(true);
+    log("打开添加音频窗口", { file: file.name, uuid: draft.uuid });
+  };
+
+  /**
+   * 「➕ 添加音频」：打开**多选**文件框。
+   *
+   * <p>选 1 个 → 打开编辑窗口（可以改名称 / 类型 / 标签，和以前一样）；
+   * 选多个 → 直接批量添加（名称取文件名、类型默认背景音乐），进度与结果见本页提示条。
+   */
+  const handleAddAudio = () => {
+    log("添加音频（可一次选多个文件）");
+    addFileRef.current?.click();
+  };
+
+  /**
+   * 多个音频文件批量添加：每个单独上传后建一条音频记录。
+   *
+   * <p>名称取文件名、类型默认「背景音乐」、标签留空；某个坏了只记一条原因，
+   * 不影响其它个。
+   */
+  const addAudiosFromFiles = async (files: File[]) => {
+    setTransferring(true);
+    setBatchKind("add");
+    setBatchMessage(null);
+    try {
+      log("批量添加音频", files.map((file) => file.name));
+      const result = await runFileBatch(
+        files,
+        async (file, index) => {
+          const name = stripFileExtension(file.name) || `音频${index + 1}`;
+          const upload = await ApiService.uploadAudioFile(file, name);
+          return ApiService.addAudio({
+            // 一次加多个时 Date.now() 可能相同，序号兜底保证 uuid 唯一
+            uuid: `audio_${Date.now()}_${index}`,
+            name,
+            path: upload.path,
+            type: AudioType.BGM,
+            tags: [],
+          });
+        },
+        {
+          onProgress: setBatchProgress,
+          fallbackError: "添加失败",
+        },
+      );
+      log("批量添加音频完成", result);
+
+      let refreshFailed = false;
+      if (result.succeededFiles > 0) {
+        refreshFailed = await refreshAudios();
+      }
+
+      setBatchMessage(
+        appendRefreshWarning(
+          describeBatchAddResult(result, {
+            unit: "个音频",
+            hint: "名称取自文件名、类型默认「背景音乐」，双击条目可改",
+          }),
+          refreshFailed,
+        ),
+      );
+    } finally {
+      setBatchProgress(null);
+      setTransferring(false);
+    }
+  };
+
+  const handleAddAudioFiles = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(e.target.files ?? []);
+    // 立刻清空 input：等异步走完再清的话，用户重选同一个文件不会触发 change
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    if (files.length === 1) {
+      openNewAudioModal(files[0]);
+      return;
+    }
+
+    await addAudiosFromFiles(files);
   };
 
   const handleEditAudio = (audio: Audio) => {
     log("编辑音频", audio.name);
     setSelectedAudio(audio);
     setEditingAudio({ ...audio });
+    // 清掉上一次「添加」残留的文件：换文件只认弹窗里重新点「选择文件」
+    setAudioFile(null);
     setIsEditing(true);
     setShowAudioModal(true);
   };
@@ -223,15 +379,17 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           editingAudio.uuid,
           audioToSave,
         );
-        setAudios(
-          audios.map((a) => (a.uuid === editingAudio.uuid ? updatedAudio : a)),
-        );
         log("音频更新成功", editingAudio.name);
       } else {
         // 添加新音频
         updatedAudio = await ApiService.addAudio(audioToSave);
-        setAudios([...audios, updatedAudio]);
         log("音频添加成功", editingAudio.name);
+      }
+
+      // 刷新列表（不能用本地列表拼：它是父组件按搜索词过滤后的）
+      if (await refreshAudios()) {
+        const others = audios.filter((a) => a.uuid !== updatedAudio.uuid);
+        setAudios([...others, updatedAudio]);
       }
 
       setSelectedAudio(updatedAudio);
@@ -267,9 +425,10 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
       log("删除音频", audioId);
       await ApiService.deleteAudio(audioId);
 
-      // 从本地状态中移除音频
-      const updatedAudios = audios.filter((a) => a.uuid !== audioId);
-      setAudios(updatedAudios);
+      // 删完重新拉列表（本地列表是过滤后的，直接 filter 会把没显示出来的一起丢掉）
+      if (await refreshAudios()) {
+        setAudios(audios.filter((a) => a.uuid !== audioId));
+      }
 
       // 如果删除的是当前选中的音频，清除选中状态
       if (selectedAudio?.uuid === audioId) {
@@ -294,26 +453,35 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
     log("取消编辑音频");
     setEditingAudio(null);
     setIsEditing(false);
+    // 取消后不能留着选中的文件：否则下次编辑别的音频会把它上传上去
+    setAudioFile(null);
   };
 
+  /**
+   * 编辑弹窗里的「选择文件」：给**当前打开的那条音频**换一个文件。
+   *
+   * <p>真正的站内路径要等点「保存」上传后才有，所以这里只记住 File 对象。
+   * 不要在这里拼 path：渲染进程拿不到真实磁盘路径（file.path 在新版 Electron 中可能为空），
+   * 而 `AppConfig.resources.audiosBasePath` 是 URL 前缀（/assets/audios），
+   * 把它当文件路径用会被后端解析成盘符根目录 C:\assets\audios\...，文件根本不存在。
+   */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // 立刻清空 input：否则重选同一个文件不会触发 change
+    e.target.value = "";
     if (!file) return;
 
     log("选择音频文件", file.name);
-
-    // 只记住 File 对象，真正落盘交给后端 /api/audios/upload。
-    // 注意：不要在这里拼 path。渲染进程拿不到真实磁盘路径（file.path 在新版 Electron 中
-    // 可能为空），而 AppConfig.resources.audiosBasePath 是 URL 前缀（/assets/audios），
-    // 把它当文件路径用会被后端解析成盘符根目录 C:\assets\audios\...，文件根本不存在。
     setAudioFile(file);
 
     if (editingAudio) {
+      // 名称还是默认值（空 / "新音频"）时跟着文件名走；用户改过就尊重用户的
+      const name = editingAudio.name;
       setEditingAudio({
         ...editingAudio,
-        name: editingAudio.name && editingAudio.name !== "新音频"
-          ? editingAudio.name
-          : file.name.replace(/\.[^/.]+$/, ""),
+        name: name && name.trim() && name !== "新音频"
+          ? name
+          : stripFileExtension(file.name),
       });
     }
   };
@@ -373,14 +541,22 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           className="btn-primary"
           onClick={handleAddAudio}
           disabled={transferring}
+          title="可一次选多个音频文件：选 1 个打开编辑窗口（能改名称 / 类型 / 标签），选多个直接批量添加（名称取自文件名、类型默认背景音乐）"
         >
-          ➕ 添加音频
+          {batchKind === "add" && batchProgress
+            ? `⏳ 添加中 ${Math.min(batchProgress.done + 1, batchProgress.total)}/${batchProgress.total}…`
+            : "➕ 添加音频"}
         </button>
         <button
           onClick={() => importFileRef.current?.click()}
           disabled={transferring}
+          title="可一次选多个音频资源包（ZIP）：逐个导入并显示进度，某个包坏了不影响其它包"
         >
-          {transferring ? "⏳ 处理中…" : "📥 导入音频"}
+          {batchKind === "import" && batchProgress
+            ? `⏳ 导入中 ${Math.min(batchProgress.done + 1, batchProgress.total)}/${batchProgress.total}…`
+            : transferring
+              ? "⏳ 处理中…"
+              : "📥 导入音频"}
         </button>
 
         {selectionMode ? (
@@ -402,6 +578,8 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           ref={importFileRef}
           style={{ display: "none" }}
           accept=".zip"
+          multiple
+          aria-label="导入音频资源包（可多选）"
           onChange={handleImportAudios}
         />
 
@@ -409,6 +587,14 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
           📂 打开音频文件夹
         </button>
       </div>
+
+      {/* 批量操作（导入资源包 / 多选添加）的进度与结果 */}
+      <ResourceBatchStatus
+        progress={batchProgress}
+        message={batchMessage}
+        label={batchKind === "add" ? "正在添加音频" : "正在导入音频"}
+        onDismiss={() => setBatchMessage(null)}
+      />
 
       <div className="audios-list">
         {filteredAudios.map((audio) => (
@@ -562,12 +748,24 @@ const AudiosTab: React.FC<AudiosTabProps> = ({
         </div>
       )}
 
-      {/* 隐藏的文件输入 */}
+      {/* 「➕ 添加音频」的多选文件框（与导入资源包、弹窗里换文件的 input 都分开） */}
+      <input
+        type="file"
+        ref={addFileRef}
+        style={{ display: "none" }}
+        accept="audio/*"
+        multiple
+        aria-label="添加音频：选择文件（可多选）"
+        onChange={handleAddAudioFiles}
+      />
+
+      {/* 隐藏的文件输入：编辑弹窗里「选择文件」，单个替换当前音频 */}
       <input
         type="file"
         ref={fileInputRef}
         style={{ display: "none" }}
         accept="audio/*"
+        aria-label="编辑音频时选择文件"
         onChange={handleFileSelect}
       />
 

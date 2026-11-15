@@ -4,6 +4,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -47,6 +49,17 @@ import com.lbc_plot.render.video.anim.AnimationClipAsset;
  * <h2>为什么"per-frame hold"在这一层落地</h2>
  * 导入只负责把帧排好序、各给 1 帧；"第 i 张停几帧"是用户在面板上调的。
  * 这样导入器不需要理解 fps / 时长，也就不会出现"导入时按 12fps 重采样、后来用户又改成 3 帧一张"的错乱。
+ *
+ * <h2>一个 zip 里装多套 {@code .lcaf}（整包导入）</h2>
+ * 用户之间分享动画时，常见做法是把好几套 {@code .lcaf} 放进一个 zip 再发出来。
+ * {@link #importZipAuto} 会先扫条目名判断这是"单套图片序列"还是"整包"，
+ * 整包走 {@link #importBundle}：每个 {@code .lcaf} 各导成一套素材，坏的那几套只记失败、不影响其它。
+ *
+ * <h2>条目名的编码要容错</h2>
+ * zip 里的文件名只是字节串，UTF-8 是可选标记；中文 Windows 打出来的包往往是 GBK 且不带标记，
+ * 而 {@link ZipInputStream} 默认按 UTF-8 解码会直接抛异常。所以一切读取都先经 {@link #scanZip}
+ * 定下字符集（UTF-8 → GBK → Cp437，见 {@link #ZIP_NAME_CHARSETS}）——否则用户拿到的整包
+ * 只会得到一个"malformed input off : 0, length : 1"。
  */
 @Service
 public class AnimationClipImporter {
@@ -64,6 +77,25 @@ public class AnimationClipImporter {
 
     /** 允许的输入图片后缀（决策：v1 只收图片序列，不收 GIF/MP4） */
     private static final List<String> IMAGE_EXTENSIONS = List.of("png", "jpg", "jpeg", "webp", "bmp");
+
+    /** 动画包后缀（本功能导出的单套动画文件；本质是 zip） */
+    public static final String CLIP_PACK_EXTENSION = ".lcaf";
+
+    /** 一个"整包"（zip 里装多套 {@code .lcaf}）最多几套（防呆：误选一个几十 GB 的包不至于把磁盘塞满） */
+    public static final int MAX_BUNDLE_CLIPS = 200;
+
+    /** 一个 zip 最多扫多少条目（帧数上限的 4 倍，与单套导入的守卫同一个尺度） */
+    private static final int MAX_ZIP_ENTRIES = MAX_FRAMES * 4;
+
+    /**
+     * 条目名按哪些字符集去试（顺序有意义）。
+     *
+     * <p>zip 规范里文件名只是一串字节，UTF-8 是**可选标记**（EFS / 0x0800）：
+     * 中文 Windows 的「压缩文件夹」与不少打包工具不打这个标记，直接按系统 OEM 代码页写（GBK）。
+     * 所以先按标准的 UTF-8 试，解不出来再按 GBK，最后 Cp437（单字节字符集，对任意字节都能解，
+     * 兜底保证不会因为一个怪名字让整包导不进来——名字只是提示文案，素材名来自包里的 clip.json）。
+     */
+    private static final List<Charset> ZIP_NAME_CHARSETS = buildNameCharsets();
 
     /** 临时导入目录前缀（以 . 开头 → 不会被 {@link AnimationClipStore#list} 当成素材） */
     private static final String TEMP_PREFIX = ".importing-";
@@ -183,7 +215,8 @@ public class AnimationClipImporter {
         if (zipFile == null || zipFile.isEmpty()) {
             throw new IllegalArgumentException("压缩包是空的");
         }
-        return importZipStream(zipFile::getInputStream, name, inferHolds, maxGapFrames);
+        Charset charset = scanZip(zipFile::getInputStream).charset();
+        return importZipStream(zipFile::getInputStream, charset, name, inferHolds, maxGapFrames);
     }
 
     /**
@@ -198,22 +231,256 @@ public class AnimationClipImporter {
         if (zipFile == null || !Files.isRegularFile(zipFile)) {
             throw new IllegalArgumentException("找不到压缩包文件：" + zipFile);
         }
-        return importZipStream(() -> Files.newInputStream(zipFile), name, inferHolds, maxGapFrames);
+        Charset charset = scanZip(() -> Files.newInputStream(zipFile)).charset();
+        return importZipStream(() -> Files.newInputStream(zipFile), charset, name, inferHolds,
+                maxGapFrames);
     }
 
-    /** 打开 zip 字节流的来源（MultipartFile 与磁盘文件各一个实现） */
+    /**
+     * 一次 zip 导入的结果。
+     *
+     * @param imported 成功进来的每一套（单套 zip 就是长度 1；顺序 = 包里的顺序）
+     * @param failures 逐条失败原因，形如 {@code 动画「坏的.lcaf」导入失败：…}；
+     *                 单套包失败会直接抛异常，只有整包才会把坏的那几套收在这里
+     * @param warnings 整包层面的提示（包里被忽略的图片、还有其它资源、以及每套自己的导入提示）
+     */
+    public record ZipImportOutcome(List<ImportResult> imported, List<String> failures,
+            List<String> warnings) {
+
+        /** 最后导入的那套（界面默认选中它；一套都没进来时为 {@code null}） */
+        public ImportResult last() {
+            return imported == null || imported.isEmpty() ? null : imported.get(imported.size() - 1);
+        }
+
+        /** 本次一共进来几套 */
+        public int count() {
+            return imported == null ? 0 : imported.size();
+        }
+    }
+
+    /**
+     * @function 导入一个 zip：可能是"一套图片序列"，也可能是"整包多套动画"
+     *
+     * <p>为什么入口要自动判断，而不是让用户先选"导入单套 / 导入整包"：{@code .lcaf} 本身就是
+     * zip，用户手里那个文件到底装的是帧图还是好几套 {@code .lcaf}，只有打开看才知道。判断规则
+     * 只有一条：**包里只要有一个 {@code .lcaf} 条目，它就是"整包"**——导出的单套动画里只有
+     * {@code clip.json} 与 {@code frames/*.png}，绝不会再套一个 {@code .lcaf}；而普通图片序列
+     * zip 里不会出现 {@code .lcaf}。
+     *
+     * @param name 素材名：只在"单套"时有意义；整包里每套的名字来自它自己的 {@code clip.json}
+     * @return 成功导入的每一套 + 逐条失败原因（整包里有坏的几套不影响其它）
+     */
+    public ZipImportOutcome importZipAuto(MultipartFile zipFile, String name, boolean inferHolds,
+            int maxGapFrames) throws IOException {
+        if (zipFile == null || zipFile.isEmpty()) {
+            throw new IllegalArgumentException("压缩包是空的");
+        }
+        // 先扫一遍条目名（只读条目名，不解码图片）：这一步同时定下"单套还是整包"与名字的字符集
+        ZipScan scan = scanZip(zipFile::getInputStream);
+        if (scan.clipEntries().isEmpty()) {
+            return new ZipImportOutcome(
+                    List.of(importZipStream(zipFile::getInputStream, scan.charset(), name, inferHolds,
+                            maxGapFrames)),
+                    List.of(), List.of());
+        }
+        return importBundle(zipFile, scan, inferHolds, maxGapFrames);
+    }
+
+    /**
+     * @function 整包导入：zip 里装着多个 {@code .lcaf}，每套各成一个素材
+     *
+     * <p>做法与"全部资源"包里的 {@code animation-clips/*.lcaf} 完全一致：每个 {@code .lcaf}
+     * 解到临时文件，再交给 {@link #importZip(Path, String, boolean, int)}——同一条导入链路，
+     * 所以每帧时长、播放参数、缩略图摆放都会原样还原。
+     *
+     * <p>两件必须做对的事：
+     * <ul>
+     *   <li><b>先全解出来再逐套导入</b>：边读外层 zip 边导入，两套 zip 流会互相干扰；</li>
+     *   <li><b>单套失败不打断整包</b>：坏的那套进 {@code failures}（带上包里的文件名），
+     *       其余照常进库——用户拿到的"整包"来自别人的机器，有一套坏了很正常。</li>
+     * </ul>
+     */
+    private ZipImportOutcome importBundle(MultipartFile zipFile, ZipScan scan, boolean inferHolds,
+            int maxGapFrames) throws IOException {
+        List<String> entries = scan.clipEntries();
+        Path temp = createTempDir();
+        List<Path> extracted = new ArrayList<>(entries.size());
+        List<String> warnings = new ArrayList<>();
+        boolean ignoredImages = false;
+        boolean otherResources = false;
+
+        try {
+            try (InputStream raw = zipFile.getInputStream();
+                    ZipInputStream zip = new ZipInputStream(raw, scan.charset())) {
+                ZipEntry entry;
+                int guard = 0;
+                while ((entry = zip.getNextEntry()) != null) {
+                    if (++guard > MAX_ZIP_ENTRIES) {
+                        throw new IllegalArgumentException("压缩包里文件太多，疑似不是动画素材包");
+                    }
+                    if (entry.isDirectory()) {
+                        continue;
+                    }
+                    String entryName = entry.getName();
+                    if (isClipPackEntry(entryName)) {
+                        // 文件名只用于临时落盘（序号，不含用户输入），避免同名条目互相覆盖
+                        Path target = temp.resolve(
+                                "pack-" + (extracted.size() + 1) + CLIP_PACK_EXTENSION);
+                        Files.copy(zip, target, StandardCopyOption.REPLACE_EXISTING);
+                        extracted.add(target);
+                        continue;
+                    }
+                    // 顺带看看包里还装了什么：用户选错文件时下面好给一句"该用哪个按钮"
+                    ignoredImages |= isImageName(entryName);
+                    otherResources |= isOtherResourceEntry(entryName);
+                }
+            }
+
+            List<ImportResult> imported = new ArrayList<>(extracted.size());
+            List<String> failures = new ArrayList<>();
+            for (int i = 0; i < extracted.size(); i++) {
+                String label = baseName(entries.get(i));
+                try {
+                    ImportResult result = importZip(extracted.get(i), null, inferHolds, maxGapFrames);
+                    imported.add(result);
+                    // 多套时提示必须说清是哪一套：否则"各帧尺寸不一致"根本不知道指谁
+                    for (String warning : result.warnings()) {
+                        warnings.add("「" + result.asset().getName() + "」" + warning);
+                    }
+                } catch (IOException | RuntimeException e) {
+                    String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                    logger.warn("整包导入动画失败: {} ({})", label, reason);
+                    failures.add("动画「" + label + "」导入失败：" + reason);
+                }
+            }
+            if (ignoredImages) {
+                warnings.add("包里还有图片，已忽略（整包按 .lcaf 逐套导入）");
+            }
+            if (otherResources) {
+                warnings.add("包里还有角色 / 背景 / 音频，本次只导入了动画；"
+                        + "要一次迁移整库请用页面顶部的「导入全部资源」");
+            }
+            logger.info("整包导入动画完成: {} 套成功 / {} 套失败（包内 {} 个 .lcaf）",
+                    imported.size(), failures.size(), entries.size());
+            return new ZipImportOutcome(imported, failures, warnings);
+        } finally {
+            // 解出来的 .lcaf 只是中间产物：素材已经落到正式目录，这里必须全部清掉
+            deleteQuietly(temp);
+        }
+    }
+
+    /** 一个 zip 的"条目名扫描"结果：名字用什么字符集解得开 + 包里那些 {@code .lcaf} 条目 */
+    private record ZipScan(Charset charset, List<String> clipEntries) {
+    }
+
+    /**
+     * @function 扫一遍条目名：猜出名字用的是什么字符集，并收集所有 {@code .lcaf} 条目
+     *
+     * <p>为什么要猜字符集：见 {@link #ZIP_NAME_CHARSETS}。这一步只读条目名、不碰内容，
+     * 所以试错是**无副作用**的：先定下字符集，后面的导入/解包就只剩一种解码方式，
+     * 不会出现"导到一半才发现名字解不出来、前面几套已经落盘"的烂摊子。
+     *
+     * @return 字符集 + 包内的 {@code .lcaf} 条目（顺序沿用 zip 里的顺序，保证结果可复现）
+     */
+    private static ZipScan scanZip(ZipStreamSource source) throws IOException {
+        for (Charset charset : ZIP_NAME_CHARSETS) {
+            List<String> entries = new ArrayList<>();
+            try (InputStream raw = source.open();
+                    ZipInputStream zip = new ZipInputStream(raw, charset)) {
+                ZipEntry entry;
+                int guard = 0;
+                while ((entry = zip.getNextEntry()) != null) {
+                    if (++guard > MAX_ZIP_ENTRIES) {
+                        throw new IllegalArgumentException("压缩包里文件太多，疑似不是动画素材包");
+                    }
+                    if (entry.isDirectory()) {
+                        continue;
+                    }
+                    if (isClipPackEntry(entry.getName())) {
+                        if (entries.size() >= MAX_BUNDLE_CLIPS) {
+                            throw new IllegalArgumentException(
+                                    "压缩包里的动画太多：一次最多导入 " + MAX_BUNDLE_CLIPS + " 套");
+                        }
+                        entries.add(entry.getName());
+                    }
+                }
+                return new ZipScan(charset, entries);
+            } catch (IllegalArgumentException e) {
+                // 只有"条目名解码不出来"才值得换下一个字符集；其它校验错误（文件太多等）直接抛
+                if (!isMalformedEntryName(e)) {
+                    throw e;
+                }
+                logger.debug("压缩包条目名按 {} 解不出来，换下一个字符集：{}", charset, e.getMessage());
+            }
+        }
+        // 最后一个候选是 Cp437（对任意字节都能解），正常走不到这里
+        throw new IllegalArgumentException("压缩包里的文件名解不出来（编码不受支持）");
+    }
+
+    /** 按候选顺序挑能用的字符集（个别 JRE 没有 GBK / Cp437 时跳过，不让类加载失败） */
+    private static List<Charset> buildNameCharsets() {
+        List<Charset> candidates = new ArrayList<>();
+        candidates.add(StandardCharsets.UTF_8);
+        for (String name : new String[] { "GBK", "Cp437" }) {
+            try {
+                candidates.add(Charset.forName(name));
+            } catch (RuntimeException ignored) {
+                // 该 JRE 不带这个字符集：跳过，靠后面的兜底
+            }
+        }
+        return List.copyOf(candidates);
+    }
+
+    /**
+     * 这个异常是不是"条目名按当前字符集解不出来"。
+     *
+     * <p>{@code ZipCoder} 在解码失败时扔的是 `new IllegalArgumentException(coderResult.toString())`，
+     * 消息形如 {@code malformed input off : 0, length : 1}、{@code unmappable character …}，
+     * **没有 cause**（JDK 9 起），所以只能看消息里的这两个词。
+     */
+    private static boolean isMalformedEntryName(IllegalArgumentException error) {
+        String message = error.getMessage();
+        if (message == null) {
+            return false;
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        return lower.contains("malformed input") || lower.contains("unmappable character");
+    }
+
+    /** 条目名是不是一个动画包（后缀 {@code .lcaf}，大小写不敏感；放在子目录里也算） */
+    private static boolean isClipPackEntry(String entryName) {
+        return entryName != null
+                && entryName.toLowerCase(Locale.ROOT).endsWith(CLIP_PACK_EXTENSION);
+    }
+
+    /** 条目是不是"其它资源"（用户可能选成了「全部资源」包，给一句该用哪个按钮的提示） */
+    private static boolean isOtherResourceEntry(String entryName) {
+        String lower = entryName.replace('\\', '/').toLowerCase(Locale.ROOT);
+        return lower.equals("characters.json") || lower.equals("backgrounds.json")
+                || lower.equals("audios.json")
+                || lower.startsWith("characters/") || lower.startsWith("backgrounds/")
+                || lower.startsWith("audios/");
+    }
+
+    /**
+     * 打开 zip 字节流的来源（MultipartFile 与磁盘文件各一个实现）。
+     *
+     * <p>每次调用要返回一个**新的**输入流：同一个包会被读两遍（第一遍只解条目名，
+     * 见 {@link #scanZip}；第二遍才真读内容），所以这里不能是"一次性"的流。
+     */
     @FunctionalInterface
     private interface ZipStreamSource {
         InputStream open() throws IOException;
     }
 
     /**
-     * 从 zip 导入：真正干活的地方（上面两个入口只负责把"字节从哪来"给我）。
+     * 从 zip 导入：真正干活的地方（上面几个入口只负责把"字节从哪来、名字按什么字符集解"给我）。
      *
-     * @param source 每次调用返回一个**新的**输入流（只会被调用一次）
+     * @param source  每次调用返回一个**新的**输入流（只会被调用一次）
+     * @param charset 条目名的字符集（由 {@link #scanZip} 定好，见 {@link #ZIP_NAME_CHARSETS}）
      */
-    private ImportResult importZipStream(ZipStreamSource source, String name, boolean inferHolds,
-            int maxGapFrames) throws IOException {
+    private ImportResult importZipStream(ZipStreamSource source, Charset charset, String name,
+            boolean inferHolds, int maxGapFrames) throws IOException {
         Path temp = createTempDir();
         Path extractDir = temp.resolve("extract");
         Files.createDirectories(extractDir);
@@ -223,11 +490,11 @@ public class AnimationClipImporter {
             /** 包里若带 clip.json（就是本功能导出的 .lcaf），用它还原"每张图持续几帧" */
             AnimationClipAsset packaged = null;
             try (InputStream raw = source.open();
-                    ZipInputStream zip = new ZipInputStream(raw)) {
+                    ZipInputStream zip = new ZipInputStream(raw, charset)) {
                 ZipEntry entry;
                 int guard = 0;
                 while ((entry = zip.getNextEntry()) != null) {
-                    if (++guard > MAX_FRAMES * 4) {
+                    if (++guard > MAX_ZIP_ENTRIES) {
                         throw new IllegalArgumentException("压缩包里文件太多，疑似不是动画素材包");
                     }
                     if (entry.isDirectory()) {

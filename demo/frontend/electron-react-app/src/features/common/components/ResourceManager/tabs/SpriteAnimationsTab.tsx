@@ -42,6 +42,12 @@
  *       由后端把每个勾中的素材各写成一个 `.lcaf` 到那个目录（同名自动加序号）。</li>
  * </ul>
  *
+ * <h3>整包导入（一个 zip 里装多套 .lcaf）</h3>
+ * 别人分享动画时常把几套 `.lcaf` 放进一个 zip 再发出来。「导入 .lcaf」与「批量导入 .lcaf」
+ * 都直接接受这种整包：`.lcaf` 本身就是 zip，光看扩展名分不出里面装的是帧图还是几套动画，
+ * 所以由后端扫一遍条目名来判断（包里只要有一个 `.lcaf` 就是整包）。整包会**逐套**落库——
+ * 坏的那几套只记失败、不影响其它，提示条里写清"进来几套 / 哪几套没进来"。
+ *
  * <h3>响应式</h3>
  * 外层 `.sprite-anim-page` 是**容器查询**的参照（容器自己的样式不能用 `@container`，
  * 所以多包一层）：宽窗口三栏并排，窄了先把"设置 / 预览"上下堆叠，再窄把左侧列表也叠上去。
@@ -165,6 +171,44 @@ const baseNameOf = (filePath: string): string =>
 /** 从异常里取出能给用户看的一句话 */
 const messageOf = (error: any, fallback: string): string =>
   error?.response?.data?.message || error?.message || fallback;
+
+/**
+ * @function 一次「导入动画文件」回包里成功进来的每一套
+ *
+ * <p>后端会把包打开看内容：只有一个 `.lcaf`（或一串帧图）就是一套；zip 里装了好几个
+ * `.lcaf` 时**逐套**导入。所以回包可能是多套——`assets` 是全部，`asset` 只是最后那套。
+ * 老回包只有 `asset`，这里一并兜住：两种形状都当"一套"处理，调用方不用分情况。
+ */
+const importedAssetsOf = (result: {
+  asset?: AnimationClipDto | null;
+  assets?: AnimationClipDto[];
+}): AnimationClipDto[] => {
+  if (result?.assets?.length) return result.assets;
+  return result?.asset ? [result.asset] : [];
+};
+
+/**
+ * @function 导入回执文案：一套写细节，整包写套数 + 名字清单
+ *
+ * <p>失败逐条跟在后面（整包里坏的那几套），只要有一条失败就按错误显示：用户最需要知道的
+ * 是"哪套没进来"，而不是"其它几套成功了"。
+ */
+const importMessageOf = (
+  imported: AnimationClipDto[],
+  warnings: string[],
+  failures: string[],
+): { kind: "info" | "error"; text: string } => {
+  const head =
+    imported.length === 0
+      ? "没有导入任何动画"
+      : imported.length === 1
+        ? `已导入「${imported[0].name}」（${imported[0].frameCount} 张图，共 ${imported[0].totalFrames} 帧）`
+        : `已导入 ${imported.length} 套动画：${imported.map((clip) => `「${clip.name}」`).join("、")}`;
+  const parts = [head];
+  if (warnings.length) parts.push(warnings.join("；"));
+  if (failures.length) parts.push(`${failures.length} 个失败：${failures.join("；")}`);
+  return { kind: failures.length ? "error" : "info", text: parts.join("；") };
+};
 
 /** 读开关：读不到 / localStorage 不可用时按"开启"处理 */
 const loadAutoHolds = (): boolean => {
@@ -528,6 +572,13 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
     }
   };
 
+  /**
+   * @function 导入动画文件（单个 `.lcaf` / 图片序列 zip / **整包** zip）
+   *
+   * <p>为什么不分两个按钮：`.lcaf` 本身就是 zip，用户手里那个文件到底装的是帧图还是几套
+   * `.lcaf`，只有打开看才知道——所以由后端自动判断（`importZipAuto`）。整包进来时每套都会
+   * 落库、界面选中最后那套，提示条里写清套数、以及坏掉的那几套为什么没进来。
+   */
   const handleImportFile = async () => {
     const api: any = (window as any).electronAPI;
     if (!api?.openAnimationClip) {
@@ -542,17 +593,17 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
       const file = await fileOfPath(picked.filePath);
       const result = await ApiService.importAnimationClipZip(file, undefined, { inferHolds: autoHolds });
       library.reload();
-      const imported = draftOf(result.asset);
-      draftCache.current.set(result.asset.id, imported);
-      setSelectedId(result.asset.id);
-      setDraft(imported);
-      setSaveState("idle");
-      setMessage({
-        kind: "info",
-        text: `已导入「${result.asset.name}」（${result.asset.frameCount} 张图，共 ${result.asset.totalFrames} 帧）${
-          result.warnings?.length ? "；" + result.warnings.join("；") : ""
-        }`,
-      });
+      const imported = importedAssetsOf(result);
+      // 选中最后一套：列表按创建时间倒序，它就在最上面
+      const latest = imported[imported.length - 1];
+      if (latest) {
+        const next = draftOf(latest);
+        draftCache.current.set(latest.id, next);
+        setSelectedId(latest.id);
+        setDraft(next);
+        setSaveState("idle");
+      }
+      setMessage(importMessageOf(imported, result.warnings ?? [], result.failures ?? []));
     } catch (error: any) {
       setMessage({ kind: "error", text: error?.response?.data?.message || error?.message || "导入失败" });
       log.error("[序列帧动画] 导入动画文件失败:", error);
@@ -566,6 +617,9 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
    *
    * <p>逐个发请求而不是一次传一批：一套动画坏了只影响它自己，其它照常进来，
    * 用户还能看到"3/8"的进度。成功的那几套会刷新列表并选中最后导入的一套。
+   *
+   * <p>一个文件也可能**不止一套**（选中了装了多个 `.lcaf` 的整包 zip），所以累计的是
+   * "套数"而不是"文件数"；包里坏掉的那几套由后端逐条回在 `failures` 里，这里一并累加。
    */
   const handleImportFiles = async () => {
     const api: any = (window as any).electronAPI;
@@ -589,7 +643,8 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
           const result = await ApiService.importAnimationClipZip(file, undefined, {
             inferHolds: autoHolds,
           });
-          imported.push(result.asset as AnimationClipDto);
+          imported.push(...importedAssetsOf(result));
+          failures.push(...(result.failures ?? []));
         } catch (error: any) {
           failures.push(`${baseNameOf(paths[i])}：${messageOf(error, "导入失败")}`);
           log.warn("[序列帧动画] 批量导入中有一个失败:", paths[i], error);
@@ -820,7 +875,7 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
                 type="button"
                 disabled={busy}
                 onClick={handleImportFile}
-                title="导入单个动画文件（.lcaf / 图片序列 zip）"
+                title="导入动画文件：单个 .lcaf / 图片序列 zip；zip 里装多套 .lcaf 时一次全部导入"
               >
                 导入 .lcaf
               </button>
@@ -828,7 +883,7 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
                 type="button"
                 disabled={busy}
                 onClick={handleImportFiles}
-                title="一次选多个 .lcaf 批量导入：坏掉的那几套不影响其它套"
+                title="一次选多个动画文件（也可以是装了多套 .lcaf 的整包 zip），逐个导入：坏掉的那几套不影响其它"
               >
                 批量导入 .lcaf
               </button>
@@ -896,7 +951,8 @@ const SpriteAnimationsTab: React.FC<SpriteAnimationsTabProps> = ({
               <div className="global-hint">
                 {clips.length > 0
                   ? `没有匹配「${searchTerm.trim()}」的动画。`
-                  : "还没有动画。点「新建（选图片）」选一批 PNG/JPG 序列帧即可创建。"}
+                  : "还没有动画。点「新建（选图片）」选一批 PNG/JPG 序列帧即可创建；" +
+                    "别人发来的动画包（zip 里装多套 .lcaf）点「导入 .lcaf」一次全导入。"}
               </div>
             )}
             {filtered.map((clip) => (

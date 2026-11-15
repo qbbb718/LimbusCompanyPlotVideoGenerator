@@ -1,11 +1,19 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Background } from "@types";
 import ApiService from "@services/ApiService";
-import { AppConfig } from '@root/features/common/config/appConfig';
 import {
   downloadBlob,
   describeTransferError,
   zipFileName,
+  runFileBatch,
+  describeBundleImportResult,
+  describeBatchAddResult,
+  appendRefreshWarning,
+  stripFileExtension,
+} from "@features/common/utils/resourceTransfer";
+import type {
+  BatchMessage,
+  BatchProgress,
 } from "@features/common/utils/resourceTransfer";
 import { toAssetPath } from "@features/common/utils/assetPath";
 import { describeApiError, isRetryableError } from "@features/common/utils/apiError";
@@ -14,6 +22,7 @@ import "../ResourceManager.css";
 import "./BackgroundsTab.css";
 import BackgroundCard from "./BackgroundCard";
 import BackgroundModal from "./BackgroundModal";
+import ResourceBatchStatus from "../ResourceBatchStatus";
 
 // 将blob URL转换为File对象
 const blobUrlToFile = async (blobUrl: string, filename: string): Promise<File> => {
@@ -21,6 +30,23 @@ const blobUrlToFile = async (blobUrl: string, filename: string): Promise<File> =
   const blob = await response.blob();
   return new File([blob], filename, { type: blob.type });
 };
+
+/** 读取本地图片成 data URL（弹窗预览 + 生成缩略图都用它） */
+const readFileAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(String(event.target?.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("读取图片失败"));
+    reader.readAsDataURL(file);
+  });
+
+/**
+ * 当前进行中的批量操作是哪一种。
+ *
+ * <p>导入资源包与多选添加共用同一条进度 / 结果提示条，只有文案不同
+ * （「正在导入背景 2/5」 vs 「正在添加背景 2/5」）。
+ */
+type BatchKind = "import" | "add";
 
 interface BackgroundsTabProps {
   backgrounds: Background[];
@@ -50,7 +76,10 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   const [backgroundPreview, setBackgroundPreview] = useState<string | null>(
     null,
   );
+  // 编辑弹窗里的「选择文件」：单张，用来替换当前这张背景
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 「➕ 添加背景」：多选，一次可以加好几张
+  const addFileRef = useRef<HTMLInputElement>(null);
 
   // 缩略图状态
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
@@ -62,8 +91,13 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     new Set(),
   );
   const selectAllRef = useRef<HTMLInputElement>(null);
-  // 导入/导出进行中：按钮置灰，避免重复点击打出多个包
+  // 导入/导出/批量添加进行中：按钮置灰，避免重复点击打出多个包 / 重复添加
   const [transferring, setTransferring] = useState(false);
+
+  // 批量操作（导入资源包 / 多选添加）：共用一条进度条与结果提示
+  const [batchKind, setBatchKind] = useState<BatchKind>("import");
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
+  const [batchMessage, setBatchMessage] = useState<BatchMessage | null>(null);
 
   // 背景保存中 / 上次保存失败的原因。
   // 只用来置灰「保存」按钮 + 就地显示错误：不再无条件 alert（alert 会抢焦点，
@@ -94,6 +128,24 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
   const log = (message: string, data?: any) => {
     console.log(`[BackgroundsTab] ${message}`, data);
   };
+
+  /**
+   * 从后端重新拉一次背景列表（导入 / 多选添加 / 保存之后都走它）。
+   *
+   * <p>为什么不拿本地列表拼：`backgrounds` 是父组件**按搜索词过滤后**传下来的。
+   * 拿它拼新列表，那些没显示出来的背景会被一起丢掉 —— 清空搜索框后就会"凭空少几张"。
+   *
+   * @returns true 表示刷新失败（本地列表保持原样，调用方自己决定怎么兜底）
+   */
+  const refreshBackgrounds = useCallback(async (): Promise<boolean> => {
+    try {
+      setBackgrounds(await ApiService.getBackgrounds());
+      return false;
+    } catch (error) {
+      console.error("刷新背景列表失败:", error);
+      return true;
+    }
+  }, [setBackgrounds]);
 
   /** 退出多选模式时清空勾选 */
   const exitSelectionMode = () => {
@@ -152,29 +204,55 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     }
   };
 
-  /** 导入背景 — 选择 ZIP 文件后上传，成功后重新拉取列表 */
+  /**
+   * 导入背景 — **支持一次选多个资源包**，逐个上传。
+   *
+   * <p>三个约定（与「序列帧动画」的批量导入一致）：
+   * 1. 某个包坏了只记一条失败原因，不影响其它包；
+   * 2. 进度显示"第几个 / 共几个 + 正在传哪个包"；
+   * 3. 结果放在本页提示条里，不再 alert —— 失败清单可能有好几条，
+   *    而且 Electron 里 alert 一关掉就会抢走键盘焦点。
+   */
   const handleImportBackgrounds = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    // 立刻清空 input：等异步走完再清的话，用户重选同一个文件不会触发 change
+    e.target.value = "";
+    if (files.length === 0) return;
 
     setTransferring(true);
+    setBatchKind("import");
+    setBatchMessage(null);
     try {
-      log("导入背景", file.name);
-      const importedBackgrounds = await ApiService.importBackgrounds(file);
-      const allBackgrounds = await ApiService.getBackgrounds();
-      setBackgrounds(allBackgrounds);
-      alert(`成功导入 ${importedBackgrounds.length} 张背景`);
-    } catch (error) {
-      console.error("导入背景失败:", error);
-      alert(
-        describeTransferError(error, "导入背景失败，请检查文件是否为背景资源包"),
+      log("导入背景", files.map((file) => file.name));
+      const result = await runFileBatch(
+        files,
+        (file) => ApiService.importBackgrounds(file),
+        {
+          onProgress: setBatchProgress,
+          // 后端返回的 message 优先（"不是 ZIP / 缺清单 / 包为空"都由它说清楚）；
+          // 连 message 都没有时（网络断了）至少要有这句兜底。
+          fallbackError: "导入失败",
+        },
       );
+      log("导入背景完成", result);
+
+      // 导入一律按"新增"处理（ID 冲突时后端分配新 ID），本地列表里没有这些新背景，
+      // 有包成功就重新拉一次列表；拉列表失败不影响"导入已成功"这个事实。
+      let refreshFailed = false;
+      if (result.succeededFiles > 0) {
+        refreshFailed = await refreshBackgrounds();
+      }
+
+      const summary = describeBundleImportResult(result, {
+        unit: "张背景",
+        bundle: "背景资源包",
+      });
+      setBatchMessage(appendRefreshWarning(summary, refreshFailed));
     } finally {
+      setBatchProgress(null);
       setTransferring(false);
-      // 重置 input，便于再次选择同一个文件
-      e.target.value = "";
     }
   };
 
@@ -228,31 +306,158 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     });
   }, []);
 
+  /**
+   * 一张图选中后的"预览 + 自动缩略图"处理（新加与换图都用同一套）。
+   *
+   * <p>缩略图先由前端生成一份（300px JPEG）：后端保存时也会自动生成一张，
+   * 用户手动裁剪过才用前端这张覆盖，这里先把预览和兜底准备好。
+   *
+   * @param file       用户刚选的图片
+   * @param targetUuid 这次改动属于哪条背景（预览 / 缩略图只写回它，避免串到别的记录上）
+   * @param options.rename 传了就顺便把名称改成它（"添加"时名称跟着文件名走）
+   */
+  const applyBackgroundImage = useCallback(
+    async (
+      file: File,
+      targetUuid: string,
+      options: { rename?: string } = {},
+    ) => {
+      const dataUrl = await readFileAsDataUrl(file);
+      setBackgroundPreview(dataUrl);
+
+      const rename = options.rename;
+      if (rename !== undefined) {
+        setEditingBackground((prev) =>
+          !prev || prev.uuid !== targetUuid ? prev : { ...prev, name: rename },
+        );
+      }
+
+      try {
+        const thumbnail = await generateThumbnail(dataUrl);
+        if (!thumbnail) return;
+        setCroppedImage(thumbnail);
+        setEditingBackground((prev) =>
+          prev && prev.uuid === targetUuid
+            ? { ...prev, thumbnailPath: thumbnail }
+            : prev,
+        );
+      } catch (error) {
+        // 缩略图只是预览 / 兜底，失败不影响保存（后端保存时还会自己生成一张）
+        console.error("生成背景缩略图失败:", error);
+      }
+    },
+    [generateThumbnail],
+  );
+
+  /** 用一张图片打开「添加背景」窗口（名称先取文件名，名称 / 标签还能改） */
+  const openNewBackgroundModal = useCallback(
+    (file: File) => {
+      const autoName = stripFileExtension(file.name) || "背景";
+      const draft: Background = {
+        uuid: `bg_${Date.now()}`,
+        name: autoName,
+        // 真正的站内路径要等保存时上传完才有，这里留空
+        path: "",
+        tags: [],
+      };
+
+      // 上一个弹窗可能留着失败原因 / 旧预览，先把它们清掉
+      setSaveError(null);
+      setBackgroundPreview(null);
+      setCroppedImage(null);
+      setSelectedBackground(null);
+      setBackgroundFile(file);
+      setEditingBackground(draft);
+      // 新背景：弹窗标题显示「添加背景」（改已有背景才是「编辑背景」）
+      setIsEditing(false);
+      setShowBackgroundModal(true);
+
+      log("打开添加背景窗口", { file: file.name, uuid: draft.uuid });
+      // 预览 / 缩略图后到，不阻塞弹窗打开
+      void applyBackgroundImage(file, draft.uuid).catch((error) =>
+        console.error("读取背景图片失败:", error),
+      );
+    },
+    [applyBackgroundImage],
+  );
+
+  /**
+   * 「➕ 添加背景」：打开**多选**文件框。
+   *
+   * <p>选 1 张 → 打开编辑窗口（可以改名称 / 标签，和以前一样）；
+   * 选多张 → 直接批量添加（名称取文件名），进度与结果见本页提示条。
+   */
   const handleAddBackground = () => {
-    log("添加新背景");
-    // 重置所有状态
-    setBackgroundFile(null);
-    setBackgroundPreview(null);
-    setCroppedImage(null);
+    log("添加背景（可一次选多张图片）");
+    addFileRef.current?.click();
+  };
 
-    // 创建一个新的背景对象
-    const newBackground: Background = {
-      uuid: `bg_${Date.now()}`,
-      name: "新背景",
-      path: "",
-      tags: [],
-    };
+  /**
+   * 多张图片批量添加：每张单独上传原图（后端顺带生成缩略图）后建一条背景记录。
+   *
+   * <p>名称取文件名、标签留空；某张坏了只记一条原因，不影响其它张。
+   */
+  const addBackgroundsFromFiles = async (files: File[]) => {
+    setTransferring(true);
+    setBatchKind("add");
+    setBatchMessage(null);
+    try {
+      log("批量添加背景", files.map((file) => file.name));
+      const result = await runFileBatch(
+        files,
+        async (file, index) => {
+          const name = stripFileExtension(file.name) || `背景${index + 1}`;
+          const upload = await ApiService.uploadBackgroundFile(file, name);
+          return ApiService.addBackground({
+            // 一次加多张时 Date.now() 可能相同，序号兜底保证 uuid 唯一
+            uuid: `bg_${Date.now()}_${index}`,
+            name,
+            path: upload.imagePath,
+            thumbnailPath: upload.autoThumbnailPath ?? "",
+            tags: [],
+          });
+        },
+        {
+          onProgress: setBatchProgress,
+          fallbackError: "添加失败",
+        },
+      );
+      log("批量添加背景完成", result);
 
-    log("创建的新背景对象", newBackground);
-    log("当前背景列表", backgrounds);
+      let refreshFailed = false;
+      if (result.succeededFiles > 0) {
+        refreshFailed = await refreshBackgrounds();
+      }
 
-    setBackgrounds([...backgrounds, newBackground]);
-    setSelectedBackground(newBackground);
-    setEditingBackground(newBackground);
-    setIsEditing(true);
-    setShowBackgroundModal(true);
+      setBatchMessage(
+        appendRefreshWarning(
+          describeBatchAddResult(result, {
+            unit: "张背景",
+            hint: "名称取自文件名、标签为空，双击卡片可改名称 / 标签",
+          }),
+          refreshFailed,
+        ),
+      );
+    } finally {
+      setBatchProgress(null);
+      setTransferring(false);
+    }
+  };
 
-    log("背景编辑窗口已打开");
+  const handleAddBackgroundFiles = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(e.target.files ?? []);
+    // 立刻清空 input：等异步走完再清的话，用户重选同一个文件不会触发 change
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    if (files.length === 1) {
+      openNewBackgroundModal(files[0]);
+      return;
+    }
+
+    await addBackgroundsFromFiles(files);
   };
 
   const handleEditBackground = (background: Background) => {
@@ -261,6 +466,11 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     setSelectedBackground(background);
     const editingBg = { ...background };
     log("复制的编辑背景对象", editingBg);
+    // 清掉上一次「添加」残留的文件 / 预览 / 缩略图：换图只认弹窗里重新点「选择文件」
+    setBackgroundFile(null);
+    setBackgroundPreview(null);
+    setCroppedImage(null);
+    setSaveError(null);
     setEditingBackground(editingBg);
     setIsEditing(true);
     setShowBackgroundModal(true);
@@ -301,10 +511,10 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
         }
       }
 
-      const existingBackgroundIndex = backgrounds.findIndex(
+      // 列表里没有这个 uuid = 新背景（多选添加的草稿本来就不在列表里）
+      const isNewBackground = !backgrounds.some(
         (bg) => bg.uuid === editingBackground.uuid,
       );
-      const isNewBackground = existingBackgroundIndex === -1;
 
       // 1) 若用户选了新文件 → 先把原图上传到后端（后端保存到 assets/backgrounds 并自动生成缩略图）
       if (backgroundFile) {
@@ -406,16 +616,15 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
         }
       }
 
-      // 3) 更新本地列表
-      if (isNewBackground) {
-        setBackgrounds([...backgrounds, updatedBackground]);
-        log("背景添加成功", updatedBackground.name);
-      } else {
-        const newBackgrounds = [...backgrounds];
-        newBackgrounds[existingBackgroundIndex] = updatedBackground;
-        setBackgrounds(newBackgrounds);
-        log("背景更新成功", updatedBackground.name);
+      // 3) 刷新列表（不能用本地列表拼：它是父组件按搜索词过滤后的，
+      //    拼回去会把没显示出来的背景丢掉）。刷新失败时至少把这一条并进来。
+      if (await refreshBackgrounds()) {
+        const others = backgrounds.filter(
+          (bg) => bg.uuid !== updatedBackground.uuid,
+        );
+        setBackgrounds([...others, updatedBackground]);
       }
+      log(isNewBackground ? "背景添加成功" : "背景更新成功", updatedBackground.name);
 
       setSelectedBackground(updatedBackground);
       setEditingBackground(null);
@@ -464,10 +673,12 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
       log("删除背景", { backgroundId, deleteFiles });
       await ApiService.deleteBackground(backgroundId, deleteFiles);
 
-      const updatedBackgrounds = backgrounds.filter(
-        (bg2) => bg2.uuid !== backgroundId,
-      );
-      setBackgrounds(updatedBackgrounds);
+      // 删完重新拉列表（本地列表是过滤后的，直接 filter 会把没显示出来的一起丢掉）
+      if (await refreshBackgrounds()) {
+        setBackgrounds(
+          backgrounds.filter((bg2) => bg2.uuid !== backgroundId),
+        );
+      }
 
       if (selectedBackground?.uuid === backgroundId) {
         setSelectedBackground(null);
@@ -485,134 +696,34 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
     log("取消编辑背景");
     setEditingBackground(null);
     setIsEditing(false);
+    // 取消后不能留着选中的文件：否则下次编辑别的背景会把它上传上去
     setBackgroundFile(null);
     setBackgroundPreview(null);
     setCroppedImage(null);
+    setSaveError(null);
     setShowBackgroundModal(false);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    // 立刻清空 input：否则重选同一个文件不会触发 change
+    e.target.value = "";
+    if (!file || !editingBackground) return;
 
-    log("选择背景文件", file.name);
-    // 在Electron环境中，获取文件的真实路径
-    let filePath = (file as any).path || file.webkitRelativePath || "";
-
-    // 如果没有获取到真实路径，创建一个默认路径
-    if (!filePath) {
-      const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-      filePath = `${AppConfig.resources.backgroundsBasePath}/${fileNameWithoutExt}_${Date.now()}.png`;
-    }
-
-    log("文件详细信息", {
+    log("选择背景文件", {
       name: file.name,
       size: file.size,
       type: file.type,
-      path: filePath,
     });
     setBackgroundFile(file);
+    setCroppedImage(null);
 
-    // 读取文件预览
-    const reader1 = new FileReader();
-    reader1.onload = async (event) => {
-      const imageSrc = event.target?.result as string;
-      setBackgroundPreview(imageSrc);
-      log("图片读取完成，开始生成缩略图");
-
-      // 自动生成缩略图
-      try {
-        const thumbnail = await generateThumbnail(imageSrc);
-        setCroppedImage(thumbnail);
-        log("缩略图生成成功", thumbnail ? "成功" : "失败");
-
-        // 更新编辑中的背景缩略图路径
-        if (editingBackground) {
-          const updatedBackground: Background = {
-            ...editingBackground,
-            thumbnailPath: thumbnail,
-          };
-          log("更新编辑中的背景", updatedBackground);
-          setEditingBackground(updatedBackground);
-        }
-      } catch (error) {
-        console.error("生成缩略图失败:", error);
-        log("生成缩略图失败", error);
-      }
-    };
-    reader1.readAsDataURL(file);
-
-    // 更新编辑中的背景路径和名称
-    if (editingBackground) {
-      // 获取文件名（不带后缀）
-      const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-      const updatedBackground: Background = {
-        ...editingBackground,
-        name: fileNameWithoutExt,
-        path: filePath,
-      };
-      log("更新背景名称和路径", updatedBackground);
-      setEditingBackground(updatedBackground);
-
-      // 读取文件预览
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const imageSrc = event.target?.result as string;
-        setBackgroundPreview(imageSrc);
-        log("图片读取完成，开始生成缩略图");
-
-        // 自动生成缩略图
-        try {
-          const thumbnail = await generateThumbnail(imageSrc);
-          setCroppedImage(thumbnail);
-          log("缩略图生成成功", thumbnail ? "成功" : "失败");
-
-          // 更新编辑中的背景缩略图路径，保留已有的名称和路径
-          if (editingBackground) {
-            const updatedBackgroundWithThumbnail = {
-              ...updatedBackground, // 使用之前已经更新的对象，保留名称和路径
-              thumbnailPath: thumbnail,
-            };
-            log("更新编辑中的背景缩略图", updatedBackgroundWithThumbnail);
-            setEditingBackground(updatedBackgroundWithThumbnail);
-          }
-        } catch (error) {
-          console.error("生成缩略图失败:", error);
-          log("生成缩略图失败", error);
-        }
-      };
-      reader.readAsDataURL(file);
-      return; // 提前返回，避免再次执行下面的代码
-    }
-
-    // 如果没有editingBackground，则执行默认流程
-    // 读取文件预览
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const imageSrc = event.target?.result as string;
-      setBackgroundPreview(imageSrc);
-      log("图片读取完成，开始生成缩略图");
-
-      // 自动生成缩略图
-      try {
-        const thumbnail = await generateThumbnail(imageSrc);
-        setCroppedImage(thumbnail);
-        log("缩略图生成成功", thumbnail ? "成功" : "失败");
-
-        // 更新编辑中的背景缩略图路径
-        if (editingBackground) {
-          const updatedBackground: Background = {
-            ...(editingBackground as Background), // 显式类型断言
-            thumbnailPath: thumbnail,
-          };
-          setEditingBackground(updatedBackground);
-        }
-      } catch (error) {
-        console.error("生成缩略图失败:", error);
-        log("生成缩略图失败", error);
-      }
-    };
-    reader.readAsDataURL(file);
+    // 正在「添加」时名称跟着文件名走（换图=换素材）；编辑已有背景则保留它自己的名字
+    await applyBackgroundImage(file, editingBackground.uuid, {
+      rename: isEditing
+        ? undefined
+        : stripFileExtension(file.name) || "背景",
+    }).catch((error) => console.error("读取背景图片失败:", error));
   };
 
   return (
@@ -645,14 +756,22 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
           className="btn-primary"
           onClick={handleAddBackground}
           disabled={transferring}
+          title="可一次选多张图片：选 1 张打开编辑窗口（能改名称 / 标签），选多张直接批量添加（名称取自文件名）"
         >
-          ➕ 添加背景
+          {batchKind === "add" && batchProgress
+            ? `⏳ 添加中 ${Math.min(batchProgress.done + 1, batchProgress.total)}/${batchProgress.total}…`
+            : "➕ 添加背景"}
         </button>
         <button
           onClick={() => importFileRef.current?.click()}
           disabled={transferring}
+          title="可一次选多个背景资源包（ZIP）：逐个导入并显示进度，某个包坏了不影响其它包"
         >
-          {transferring ? "⏳ 处理中…" : "📥 导入背景"}
+          {batchKind === "import" && batchProgress
+            ? `⏳ 导入中 ${Math.min(batchProgress.done + 1, batchProgress.total)}/${batchProgress.total}…`
+            : transferring
+              ? "⏳ 处理中…"
+              : "📥 导入背景"}
         </button>
 
         {selectionMode ? (
@@ -674,6 +793,8 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
           ref={importFileRef}
           style={{ display: "none" }}
           accept=".zip"
+          multiple
+          aria-label="导入背景资源包（可多选）"
           onChange={handleImportBackgrounds}
         />
 
@@ -681,6 +802,14 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
           📂 打开背景文件夹
         </button>
       </div>
+
+      {/* 批量操作（导入资源包 / 多选添加）的进度与结果 */}
+      <ResourceBatchStatus
+        progress={batchProgress}
+        message={batchMessage}
+        label={batchKind === "add" ? "正在添加背景" : "正在导入背景"}
+        onDismiss={() => setBatchMessage(null)}
+      />
 
       <div className="backgrounds-grid">
         {filteredBackgrounds.map((background) => (
@@ -714,12 +843,24 @@ const BackgroundsTab: React.FC<BackgroundsTabProps> = ({
         />
       )}
 
-      {/* 隐藏的文件输入 */}
+      {/* 「➕ 添加背景」的多选文件框（与导入资源包、弹窗里换图的 input 都分开） */}
+      <input
+        type="file"
+        ref={addFileRef}
+        style={{ display: "none" }}
+        accept="image/*"
+        multiple
+        aria-label="添加背景：选择图片（可多选）"
+        onChange={handleAddBackgroundFiles}
+      />
+
+      {/* 隐藏的文件输入：编辑弹窗里「选择文件」，单张替换当前背景 */}
       <input
         type="file"
         ref={fileInputRef}
         style={{ display: "none" }}
         accept="image/*"
+        aria-label="编辑背景时选择图片"
         onChange={handleFileSelect}
       />
     </div>

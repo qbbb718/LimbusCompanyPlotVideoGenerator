@@ -1140,7 +1140,9 @@ ipcMain.handle("dialog:saveProjectFile", async (event, defaultPath, data) => {
   }
 });
 
-// 情绪动画（序列帧）素材：选一个动画文件导入（.lcaf 本质是 zip）
+// 情绪动画（序列帧）素材：选一个动画文件导入。
+// .lcaf 本质是 zip，一个 zip 里也可能装着**多套** .lcaf（别人打包分享的整包）——
+// 里面装的是什么由后端自动判断并逐套导入，这里只负责把路径交回去。
 ipcMain.handle("dialog:openAnimationClip", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: "导入动画文件",
@@ -1157,7 +1159,7 @@ ipcMain.handle("dialog:openAnimationClip", async () => {
   return { canceled: false, filePath: filePaths[0], filePaths };
 });
 
-// 情绪动画（序列帧）素材：**多选**动画文件批量导入（一个 .lcaf = 一套动画）
+// 情绪动画（序列帧）素材：**多选**动画文件批量导入（一个 .lcaf = 一套动画；整包 zip 里可能是多套）
 ipcMain.handle("dialog:openAnimationClips", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: "批量导入动画文件",

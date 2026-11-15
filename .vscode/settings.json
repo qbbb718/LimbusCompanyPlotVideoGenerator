@@ -12,13 +12,15 @@
     "**/release.old/**": true,
     "**/target/**": true,
     "**/jre/**": true,
+    "**/demo/pack/**": true,
     "**/node_modules/**": true
   },
   "search.exclude": {
     "**/release": true,
     "**/release.old": true,
     "**/target": true,
-    "**/jre": true
+    "**/jre": true,
+    "**/demo/pack": true
   },
   "Codegeex.CommitMessage.LanguagePreference": "中文"
 }

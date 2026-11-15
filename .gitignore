@@ -57,6 +57,10 @@ demo/frontend/electron-react-app/release/
 # 生成的 JRE（由 jlink 生成，体积大）
 demo/jre/
 
+# 打包载荷：由 scripts/pack-assets.mjs 每次打包前重建（demo/assets + demo/data + 本地开发素材）。
+# 只是打包输入，不进版本控制。
+demo/pack/
+
 *.mp4
 /输出测试
 /release

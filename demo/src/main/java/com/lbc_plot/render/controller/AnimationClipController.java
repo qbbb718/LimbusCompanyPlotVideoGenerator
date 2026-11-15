@@ -104,8 +104,14 @@ public class AnimationClipController {
     /**
      * 从一个 zip 导入（图片序列 zip，或本功能导出的 .lcaf）。
      *
+     * <p>包里装的东西**自动判断**：只有一个 {@code .lcaf}（或干脆就是一串帧图）→ 一套动画；
+     * 装了好几个 {@code .lcaf}（把别人发的动画包解压后重新打成的 zip）→ 逐套导入，
+     * 一套坏掉只记进 {@code failures}，其它照常进库。
+     *
      * @param inferHolds   包里没带时序时，是否按文件名编号推算
      * @param maxGapFrames 单张时长上限
+     * @return {@code {asset, assets, count, warnings, failures}}——{@code asset} 是最后导入的那套
+     *         （老前端只认它），{@code assets} 是本次进来的全部
      */
     @PostMapping("/import-zip")
     public ResponseEntity<Map<String, Object>> importZip(
@@ -113,8 +119,9 @@ public class AnimationClipController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "inferHolds", defaultValue = "true") boolean inferHolds,
             @RequestParam(value = "maxGapFrames", defaultValue = "60") int maxGapFrames) throws IOException {
-        AnimationClipImporter.ImportResult result = importer.importZip(file, name, inferHolds, maxGapFrames);
-        return ResponseEntity.ok(toImportResponse(result));
+        AnimationClipImporter.ZipImportOutcome outcome =
+                importer.importZipAuto(file, name, inferHolds, maxGapFrames);
+        return ResponseEntity.ok(toZipImportResponse(outcome));
     }
 
     /* ==================== 编辑 ==================== */
@@ -389,6 +396,24 @@ public class AnimationClipController {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("asset", toDto(result.asset()));
         body.put("warnings", result.warnings());
+        return body;
+    }
+
+    /**
+     * zip 导入的回包：单套时 {@code assets} 只有一个元素、{@code asset} 就是它（老前端照旧能读），
+     * 整包时 {@code assets} 是全部、{@code asset} 是最后那套（界面上默认选中它）。
+     */
+    private Map<String, Object> toZipImportResponse(AnimationClipImporter.ZipImportOutcome outcome) {
+        List<Map<String, Object>> assets = new ArrayList<>();
+        for (AnimationClipImporter.ImportResult result : outcome.imported()) {
+            assets.add(toDto(result.asset()));
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("asset", assets.isEmpty() ? null : assets.get(assets.size() - 1));
+        body.put("assets", assets);
+        body.put("count", assets.size());
+        body.put("warnings", outcome.warnings());
+        body.put("failures", outcome.failures());
         return body;
     }
 

@@ -210,6 +210,86 @@ REM unrelated Java programs such as an IDE language server.
 echo        Stopping leftover project processes...
 powershell -NoProfile -Command "$root='%REPO_ROOT%'; Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(java|javaw|electron|app-builder|LimbusCompanyPlotVideoGenerator|LimbusCompany Plot Video Generator)\.exe$' } | Where-Object { ($_.ExecutablePath -like ($root + '*')) -or ($_.CommandLine -like ('*' + $root + '*')) } | ForEach-Object { Write-Host ('        Stopping ' + $_.Name + ' (PID ' + $_.ProcessId + ')'); Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 
+REM --- Assemble the asset payload for the FULL installer (demo\pack) ---
+REM Locally developed characters and sequence-frame animations live in the data
+REM root (%APPDATA%\limbus-company-plot-video-generator\assets), NOT in the
+REM packaging sources demo\assets / demo\data, so before this step existed a
+REM local build shipped an installer without them: the app looked broken out of
+REM the box (characters missing, "animation clips" list empty) although the
+REM files were right there on the dev machine.
+REM
+REM scripts\pack-assets.mjs rebuilds demo\pack\ = demo\assets + demo\data with
+REM those dev folders (characters / animation-clips / thumbnails + project.db,
+REM including its -wal) copied on top, and electron-builder.yml packages
+REM demo\pack\assets and demo\pack\data. Run AFTER the process sweep above:
+REM copying project.db while the app still holds it yields a torn database.
+REM No dev data (CI, fresh clone) is not an error - the script says so and
+REM builds the curated set, which is exactly what shipped before.
+REM
+REM Deliberately before the output folder is moved aside: a payload failure
+REM must leave release\ exactly as it was.
+REM
+REM TWO INSTALLERS PER RUN (release.yml does the same, in the same order):
+REM   1/2 "full"  LCP<version>.exe       everything, including the locally
+REM                                      developed characters and animation
+REM                                      clips; demo\pack\ is built with the
+REM                                      default (full) profile
+REM   2/2 "lite"  LCP<version>-lite.exe  ui/effects/fonts only, no starter
+REM                                      database; demo\pack\ is rebuilt with
+REM                                      --lite
+REM The lite build MUST run second: it overwrites latest.yml, and auto-update
+REM should stay a small download. Replacing the installer does not touch an
+REM existing user's own resources (they live in the data root, and only missing
+REM files are ever copied into it), so "update goes to the lite variant" is safe
+REM for people who installed the full one.
+REM After both builds demo\pack\ is rebuilt as full again, so a manual
+REM "npx electron-builder" later still produces the full installer.
+REM
+REM LCP_PACK_ASSETS=off skips the payload rebuilds AND variant 2/2: it packages
+REM demo\pack\ as it is, as a single (full) installer. Only useful to reproduce
+REM an existing state - never build a release this way.
+if /i "%LCP_PACK_ASSETS%"=="off" (
+    echo        [WARN] LCP_PACK_ASSETS=off: packaging demo\pack\ as it is.
+) else (
+    echo        [1/2] Assembling the full asset payload ^(demo\pack^)...
+    node "%REPO_ROOT%\scripts\pack-assets.mjs"
+    if errorlevel 1 (
+        echo.
+        echo [ERROR] Could not assemble the full asset payload.
+        echo         The installer would ship without demo\pack\assets / demo\pack\data,
+        echo         so packaging stops here. release\ was not touched.
+        goto :FATAL
+    )
+)
+
+REM Fail before electron-builder if the payload is unusable: a missing payload
+REM only produces a warning inside electron-builder ("file source doesn't
+REM exist"), and the installer would then have no assets at all.
+echo        Verifying the full asset payload...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\scripts\verify-packaged-assets.ps1" -Stage payload -Profile full -PayloadDir "%DEMO_DIR%pack"
+if errorlevel 1 (
+    echo.
+    echo [ERROR] The full asset payload is unusable, see the message above.
+    echo         run node scripts\pack-assets.mjs by hand to see why.
+    goto :FATAL
+)
+
+REM --- Auto-update payload self-check. ---
+REM Missing any of these makes "check for updates" silently do nothing in the
+REM installed app (the failure is a require() that throws and gets caught):
+REM   - electron-updater in devDependencies  -> not packed into app.asar
+REM   - public/update-service.js not listed in electron-builder.yml "files"
+REM   - public/log-export/zip-writer.js     -> electron.js require() at startup
+REM Checked before packaging so a failure leaves release\ untouched.
+echo        Verifying auto-update payload...
+powershell -NoProfile -Command "$fe='%FRONTEND_DIR%'; $pkg=Get-Content (Join-Path $fe 'package.json') -Raw | ConvertFrom-Json; if (-not ($pkg.dependencies.PSObject.Properties.Name -contains 'electron-updater')) { Write-Host '[ERROR] electron-updater must be in dependencies, devDependencies are not packaged'; exit 1 }; if (-not (Test-Path (Join-Path $fe 'node_modules\electron-updater'))) { Write-Host '[ERROR] node_modules/electron-updater missing - run npm install'; exit 1 }; foreach ($f in @('public\update-service.js','public\update-manifest.js','public\log-export\zip-writer.js')) { if (-not (Test-Path (Join-Path $fe $f))) { Write-Host ('[ERROR] missing ' + $f); exit 1 } }; $yml=Get-Content (Join-Path $fe 'electron-builder.yml') -Raw; if ($yml -notmatch 'public/\*\.js') { Write-Host '[ERROR] electron-builder.yml files must include public/*.js'; exit 1 }; Write-Host '       auto-update payload ok'"
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Auto-update payload check failed, see the message above.
+    echo         Such an installer could never update itself.
+    goto :FATAL
+)
+
 REM Move the previous build aside instead of deleting it up front. A partial
 REM "rmdir /s /q" on a folder that is locked destroys the previous installer
 REM and still leaves the locked file behind, so the next run fails as well.
@@ -243,10 +323,11 @@ REM another script, "< nul") timeout prints "Input redirection is not
 REM supported" and returns at once, so no delay would happen at all.
 ping -n 3 127.0.0.1 >nul
 
-REM --- electron-builder: use --publish never in CI to avoid missing GH_TOKEN ---
+REM --- Variant 1/2: the full installer ---
 REM -c.directories.output overrides "output" in electron-builder.yml, so a
-REM local run always lands in PACK_OUTPUT. The CI workflow keeps the yml
-REM default by not calling this script.
+REM local run always lands in PACK_OUTPUT. The CI workflow keeps the yml default
+REM by not calling this script.
+echo        [1/2] Packaging the full installer ^(characters + animation clips^)...
 if "%IS_CI%"=="1" (
     echo        CI mode: using --publish never
     call npx electron-builder --win --x64 --publish never -c.directories.output="%PACK_OUTPUT%"
@@ -258,10 +339,10 @@ REM Deliberately not an "if errorlevel 1 ( ... )" block: a closing paren
 REM inside echoed text ends such a block early, so the rest of the block
 REM (including "goto :FATAL") runs unconditionally and reports BUILD FAILED
 REM even when packaging succeeded. A goto avoids that class of bug.
-if not errorlevel 1 goto :PACK_OK
+if not errorlevel 1 goto :FULL_PACKED
 
 echo.
-echo [ERROR] Packaging failed.
+echo [ERROR] Packaging the full installer failed.
 echo.
 echo        Common causes:
 echo        1. A file in the output directory is locked by another process ^(try rebooting^)
@@ -272,57 +353,104 @@ echo             set DOWNLOAD_MIRROR=off
 echo        3. Antivirus is blocking file operations
 goto :FATAL
 
-:PACK_OK
-REM --- Auto-update payload self-check. ---
-REM Missing any of these makes "check for updates" silently do nothing in the
-REM installed app (the failure is a require() that throws and gets caught):
-REM   - electron-updater in devDependencies  -> not packed into app.asar
-REM   - public/update-service.js not listed in electron-builder.yml "files"
-REM   - public/log-export/zip-writer.js     -> electron.js require() at startup
-REM Fail the build here instead of shipping an installer that can never update
-REM itself - users would only notice as "it never tells me about new versions".
-echo        Verifying auto-update payload...
-powershell -NoProfile -Command "$fe='%FRONTEND_DIR%'; $pkg=Get-Content (Join-Path $fe 'package.json') -Raw | ConvertFrom-Json; if (-not ($pkg.dependencies.PSObject.Properties.Name -contains 'electron-updater')) { Write-Host '[ERROR] electron-updater must be in dependencies, devDependencies are not packaged'; exit 1 }; if (-not (Test-Path (Join-Path $fe 'node_modules\electron-updater'))) { Write-Host '[ERROR] node_modules/electron-updater missing - run npm install'; exit 1 }; foreach ($f in @('public\update-service.js','public\update-manifest.js','public\log-export\zip-writer.js')) { if (-not (Test-Path (Join-Path $fe $f))) { Write-Host ('[ERROR] missing ' + $f); exit 1 } }; $yml=Get-Content (Join-Path $fe 'electron-builder.yml') -Raw; if ($yml -notmatch 'public/\*\.js') { Write-Host '[ERROR] electron-builder.yml files must include public/*.js'; exit 1 }; Write-Host '       auto-update payload ok'"
-if errorlevel 1 (
+:FULL_PACKED
+REM Compare the package against demo\pack (the payload), so this covers both the
+REM curated files and the locally developed ones. ui/ + fonts/ + a non-empty
+REM effects/ are hard requirements for preview rendering and video export; the
+REM per-file lookup is the catch-all for a broken extraResources filter.
+echo        Verifying the full installer...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\scripts\verify-packaged-assets.ps1" -Stage package -Profile full -PayloadDir "%DEMO_DIR%pack" -ResourcesDir "%PACK_OUTPUT%\win-unpacked\resources"
+if not errorlevel 1 goto :FULL_VERIFIED
+
+echo.
+echo [ERROR] The full installer is missing assets, see the message above.
+echo         The installer would ship with missing or incomplete asset files,
+echo         which breaks preview rendering and video export.
+echo         Previous output was kept as: %PACK_OLD%
+goto :FATAL
+
+:FULL_VERIFIED
+REM LCP_PACK_ASSETS=off means "package whatever demo\pack holds right now". The lite
+REM variant cannot work from that state (the payload has to be rebuilt as lite first),
+REM so the whole second variant is skipped instead of failing its verification.
+if /i "%LCP_PACK_ASSETS%"=="off" (
+    echo        [WARN] LCP_PACK_ASSETS=off: only the full installer was built.
+    goto :PAYLOAD_RESTORED
+)
+
+REM --- Variant 2/2: the lite installer ---
+REM electron-builder rebuilds win-unpacked from scratch on every run (measured:
+REM after variant 1 it holds characters/animation-clips, after variant 2 only
+REM ui/effects/fonts), so the two variants cannot leak into each other. The
+REM folder is still deleted up front: it frees a few hundred MB before the
+REM second build, and a folder that cannot be deleted is a file lock that would
+REM break the lite packaging later anyway - better to report it here.
+if exist "%PACK_OUTPUT%\win-unpacked" (
+    echo        Clearing win-unpacked before the lite build...
+    rmdir /s /q "%PACK_OUTPUT%\win-unpacked"
+)
+if exist "%PACK_OUTPUT%\win-unpacked" (
     echo.
-    echo [ERROR] Auto-update payload check failed, see the message above.
-    echo         Such an installer could never update itself.
+    echo [ERROR] Cannot clear %PACK_OUTPUT%\win-unpacked - a file inside it is
+    echo         still locked. electron-builder would fail on it a minute later
+    echo         anyway, so stop here. Close whatever holds it and re-run.
     goto :FATAL
 )
 
-REM --- Verify the packaged assets before declaring success. ---
-REM ui/ and effects/ are hard requirements for preview rendering and video
-REM export: if they are missing from the payload, the installed app fails at
-REM runtime with a confusing error (or an export that never progresses), so
-REM fail the build here instead of shipping such an installer.
-REM The previous output is still at PACK_OLD at this point, so a failed check
-REM keeps the last good installer around.
-REM
-REM Two classes of failure are checked:
-REM   1. a known-critical file (ui/*.png, fonts/ChineseFont.ttf) is missing,
-REM      or effects/ has no image at all;
-REM   2. the payload silently dropped files: every file under demo\assets is
-REM      looked up again by its relative path in resources\assets. This is the
-REM      catch-all for a broken extraResources filter.
-REM
-REM The effects count MUST recurse: since the speech-bubble assets landed, the
-REM images live in subfolders (effects\speech_bubble\...), so a non-recursive
-REM "Get-ChildItem -File" always returns 0 and failed a good build.
-REM
-REM Get-ChildItem/-Test-Path use -LiteralPath everywhere and the comparison
-REM uses a lower-cased relative-path table: asset names legitimately contain
-REM characters that matter to PowerShell wildcards (brackets) and to Windows
-REM path lookups (case), and neither may make this check lie.
-echo        Verifying bundled assets...
-powershell -NoProfile -Command "$a=Join-Path '%PACK_OUTPUT%' 'win-unpacked\resources\assets'; $src=Join-Path '%DEMO_DIR%' 'assets'; if (-not (Test-Path -LiteralPath $a)) { Write-Host ('[ERROR] assets were not packaged: ' + $a); exit 1 }; $srcFiles=@(Get-ChildItem -LiteralPath $src -Recurse -File -Force); if ($srcFiles.Count -lt 1) { Write-Host ('[ERROR] source assets are empty, nothing to verify: ' + $src); exit 1 }; $need=@('ui\border_1080p.png','ui\dialogBox.png','ui\speaker-camp.png','ui\speaker-name.png','ui\location.png','fonts\ChineseFont.ttf'); $miss=@($need | Where-Object { -not (Test-Path -LiteralPath (Join-Path $a $_)) }); if ($miss.Count -gt 0) { Write-Host ('[ERROR] required assets missing from the package: ' + ($miss -join ', ')); exit 1 }; $fxDir=Join-Path $a 'effects'; $fx=@(Get-ChildItem -LiteralPath $fxDir -Recurse -File -ErrorAction SilentlyContinue); if ($fx.Count -lt 1) { Write-Host ('[ERROR] effects folder is empty in the packaged assets: ' + $fxDir); exit 1 }; $pkgFiles=@(Get-ChildItem -LiteralPath $a -Recurse -File -Force); $pkgRel=@{}; foreach ($f in $pkgFiles) { $pkgRel[$f.FullName.Substring($a.Length).TrimStart('\').ToLowerInvariant()] = 1 }; $lostRels=@($srcFiles | ForEach-Object { $_.FullName.Substring($src.Length).TrimStart('\') } | Where-Object { -not $pkgRel.ContainsKey($_.ToLowerInvariant()) }); if ($lostRels.Count -gt 0) { $sample=($lostRels | Select-Object -First 5) -join ', '; Write-Host ('[ERROR] packaged assets are incomplete: ' + $lostRels.Count + ' of ' + $srcFiles.Count + ' files from demo\assets were not packaged (e.g. ' + $sample + ')'); exit 1 }; Write-Host ('       assets ok: ' + $pkgFiles.Count + ' files packaged (' + $srcFiles.Count + ' in demo\assets), effects: ' + $fx.Count + ', fonts: ok')"
+echo        [2/2] Assembling the lite asset payload ^(ui/effects/fonts only^)...
+node "%REPO_ROOT%\scripts\pack-assets.mjs" --lite
 if errorlevel 1 (
     echo.
-    echo [ERROR] Packaged assets check failed.
-    echo         The installer would ship with missing or incomplete asset files,
-    echo         which breaks preview rendering and video export.
-    echo         Previous output was kept as: %PACK_OLD%
+    echo [ERROR] Could not assemble the lite asset payload.
+    echo         The lite installer would ship without ui/effects/fonts.
     goto :FATAL
 )
+
+echo        Verifying the lite asset payload...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\scripts\verify-packaged-assets.ps1" -Stage payload -Profile lite -PayloadDir "%DEMO_DIR%pack"
+if not errorlevel 1 goto :LITE_PAYLOAD_OK
+
+echo.
+echo [ERROR] The lite asset payload is unusable, see the message above.
+goto :FATAL
+
+:LITE_PAYLOAD_OK
+REM -c.nsis.artifactName overrides nsis.artifactName from electron-builder.yml so
+REM the two installers can live in the same output folder. latest.yml ends up
+REM pointing at this one (the lite build runs last).
+echo        [2/2] Packaging the lite installer ^(ui/effects/fonts only^)...
+if "%IS_CI%"=="1" (
+    call npx electron-builder --win --x64 --publish never -c.directories.output="%PACK_OUTPUT%" -c.nsis.artifactName="LCP${version}-lite.${ext}"
+) else (
+    call npx electron-builder --win --x64 -c.directories.output="%PACK_OUTPUT%" -c.nsis.artifactName="LCP${version}-lite.${ext}"
+)
+if not errorlevel 1 goto :LITE_PACKED
+
+echo.
+echo [ERROR] Packaging the lite installer failed.
+echo         Same causes as variant 1/2 (see above).
+goto :FATAL
+
+:LITE_PACKED
+echo        Verifying the lite installer ^(no optional assets, no database^)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\scripts\verify-packaged-assets.ps1" -Stage package -Profile lite -PayloadDir "%DEMO_DIR%pack" -ResourcesDir "%PACK_OUTPUT%\win-unpacked\resources"
+if not errorlevel 1 goto :VARIANTS_OK
+
+echo.
+echo [ERROR] The lite installer is not lite, see the message above.
+echo         Previous output was kept as: %PACK_OLD%
+goto :FATAL
+
+:VARIANTS_OK
+REM Leave demo\pack\ in its default (full) state, so a later manual
+REM "npx electron-builder" produces the full installer and not the lite one.
+echo        Restoring the full asset payload for the next run...
+node "%REPO_ROOT%\scripts\pack-assets.mjs"
+if not errorlevel 1 goto :PAYLOAD_RESTORED
+echo        [WARN] Could not rebuild demo\pack as full - it stays in the lite state.
+
+:PAYLOAD_RESTORED
+echo.
 
 REM Packaging and the asset check both passed, so the previous build can go.
 if exist "%PACK_OLD%" rmdir /s /q "%PACK_OLD%" 2>nul
