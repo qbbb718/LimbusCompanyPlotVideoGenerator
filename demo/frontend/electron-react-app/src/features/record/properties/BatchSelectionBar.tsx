@@ -15,7 +15,7 @@ import "./BatchSelection.css";
 
 /** 顶部批量操作条 */
 export interface BatchSelectionBarProps {
-  /** 素材名称（立绘 / 临时图片 / 背景 / 音效）：用于文案与无障碍名称 */
+  /** 素材名称（立绘 / 临时素材 / 背景 / 音效）：用于文案与无障碍名称 */
   label: string;
   /** 当前页签里素材总数 */
   total: number;
@@ -29,7 +29,7 @@ export interface BatchSelectionBarProps {
   onDelete: () => void;
   /**
    * 「点卡片 = 预览定位」的提示文案。
-   * 图片类页签（立绘 / 临时图片 / 背景）传，音效页签不传（不与预览联动）。
+   * 图片类页签（立绘 / 临时素材 / 背景）传，音效页签不传（不与预览联动）。
    */
   previewHint?: string;
 }

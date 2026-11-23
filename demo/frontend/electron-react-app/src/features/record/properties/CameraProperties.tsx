@@ -19,7 +19,7 @@
  *
  * <h3>坐标系</h3>
  * 镜头读数是**世界坐标**（可以远大于 1920×1080），中心缺省 960,540 = 画布中心，缩放 1.00× = 取景框
- * 正好一屏。只有背景 / 立绘 / 临时图片受它影响，边框、对话框、名片、地点牌、台词都不受影响。
+ * 正好一屏。只有背景 / 立绘 / 临时素材受它影响，边框、对话框、名片、地点牌、台词都不受影响。
  *
  * @see useCameraEditor 状态唯一真源（起止帧、工具、视图缩放、播放头）
  * @see cameraView 镜头归一化 / 取景框 / 缓动曲线（纯函数）
@@ -191,8 +191,9 @@ const CameraProperties: React.FC<CameraPropertiesProps> = ({
   /**
    * @function 铺满背景
    *
-   * <p>后端背景是 contain（完整放进目标框），横长条背景在 scale=1 时只画中间一条、上下留黑，
-   * 世界也只有画布那么大，镜头根本没地方摇。这里把最上层背景放大到刚好盖住当前取景框：
+   * <p>背景是 cover（scale=1 就盖住整个画布），所以一般按下去倍数就是 1；
+   * 真正需要它的是**镜头拉远之后**——取景框比画布还大时，四边会露出底色，
+   * 这里把最上层背景放大到刚好盖住当前取景框：
    * **只放大、不缩小、不拉伸、不改 X/Y**（倍数公式见 cameraView.coverScaleForBackground）。
    */
   const coverBackground = () => {
@@ -434,14 +435,14 @@ const CameraProperties: React.FC<CameraPropertiesProps> = ({
           <SegmentedButton
             active={tool === "elements"}
             onClick={() => setTool("elements")}
-            title="拖动 = 挪背景 / 立绘 / 临时图片；按住 Alt 临时切成移镜"
+            title="拖动 = 挪背景 / 立绘 / 临时素材；按住 Alt 临时切成移镜"
           >
             🖐 移元素
           </SegmentedButton>
         </div>
       </div>
       <p className="camera-section-hint">
-        「移元素」可直接拖动背景 / 立绘 / 临时图片；数值仍在各自页签。
+        「移元素」可直接拖动背景 / 立绘 / 临时素材；数值仍在各自页签。
       </p>
 
       {/* ===== 构图辅助：工程级开关（勾一次就一直用，所以放在面板最后） ===== */}

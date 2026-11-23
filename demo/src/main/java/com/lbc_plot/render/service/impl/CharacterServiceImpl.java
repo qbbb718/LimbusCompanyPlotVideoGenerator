@@ -171,8 +171,13 @@ public class CharacterServiceImpl implements CharacterService {
     }
 
     /**
-     * 获取默认立绘（第一位立绘）
-     * 
+     * 获取默认立绘。
+     *
+     * <p>默认立绘由 {@code character_portraits.is_default} 标记（读入
+     * {@link Portrait#isDefaultPortrait()}），**不再按列表位置取第一张**：
+     * 立绘列表现在支持拖拽排序，默认立绘可以位于任意位置。
+     * 标记缺失（老数据 / 未挂关联）时退回第一张，保证仍有可用立绘。
+     *
      * @return 默认立绘，如果列表为空则返回null
      */
     public Portrait getDefaultPortrait(MyCharacter character) {
@@ -184,6 +189,11 @@ public class CharacterServiceImpl implements CharacterService {
                 return p.orElse(null);
             } catch (Exception e) {
                 return null;
+            }
+        }
+        for (Portrait portrait : portraits) {
+            if (portrait.isDefaultPortrait()) {
+                return portrait;
             }
         }
         return portraits.get(0);

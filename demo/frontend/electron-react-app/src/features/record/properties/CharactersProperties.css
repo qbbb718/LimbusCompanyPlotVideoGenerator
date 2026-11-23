@@ -199,7 +199,7 @@
  * 而滑杆上方还有 9 个 16px 的快速定位按钮（最小 144px）——不换行的话
  * 这一行会从标签右边一直挤到卡片外面，滑杆拇指和快速定位按钮被裁掉。
  * 换成"滑块 / 快速定位整行换到下一行"，宽度就永远够用。
- * 「临时图片」页签共用同一套 .char-row / .char-slider-auto，所以选择器里带上它。 */
+ * 「临时素材」页签共用同一套 .char-row / .char-slider-auto，所以选择器里带上它。 */
 .characters-properties .char-row,
 .characters-properties .transform-row,
 .temp-images-properties .char-row {
@@ -362,11 +362,13 @@
   white-space: nowrap;
 }
 
-/* 立绘选择弹窗（.portrait-modal / .portrait-grid …）已拆到 PortraitPickerDialog.css：
-   它通过 ModalPortal 挂在 document.body 上，必须脱离停靠面板的层叠上下文。 */
+/* 立绘选择弹窗（.portrait-picker / .portrait-picker-grid …）已拆到 PortraitPickerDialog.css：
+   它通过 ModalPortal 挂在 document.body 上，必须脱离停靠面板的层叠上下文。
+   类名刻意不用 .portrait-modal —— 资源管理的立绘裁剪弹窗（CharacterModal.css）占着那个名字，
+   同名会让裁剪弹窗的 overflow: hidden 盖掉选择弹窗的滚动（立绘多时只剩一屏可见）。 */
 
 /*
- * 临时图片（路人 / 道具）已从本页签拆出，成为同级的「临时图片」页签，
+ * 临时素材（路人 / 道具）已从本页签拆出，成为同级的「临时素材」页签，
  * 相关样式见 TempImagesProperties.css（.temp-* / .add-temp-image-btn）。
  * 这里的 .char-row / .char-label-fixed / .char-slider-auto / .adjX-quick-* 等
  * 属于两个页签共用的控件样式，两个组件都 import 本文件。

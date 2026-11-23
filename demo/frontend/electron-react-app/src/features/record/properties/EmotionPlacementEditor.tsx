@@ -1,9 +1,11 @@
 /**
- * @component 情绪动画「摆放」编辑器（剧情编辑 → 立绘 → 情绪动画 → 摆放）
+ * @component 情绪动画「摆放」编辑器（剧情编辑 → 立绘 / 临时素材 → 情绪动画 → 摆放）
  *
  * <h3>它改的是什么</h3>
- * 只改记录里 `emotionAnim` 的三个字段：`offsetX / offsetY`（相对脸框中心，单位 = 头宽）与
- * `scale`（素材缩放倍率）。时序、播放参数、缩略图仍在「资源管理 → 序列帧动画」里定，
+ * 只改记录里 `emotionAnim` 的三个字段：`offsetX / offsetY`（相对**头部区域中心**，单位 = 头宽）与
+ * `scale`（素材缩放倍率）。头部区域对两种元素分别是什么见 `anchorLabel`：
+ * 立绘=裁剪框脸框中心，临时素材=图片宽度 1/3 的头部正方形中心。
+ * 时序、播放参数、缩略图仍在「资源管理 → 序列帧动画」里定，
  * 这里一个字节都不碰——**微调摆放 ≠ 做动画**。
  *
  * <h3>为什么剧情编辑页也要能挪它</h3>
@@ -86,6 +88,13 @@ type PlacementKey = keyof EmotionPlacement;
 interface EmotionPlacementEditorProps {
   /** 无障碍标签用的名字（角色名），与「选用动画」下拉同一套 */
   elementLabel: string;
+  /**
+   * 摆放偏移的原点叫什么，只影响提示文案。
+   *
+   * <p>立绘是「脸框中心」；临时素材没有裁剪框，用需求定义的头部正方形区域中心。
+   * 单位都是"一个头部区域宽度"，所以两边的数值语义完全一致。
+   */
+  anchorLabel?: string;
   /** 这条记录当前的摆放 */
   value: EmotionPlacement;
   /**
@@ -121,6 +130,7 @@ interface PlacementRowSpec {
  */
 const EmotionPlacementEditor: React.FC<EmotionPlacementEditorProps> = ({
   elementLabel,
+  anchorLabel = "脸框中心",
   value,
   baseline,
   onChange,
@@ -138,7 +148,7 @@ const EmotionPlacementEditor: React.FC<EmotionPlacementEditorProps> = ({
       step: OFFSET_STEP,
       fieldMin: -EMOTION_OFFSET_LIMIT,
       fieldMax: EMOTION_OFFSET_LIMIT,
-      unitHint: "水平偏移（单位：头宽；0 = 脸框中心，+ 向右）",
+      unitHint: `水平偏移（单位：头宽；0 = ${anchorLabel}，+ 向右）`,
       patch: (next) => ({ offsetX: round2(next) }),
     },
     {
@@ -149,7 +159,7 @@ const EmotionPlacementEditor: React.FC<EmotionPlacementEditorProps> = ({
       step: OFFSET_STEP,
       fieldMin: -EMOTION_OFFSET_LIMIT,
       fieldMax: EMOTION_OFFSET_LIMIT,
-      unitHint: "垂直偏移（单位：头宽；0 = 脸框中心，+ 向下）",
+      unitHint: `垂直偏移（单位：头宽；0 = ${anchorLabel}，+ 向下）`,
       patch: (next) => ({ offsetY: round2(next) }),
     },
     {
@@ -160,7 +170,7 @@ const EmotionPlacementEditor: React.FC<EmotionPlacementEditorProps> = ({
       step: SCALE_STEP,
       fieldMin: EMOTION_SCALE_MIN,
       fieldMax: EMOTION_SCALE_MAX,
-      unitHint: "素材缩放倍率（1 = 素材原始像素；立绘放大时它会跟着一起放大）",
+      unitHint: "素材缩放倍率（1 = 素材原始像素；元素放大时它会跟着一起放大）",
       patch: (next) => ({ scale: round2(next) }),
     },
   ];

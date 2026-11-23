@@ -11,7 +11,7 @@ describe("剧情编辑 → 属性页签", () => {
   const LABELS = [
     "文本",
     "立绘",
-    "临时图片",
+    "临时素材",
     "背景",
     "摄像机",
     "特效",
@@ -49,7 +49,7 @@ describe("剧情编辑 → 属性页签", () => {
     });
   });
 
-  test("「临时图片」「摄像机」都是与「立绘」同级的独立页签", () => {
+  test("「临时素材」「摄像机」都是与「立绘」同级的独立页签", () => {
     render(
       <PropertyTabs
         activePropertyTab="characters"
@@ -60,7 +60,7 @@ describe("剧情编辑 → 属性页签", () => {
     const tabs = screen.getAllByRole("tab");
     const charactersTab = tabs.find((tab) => tab.textContent?.includes("立绘"))!;
     const tempImagesTab = tabs.find((tab) =>
-      tab.textContent?.includes("临时图片"),
+      tab.textContent?.includes("临时素材"),
     )!;
     const cameraTab = tabs.find((tab) => tab.textContent?.includes("摄像机"))!;
 
@@ -68,8 +68,8 @@ describe("剧情编辑 → 属性页签", () => {
     expect(charactersTab.parentElement).toBe(tempImagesTab.parentElement);
     expect(charactersTab.parentElement).toBe(cameraTab.parentElement);
     expect(charactersTab.parentElement?.getAttribute("role")).toBe("tablist");
-    // 立绘页签里不再挂着"临时图片""摄像机"入口
-    expect(charactersTab.textContent).not.toContain("临时图片");
+    // 立绘页签里不再挂着"临时素材""摄像机"入口
+    expect(charactersTab.textContent).not.toContain("临时素材");
     expect(charactersTab.textContent).not.toContain("摄像机");
     // 摄像机挨着背景/特效排（视觉类元素放一起），不是被塞到最末尾
     expect(tabs.indexOf(cameraTab)).toBe(4);

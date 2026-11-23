@@ -347,6 +347,23 @@ const CharactersTab: React.FC<CharactersTabProps> = ({
             }
             setShowCharacterModal(false);
           }}
+          onPortraitsChange={(portraits) => {
+            // 拖拽排序已经由弹窗自己保存到后端，这里只同步父组件的角色列表，
+            // 保证关掉弹窗再打开时用的是新顺序。
+            // 刻意**不**改父组件的 editingCharacter：那是弹窗的 character prop，
+            // 用旧的角色字段重建会把用户还没保存的名称 / 标签等编辑冲掉。
+            if (!editingCharacter) return;
+            setCharacters(
+              characters.map((c) =>
+                c.characterID === editingCharacter.characterID
+                  ? { ...c, portraits }
+                  : c,
+              ),
+            );
+            if (selectedCharacter?.characterID === editingCharacter.characterID) {
+              setSelectedCharacter({ ...selectedCharacter, portraits });
+            }
+          }}
           isNewCharacter={
             !characters.find(
               (c) => c.characterID === editingCharacter.characterID,

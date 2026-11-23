@@ -7,10 +7,11 @@ import {
   TempImageVisual,
 } from "@types";
 import ApiService, { BASE_URL } from "@services/ApiService";
+import * as libraryModule from "../animation/useAnimationClipLibrary";
 import TempImagesProperties from "./TempImagesProperties";
 
 /**
- * "剧情编辑 → 临时图片"（与「立绘」同级的独立页签）：
+ * "剧情编辑 → 临时素材"（与「立绘」同级的独立页签）：
  * - 列表项、缩放 / 压暗 / X / Y 坐标、添加 / 删除全部沿用拆分前「立绘」页签里的行为；
  * - 后端存的 imagePath 是绝对路径（C:/Users/.../projects/temp/images/xxx.png），
  *   缩略图地址必须收敛到 /projects/temp/images/xxx.png，否则图片一直 404；
@@ -62,23 +63,42 @@ const renderPanel = (record: PlotRecord, updateRecord = jest.fn()) => {
 };
 
 describe("TempImagesProperties 列表与缩略图", () => {
-  it("页签标题与「添加临时图片」入口都在", () => {
+  it("页签标题、「添加临时素材」入口与页签说明都在", () => {
     renderPanel(makeRecord([]));
 
-    expect(screen.getByText("临时图片（路人/道具）")).toBeTruthy();
-    expect(screen.getByText("添加临时图片")).toBeTruthy();
+    expect(screen.getByText("临时素材")).toBeTruthy();
+    expect(screen.getByText("添加临时素材")).toBeTruthy();
+    // 页签说明（产品文案原话）：临时素材不进资源管理登记，即传即用
+    expect(
+      screen.getByText(
+        "用于添加物品、路人等使用频率较低的小素材，无需在资源管理中登记，即传即用。",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("页签说明挂在标题下方，与有没有素材无关", () => {
+    renderPanel(makeRecord([makeTempImage({})]));
+
+    const hint = screen.getByText(/无需在资源管理中登记/);
+    // 一行说明文字（不是标题、也不是卡片里的控件），样式由 .temp-images-hint 提供
+    expect(hint.tagName).toBe("P");
+    expect(hint.className).toBe("temp-images-hint");
+
+    const panel = hint.closest(".temp-images-properties")!;
+    expect(panel).not.toBeNull();
+    expect(panel.querySelector("h4")?.textContent).toBe("临时素材");
   });
 
   it("绝对路径的 imagePath 也能解析成 /projects/... 缩略图地址", () => {
     renderPanel(makeRecord([makeTempImage({})]));
 
-    const thumbnail = screen.getByAltText("临时图片 1");
+    const thumbnail = screen.getByAltText("临时素材 1");
     expect(thumbnail.getAttribute("src")).toBe(
       `${BASE_URL}/projects/temp/images/825a397f-d9c8-4f33-87dc-d5b27d108a6f.png`,
     );
   });
 
-  it("每条临时图片各用各的缩略图", () => {
+  it("每条临时素材各用各的缩略图", () => {
     renderPanel(
       makeRecord([
         makeTempImage({ uuid: "t1" }),
@@ -89,10 +109,10 @@ describe("TempImagesProperties 列表与缩略图", () => {
       ]),
     );
 
-    expect(screen.getByAltText("临时图片 1").getAttribute("src")).toBe(
+    expect(screen.getByAltText("临时素材 1").getAttribute("src")).toBe(
       `${BASE_URL}/projects/temp/images/825a397f-d9c8-4f33-87dc-d5b27d108a6f.png`,
     );
-    expect(screen.getByAltText("临时图片 2").getAttribute("src")).toBe(
+    expect(screen.getByAltText("临时素材 2").getAttribute("src")).toBe(
       `${BASE_URL}/projects/temp/images/${encodeURIComponent("第二张.png")}`,
     );
   });
@@ -100,7 +120,7 @@ describe("TempImagesProperties 列表与缩略图", () => {
   it("缩略图加载失败时隐藏图片（露出占位符）", () => {
     renderPanel(makeRecord([makeTempImage({})]));
 
-    const thumbnail = screen.getByAltText("临时图片 1") as HTMLImageElement;
+    const thumbnail = screen.getByAltText("临时素材 1") as HTMLImageElement;
     fireEvent.error(thumbnail);
 
     expect(thumbnail.style.display).toBe("none");
@@ -109,8 +129,8 @@ describe("TempImagesProperties 列表与缩略图", () => {
   it("没有 imagePath 时不渲染 <img>", () => {
     renderPanel(makeRecord([makeTempImage({ imagePath: "" })]));
 
-    expect(screen.queryByAltText("临时图片 1")).toBeNull();
-    expect(screen.getByText("临时图片 1")).toBeTruthy();
+    expect(screen.queryByAltText("临时素材 1")).toBeNull();
+    expect(screen.getByText("临时素材 1")).toBeTruthy();
   });
 });
 
@@ -120,7 +140,7 @@ describe("TempImagesProperties 控件写回记录", () => {
       makeRecord([makeTempImage({ scale: 1 })]),
     );
 
-    fireEvent.change(screen.getByLabelText("临时图片 1 缩放滑块"), {
+    fireEvent.change(screen.getByLabelText("临时素材 1 缩放滑块"), {
       target: { value: "2" },
     });
 
@@ -130,12 +150,12 @@ describe("TempImagesProperties 控件写回记录", () => {
   it("X / Y 数值框把 posX / posY 写回 tempImages", () => {
     const updateRecord = renderPanel(makeRecord([makeTempImage({})]));
 
-    fireEvent.change(screen.getByLabelText("临时图片 1 X 坐标"), {
+    fireEvent.change(screen.getByLabelText("临时素材 1 X 坐标"), {
       target: { value: "640" },
     });
     expect(updateRecord.mock.calls[0][1].tempImages[0].posX).toBe(640);
 
-    fireEvent.change(screen.getByLabelText("临时图片 1 Y 坐标"), {
+    fireEvent.change(screen.getByLabelText("临时素材 1 Y 坐标"), {
       target: { value: "-120" },
     });
     expect(updateRecord.mock.calls[1][1].tempImages[0].posY).toBe(-120);
@@ -185,7 +205,7 @@ describe("TempImagesProperties 控件写回记录", () => {
       });
     const updateRecord = renderPanel(makeRecord([]));
 
-    fireEvent.click(screen.getByText("添加临时图片"));
+    fireEvent.click(screen.getByText("添加临时素材"));
 
     await waitFor(() => expect(uploadTempImage).toHaveBeenCalledTimes(1));
     // 上传的是用户选中的那张图，文件名沿用原文件名
@@ -206,6 +226,116 @@ describe("TempImagesProperties 控件写回记录", () => {
     ]);
 
     delete (window as any).electronAPI;
+  });
+});
+
+/* ===================== 情绪动画（序列帧）=「立绘」页签同一套组件 ===================== */
+
+describe("TempImagesProperties 情绪动画（与「立绘」页签功能同步）", () => {
+  /**
+   * 素材库里什么都没有：摆放编辑必须只凭记录里的内联快照就能工作
+   * （素材被删 / 换机器没带素材时正是这种情况）。
+   *
+   * <p>`resetMocks` 会把 `jest.spyOn` 的实现清掉，所以在每个用例前重新给一份。
+   */
+  let librarySpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    librarySpy = jest
+      .spyOn(libraryModule, "useAnimationClipLibrary")
+      .mockReturnValue({
+        clips: [],
+        loading: false,
+        error: null,
+        reload: jest.fn(),
+        find: () => undefined,
+      });
+  });
+
+  afterEach(() => {
+    librarySpy.mockRestore();
+  });
+
+  const withEmotionAnim = (overrides: Record<string, unknown> = {}) =>
+    makeTempImage({
+      emotionAnim: {
+        version: 1,
+        clipId: "flow_1",
+        name: "花开",
+        canvasWidth: 600,
+        canvasHeight: 400,
+        frameHolds: [3, 1, 2],
+        loop: "once",
+        offsetX: 0,
+        offsetY: 0,
+        scale: 1,
+        posterFrame: 0,
+        ...overrides,
+      },
+    });
+
+  it("每张临时素材都带「情绪动画（序列帧）」面板，默认「不使用」", () => {
+    renderPanel(makeRecord([makeTempImage({})]));
+
+    expect(screen.getByText(/情绪动画（序列帧）/)).toBeTruthy();
+    expect(
+      screen.getByLabelText("临时素材 1 选用情绪动画").textContent,
+    ).toContain("不使用");
+  });
+
+  it("下拉文案按元素种类说「临时素材」，不照抄「立绘」", () => {
+    renderPanel(makeRecord([makeTempImage({})]));
+
+    fireEvent.click(screen.getByLabelText("临时素材 1 选用情绪动画"));
+    const option = screen.getByRole("option", { name: /不使用/ });
+
+    expect(option.textContent).toContain("临时素材上不画序列帧");
+  });
+
+  it("拖摆放滑杆把位置写回这条临时素材的 emotionAnim，其余字段原样保留", async () => {
+    const updateRecord = renderPanel(makeRecord([withEmotionAnim()]));
+
+    fireEvent.change(screen.getByLabelText("临时素材 1 动画 Y 位置滑块"), {
+      target: { value: "0.75" },
+    });
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [index, updatedRecord] = updateRecord.mock.calls[0];
+    expect(index).toBe(0);
+    expect(updatedRecord.tempImages[0].emotionAnim.offsetY).toBe(0.75);
+    // 动画的时序快照与图片自己的缩放都不该被这次微调改掉
+    expect(updatedRecord.tempImages[0].emotionAnim.frameHolds).toEqual([3, 1, 2]);
+    expect(updatedRecord.tempImages[0].scale).toBe(1);
+  });
+
+  it("微调后点「还原」把摆放收回缺省值（素材已删时没有原摆放可比）", async () => {
+    const updateRecord = renderPanel(
+      makeRecord([
+        withEmotionAnim({ offsetX: 1.5, offsetY: -0.5, scale: 2 }),
+      ]),
+    );
+
+    fireEvent.click(screen.getByLabelText("临时素材 1 还原动画摆放"));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledTimes(1));
+    const [, updatedRecord] = updateRecord.mock.calls[0];
+    expect(updatedRecord.tempImages[0].emotionAnim.offsetX).toBe(0);
+    expect(updatedRecord.tempImages[0].emotionAnim.offsetY).toBe(0);
+    expect(updatedRecord.tempImages[0].emotionAnim.scale).toBe(1);
+  });
+
+  it("没挂序列帧动画的临时素材不显示摆放控件", () => {
+    renderPanel(makeRecord([makeTempImage({})]));
+
+    expect(screen.queryByText("摆放（相对头部区域）")).toBeNull();
+  });
+
+  it("摆放提示的坐标原点是临时素材的「头部区域中心」（不是脸框中心）", () => {
+    renderPanel(makeRecord([withEmotionAnim()]));
+
+    expect(
+      screen.getByLabelText("临时素材 1 动画 X 位置").getAttribute("title"),
+    ).toContain("头部区域中心");
   });
 });
 
@@ -238,8 +368,8 @@ describe("TempImagesProperties 批量删除", () => {
       />,
     );
 
-    fireEvent.click(screen.getByLabelText("选择临时图片 1"));
-    fireEvent.click(screen.getByLabelText("选择临时图片 3"));
+    fireEvent.click(screen.getByLabelText("选择临时素材 1"));
+    fireEvent.click(screen.getByLabelText("选择临时素材 3"));
     expect(screen.getByText("已选 2 / 3")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
@@ -278,7 +408,7 @@ describe("TempImagesProperties 批量删除", () => {
       />,
     );
 
-    fireEvent.click(screen.getByLabelText("选择临时图片 1"));
+    fireEvent.click(screen.getByLabelText("选择临时素材 1"));
     fireEvent.click(screen.getByRole("button", { name: /批量删除/ }));
 
     await waitFor(() => expect(updateRecord).not.toHaveBeenCalled());
@@ -317,11 +447,11 @@ describe("TempImagesProperties 点卡片 → 预览选中", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("临时图片 1"));
+    fireEvent.click(screen.getByText("临时素材 1"));
 
     expect(onSelectVisual).toHaveBeenCalledWith(0);
     expect(
-      (screen.getByLabelText("选择临时图片 1") as HTMLInputElement).checked,
+      (screen.getByLabelText("选择临时素材 1") as HTMLInputElement).checked,
     ).toBe(false);
   });
 
@@ -336,8 +466,8 @@ describe("TempImagesProperties 点卡片 → 预览选中", () => {
       />,
     );
 
-    fireEvent.click(screen.getByLabelText("临时图片 1 缩放滑块"));
-    fireEvent.click(screen.getByLabelText("选择临时图片 1"));
+    fireEvent.click(screen.getByLabelText("临时素材 1 缩放滑块"));
+    fireEvent.click(screen.getByLabelText("选择临时素材 1"));
 
     expect(onSelectVisual).not.toHaveBeenCalled();
   });

@@ -103,7 +103,7 @@ export interface AnimationClip {
   sourcePresetVersion?: number;
 }
 
-/** 挂在**一个**立绘 / 临时图片身上的整套动画 */
+/** 挂在**一个**立绘 / 临时素材身上的整套动画 */
 export interface SpriteAnimation {
   version?: number;
   /** 时间基准：fps 是契约断言（全项目恒 30），不是配置项 */
@@ -116,10 +116,12 @@ export interface SpriteAnimation {
 }
 
 /**
- * 情绪动画（序列帧）：挂在**一个立绘**身上的帧序列特效。
+ * 情绪动画（序列帧）：挂在**一个立绘或临时素材**身上的帧序列特效。
  *
- * <p>与 {@link SpriteAnimation} 正交：`anim` 决定立绘"怎么动"，本类型决定"脸上额外画一段动画"。
- * 后者是前者的子级，会跟着立绘一起位移/旋转/缩放。
+ * <p>与 {@link SpriteAnimation} 正交：`anim` 决定元素"怎么动"，本类型决定"头部区域额外画一段动画"。
+ * 后者是前者的子级，会跟着元素一起位移/旋转/缩放。两种元素的差别只有头部区域怎么定义：
+ * 立绘=裁剪框推导的脸框；临时素材=图片显示宽度 1/3、水平居中、顶部贴合的正方形
+ * （见 `previewLayout.tempImageHeadBox`）。
  *
  * <p><b>时序是内联快照</b>：`frameHolds` 存的是"每张图占几帧"，从素材复制过来之后就与素材脱钩
  * （改素材不会回溯老工程，这是刻意的：画面稳定性优先）。理由与预设套用=内联快照完全一致，
@@ -149,7 +151,7 @@ export interface EmotionAnim {
    * 相对脸框中心的水平偏移，单位 = **头宽**（1.0 = 一个头宽，见 {@link EmotionPlacement}）。
    *
    * <p>挂上素材时由 `emotionAnimFromAsset` 照抄素材的 poster；剧情编辑页允许对**这一条记录**
-   * 再微调（「立绘 → 情绪动画 → 摆放」），改的只是本记录的快照，素材本身不受影响。
+   * 再微调（「立绘 / 临时素材 → 情绪动画 → 摆放」），改的只是本记录的快照，素材本身不受影响。
    */
   offsetX?: number;
   /** 相对脸框中心的垂直偏移（单位：头宽，+ 向下） */

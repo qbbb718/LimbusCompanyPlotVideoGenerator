@@ -13,8 +13,10 @@ import org.slf4j.LoggerFactory;
 import com.lbc_plot.resource.model.Emotion;
 import com.lbc_plot.resource.model.Portrait;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface PortraitDAO {
 
@@ -87,9 +89,10 @@ public interface PortraitDAO {
     /**
      * 查询角色的立绘列表。
      *
-     * 默认立绘（character_portraits.is_default = 1）排在最前，其余按名称排序。
-     * 这样 portraits[0] 既保持历史约定的"默认立绘"，又不会因为立绘改名而改变默认项；
-     * 同时把 is_default 读进 Portrait.defaultPortrait，供前端显示"默认立绘"标记。
+     * <p>顺序由 {@code character_portraits.display_order} 决定（前端拖拽排序后写回），
+     * 不再把默认立绘强制排在第一位：默认立绘可以位于任意位置，
+     * {@code is_default} 只负责"谁是默认"（读进 {@link Portrait#isDefaultPortrait()}），
+     * 不参与排序。老数据 / 关联记录缺失时退回按名称排序，保证结果稳定。
      */
     @SqlQuery("""
             SELECT p.*, COALESCE(cp.is_default, 0) AS is_default
@@ -97,10 +100,27 @@ public interface PortraitDAO {
             LEFT JOIN character_portraits cp
                 ON cp.portrait_id = p.portrait_id AND cp.character_id = p.character_id
             WHERE p.character_id = :characterId
-            ORDER BY COALESCE(cp.is_default, 0) DESC, p.port_name
+            ORDER BY COALESCE(cp.display_order, 2147483647), p.port_name
             """)
     @UseRowMapper(PortraitMapper.class)
     List<Portrait> findByCharacterId(@Bind("characterId") String characterId);
+
+    /**
+     * 一次查出所有角色-立绘关联（含默认标记），供角色列表接口按 characterId 分组挂回。
+     *
+     * <p>排序规则必须与 {@link #findByCharacterId} 完全一致：
+     * 先按 {@code display_order}（拖拽后的显式顺序），再按名称兜底。
+     * 默认立绘不再置顶，避免"用户拖到别处、重新打开又被排回第一张"。
+     */
+    @SqlQuery("""
+            SELECT p.*, COALESCE(cp.is_default, 0) AS is_default
+            FROM portraits p
+            LEFT JOIN character_portraits cp
+                ON cp.portrait_id = p.portrait_id AND cp.character_id = p.character_id
+            ORDER BY COALESCE(cp.display_order, 2147483647), p.port_name
+            """)
+    @UseRowMapper(PortraitMapper.class)
+    List<Portrait> findAllWithDefaultFlags();
 
     @SqlQuery("SELECT * FROM portraits WHERE port_name LIKE '%' || :name || '%' ORDER BY port_name")
     @UseRowMapper(PortraitMapper.class)
@@ -178,14 +198,22 @@ public interface PortraitDAO {
             @Bind("newPrefix") String newPrefix,
             @Bind("oldPrefixLike") String oldPrefixLike);
 
+    /**
+     * 取角色的默认立绘（{@code character_portraits.is_default = 1}），
+     * 没有默认标记时退回列表第一张。
+     *
+     * <p>旧实现按情绪偏好排序后取第一张，和"用户实际设置的默认立绘"不是一回事；
+     * 现在默认立绘允许在任意位置，必须认 {@code is_default} 标记。
+     */
     @SqlQuery("""
-            SELECT * FROM portraits
-            WHERE character_id = :characterId
-            ORDER BY
-                CASE WHEN emotion = 'NORMAL' THEN 1
-                     WHEN emotion = 'HAPPY' THEN 2
-                     ELSE 3 END,
-                port_name
+            SELECT p.*, COALESCE(cp.is_default, 0) AS is_default
+            FROM portraits p
+            LEFT JOIN character_portraits cp
+                ON cp.portrait_id = p.portrait_id AND cp.character_id = p.character_id
+            WHERE p.character_id = :characterId
+            ORDER BY COALESCE(cp.is_default, 0) DESC,
+                     COALESCE(cp.display_order, 2147483647),
+                     p.port_name
             LIMIT 1
             """)
     @UseRowMapper(PortraitMapper.class)
@@ -206,6 +234,91 @@ public interface PortraitDAO {
             @Bind("portraitId") String portraitId,
             @Bind("isDefault") boolean isDefault,
             @Bind("order") int order);
+
+    /**
+     * 查询角色立绘的下一个显示序号（追加新立绘时用）。
+     *
+     * <p>不能用固定的 0：角色已有立绘时会产生重复序号，
+     * 之后按 {@code display_order} 排序就无法得到用户看到的顺序。
+     *
+     * @param characterId 角色ID
+     * @return 现有最大序号 + 1；没有关联记录时返回 0
+     */
+    @SqlQuery("""
+            SELECT COALESCE(MAX(display_order) + 1, 0)
+            FROM character_portraits
+            WHERE character_id = :characterId
+            """)
+    int findNextDisplayOrder(@Bind("characterId") String characterId);
+
+    /**
+     * 更新单张立绘的显示序号。
+     *
+     * @param characterId 角色ID
+     * @param portraitId  立绘ID
+     * @param order       新的显示序号（从 0 开始）
+     * @return 受影响的行数（立绘不属于该角色 / 关联记录不存在时为 0）
+     */
+    @SqlUpdate("""
+            UPDATE character_portraits
+            SET display_order = :order
+            WHERE character_id = :characterId AND portrait_id = :portraitId
+            """)
+    int updateDisplayOrder(
+            @Bind("characterId") String characterId,
+            @Bind("portraitId") String portraitId,
+            @Bind("order") int order);
+
+    /**
+     * 按前端传来的立绘ID顺序重建显示序号（拖拽排序后立即持久化）。
+     *
+     * <p>只更新该角色已有的关联记录：刚上传、还没点「保存」写进 portraits 表的立绘
+     * 在这里会被跳过（后续保存角色时会按同一份列表顺序写入），不会因此报错。
+     * 重复ID只认第一次，空ID忽略；未知ID仍然占用一个序号，
+     * 这样已入库的立绘之间的相对顺序与前端完全一致。
+     *
+     * <p>历史数据兜底：如果角色有立绘但默认标记不是"恰好一个"（老库可能没有，
+     * 旧 bug 可能多个），排序后把显示顺序最靠前的那张保留为唯一默认，
+     * 保证"默认立绘"的身份不会随排序漂移。
+     *
+     * @param characterId 角色ID
+     * @param portraitIds 前端列表里的立绘ID顺序
+     * @return 真正被更新的关联记录数
+     */
+    @Transaction
+    default int reorderCharacterPortraits(String characterId, List<String> portraitIds) {
+        if (characterId == null || characterId.isEmpty()
+                || portraitIds == null || portraitIds.isEmpty()) {
+            return 0;
+        }
+
+        Set<String> seen = new HashSet<>();
+        int updated = 0;
+        int order = 0;
+        for (String portraitId : portraitIds) {
+            if (portraitId == null || portraitId.trim().isEmpty()) {
+                continue;
+            }
+            String normalizedId = portraitId.trim();
+            if (!seen.add(normalizedId)) {
+                continue;
+            }
+            updated += updateDisplayOrder(characterId, normalizedId, order);
+            order++;
+        }
+
+        // 历史数据兜底：角色有立绘但默认标记不是"恰好一个"时（老库 / 导入包可能没有，
+        // 也可能因为旧 bug 有多个），把排序后显示最靠前的那张默认立绘留下。
+        // 不修正的话"默认立绘"会退化成"列表第一张"或出现多个角标。
+        if (countDefaultPortraits(characterId) != 1) {
+            String preferredDefaultId = findDefaultPortraitId(characterId);
+            if (preferredDefaultId != null) {
+                clearDefaultPortraits(characterId);
+                markPortraitAsDefault(characterId, preferredDefaultId);
+            }
+        }
+        return updated;
+    }
 
     /**
      * 批量保存角色-立绘关联关系。
@@ -269,15 +382,22 @@ public interface PortraitDAO {
     /**
      * 查询角色当前默认立绘的ID。
      *
-     * 说明：按 (is_default, display_order, created_time) 排序取第一条，
-     * 这样即使历史数据里存在多个默认标记（旧实现的遗留），也能稳定取到一个。
+     * 说明：按 (is_default, display_order, port_name) 排序取第一条。
+     * 这样即使历史数据里存在多个默认标记（旧实现的遗留），也能稳定取到一个；
+     * 清空默认标记后（删除默认立绘时），取到的就是前端列表里显示的第一张：
+     * 先比 display_order，老数据全是 0 时按名称，与 {@link #findByCharacterId} 一致。
      *
      * @return 默认立绘ID，没有关联记录时返回 null
      */
     @SqlQuery("""
-            SELECT portrait_id FROM character_portraits
-            WHERE character_id = :characterId
-            ORDER BY is_default DESC, display_order, created_time
+            SELECT cp.portrait_id FROM character_portraits cp
+            LEFT JOIN portraits p
+                ON p.portrait_id = cp.portrait_id AND p.character_id = cp.character_id
+            WHERE cp.character_id = :characterId
+            ORDER BY cp.is_default DESC,
+                     COALESCE(cp.display_order, 2147483647),
+                     p.port_name,
+                     cp.created_time
             LIMIT 1
             """)
     String findDefaultPortraitId(@Bind("characterId") String characterId);
@@ -308,6 +428,21 @@ public interface PortraitDAO {
     int deleteCharacterPortrait(
             @Bind("characterId") String characterId,
             @Bind("portraitId") String portraitId);
+
+    /**
+     * 统计角色当前带默认标记的立绘数量。
+     *
+     * <p>用于历史数据兜底：老库 / 导入包可能一个 {@code is_default = 1} 都没有，
+     * 拖拽排序后必须补一个，否则"默认立绘"会退化成"列表第一张"，重开页面时随顺序漂移。
+     *
+     * @param characterId 角色ID
+     * @return 带默认标记的关联记录数
+     */
+    @SqlQuery("""
+            SELECT COUNT(*) FROM character_portraits
+            WHERE character_id = :characterId AND is_default = 1
+            """)
+    int countDefaultPortraits(@Bind("characterId") String characterId);
 
     /**
      * 设置默认立绘（同一角色下保证只有一个默认）。

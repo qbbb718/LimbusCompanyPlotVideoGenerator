@@ -310,7 +310,7 @@ public class RenderOfImage {
             if (plot) {
                 renderCharacters(composer, record, camera, frameIndex, emotionPoster);
             }
-            renderTempImages(composer, record, camera, frameIndex);
+            renderTempImages(composer, record, camera, frameIndex, emotionPoster);
             BufferedImage coImage = composeSceneCanvas(composer, record);
 
             // 第二趟：黑底 + 0.8 缩放的场景 + UI + 台词
@@ -414,6 +414,19 @@ public class RenderOfImage {
     }
 
     /**
+     * 仅渲染临时图片层（含移动动画与情绪动画）。
+     *
+     * <p>与 {@link #renderCharactersOnly} 同一个用途：测试要直接看"临时图片 + 情绪动画"的像素，
+     * 不想被背景/UI 干扰。生产链路不走它。
+     */
+    public static BufferedImage renderTempImagesOnly(Record record, int width, int height, Camera camera,
+            int frameIndex) throws IOException {
+        FrameComposerService composer = newDesignComposer();
+        renderTempImages(composer, record, camera, frameIndex);
+        return composeFinalImage(composer, width, height, -1);
+    }
+
+    /**
      * 仅渲染UI和对话
      */
     public static BufferedImage renderUIOnly(Record record, boolean plot, int width, int height) throws IOException {
@@ -467,6 +480,9 @@ public class RenderOfImage {
      *       超出部分在合成时被裁掉；</li>
      *   <li>省掉每张背景一张 8MB 中间图 + 一次整幅写入，放大 2 倍的 4K 背景更省掉 74MB。</li>
      * </ul>
+     *
+     * <p>贴图方式由 {@link BackgroundVisual#getDrawBounds(int, int)} 统一决定：<b>等比放大铺满</b>
+     * （cover）——任何比例的背景都盖住整块画布、不留黑边，多出来的部分以图片中心为基准居中裁掉。
      */
     private static void renderFullScreenBackground(FrameComposerService composer, List<BackgroundVisual> bgList,
             int width, int height, Camera camera) {
@@ -665,14 +681,8 @@ public class RenderOfImage {
      * camera（{@code x/y/scaled} 已经是取景后的值）、剧情模式的 0.8 缩放、边框暗角与场景裁剪，
      * **一处都不用手算**。旧设计稿 {@code docs/情绪动画设计.md} §5.2 手算 0.8 的写法已作废。
      *
-     * <h2>怎么跟着立绘动（全仿射继承）</h2>
-     * 父立绘的移动动画矩阵先在场景坐标里算出来，序列帧的"原图→目标矩形"变换再嵌进它的内层：
-     * <pre>M = Rigid · T(rect.left, rect.top) · S(kx, ky)</pre>
-     * 其中 {@code Rigid = T(A+d)·R(θ)·S(s)·T(−A)}，A = 立绘锚点（脚底），d = 动画位移 × zoom。
-     * 与前端 {@code domTransform.sharedTransformOrigin} 的做法**严格等价**：
-     * 前端给子元素套同一个 transform 字符串、只换 {@code transform-origin} 到同一个绝对点 A。
-     * （两边都取"全仿射"而不是旧文档里的 rigid 模式：汗滴/花瓣跟着放大观感更自然，
-     * 而且 DOM 侧只需要一个 CSS 属性，不会出现两种继承模式各错一半。）
+     * <p>本方法只负责"找出脸部锚点"，真正的取帧 / 矩阵 / 透明度在共享内核
+     * {@link #drawEmotionAnim} 里（临时图片走的是同一个内核，见 {@link #renderTempImageEmotionAnim}）。
      *
      * @param portraitW 预缩放后的立绘像素宽（与 {@code drawSprite} 内部同一张图，命中缓存无额外开销）
      * @param portraitH 预缩放后的立绘像素高
@@ -689,6 +699,80 @@ public class RenderOfImage {
             return;
         }
 
+        // 脸框中心 = 立绘矩形左上角 + (face + length/2) · renderScale
+        double faceCenterX = x + EmotionAnimPlacement.faceOffset(portrait.getFaceX(), portrait.getLength(),
+                renderScale);
+        double faceCenterY = y + EmotionAnimPlacement.faceOffset(portrait.getFaceY(), portrait.getLength(),
+                renderScale);
+        // 头部方框边长（跨角色恒定 = 183 × 用户缩放），代表帧的偏移以它为长度单位
+        double headSize = EmotionAnimPlacement.headSize(portrait.getLength(), renderScale);
+        // 立绘锚点（脚底）在场景里的像素位置——与 drawSprite 里的换算完全同一套
+        double anchorPixelX = x + RecordAnimation.CHARACTER_ANCHOR_X * portraitW;
+        double anchorPixelY = y + RecordAnimation.CHARACTER_ANCHOR_Y * portraitH;
+
+        drawEmotionAnim(composer, emo, faceCenterX, faceCenterY, headSize, chara.getUserScale(),
+                portraitTransform, anchorPixelX, anchorPixelY, zoom, chara.isDim(),
+                frameIndex, emotionPoster);
+    }
+
+    /**
+     * 画**临时图片**身上的序列帧动画（情绪动画）。
+     *
+     * <p>与立绘完全共用内核 {@link #drawEmotionAnim}，差别只有"头部区域怎么来"：临时图片没有
+     * 裁剪框，按产品需求用图片显示矩形定义正方形——边长 = 宽度 / 3、水平居中、顶部贴合图片
+     * 上边缘（{@link EmotionAnimPlacement#tempImageHeadBox}）。
+     *
+     * <p>画在 {@code renderTempImages} 的循环内、紧跟父图片之后，所以 camera / 0.8 场景缩放 /
+     * 边框暗角 / 场景裁剪全部自动继承，与立绘情绪动画的层级规则一致。
+     *
+     * @param scaledW 预缩放后的临时图片像素宽（与 {@code drawSprite} 内部同一张图，命中缓存无额外开销）
+     * @param scaledH 预缩放后的临时图片像素高
+     */
+    private static void renderTempImageEmotionAnim(FrameComposerService composer, TempImageVisual temp,
+            int x, int y, int scaledW, int scaledH, TransformState transform, float zoom,
+            int frameIndex, boolean emotionPoster) {
+        EmotionAnim emo = temp.getEmotionAnim();
+        if (emo == null || !temp.hasEmotionAnim()) {
+            return;
+        }
+        // 头部正方形：边长 = 图片显示宽度 / 3、水平居中、顶部贴合图片上边缘
+        EmotionAnimPlacement.Rect head = EmotionAnimPlacement.tempImageHeadBox(x, y, scaledW);
+        // 临时图片锚点（中心）在场景里的像素位置——与 drawSprite 里的换算完全同一套
+        double anchorPixelX = x + RecordAnimation.TEMP_IMAGE_ANCHOR_X * scaledW;
+        double anchorPixelY = y + RecordAnimation.TEMP_IMAGE_ANCHOR_Y * scaledH;
+
+        drawEmotionAnim(composer, emo, head.centerX(), head.centerY(), head.w(),
+                EmotionAnimPlacement.safeImageScale(temp.getScale()),
+                transform, anchorPixelX, anchorPixelY, zoom, temp.isDim(),
+                frameIndex, emotionPoster);
+    }
+
+    /**
+     * 情绪动画的绘制主体：取帧 → 算矩形 → 组成全仿射矩阵 → 叠不透明度。
+     *
+     * <p>立绘与临时图片只差"头部区域中心 / 边长 / 用户缩放"三个入参，其余（时序求值、帧图、
+     * 矩阵嵌套、alpha 相乘）必须**逐像素一致**，所以合成一个方法——复制一份是双端对不齐的开始。
+     *
+     * <h2>怎么跟着父元素动（全仿射继承）</h2>
+     * 父元素的移动动画矩阵先在场景坐标里算出来，序列帧的"原图→目标矩形"变换再嵌进它的内层：
+     * <pre>M = Rigid · T(rect.left, rect.top) · S(kx, ky)</pre>
+     * 其中 {@code Rigid = T(A+d)·R(θ)·S(s)·T(−A)}，A = 父元素锚点，d = 动画位移 × zoom。
+     * 与前端 {@code domTransform.sharedTransformOrigin} 的做法**严格等价**：
+     * 前端给子元素套同一个 transform 字符串、只换 {@code transform-origin} 到同一个绝对点 A。
+     *
+     * @param headCenterX 头部区域中心 X（场景画布坐标，已过 camera）
+     * @param headCenterY 头部区域中心 Y
+     * @param headSize    头部区域边长（= 偏移量的长度单位）
+     * @param userScale   父元素的用户缩放（立绘滑杆 / 临时图片 scale）
+     * @param parentTransform 父元素的移动动画变换（null / 恒等 → 只做摆位）
+     * @param anchorPixelX 父元素锚点在场景里的 X
+     * @param anchorPixelY 父元素锚点在场景里的 Y
+     * @param dim         父元素是否压暗（特效跟着压暗，否则"人物暗着、汗滴亮着"）
+     */
+    private static void drawEmotionAnim(FrameComposerService composer, EmotionAnim emo,
+            double headCenterX, double headCenterY, double headSize, double userScale,
+            TransformState parentTransform, double anchorPixelX, double anchorPixelY,
+            float zoom, boolean dim, int frameIndex, boolean emotionPoster) {
         // 1) 这一帧画第几张图、多透明。
         //    「代表帧」模式只看 poster*，与 frameIndex 无关（静态预览只有一张图）。
         final int imageIndex;
@@ -711,52 +795,39 @@ public class RenderOfImage {
             logger.debug("情绪动画缺帧: clipId={}, index={}", emo.getClipId(), imageIndex);
             return;
         }
-        if (chara.isDim()) {
-            // 立绘被压暗时特效也要压暗，否则"人物暗着、汗滴亮着"
+        if (dim) {
             frame = SpriteImageCache.darkened(frame, 0.5f);
         }
 
-        // 3) 脸框中心 = 立绘矩形左上角 + (face + length/2) · renderScale
-        double faceCenterX = x + EmotionAnimPlacement.faceOffset(portrait.getFaceX(), portrait.getLength(),
-                renderScale);
-        double faceCenterY = y + EmotionAnimPlacement.faceOffset(portrait.getFaceY(), portrait.getLength(),
-                renderScale);
-        // 头部方框边长（跨角色恒定 = 183 × 用户缩放），代表帧的偏移以它为长度单位
-        double headSize = EmotionAnimPlacement.headSize(portrait.getLength(), renderScale);
-
-        // 4) 目标矩形：以脸框中心对齐素材中心，尺寸吃用户缩放（跟着立绘一起变大变小）。
-        //    素材自身的倍率还要**再乘 zoom**：这个矩形是"场景画布"坐标（x / renderScale / headSize
-        //    都已经过 camera，镜头推近时脸框中心与头宽都放大了），而 canvasWidth/canvasHeight 是
-        //    世界像素 —— 不乘 zoom 就会出现"脸被镜头放大了、贴脸的特效还是原来那么大"。
+        // 3) 目标矩形：以头部区域中心对齐素材中心，尺寸吃用户缩放（跟着元素一起变大变小）。
+        //    素材自身的倍率还要**再乘 zoom**：这个矩形是"场景画布"坐标（headCenter / headSize
+        //    都已经过 camera，镜头推近时头部区域中心与头宽都放大了），而 canvasWidth/canvasHeight
+        //    是**世界像素** —— 不乘 zoom 就会出现"脸被镜头放大了、贴脸的特效还是原来那么大"。
         //    与前端 `RecordPreview.emotionItemOf`（世界矩形再经 worldToScene 乘 zoom）逐像素等价。
-        EmotionAnimPlacement.Rect rect = EmotionAnimPlacement.spriteRect(faceCenterX, faceCenterY,
+        EmotionAnimPlacement.Rect rect = EmotionAnimPlacement.spriteRect(headCenterX, headCenterY,
                 headSize, emo.getCanvasWidth(), emo.getCanvasHeight(), emo.safeScale() * zoom,
-                chara.getUserScale(), emo.getOffsetX(), emo.getOffsetY());
+                userScale, emo.getOffsetX(), emo.getOffsetY());
         if (rect.w() <= 0 || rect.h() <= 0) {
             return;
         }
 
-        // 5) 立绘锚点（脚底）在场景里的像素位置——与 drawSprite 里的换算完全同一套
-        double anchorPixelX = x + RecordAnimation.CHARACTER_ANCHOR_X * portraitW;
-        double anchorPixelY = y + RecordAnimation.CHARACTER_ANCHOR_Y * portraitH;
-
-        // 6) 组装矩阵：**先写最外层**（Java 的 translate/rotate/scale 是右乘，
-        //    所以代码顺序与"从右往左作用到像素上"相反：立绘动画在前、摆位在后）
+        // 4) 组装矩阵：**先写最外层**（Java 的 translate/rotate/scale 是右乘，
+        //    所以代码顺序与"从右往左作用到像素上"相反：父元素动画在前、摆位在后）
         AffineTransform matrix = new AffineTransform();
-        if (portraitTransform != null && !portraitTransform.isIdentity()) {
-            double deltaX = portraitTransform.getX() * zoom;
-            double deltaY = portraitTransform.getY() * zoom;
+        if (parentTransform != null && !parentTransform.isIdentity()) {
+            double deltaX = parentTransform.getX() * zoom;
+            double deltaY = parentTransform.getY() * zoom;
             matrix.translate(anchorPixelX + deltaX, anchorPixelY + deltaY);
-            matrix.rotate(Math.toRadians(portraitTransform.getRotate()));
-            matrix.scale(portraitTransform.getScale(), portraitTransform.getScale());
+            matrix.rotate(Math.toRadians(parentTransform.getRotate()));
+            matrix.scale(parentTransform.getScale(), parentTransform.getScale());
             matrix.translate(-anchorPixelX, -anchorPixelY);
         }
         matrix.translate(rect.x(), rect.y());
         matrix.scale(rect.w() / frame.getWidth(), rect.h() / frame.getHeight());
 
-        // 7) 不透明度 = 序列自带（含淡入淡出与用户设的整体不透明度）× 立绘移动动画的 alpha
-        double portraitAlpha = portraitTransform == null ? 1d : portraitTransform.getAlpha();
-        float alpha = (float) Math.min(1d, Math.max(0d, sequenceAlpha * portraitAlpha));
+        // 5) 不透明度 = 序列自带（含淡入淡出与用户设的整体不透明度）× 父元素移动动画的 alpha
+        double parentAlpha = parentTransform == null ? 1d : parentTransform.getAlpha();
+        float alpha = (float) Math.min(1d, Math.max(0d, sequenceAlpha * parentAlpha));
         if (alpha <= 1e-4) {
             return;
         }
@@ -817,12 +888,21 @@ public class RenderOfImage {
     }
 
     /**
-     * 渲染临时图片层（NPC、道具等），支持移动动画
+     * 渲染临时图片层（NPC、道具等），支持移动动画与情绪动画（序列帧）。
      *
      * @param frameIndex 记录内的帧号（动画求值用；没有动画时无影响）
      */
     private static void renderTempImages(FrameComposerService composer, Record record, Camera camera,
             int frameIndex) {
+        renderTempImages(composer, record, camera, frameIndex, false);
+    }
+
+    /**
+     * @param emotionPoster true = 情绪动画固定画「代表帧」（编辑器静态预览用），
+     *                      false = 按 {@code frameIndex} 正常求值（出片用）
+     */
+    private static void renderTempImages(FrameComposerService composer, Record record, Camera camera,
+            int frameIndex, boolean emotionPoster) {
         List<TempImageVisual> tempImages = record.getTempImages();
         if (tempImages == null || tempImages.isEmpty()) {
             return;
@@ -851,11 +931,23 @@ public class RenderOfImage {
                     scale = camera.screenScale(scale);
                     zoom = camera.getZoomFactor();
                 }
-                drawSprite(composer, img, x, y, scale, RecordAnimation.transformOf(temp, frameIndex),
+                TransformState transform = RecordAnimation.transformOf(temp, frameIndex);
+                drawSprite(composer, img, x, y, scale, transform,
                         RecordAnimation.TEMP_IMAGE_ANCHOR_X, RecordAnimation.TEMP_IMAGE_ANCHOR_Y, zoom);
-                logger.debug("添加临时图片图层: uuid={} at ({},{}), scale={}, dim={}, 动画={}",
-                        temp.getUuid(), x, y, scale, temp.isDim(),
-                        RecordAnimation.transformOf(temp, frameIndex));
+
+                // 情绪动画：画在临时图片**之后**（同一个渲染循环内），自动继承 camera / 0.8 场景缩放 /
+                // 边框暗角 / 场景裁剪。头部正方形按图片的**实际显示尺寸**算（已含 scale 与 zoom），
+                // 所以图被放大缩小时特效跟着一起变，与「立绘」页签的行为一致。
+                if (temp.hasEmotionAnim()) {
+                    BufferedImage scaledTemp = SpriteImageCache.scaled(img, scale);
+                    renderTempImageEmotionAnim(composer, temp, x, y,
+                            scaledTemp.getWidth(), scaledTemp.getHeight(),
+                            transform, zoom, frameIndex, emotionPoster);
+                }
+
+                logger.debug("添加临时图片图层: uuid={} at ({},{}), scale={}, dim={}, 动画={}, 情绪动画={}",
+                        temp.getUuid(), x, y, scale, temp.isDim(), transform,
+                        temp.hasEmotionAnim() ? temp.getEmotionAnim().getClipId() : "无");
             } catch (Exception e) {
                 logger.error("渲染临时图片失败: uuid={}", temp.getUuid(), e);
             }

@@ -28,7 +28,6 @@ import com.lbc_plot.resource.dao.CharacterDAO;
 import com.lbc_plot.resource.dao.CharacterMapper;
 import com.lbc_plot.resource.dao.MyCharacterMapper;
 import com.lbc_plot.resource.dao.PortraitDAO;
-import com.lbc_plot.resource.dao.PortraitMapper;
 import com.lbc_plot.resource.model.MyCharacter;
 import com.lbc_plot.resource.model.Portrait;
 import com.lbc_plot.resource.service.CharacterFolderService;
@@ -93,8 +92,9 @@ public class CharacterController {
      * 这就是典型的 N+1（N+1 次建连）。
      *
      * <p>现在固定两条 SQL、共用同一条连接：先查角色，再一次性查出所有立绘并按
-     * characterId 分组挂回去。立绘的排序（默认立绘在前、其余按名称）与
-     * {@code PortraitDAO.findByCharacterId} 保持一致，前端看到的顺序不变。
+     * characterId 分组挂回去。立绘顺序按 {@code character_portraits.display_order}
+     * （默认立绘不再强制置顶），与 {@code PortraitDAO.findByCharacterId} 保持一致，
+     * 前端拖拽好的顺序重新打开页面后不变。
      */
     private List<MyCharacter> loadCharactersWithPortraits() {
         return jdbi.withHandle(handle -> {
@@ -117,17 +117,12 @@ public class CharacterController {
                 return characters;
             }
 
-            // 一次查出所有立绘（含 is_default 标记），按 characterId 分组
+            // 一次查出所有立绘（含 is_default 标记），按 characterId 分组。
+            // 排序规则来自 PortraitDAO（display_order，默认立绘不再置顶），
+            // 与 GET 之后的 findByCharacterId 完全一致，避免两处 SQL 漂移。
             Map<String, List<Portrait>> portraitsByCharacter = new HashMap<>();
-            handle.createQuery("""
-                    SELECT p.*, COALESCE(cp.is_default, 0) AS is_default
-                    FROM portraits p
-                    LEFT JOIN character_portraits cp
-                        ON cp.portrait_id = p.portrait_id AND cp.character_id = p.character_id
-                    ORDER BY COALESCE(cp.is_default, 0) DESC, p.port_name
-                    """)
-                    .map(new PortraitMapper())
-                    .list()
+            handle.attach(PortraitDAO.class)
+                    .findAllWithDefaultFlags()
                     .forEach(portrait -> portraitsByCharacter
                             .computeIfAbsent(portrait.getCharacterID(), key -> new ArrayList<>())
                             .add(portrait));
@@ -360,13 +355,12 @@ public class CharacterController {
                     // 保存新的关联关系（保留原有默认立绘，入参带标记时以入参为准）
                     portraitDao.saveCharacterPortraits(id, character.getPortraits(), preservedDefaultPortraitId);
 
-                    // 返回给前端的立绘顺序 / 标记，与 GET /api/characters 的约定对齐：
-                    // 默认立绘在第一张、其余保持入参顺序，defaultPortrait 按库里实际写进去的结果回填。
-                    // 不做这一步的话，前端保存后拿到的仍是"入参顺序 + 可能全为 false 的标记"，
-                    // 角色卡片头像 / 下次打开的立绘列表就可能挑错默认立绘。
+                    // 返回给前端的立绘顺序就是请求体里的顺序（= 刚写入的 display_order），
+                    // defaultPortrait 按库里实际写进去的结果回填。
+                    // 注意：**不再**把默认立绘挪到第一位 —— 默认立绘可以在列表任意位置，
+                    // 否则用户拖拽排好的顺序一保存就会被改回去。
                     String savedDefaultPortraitId = portraitDao.findDefaultPortraitId(id);
-                    character.setPortraits(
-                            orderPortraitsDefaultFirst(character.getPortraits(), savedDefaultPortraitId));
+                    applyDefaultPortraitFlags(character.getPortraits(), savedDefaultPortraitId);
                 }
 
                 return null;
@@ -514,47 +508,30 @@ public class CharacterController {
     }
 
     /**
-     * 把立绘列表整理成「默认立绘在前、其余保持原相对顺序」，并按 defaultPortraitId
-     * 回填 defaultPortrait 标记。
+     * 按库里实际的默认立绘ID回填 {@code defaultPortrait} 标记，**保持入参顺序不变**。
      *
      * <p>用途：PUT /api/characters/{id} 重建完关联关系后，把**库里实际写进去的结果**
-     * 反映到响应里。约定与 {@code PortraitDAO.findByCharacterId}（GET /api/characters）
-     * 一致：默认立绘排在第一位，前端因此可以一直依赖"列表首项 = 默认立绘"这个老约定
-     * 做兜底（标记缺失时也不会挑错图）。
+     * 反映到响应里。排序由请求体顺序（= display_order）决定，默认立绘可以在任意位置；
+     * 这里只负责让"谁是默认"的前端标记与数据库一致（入参可能一个标记都没带，
+     * 也可能带了多个），避免角色卡片头像 / 下次打开时挑错图。
      *
      * <p>纯内存整理，不查库、不碰图片，单次保存的开销可以忽略。
      *
-     * @param portraits         待整理的立绘列表（可空）
-     * @param defaultPortraitId 库里实际的默认立绘ID（可空，为空时原样返回）
-     * @return 默认立绘在首位的列表；入参可空 / 无默认时原样返回
+     * @param portraits         待回填的立绘列表（可空）
+     * @param defaultPortraitId 库里实际的默认立绘ID（可空；为空时所有标记都清掉）
+     * @return 原列表（顺序不变）
      */
-    static List<Portrait> orderPortraitsDefaultFirst(List<Portrait> portraits,
+    static List<Portrait> applyDefaultPortraitFlags(List<Portrait> portraits,
             String defaultPortraitId) {
-        if (portraits == null || portraits.isEmpty() || defaultPortraitId == null) {
-            return portraits;
+        if (portraits == null) {
+            return null;
         }
-
-        Portrait defaultPortrait = null;
         for (Portrait portrait : portraits) {
             // 标记一律按库里的结果重写：入参可能一个都没带，也可能带了多个
-            portrait.setDefaultPortrait(defaultPortraitId.equals(portrait.getPortraitID()));
-            if (portrait.isDefaultPortrait()) {
-                defaultPortrait = portrait;
-            }
+            portrait.setDefaultPortrait(defaultPortraitId != null
+                    && defaultPortraitId.equals(portrait.getPortraitID()));
         }
-        if (defaultPortrait == null) {
-            // 默认立绘不在本次列表里（例如刚被删）：保持原顺序，别把列表搅乱
-            return portraits;
-        }
-
-        List<Portrait> ordered = new ArrayList<>(portraits.size());
-        ordered.add(defaultPortrait);
-        for (Portrait portrait : portraits) {
-            if (portrait != defaultPortrait) {
-                ordered.add(portrait);
-            }
-        }
-        return ordered;
+        return portraits;
     }
 
     /**

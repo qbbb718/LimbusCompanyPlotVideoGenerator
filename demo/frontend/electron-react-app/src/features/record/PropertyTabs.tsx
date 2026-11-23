@@ -11,8 +11,9 @@ interface PropertyTabsProps {
  * 属性页签定义：emoji 用于快速辨识（一眼分清文本/立绘/背景…），
  * label 是原有的中文名（同时也作为 title 提示，窄面板下被挤压时仍可读全称）。
  *
- * 「临时图片」与「立绘」同级：原先它是「立绘」页签底部的一段（路人 / 道具），
- * 拆出来单独成页签，立绘页签里不再有它的入口。
+ * 「临时素材」与「立绘」同级：原先它是「立绘」页签底部的一段（物品 / 路人），
+ * 拆出来单独成页签，立绘页签里不再有它的入口。页签名与文案统一叫「临时素材」
+ * （不再叫「临时图片」），数据键仍是 `tempImages`。
  *
  * 「摄像机」同样与「立绘」「背景」同级：镜头相关的控件原先浮在预览画面上（工具条），
  * 现在整块搬进这个页签；进这个页签时预览会切到"世界视图"（见 RecordPreview 的 viewMode）。
@@ -20,7 +21,7 @@ interface PropertyTabsProps {
 const PROPERTY_TABS: { key: PropertyTab; emoji: string; label: string }[] = [
   { key: "text", emoji: "📝", label: "文本" },
   { key: "characters", emoji: "👤", label: "立绘" },
-  { key: "tempImages", emoji: "🧩", label: "临时图片" },
+  { key: "tempImages", emoji: "🧩", label: "临时素材" },
   { key: "background", emoji: "🖼️", label: "背景" },
   { key: "camera", emoji: "🎥", label: "摄像机" },
   { key: "effects", emoji: "✨", label: "特效" },

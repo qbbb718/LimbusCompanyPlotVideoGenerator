@@ -2,12 +2,15 @@ import { AppConfig } from "@root/features/common/config/appConfig";
 import { Emotion, Portrait } from "@types";
 import {
   MISSING_THUMBNAIL_PLACEHOLDER,
+  applyPortraitOrder,
   buildPortraitThumbnailUrl,
   findPortraitByEmotion,
   getDefaultPortrait,
   isDefaultPortraitId,
   markDefaultPortrait,
-  orderPortraitsDefaultFirst,
+  movePortrait,
+  normalizePortraitDefaults,
+  portraitIdsOf,
   resolvePortraitForEmotion,
 } from "./portraitUtils";
 
@@ -92,53 +95,154 @@ const ids = (portraits: Portrait[]): string[] =>
   portraits.map((p) => p.portraitID);
 
 /**
- * 资源管理-角色-立绘：默认立绘永远排在列表第一张。
+ * 默认立绘标记归一化：顺序不变，只保证"有且仅有一个默认标记"。
  *
- * 后端 GET /api/characters 返回的就是"默认立绘在前、其余按名称"，
- * 但本地做过改动（设为默认 / 新增 / 批量导入 / 删掉默认立绘）之后数组顺序会漂，
- * 所以界面上要统一按标记再排一次。
+ * <p>默认立绘允许在列表任意位置，渲染角标按标记走；如果数据里没有标记，
+ * 只能靠"首项兜底"显示，拖拽后角标就会跟错卡片，所以进入编辑态先归一化一次。
  */
-describe("orderPortraitsDefaultFirst", () => {
-  it("默认立绘不在首位时被挪到第一位，其余保持原相对顺序", () => {
+describe("normalizePortraitDefaults", () => {
+  it("一个标记都没有：把第一张标成默认，顺序不变", () => {
+    const list = [portrait("a"), portrait("b"), portrait("c")];
+
+    const next = normalizePortraitDefaults(list);
+
+    expect(ids(next)).toEqual(["a", "b", "c"]);
+    expect(next.map((p) => !!p.defaultPortrait)).toEqual([true, false, false]);
+    // 不改动入参
+    expect(list.every((p) => !p.defaultPortrait)).toBe(true);
+  });
+
+  it("已经有默认立绘：原样返回同一个引用，且默认立绘可以在中间", () => {
+    const list = [portrait("a"), portrait("default", true), portrait("c")];
+
+    expect(normalizePortraitDefaults(list)).toBe(list);
+    expect(getDefaultPortrait(list)?.portraitID).toBe("default");
+  });
+
+  it("多个默认标记：只保留第一个（与 getDefaultPortrait 的取法一致）", () => {
     const list = [
       portrait("a"),
-      portrait("b"),
-      portrait("default", true),
-      portrait("c"),
+      portrait("b", true),
+      portrait("c", true),
     ];
 
-    expect(ids(orderPortraitsDefaultFirst(list))).toEqual([
-      "default",
-      "a",
-      "b",
-      "c",
-    ]);
-    // 不改动入参
-    expect(ids(list)).toEqual(["a", "b", "default", "c"]);
-  });
+    const next = normalizePortraitDefaults(list);
 
-  it("已经排好的列表原样返回同一个引用（不会触发无意义的数组重建）", () => {
-    const list = [portrait("default", true), portrait("a"), portrait("b")];
-
-    expect(orderPortraitsDefaultFirst(list)).toBe(list);
-  });
-
-  it("没有任何默认标记时退回首项约定：顺序不变", () => {
-    const list = [portrait("a"), portrait("b")];
-
-    expect(orderPortraitsDefaultFirst(list)).toBe(list);
-    expect(isDefaultPortraitId(list, "a")).toBe(true);
+    expect(ids(next)).toEqual(["a", "b", "c"]);
+    expect(next.map((p) => !!p.defaultPortrait)).toEqual([false, true, false]);
   });
 
   it("空 / undefined / null 都返回空数组", () => {
-    expect(orderPortraitsDefaultFirst([])).toEqual([]);
-    expect(orderPortraitsDefaultFirst(undefined)).toEqual([]);
-    expect(orderPortraitsDefaultFirst(null)).toEqual([]);
+    expect(normalizePortraitDefaults([])).toEqual([]);
+    expect(normalizePortraitDefaults(undefined)).toEqual([]);
+    expect(normalizePortraitDefaults(null)).toEqual([]);
+  });
+});
+
+/**
+ * 拖拽排序：默认立绘没有任何特殊待遇，可以被拖走、也可以作为落点。
+ */
+describe("movePortrait", () => {
+  const list = [portrait("a"), portrait("b", true), portrait("c")];
+
+  it("把默认立绘拖到末尾（after 最后一张）", () => {
+    expect(ids(movePortrait(list, "b", "c", "after"))).toEqual([
+      "a",
+      "c",
+      "b",
+    ]);
+    // 入参不变
+    expect(ids(list)).toEqual(["a", "b", "c"]);
+  });
+
+  it("把普通立绘拖到默认立绘前面", () => {
+    expect(ids(movePortrait(list, "c", "b", "before"))).toEqual([
+      "a",
+      "c",
+      "b",
+    ]);
+  });
+
+  it("把默认立绘拖到第一张前面", () => {
+    expect(ids(movePortrait(list, "b", "a", "before"))).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+  });
+
+  it("把后面的立绘拖到默认立绘后面", () => {
+    expect(ids(movePortrait(list, "a", "b", "after"))).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+  });
+
+  it("落点算出来和原来一样时返回同一个引用（不触发保存）", () => {
+    // a 拖到 b 前面 = 位置没变
+    expect(movePortrait(list, "a", "b", "before")).toBe(list);
+    // b 拖到 a 后面 = 位置没变
+    expect(movePortrait(list, "b", "a", "after")).toBe(list);
+  });
+
+  it("只有一张 / 同一张 / 不存在的ID：原样返回，不报错", () => {
+    const single = [portrait("only", true)];
+    expect(movePortrait(single, "only", "only", "before")).toBe(single);
+    expect(movePortrait(list, "x", "a", "before")).toBe(list);
+    expect(movePortrait(list, "a", "x", "after")).toBe(list);
+    expect(movePortrait([], "a", "b", "before")).toEqual([]);
+    expect(movePortrait(undefined, "a", "b", "before")).toEqual([]);
+  });
+});
+
+describe("applyPortraitOrder", () => {
+  it("按给到的 ID 顺序重排，对象引用保持不变", () => {
+    const a = portrait("a");
+    const b = portrait("b", true);
+    const c = portrait("c");
+    const list = [a, b, c];
+
+    const next = applyPortraitOrder(list, ["c", "a", "b"]);
+
+    expect(ids(next)).toEqual(["c", "a", "b"]);
+    expect(next[0]).toBe(c);
+    expect(next[1]).toBe(a);
+    expect(next[2]).toBe(b);
+  });
+
+  it("顺序表里没有的新立绘追加到末尾，不丢失", () => {
+    const list = [portrait("a"), portrait("b"), portrait("new")];
+
+    const next = applyPortraitOrder(list, ["b", "a"]);
+
+    expect(ids(next)).toEqual(["b", "a", "new"]);
+  });
+
+  it("顺序本来就一致时返回原引用", () => {
+    const list = [portrait("a"), portrait("b")];
+    expect(applyPortraitOrder(list, ["a", "b"])).toBe(list);
+  });
+
+  it("空列表 / 空顺序：原样返回", () => {
+    expect(applyPortraitOrder([], ["a"])).toEqual([]);
+    expect(applyPortraitOrder(null, ["a"])).toEqual([]);
+    const list = [portrait("a")];
+    expect(applyPortraitOrder(list, [])).toBe(list);
+  });
+});
+
+describe("portraitIdsOf", () => {
+  it("按当前顺序取出 ID 列表，空值安全", () => {
+    expect(portraitIdsOf([portrait("a"), portrait("b")])).toEqual(["a", "b"]);
+    expect(portraitIdsOf([])).toEqual([]);
+    expect(portraitIdsOf(undefined)).toEqual([]);
+    expect(portraitIdsOf(null)).toEqual([]);
   });
 });
 
 describe("markDefaultPortrait", () => {
-  it("只保留一个默认标记，并把新的默认立绘挪到第一位", () => {
+  it("只换标记、不挪位置：默认立绘可以留在列表中间", () => {
     const list = [
       portrait("default", true),
       portrait("a"),
@@ -147,21 +251,21 @@ describe("markDefaultPortrait", () => {
 
     const next = markDefaultPortrait(list, "b");
 
-    expect(ids(next)).toEqual(["b", "default", "a"]);
-    expect(next.map((p) => !!p.defaultPortrait)).toEqual([true, false, false]);
+    expect(ids(next)).toEqual(["default", "a", "b"]);
+    expect(next.map((p) => !!p.defaultPortrait)).toEqual([false, false, true]);
     // 入参没有被改
     expect(ids(list)).toEqual(["default", "a", "b"]);
     expect(list[0].defaultPortrait).toBe(true);
   });
 
-  it("标记一个不存在的立绘时不会把顺序搅乱", () => {
-    const list = [portrait("a"), portrait("b")];
+  it("标记一个不存在的立绘时不会把现有默认标记清掉", () => {
+    const list = [portrait("a"), portrait("b", true)];
 
     const next = markDefaultPortrait(list, "not-exists");
 
+    expect(next).toBe(list);
     expect(ids(next)).toEqual(["a", "b"]);
-    expect(next.every((p) => !p.defaultPortrait)).toBe(true);
-    expect(getDefaultPortrait(next)?.portraitID).toBe("a");
+    expect(getDefaultPortrait(next)?.portraitID).toBe("b");
   });
 });
 
@@ -184,7 +288,7 @@ describe("findPortraitByEmotion", () => {
     expect(findPortraitByEmotion(list, Emotion.ANGRY)?.portraitID).toBe("a");
   });
 
-  it("同情绪有多张时取第一张（默认立绘排在前面）", () => {
+  it("同情绪有多张时取列表里的第一张（与默认标记无关）", () => {
     const list = [
       portrait("first", true, Emotion.HAPPY),
       portrait("second", false, Emotion.HAPPY),

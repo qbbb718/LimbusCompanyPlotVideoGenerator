@@ -2,7 +2,7 @@
  * 拖拽位置语义与坐标换算的单测。
  *
  * 这里锁的是「三类元素的位置字段不一样」这个最容易搞混的点：
- * 立绘写 adjX/adjY（偏移），背景/临时图片写 posX/posY（坐标）。
+ * 立绘写 adjX/adjY（偏移），背景/临时素材写 posX/posY（坐标）。
  * 换算链路（CSS → 世界像素）也钉死，改 0.8/1920 这些常量时必须一起红。
  */
 import {
@@ -74,7 +74,7 @@ describe("拖拽 → 位置字段", () => {
     tempImages: [{ uuid: "t", imagePath: "t.png", posX: 7, posY: 8, scale: 1, dim: false } as any],
   });
 
-  test("可拖的只有立绘 / 背景 / 临时图片", () => {
+  test("可拖的只有立绘 / 背景 / 临时素材", () => {
     expect(isDraggableLayer("character")).toBe(true);
     expect(isDraggableLayer("background")).toBe(true);
     expect(isDraggableLayer("tempImage")).toBe(true);
@@ -83,7 +83,7 @@ describe("拖拽 → 位置字段", () => {
     expect(isDraggableLayer("locationPlate")).toBe(false);
   });
 
-  test("读位置：立绘读 adjX/adjY，背景与临时图片读 posX/posY", () => {
+  test("读位置：立绘读 adjX/adjY，背景与临时素材读 posX/posY", () => {
     expect(readLayerPosition(record, "character", 0)).toEqual({ x: 12, y: -34 });
     expect(readLayerPosition(record, "background", 0)).toEqual({ x: 5, y: 6 });
     expect(readLayerPosition(record, "tempImage", 0)).toEqual({ x: 7, y: 8 });
@@ -108,7 +108,7 @@ describe("拖拽 → 位置字段", () => {
     expect(next.chars).not.toBe(record.chars);
   });
 
-  test("写背景 / 临时图片：写入 posX/posY", () => {
+  test("写背景 / 临时素材：写入 posX/posY", () => {
     expect(
       writeLayerPosition(record, "background", 0, { x: -50, y: 60 })!.bg[0],
     ).toMatchObject({ posX: -50, posY: 60 });

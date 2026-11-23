@@ -140,7 +140,7 @@
   white-space: nowrap;
 }
 
-/* 缩略图：16:9 小图，和立绘/临时图片条目的缩略图同一观感 */
+/* 缩略图：16:9 小图，和立绘/临时素材条目的缩略图同一观感 */
 .background-item-thumb {
   flex: 0 0 64px;
   width: 64px;

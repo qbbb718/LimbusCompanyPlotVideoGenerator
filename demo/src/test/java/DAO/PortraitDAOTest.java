@@ -286,14 +286,20 @@ class PortraitDAOTest {
     }
 
     @Test
-    @DisplayName("测试查找角色的默认立绘")
+    @DisplayName("测试查找角色的默认立绘：认 is_default 标记，不按情绪/名称猜")
     void testFindDefaultPortraitByCharacter() {
         portraitDao.save(createTestPortrait(PORTRAIT_ID_1, CHARACTER_ID_1, "1.png", "普通", Emotion.NORMAL));
         portraitDao.save(createTestPortrait(PORTRAIT_ID_2, CHARACTER_ID_1, "2.png", "开心", Emotion.HAPPY));
+        // 把"开心"设为默认：它排在第二位，旧实现按 NORMAL 优先会错误地取"普通"
+        portraitDao.saveCharacterPortrait(CHARACTER_ID_1, PORTRAIT_ID_1, false, 0);
+        portraitDao.saveCharacterPortrait(CHARACTER_ID_1, PORTRAIT_ID_2, true, 1);
 
         Optional<Portrait> defaultPortrait = portraitDao.findDefaultPortraitByCharacter(CHARACTER_ID_1);
         assertTrue(defaultPortrait.isPresent());
-        assertEquals(Emotion.NORMAL, defaultPortrait.get().getEmotion());
+        assertEquals(PORTRAIT_ID_2, defaultPortrait.get().getPortraitID(),
+                "应返回 is_default = 1 的那张，而不是按情绪排第一的");
+        assertTrue(defaultPortrait.get().isDefaultPortrait());
+        assertEquals(Emotion.HAPPY, defaultPortrait.get().getEmotion());
     }
 
     @Test

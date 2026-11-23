@@ -9,7 +9,7 @@
  * <h3>三层坐标系（与后端渲染管线一一对应）</h3>
  * <pre>
  *   世界空间（可以远大于 1920×1080）
- *        背景 / 立绘 / 临时图片          ← 这里的坐标由本模块算出
+ *        背景 / 立绘 / 临时素材          ← 这里的坐标由本模块算出
  *            │  worldToScene（摄像机取景，identity 时为等比恒等）
  *            ▼
  *   场景画布 1920×1080
@@ -23,13 +23,13 @@
  * </pre>
  *
  * <h3>层级（z-order）</h3>
- * 背景 / 立绘 / 临时图片的**数组顺序就是叠放顺序**，首项在最上层（与后端倒序绘制一致）。
+ * 背景 / 立绘 / 临时素材的**数组顺序就是叠放顺序**，首项在最上层（与后端倒序绘制一致）。
  * 本模块产出图层时一律按"从底层到顶层"的绘制顺序 push（数组末尾先画、首项最后画），
  * z 值随之反向；「剧情编辑 → 背景」列表的 ↑ / ↓ 就是交换数组里相邻的两项。
  *
  * <p><b>这条约定不能只对背景成立：</b>{@code layers} 的数组顺序就是 DOM 场景层（播放 / 拖拽 /
  * 对位自检）与摄像机世界视图的叠放顺序，而 z 只管命中检测。两者一旦反向，就会出现
- * "预览图里在前的立绘，播放时跑到别的立绘后面"——所以三类世界图层（背景 / 立绘 / 临时图片）
+ * "预览图里在前的立绘，播放时跑到别的立绘后面"——所以三类世界图层（背景 / 立绘 / 临时素材）
  * 都必须倒序 push，让「数组末尾 = 最上层 = z 最大」同时成立。
  *
  * <h3>为什么要在前端重算一遍</h3>
@@ -181,7 +181,7 @@ export interface PreviewLayer {
   baseRect: PreviewRect;
   /** 预览图像素坐标（已含摄像机 + 0.8 场景变换 + 输出分辨率缩放） */
   outRect: PreviewRect;
-  /** 是否压暗（背景 / 立绘 / 临时图片的 dim 字段），DOM 场景层用它还原滤镜 */
+  /** 是否压暗（背景 / 立绘 / 临时素材的 dim 字段），DOM 场景层用它还原滤镜 */
   dim?: boolean;
 }
 
@@ -425,8 +425,14 @@ export function characterHeadSize(character: CharacterVisual): number {
  * 背景在世界里的绘制矩形。
  *
  * <p>与 {@code BackgroundVisual.getDrawBounds(1920, 1080)} 完全一致：
- * 先按 scale 把画布放大成目标框，再让原图等比「完整放进」目标框（contain），
- * 最后以画布中心为基准加 posX/posY 偏移。
+ * 先按 scale 把画布放大成目标框，再让原图<b>等比放大「铺满」</b>目标框
+ * （cover：取宽、高两个方向所需倍数的<b>较大者</b>，与 CSS {@code object-fit: cover} 同一套算法），
+ * 最后以画布中心为基准加 posX/posY 偏移。多出来的部分由场景框裁掉，裁剪以图片中心为基准。
+ *
+ * <p>为什么不 contain（完整放进）：非 16:9 的背景 contain 之后会在画面里留白，
+ * 竖图左右两条、横长条上下两条，就是用户看到的黑边。cover 则任何比例都铺满、
+ * 且宽高比不变（不拉伸变形）：比 16:9 窄（更高）的图横向铺满、上下溢出，
+ * 比 16:9 宽（更扁）的图纵向铺满、左右溢出。
  *
  * @param background 记录里的背景视觉元素
  * @param imageSize  背景原图像素尺寸
@@ -440,7 +446,8 @@ export function backgroundWorldRect(
   const scale = normalizeBackgroundScale(background.scale);
   const targetWidth = Math.max(1, Math.round(DESIGN_WIDTH * scale));
   const targetHeight = Math.max(1, Math.round(DESIGN_HEIGHT * scale));
-  const fit = Math.min(
+  // cover：两个方向都至少铺满目标框（取较大倍数），超出部分居中裁掉
+  const fit = Math.max(
     targetWidth / Math.max(1, imageSize.width),
     targetHeight / Math.max(1, imageSize.height),
   );
@@ -458,7 +465,7 @@ export function backgroundWorldRect(
 }
 
 /**
- * 临时图片的世界矩形：posX/posY 是左上角，尺寸 = 原图 × scale。
+ * 临时素材的世界矩形：posX/posY 是左上角，尺寸 = 原图 × scale。
  *
  * <p>注意后端 {@code addImageLayerScaled} 对 scale **不做上下限**（前端的滑杆才夹到
  * 0.1~3.0），所以这里也照原值缩，保证与渲染一致。
@@ -467,13 +474,91 @@ export function tempImageWorldRect(
   temp: TempImageVisual,
   imageSize: ImageSize,
 ): PreviewRect {
-  const scale = finite(temp.scale, 1) > 0 ? finite(temp.scale, 1) : 1;
+  const scale = tempImageScale(temp);
   return {
     x: safeInt(temp.posX, 0),
     y: safeInt(temp.posY, 0),
     w: Math.max(1, Math.round(imageSize.width * scale)),
     h: Math.max(1, Math.round(imageSize.height * scale)),
   };
+}
+
+/** 头部正方形区域边长的分母：需求定义"图片宽度的三分之一" */
+export const TEMP_IMAGE_HEAD_WIDTH_DIVISOR = 3;
+
+/**
+ * 临时素材的**头部正方形区域**：情绪动画（序列帧）在临时素材上的坐标基准。
+ *
+ * <p>临时素材没有立绘那样的裁剪框（`portrait.faceX/faceY/length`），所以「头部」按产品需求
+ * 直接由图片的显示区域定义：
+ * <ol>
+ *   <li>边长 `s = 图片显示宽度 / 3`；</li>
+ *   <li>**水平居中**：左上角 x = 图片 x + (宽 − s) / 2；</li>
+ *   <li>**顶部贴合**：左上角 y = 图片 y（正方形上边与图片上边缘对齐）。</li>
+ * </ol>
+ *
+ * <p>口径与立绘的 `characterHeadBox` 完全对称：
+ * <ul>
+ *   <li>按图片的**实际显示矩形**算（已含 `scale` 与摄像机前的世界坐标），不是原图像素；</li>
+ *   <li>情绪动画的 `offsetX/offsetY` 以方框边长为单位，`0,0` = 方框中心；</li>
+ *   <li>方框随图片缩放一起变大变小，所以同一份摆放换任何图片都落在相同的相对位置。</li>
+ * </ul>
+ *
+ * <p>与后端 `EmotionAnimPlacement.tempImageHeadBox` 逐行对应，靠
+ * {@code TempImageEmotionAnimPlacementTest} 对拍。
+ *
+ * @param rect 临时素材的世界矩形（{@link tempImageWorldRect} 的结果）
+ */
+export function tempImageHeadBox(rect: PreviewRect): PreviewRect {
+  const size = rect.w / TEMP_IMAGE_HEAD_WIDTH_DIVISOR;
+  return {
+    // (rect.w − size) / 2 = rect.w / 3：水平居中
+    x: rect.x + (rect.w - size) / 2,
+    // 顶部贴合图片上边缘
+    y: rect.y,
+    w: size,
+    h: size,
+  };
+}
+
+/**
+ * 头部正方形区域的中心（= 情绪动画的锚点，`offsetX/offsetY = 0` 时素材中心落在这里）。
+ *
+ * <p>与 {@link tempImageHeadBox} 的中心同源：水平居中（图片宽中点）、
+ * 竖直方向在方框内一半高度处（= 图片顶边 + 边长/2）。
+ *
+ * @param rect 临时素材的世界矩形
+ */
+export function tempImageHeadCenter(rect: PreviewRect): { x: number; y: number } {
+  const size = tempImageHeadSize(rect);
+  return {
+    x: rect.x + rect.w / 2,
+    y: rect.y + size / 2,
+  };
+}
+
+/**
+ * 头部正方形区域的边长（场景/世界像素）= 图片显示宽度 / 3。
+ *
+ * <p>它是情绪动画偏移量的长度单位：`offsetX = 1` 表示"往右挪一个头部区域宽度"。
+ * 与立绘的 `characterHeadSize` 一样，这个量**只由显示尺寸决定**（图片的 `scale` 会一起改变它），
+ * 所以同一份摆放不会因为图片换了一张而飞走。
+ *
+ * @param rect 临时素材的世界矩形
+ */
+export function tempImageHeadSize(rect: PreviewRect): number {
+  return rect.w / TEMP_IMAGE_HEAD_WIDTH_DIVISOR;
+}
+
+/**
+ * 临时素材的缩放（与 {@link tempImageWorldRect} 同一个兜底口径：缺省 / 非正 / 非法按 1）。
+ *
+ * <p>情绪动画的素材尺寸要乘它（用户把路人放大 2 倍时，贴头的特效必须跟着变大），
+ * 与立绘的 `characterScales().userScale` 对应。
+ */
+export function tempImageScale(temp: TempImageVisual): number {
+  const scale = finite(temp?.scale, 1);
+  return scale > 0 ? scale : 1;
 }
 
 /* ============================ 世界边界 ============================ */
@@ -693,7 +778,7 @@ export function buildPreviewGeometry(
       space: "world",
       baseRect: backgroundWorldRect(background, size),
       // 压暗只压这张背景自己的像素：后端在同一层贴"压暗后的图"，
-      // 立绘/临时图片/UI 画在更上层，完全不受影响
+      // 立绘/临时素材/UI 画在更上层，完全不受影响
       dim: background.dim === true,
     });
   }
@@ -724,7 +809,7 @@ export function buildPreviewGeometry(
     });
   }
 
-  /* ---- 临时图片：同样逆序，且整体画在立绘之上 ---- */
+  /* ---- 临时素材：同样逆序，且整体画在立绘之上 ---- */
   const tempImages = record?.tempImages ?? [];
   for (let index = tempImages.length - 1; index >= 0; index -= 1) {
     const temp = tempImages[index];
@@ -738,8 +823,8 @@ export function buildPreviewGeometry(
       key,
       kind: "tempImage",
       index,
-      label: `临时图片 ${index + 1}`,
-      // 同上：索引越小 z 越大；整组 z 高于立绘，所以临时图片始终压在立绘之上
+      label: `临时素材 ${index + 1}`,
+      // 同上：索引越小 z 越大；整组 z 高于立绘，所以临时素材始终压在立绘之上
       z: 200 + (tempImages.length - 1 - index),
       space: "world",
       baseRect: tempImageWorldRect(temp, size),

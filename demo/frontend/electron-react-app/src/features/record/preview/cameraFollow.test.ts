@@ -43,6 +43,8 @@ import {
 const PORTRAIT_SIZE: ImageSize = { width: 400, height: 600 };
 /** 2.35:1 的宽图背景（比 16:9 宽） */
 const WIDE_BG_SIZE: ImageSize = { width: 2350, height: 1000 };
+/** 9:16 的竖图背景（比 16:9 窄）：cover 铺满后宽度正好等于画布宽 1920 */
+const TALL_BG_SIZE: ImageSize = { width: 1080, height: 1920 };
 /** 标准 16:9 背景 */
 const BASE_BG_SIZE: ImageSize = { width: 1920, height: 1080 };
 
@@ -240,7 +242,7 @@ describe("触发时机：只有移动立绘 / 切换说话人", () => {
     expect(followTriggerOf(base, recropped)).toBe("portrait");
   });
 
-  test("其它改动都不触发：台词 / 压暗 / 背景 / 镜头 / 临时图片", () => {
+  test("其它改动都不触发：台词 / 压暗 / 背景 / 镜头 / 临时素材", () => {
     const base = makeRecord();
 
     const textChanged = makeRecord();
@@ -293,18 +295,20 @@ describe("背景图片的实际范围与比例", () => {
     ).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
   });
 
-  test("2.35:1 宽图按 16:9 等比放进去：上下留黑，范围变矮", () => {
+  test("2.35:1 宽图按 cover 铺满：高度铺满 1080、左右溢出成 2538 宽", () => {
     const record = makeRecord({ bg: [makeBackground()] });
+    // fit = max(1920/2350, 1080/1000) = 1.08 → 2538×1080，横向居中 x = (1920-2538)/2 = -309
     expect(
       backgroundBoundsOf(record, sizesOf({ "background:0": WIDE_BG_SIZE })),
-    ).toEqual({ x: 0, y: 132, w: 1920, h: 817 });
+    ).toEqual({ x: -309, y: 0, w: 2538, h: 1080 });
   });
 
-  test("放大到 1.4 倍后比画布更大（镜头才有地方摇）", () => {
+  test("放大到 1.4 倍后比画布大得多（镜头有地方摇）", () => {
     const record = makeRecord({ bg: [makeBackground({ scale: 1.4 })] });
+    // 目标框 2688×1512；fit = max(2688/2350 = 1.144, 1512/1000 = 1.512) = 1.512 → 3553×1512
     expect(
       backgroundBoundsOf(record, sizesOf({ "background:0": WIDE_BG_SIZE })),
-    ).toEqual({ x: -384, y: -32, w: 2688, h: 1144 });
+    ).toEqual({ x: -816, y: -216, w: 3553, h: 1512 });
   });
 
   test("多张背景取并集（含各自的 posX/posY 偏移）", () => {
@@ -467,8 +471,8 @@ describe("自动跟随：水平居中 + 背景边界", () => {
   });
 
   test("角色在画面边缘 → 镜头贴着背景边缘，不越出背景范围", () => {
-    // 宽图放大 1.4 倍后：范围 x = -384、宽 2688；zoom = 1 的取景框宽 1920
-    // → 取景中心最多只能到 -384 + 2688 - 960 = 1344（右边缘正好贴住背景右边缘）
+    // 宽图放大 1.4 倍后：范围 x = -816、宽 3553；zoom = 1 的取景框宽 1920
+    // → 取景中心最多只能到 -816 + 3553 - 960 = 1777（右边缘正好贴住背景右边缘）
     const outcome = autoFollowSpeaker({
       record: makeRecord({
         bg: [makeBackground({ scale: 1.4 })],
@@ -483,10 +487,32 @@ describe("自动跟随：水平居中 + 背景边界", () => {
     });
 
     expect(outcome.applied).toBe(true);
-    expect(outcome.record.camera).toEqual({ centerX: 1344, centerY: 540, zoom: 1 });
+    expect(outcome.record.camera).toEqual({ centerX: 1777, centerY: 540, zoom: 1 });
     // 取景框右边缘 = 背景右边缘（贴边），左边缘仍在背景内
-    expect(1344 + 960).toBeCloseTo(-384 + 2688, 6);
-    expect(1344 - 960).toBeGreaterThanOrEqual(-384);
+    expect(1777 + 960).toBeCloseTo(-816 + 3553, 6);
+    expect(1777 - 960).toBeGreaterThanOrEqual(-816);
+  });
+
+  test("背景宽度正好等于取景框 → 无处可挪，不改记录", () => {
+    // 9:16 竖图按 cover 铺满：宽正好 1920（= 画布宽 1920），高溢出到 3413；
+    // 取景框推进到 2 倍（960 宽）后中心最多到 1440（右边缘贴住背景右边缘），
+    // 记录里的镜头已经停在那里 → 跟随再也挪不动，按"没变"处理。
+    const atLimit: RecordCamera = { centerX: 1440, centerY: 540, zoom: 2 };
+    const outcome = autoFollowSpeaker({
+      record: makeRecord({
+        bg: [makeBackground()],
+        chars: [makeSpeaker({ adjX: 1200 })],
+        camera: atLimit,
+      }),
+      previous: makeRecord({
+        bg: [makeBackground()],
+        chars: [makeSpeaker({ adjX: 1100 })],
+        camera: atLimit,
+      }),
+      enabled: true,
+      sizeOf: sizesOf({ "background:0": TALL_BG_SIZE, "character:0": PORTRAIT_SIZE }),
+    });
+    expect(outcome).toMatchObject({ applied: false, reason: "unchanged" });
   });
 
   test("没有背景时按画布夹取：镜头不跑到画布外", () => {
@@ -500,22 +526,6 @@ describe("自动跟随：水平居中 + 背景边界", () => {
 
     // 立绘中心 = 1860，但 zoom = 2 的取景框宽 960、画布宽 1920 → 中心最多 1440
     expect(outcome.record.camera).toEqual({ centerX: 1440, centerY: 540, zoom: 2 });
-  });
-
-  test("背景只有 1920 宽（与 zoom = 1 的取景框一样宽）→ 无处可挪，不改记录", () => {
-    const outcome = autoFollowSpeaker({
-      record: makeRecord({
-        bg: [makeBackground()],
-        chars: [makeSpeaker({ adjX: 1200 })],
-      }),
-      previous: makeRecord({
-        bg: [makeBackground()],
-        chars: [makeSpeaker({ adjX: 1100 })],
-      }),
-      enabled: true,
-      sizeOf: sizesOf({ "background:0": WIDE_BG_SIZE, "character:0": PORTRAIT_SIZE }),
-    });
-    expect(outcome).toMatchObject({ applied: false, reason: "unchanged" });
   });
 });
 

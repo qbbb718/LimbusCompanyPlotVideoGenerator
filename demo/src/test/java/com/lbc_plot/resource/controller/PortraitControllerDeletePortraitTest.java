@@ -33,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * "资源管理-角色-立绘里默认立绘不在第一位了"。
  *
  * <p>现在只删这一条关联；若删掉的正是默认立绘，则把剩下的第一张（display_order 最小）
- * 提为默认，保证"角色至少有一张默认立绘"，且它永远和前端列表首项一致。
+ * 提为默认，保证"角色至少有一张默认立绘"（提上来的那张只是显示顺序第一，不代表
+ * 默认立绘在其他场景也必须排第一：默认立绘允许位于列表任意位置）。
  */
 class PortraitControllerDeletePortraitTest {
 
@@ -86,7 +87,7 @@ class PortraitControllerDeletePortraitTest {
     }
 
     @Test
-    @DisplayName("删掉非默认立绘：默认标记保留，默认立绘仍排在第一位")
+    @DisplayName("删掉非默认立绘：默认标记保留，剩余顺序按 display_order")
     void deletingOtherPortraitKeepsDefault() {
         assertEquals(PORTRAIT_B, portraitDao.findDefaultPortraitId(CHARACTER_ID),
                 "用例前提：B 是默认立绘");
@@ -101,12 +102,29 @@ class PortraitControllerDeletePortraitTest {
         List<Portrait> reloaded = portraitDao.findByCharacterId(CHARACTER_ID);
         assertEquals(2, reloaded.size(), "另外两张立绘的关联记录应当保留");
         assertEquals(PORTRAIT_B, reloaded.get(0).getPortraitID(),
-                "默认立绘应重新加载后仍排在第一位");
+                "A 被删后 B 的 display_order 最小，应排在第一位");
         assertTrue(reloaded.get(0).isDefaultPortrait(), "默认立绘应带 defaultPortrait 标记");
     }
 
     @Test
-    @DisplayName("删掉默认立绘：把剩下的第一张提为默认，列表首位仍然是默认立绘")
+    @DisplayName("默认立绘在中间时，删掉后面的立绘不会把它挪到第一张")
+    void deletingLaterPortraitKeepsDefaultInPlace() {
+        // A(0)、B(1，默认)、C(2)：删掉 C 之后 B 应该仍在第二位
+        controller.deletePortrait(CHARACTER_ID, PORTRAIT_C, false);
+
+        List<Portrait> reloaded = portraitDao.findByCharacterId(CHARACTER_ID);
+        assertEquals(2, reloaded.size());
+        assertEquals(PORTRAIT_A, reloaded.get(0).getPortraitID(),
+                "A 仍在第一张（它不是默认立绘）");
+        assertFalse(reloaded.get(0).isDefaultPortrait());
+        assertEquals(PORTRAIT_B, reloaded.get(1).getPortraitID(),
+                "默认立绘 B 保持在自己的位置，不会被顶到第一张");
+        assertTrue(reloaded.get(1).isDefaultPortrait());
+        assertEquals(PORTRAIT_B, portraitDao.findDefaultPortraitId(CHARACTER_ID));
+    }
+
+    @Test
+    @DisplayName("删掉默认立绘：把剩下显示顺序最靠前的提为默认")
     void deletingDefaultPromotesFirstRemaining() {
         controller.deletePortrait(CHARACTER_ID, PORTRAIT_B, false);
 

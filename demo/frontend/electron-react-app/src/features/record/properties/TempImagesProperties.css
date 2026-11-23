@@ -1,5 +1,6 @@
 /*
- * 「临时图片（路人 / 道具）」页签 —— 原先是「立绘」页签里的一段，现在独立成同级页签。
+ * 「临时素材」页签（物品 / 路人 之类使用频率低的小素材）—— 原先是「立绘」页签里的一段，
+ * 现在独立成同级页签；页签名与文案里都叫「临时素材」，数据字段仍是 tempImages。
  *
  * 行 / 列 / 滑块这些通用控件样式仍然复用 CharactersProperties.css
  * （.char-row / .char-label-fixed / .char-input-fixed / .char-slider-auto /
@@ -15,8 +16,21 @@
   justify-content: flex-start;
 }
 
+/* 标题与下面那行说明文字贴在一起，当作一组"页签头" */
 .temp-images-properties > h4 {
-  margin-bottom: 10px;
+  margin-bottom: 4px;
+}
+
+/*
+ * 页签说明：h4 正下方的一行提示（"用于添加物品、路人等……即传即用"）。
+ * 与属性面板里其它说明文字同一观感（12px 灰字、行高 1.5，同 .global-hint），
+ * 与批量条 / 第一张卡片之间留 10px。
+ */
+.temp-images-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #888;
 }
 
 .temp-image-item {
@@ -56,7 +70,7 @@
   font-size: 12px;
 }
 
-/* 标题行左侧：「缩略图 + 临时图片 N」 */
+/* 标题行左侧：「缩略图 + 临时素材 N」 */
 .temp-image-title {
   display: flex;
   align-items: center;
@@ -153,7 +167,7 @@
   cursor: pointer;
 }
 
-/* 添加临时图片按钮 —— 与「立绘」页签的「+ 添加立绘」同款（蓝底白字、左对齐） */
+/* 添加临时素材按钮 —— 与「立绘」页签的「+ 添加立绘」同款（蓝底白字、左对齐） */
 .add-temp-image-btn {
   align-self: flex-start;
   padding: 6px 14px;

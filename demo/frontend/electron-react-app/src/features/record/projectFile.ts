@@ -311,7 +311,9 @@ export const normalizeRecord = (raw: any): Record => {
     },
     bg: Array.isArray(source.bg) ? source.bg : [],
     chars: Array.isArray(source.chars) ? source.chars.map(normalizeCharacterVisual) : [],
-    tempImages: Array.isArray(source.tempImages) ? source.tempImages : [],
+    tempImages: Array.isArray(source.tempImages)
+      ? source.tempImages.map(normalizeTempImageVisual)
+      : [],
     effects: Array.isArray(source.effects) ? source.effects : [],
     // 摄像机：旧工程没有这个字段 → undefined = 恒等，渲染与旧版一致
     camera: normalizeCamera(source.camera),
@@ -329,6 +331,19 @@ export const normalizeRecord = (raw: any): Record => {
  * 其余字段保持原样 —— 立绘的坐标/缩放本来就由后端在用，前端不该悄悄改它们的语义。
  */
 const normalizeCharacterVisual = (raw: any): any => {
+  if (!raw || typeof raw !== "object") return raw;
+  const emotionAnim = normalizeEmotionAnim(raw.emotionAnim);
+  return emotionAnim ? { ...raw, emotionAnim } : { ...raw, emotionAnim: undefined };
+};
+
+/**
+ * 归一化一个临时素材视觉元素。
+ *
+ * <p>与 {@link normalizeCharacterVisual} 完全同一套兜底：临时素材的情绪动画（序列帧）与立绘
+ * 共用组件与数据结构，只是坐标基准换成了"图片宽度 1/3 的头部正方形"（见
+ * `TempImageVisual.emotionAnim`）。写坏的字段同样只让这一条动画不生效，不会让工程打不开。
+ */
+const normalizeTempImageVisual = (raw: any): any => {
   if (!raw || typeof raw !== "object") return raw;
   const emotionAnim = normalizeEmotionAnim(raw.emotionAnim);
   return emotionAnim ? { ...raw, emotionAnim } : { ...raw, emotionAnim: undefined };

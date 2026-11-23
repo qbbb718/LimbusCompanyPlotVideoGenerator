@@ -45,7 +45,7 @@ const EXPORT_FRAME_RATE = 30;
  *
  * <p>T 巢滤镜（{@link FILTER_OPTIONS}）与三种转场不同：它不是"开头几帧的叠加层"，
  * 而是把<b>整幅画面</b>调成棕褐色。影响的是预览图、播放与导出成片，但<b>只染画面层</b>
- * （背景/立绘/临时图片），UI 与台词不受影响——层次边界在后端合成时就定死了，
+ * （背景/立绘/临时素材），UI 与台词不受影响——层次边界在后端合成时就定死了，
  * 见 `render/video/TCorpFilter.java`。它与起始转场<b>不互斥</b>，可以同时开。
  */
 const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
@@ -110,7 +110,7 @@ const EffectsProperties: React.FC<EffectsPropertiesProps> = ({
 
       <h4 style={{ marginTop: 18 }}>画面滤镜</h4>
       <p className="effects-hint">
-        只作用于画面层（背景 / 立绘 / 临时图片）：预览图与导出视频都会跟着变。
+        只作用于画面层（背景 / 立绘 / 临时素材）：预览图与导出视频都会跟着变。
         对话框、地点牌、角色名片与台词文字不受影响。
       </p>
       <div className="effects-list">

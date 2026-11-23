@@ -11,7 +11,7 @@ import { AppConfig } from "@features/common/config/appConfig";
 export const DESIGN_CANVAS_WIDTH = AppConfig.designCanvas.width;
 export const DESIGN_CANVAS_HEIGHT = AppConfig.designCanvas.height;
 
-/** 缩放控件范围 / 步长：与「临时图片」的缩放控制保持一致（0.1 ~ 3.0） */
+/** 缩放控件范围 / 步长：与「临时素材」的缩放控制保持一致（0.1 ~ 3.0） */
 export const MIN_VISUAL_SCALE = 0.1;
 export const MAX_VISUAL_SCALE = 3.0;
 export const VISUAL_SCALE_STEP = 0.1;
@@ -19,9 +19,9 @@ export const VISUAL_SCALE_STEP = 0.1;
 /**
  * 背景单独用更大的上限（4.0）。
  *
- * <p>背景要能「铺满画面」：9:16 的竖图要盖住 16:9 的取景框需要约 3.16 倍，
- * 卡在 3.0 会差 100 多像素铺不满（见 preview/cameraView.coverScaleForBackground）。
- * 立绘 / 临时图片不需要这么大，仍用 {@link MAX_VISUAL_SCALE}。
+ * <p>背景是「铺满画面」的底图（等比 cover，见 preview/previewLayout.backgroundWorldRect）：
+ * scale=1 已经盖住整个画布，再往上纯粹是构图用的推近余量——15% 起步的推近很常见，
+ * 所以放宽到 4.0；立绘 / 临时素材仍用 {@link MAX_VISUAL_SCALE} 的 3.0。
  */
 export const MAX_BACKGROUND_SCALE = 4.0;
 
@@ -88,9 +88,12 @@ export const createCoordinateMapper = (
 /**
  * 背景位置（相对画面中心的偏移）滑块的可达范围，单位是当前输出像素。
  *
- * <p>取「缩放后的背景尺寸 + 画布尺寸」的一半：滑到端点时背景正好完全移出画面
- * （左边缘贴住画布右边缘 / 右边缘贴住画布左边缘）。范围随缩放自动变大，
- * 所以放大后的背景仍然能被推出去；数值框本身不设上下限，可以输入更大的值。
+ * <p>取「缩放后的画布尺寸 + 画布尺寸」的一半：滑到端点时 16:9 背景正好完全移出画面
+ * （左边缘贴住画布右边缘 / 右边缘贴住画布左边缘）。范围随缩放自动变大，所以放大后的
+ * 背景仍然能被推出去；数值框本身不设上下限，可以输入更大的值。
+ *
+ * <p>非 16:9 的背景按 cover 铺满后，溢出画面的那一轴比「画布 × scale」更大
+ * （竖图溢出高度、横长条溢出宽度），滑杆推不满时直接把偏移输进数值框即可。
  *
  * @param uiSize 当前输出尺寸（X 用宽度、Y 用高度）
  * @param scale  背景缩放

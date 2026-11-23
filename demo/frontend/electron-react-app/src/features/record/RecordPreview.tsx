@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -12,6 +12,11 @@ import "./RecordEditor.css";
 import "./preview/preview.css";
 import { buildPreviewGeometry, sceneToOutput, worldToScene, DESIGN_HEIGHT, DESIGN_WIDTH } from "./preview/previewLayout";
 import { characterFaceCenter, characterHeadSize, characterScales } from "./preview/previewLayout";
+import {
+  tempImageHeadCenter,
+  tempImageHeadSize,
+  tempImageScale,
+} from "./preview/previewLayout";
 import type { PreviewLayer } from "./preview/previewLayout";
 import { readLayerPosition } from "./preview/previewDrag";
 import type { DragPoint } from "./preview/previewDrag";
@@ -39,7 +44,7 @@ import { shouldRevealInWorld } from "./preview/reveal";
 import { anchorOf, durationEndFrameOf, isAnimated } from "./animation/spriteAnimator";
 import { evaluate as evaluateSpriteAnim } from "./animation/spriteAnimator";
 import { childSpriteDomStyle, sharedTransformOrigin, spriteDomStyle } from "./preview/domTransform";
-import type { SpriteAnimation } from "./animation/animationTypes";
+import type { EmotionAnim, SpriteAnimation } from "./animation/animationTypes";
 import { isEmotionAnimUsable } from "./animation/animationTypes";
 import { isSampleVisible, posterSample, sampleSequence, spriteRect } from "./animation/sequenceTiming";
 import { preloadClipFrames } from "./animation/framePreloader";
@@ -148,7 +153,7 @@ const PREVIEW_DEBOUNCE_MS = 150;
  * <ol>
  *   <li><b>栅格图</b>：后端 {@code POST /api/records/preview} 渲染的 PNG，画面的唯一真值；</li>
  *   <li><b>几何</b>：{@code previewLayout} 按后端同一套公式算出每个元素在图上的矩形；</li>
- *   <li><b>叠层</b>：DOM 场景层（可重绘背景/立绘/临时图片）与调试叠框。</li>
+ *   <li><b>叠层</b>：DOM 场景层（可重绘背景/立绘/临时素材）与调试叠框。</li>
  * </ol>
  *
  * <p>第 2、3 层目前只用于「对位自检」（右下角的「▦ 框」「◧ 场景」开关）：
@@ -223,7 +228,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       : moveFrames;
   /** 摇镜预览：播放这几帧，DOM 场景层跟着重投影 */
   /**
-   * 立绘 / 临时图片动画最晚结束于第几帧（0 = 没有动画）。
+   * 立绘 / 临时素材动画最晚结束于第几帧（0 = 没有动画）。
    *
    * <p>用与后端**同一套**"有限时长才参与"的规则（`durationEndFrameOf`）：
    * 无限循环的 clip 不参与——它跟记录一起结束，不该把预览撑长。
@@ -281,7 +286,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
   /**
    * 镜头摇动（预设）的参数：叠到世界层相机上，也决定"这条记录能不能播"。
    *
-   * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时图片。
+   * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时素材。
    * 静止（未播放、未跳帧）时按第 0 帧算 → 位移 0，预览栅格图与成片第 0 帧仍然一致。
    * 总帧数要传给求值：持续时长缺省为"整条记录"时，渐出是相对记录结尾算的。
    */
@@ -380,7 +385,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     }
     if (!hasPlayableAnimation) {
       setPlayHint(
-        "没有镜头动画、预设或立绘动画，播放不会有变化。可在「立绘」「临时图片」加动画，或在「摄像机」设一个运镜 / 摇动。",
+        "没有镜头动画、预设或立绘动画，播放不会有变化。可在「立绘」「临时素材」加动画，或在「摄像机」设一个运镜 / 摇动。",
       );
       return;
     }
@@ -616,7 +621,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     };
   }, [containerSize.width, containerSize.height, videoWidth, videoHeight]);
 
-  /** 图层 key → 原图地址（背景 / 立绘 / 临时图片） */
+  /** 图层 key → 原图地址（背景 / 立绘 / 临时素材） */
   const sceneImages = useMemo(
     () => buildSceneImageMap(selectedRecord),
     [selectedRecord],
@@ -637,16 +642,18 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
    * 情绪动画帧图预热。
    *
    * <p>播放时是"每帧换一次 `<img src>`"，没预热过的话开头几轮会闪白（浏览器要现拉现解码）。
-   * 这里在记录变化时把挂在立绘上的素材帧图都拉一遍，之后切帧只是命中 HTTP 缓存。
+   * 这里在记录变化时把挂在**立绘与临时素材**上的素材帧图都拉一遍，之后切帧只是命中 HTTP 缓存。
    */
   useEffect(() => {
-    (selectedRecord.chars ?? []).forEach((character) => {
-      const emo = character?.emotionAnim;
+    const preload = (emo: EmotionAnim | undefined) => {
       if (isEmotionAnimUsable(emo)) {
         preloadClipFrames(emo!.clipId, emo!.frameHolds.length);
       }
-    });
-  }, [selectedRecord.chars]);
+    };
+    (selectedRecord.chars ?? []).forEach((character) => preload(character?.emotionAnim));
+    // 临时素材与立绘共用同一套情绪动画（见 TempImageVisual.emotionAnim）
+    (selectedRecord.tempImages ?? []).forEach((temp) => preload(temp?.emotionAnim));
+  }, [selectedRecord.chars, selectedRecord.tempImages]);
 
   /** 播放用的镜头（t 时刻）：「最终效果」里摇镜预览就是每帧重算几何 */
   const playbackCamera =
@@ -661,7 +668,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
    * 镜头摇动（预设）：叠加在**世界层的相机**上（参数 `shakeConfig` 在上面算好，
    * 播放按钮的可用性也要看它）。
    *
-   * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时图片。
+   * <p>对话框、地点牌、名片与边框暗角都不读相机，所以它天然只晃背景/立绘/临时素材。
    * 静止（未播放、未跳帧）时按第 0 帧算 → 位移 0，预览栅格图与成片第 0 帧仍然一致。
    * 总帧数要传给求值：持续时长缺省为"整条记录"时，渐出是相对记录结尾算的。
    */
@@ -765,7 +772,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
    * 场景层的绘制列表。
    *
    * <p>拖拽期间栅格图会隐藏、由这一层顶上，所以必须把**整幅画面**都画出来，而不只是世界层：
-   * 背景/立绘/临时图片 → 边框暗角 → 对话框/地点牌（静态 PNG）。
+   * 背景/立绘/临时素材 → 边框暗角 → 对话框/地点牌（静态 PNG）。
    * 唯一的缺口是「角色名片」——它由后端按说话人实时生成，前端没有对应图片，
    * 所以拖动的那一两秒里名片会暂时消失（松手后预览图回来就恢复）。
    */
@@ -790,29 +797,39 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
     };
 
     /**
-     * 情绪动画（序列帧）子级图层：挂在某个立绘脸上、跟着它一起动的帧序列。
+     * 情绪动画（序列帧）子级图层：挂在某个**立绘 / 临时素材**的头部区域上、跟着它一起动的帧序列。
      *
-     * <p>三件事必须与后端 `RenderOfImage.renderEmotionAnim` 严格一致：
-     * ① 位置用 `spriteRect`（脸框中心 + 偏移 × 头宽 + 跟随用户缩放）；
+     * <p>三件事必须与后端 `RenderOfImage`（`renderEmotionAnim` / `renderTempImageEmotionAnim`）严格一致：
+     * ① 位置用 `spriteRect`（头部区域中心 + 偏移 × 头部区域长度 + 跟随元素缩放）；
      * ② 变换用**父级的同一个绝对变换**，但 `transform-origin` 换算成子元素盒子里的百分比、
      *    `translate` 的百分比基准换成**子元素自己的**宽高（见 `childSpriteDomStyle` 的说明）；
      * ③ 不透明度 = 序列自带的 alpha × 父级 alpha。
      *
+     * <p>两种元素的差别只有"头部区域"怎么来（组件与数据结构完全复用）：
+     * <ul>
+     *   <li>立绘：裁剪框推导的脸框（`characterFaceCenter` / `characterHeadSize`）；</li>
+     *   <li>临时素材：需求定义的头部正方形——边长 = 图片显示宽度 / 3、水平居中、顶部贴合图片
+     *       上边缘（`tempImageHeadCenter` / `tempImageHeadSize`）。</li>
+     * </ul>
+     *
      * <p>**没在播放时画的是「代表帧」而不是第 0 帧**（`posterSample`），
      * 与后端静态预览（`renderPreviewStill`）同一份口径：带淡入的动画第 0 帧是全透明的，
-     * 若这里画第 0 帧，拖动立绘的瞬间嵌图会"闪一下没了"。
+     * 若这里画第 0 帧，拖动元素（或临时素材）的瞬间嵌图会"闪一下没了"。
      *
      * <p>返回 `null` 表示这一帧没东西可画（还没开始 / 已播完 / 淡到全透明）。
      */
     const emotionItemOf = (layer: PreviewLayer): SceneLayerItem | null => {
-      if (layer.kind !== "character") return null;
-      const character = selectedRecord.chars?.[layer.index];
-      const emo = character?.emotionAnim;
-      if (!character || !isEmotionAnimUsable(emo)) return null;
+      const character =
+        layer.kind === "character" ? selectedRecord.chars?.[layer.index] : undefined;
+      const tempImage =
+        layer.kind === "tempImage" ? selectedRecord.tempImages?.[layer.index] : undefined;
+      const element = character ?? tempImage;
+      const emo = element?.emotionAnim;
+      if (!element || !isEmotionAnimUsable(emo)) return null;
 
       const sample =
         playback.frame === null
-          ? // 静止（含拖动立绘时）：代表帧，与后端栅格图一致
+          ? // 静止（含拖动元素时）：代表帧，与后端栅格图一致
             posterSample(
               emo!.frameHolds,
               emo!.posterFrame ?? 0,
@@ -833,12 +850,22 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
             );
       if (!isSampleVisible(sample)) return null;
 
-      const { userScale } = characterScales(character);
-      const faceCenter = characterFaceCenter(character, layer.baseRect);
+      // ① 头部区域：立绘读裁剪框；临时素材用"图片宽度 / 3、水平居中、顶部贴合"的正方形
+      const headCenter = character
+        ? characterFaceCenter(character, layer.baseRect)
+        : tempImageHeadCenter(layer.baseRect);
+      const head = character
+        ? characterHeadSize(character)
+        : tempImageHeadSize(layer.baseRect);
+      // 素材尺寸跟着元素一起缩放：立绘用用户滑杆那一层，临时素材用它自己的 scale
+      const userScale = character
+        ? characterScales(character).userScale
+        : tempImageScale(tempImage!);
+
       const spriteWorld = spriteRect(
-        faceCenter.x,
-        faceCenter.y,
-        characterHeadSize(character),
+        headCenter.x,
+        headCenter.y,
+        head,
         emo!.canvasWidth,
         emo!.canvasHeight,
         emo!.scale ?? 1,
@@ -849,8 +876,9 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       // 与父级同一条投影链（世界 → 场景取景 → 0.8 场景 → 输出像素）
       const outRect = sceneToOutput(worldToScene(spriteWorld, sceneCamera), frameSize);
 
-      const transformState = evaluateSpriteAnim(character.anim, spriteFrame);
-      const anchor = anchorOf(character.anim, 0.5, 1);
+      const transformState = evaluateSpriteAnim(element.anim, spriteFrame);
+      // 锚点缺省与移动动画一致：立绘脚底、临时素材中心
+      const anchor = anchorOf(element.anim, 0.5, character ? 1 : 0.5);
       // 共同原点的比例在等比投影下不变，所以直接用世界矩形算即可
       const origin = sharedTransformOrigin(layer.baseRect, anchor, spriteWorld);
       const style = childSpriteDomStyle(transformState, spriteWorld, origin, sample.alpha);
@@ -859,7 +887,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
         key: `${layer.key}:emotion`,
         src: ApiService.getAnimationClipFrameUrl(emo!.clipId, sample.imageIndex),
         rect: outRect,
-        dim: character.dim === true,
+        dim: element.dim === true,
         clipWithScene: true,
         transform: style?.transform,
         transformOrigin: style?.transformOrigin,
@@ -871,7 +899,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
       .filter((layer) => layer.space === "world")
       .flatMap((layer) => {
         const anim = animOf(layer);
-        // 锚点缺省：立绘脚底（弹跳/摇摆的自然支点）、临时图片中心
+        // 锚点缺省：立绘脚底（弹跳/摇摆的自然支点）、临时素材中心
         const anchor = anchorOf(
           anim,
           0.5,
@@ -894,7 +922,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
           transformOrigin: style?.transformOrigin,
           opacity: style?.opacity,
         };
-        // 情绪动画必须紧跟父立绘（同一渲染循环内、后画 = 盖在立绘上），
+        // 情绪动画必须紧跟父元素（同一渲染循环内、后画 = 盖在父元素上），
         // 所以插在父图层之后而不是单独一批追加到末尾。
         const emotion = item.src ? emotionItemOf(layer) : null;
         return emotion ? [item, emotion] : [item];
@@ -1048,7 +1076,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
               selectedKey={selectedElementKey}
               onSelect={(layer) => onSelectElement?.(layer)}
               onClear={onClearSelection}
-              // 拖拽：位置从当前记录里读（立绘读 adjX/adjY，背景与临时图片读 posX/posY）
+              // 拖拽：位置从当前记录里读（立绘读 adjX/adjY，背景与临时素材读 posX/posY）
               getLayerPosition={(layer) =>
                 readLayerPosition(selectedRecord, layer.kind, layer.index)
               }
@@ -1120,7 +1148,7 @@ const RecordPreview: React.FC<RecordPreviewProps> = ({
                 type="button"
                 className={showScene ? "active" : ""}
                 onClick={() => setShowScene((value) => !value)}
-                title="用 DOM 场景层重绘背景/立绘/临时图片（对位自检：应与画面完全重合）"
+                title="用 DOM 场景层重绘背景/立绘/临时素材（对位自检：应与画面完全重合）"
               >
                 ◧ 场景
               </button>

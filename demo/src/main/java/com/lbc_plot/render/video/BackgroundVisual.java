@@ -16,8 +16,9 @@ import com.lbc_plot.resource.model.Background;
  * <p>坐标与缩放的语义（与前端「剧情编辑 → 背景」面板一致）：
  * <ul>
  *   <li>{@code scale}：以「等比铺满 1080p 设计画布」为 1.0 的基准缩放。
- *       1.0 时与加缩放功能之前的全屏背景一致（16:9 背景逐像素相同），
- *       2.0 表示背景在长宽两个方向都放大到 2 倍；</li>
+ *       1.0 = 原图等比放大到<b>刚好盖住</b>画布（cover，见 {@link #getDrawBounds(int, int)}）：
+ *       16:9 背景正好铺满 1920×1080 且逐像素与旧行为一致，非 16:9 背景也不再留黑边；
+ *       2.0 表示在铺满的基础上再放大到 2 倍（长宽各 2 倍，仍然居中裁剪）；</li>
  *   <li>{@code posX / posY}：背景中心相对画布中心的偏移（设计画布像素，0,0 = 居中）。
  *       不设上下限 —— 放大后把偏移调到超过半个画布 + 半个背景尺寸，就能把背景完全移出画面。</li>
  * </ul>
@@ -66,8 +67,8 @@ public class BackgroundVisual extends VisualElement {
     /**
      * 缩放上下限：与前端滑杆一致，同时防止异常数值生成超大 / 零尺寸中间图。
      *
-     * <p>上限比立绘/临时图片的 3.0 大：背景要能「铺满画面」，
-     * 9:16 的竖图要盖住 16:9 取景框约需 3.16 倍，卡在 3.0 会差 100 多像素铺不满。
+     * <p>上限比立绘/临时图片的 3.0 大：背景是「铺满画布」的底图，推近到 3 倍常常还不够用
+     * （cover 之后再去放大某一块细节），4.0 给的是构图余量。
      * 前端对应 constant 是 visualCoordinates.MAX_BACKGROUND_SCALE。
      *
      * <p>公开成常量是为了让测试/诊断直接引用"契约值"，而不是在断言里再抄一遍数字
@@ -160,10 +161,22 @@ public class BackgroundVisual extends VisualElement {
      * <p>步骤：
      * <ol>
      *   <li>把画布按 scale 放大成目标框（1.0 → 画布大小），</li>
-     *   <li>原图等比缩放后「完整放进」目标框（与旧的全屏渲染一样 keepAspectRatio，
-     *       16:9 背景在 scale=1 时正好铺满 1920×1080，逐像素与旧行为一致），</li>
+     *   <li>原图<b>等比放大「铺满」</b>目标框：取宽、高两个方向所需倍数的<b>较大者</b>
+     *       （= CSS {@code object-fit: cover}）。宽度与高度都不小于目标框对应边，
+     *       所以画面里不会出现黑边；多出来的部分由合成阶段裁掉，
+     *       裁剪以图片中心为基准，画面主体因此始终居中。16:9 背景在 scale=1 时
+     *       两个方向倍数相同，正好铺满 1920×1080，逐像素与旧行为一致；</li>
      *   <li>以画布中心为基准加 posX/posY 偏移。</li>
      * </ol>
+     *
+     * <p>为什么不是「完整放进」（contain）：非 16:9 的背景按 contain 画会有留白，
+     * 留白处就是画面上的黑边——竖图左右两条、横长条上下两条。cover 是唯一
+     * "任何比例都铺满、又不拉伸变形（宽高比不变）"的画法。
+     * 前端 {@code preview/previewLayout.backgroundWorldRect} 是这里的逐行镜像。
+     *
+     * <p>{@code scale} 在铺满的基础上再叠一层缩放：{@code >1} 推近（仍然铺满），
+     * {@code <1} 是用户主动拉远（此时才会露出画布底色，是刻意的构图选择）。
+     *
      * 返回 null 表示图像还没加载出来，调用方跳过即可。
      *
      * @param canvasWidth  设计画布宽度（正常为 1920）
@@ -182,7 +195,8 @@ public class BackgroundVisual extends VisualElement {
         int targetWidth = Math.max(1, Math.round(canvasWidth * safeScale));
         int targetHeight = Math.max(1, Math.round(canvasHeight * safeScale));
 
-        float fit = Math.min((float) targetWidth / image.getWidth(),
+        // cover：两个方向都至少铺满目标框（取较大倍数），多出来的部分居中裁掉
+        float fit = Math.max((float) targetWidth / image.getWidth(),
                 (float) targetHeight / image.getHeight());
         int drawWidth = Math.max(1, Math.round(image.getWidth() * fit));
         int drawHeight = Math.max(1, Math.round(image.getHeight() * fit));

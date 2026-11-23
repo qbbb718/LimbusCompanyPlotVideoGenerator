@@ -256,19 +256,23 @@ export function headSize(length: number, renderScale: number): number {
 }
 
 /**
- * 情绪动画的绘制矩形（**未套立绘移动动画之前**的场景画布坐标）。
+ * 情绪动画的绘制矩形（**未套元素自身移动动画之前**的场景画布坐标）。
  *
- * <p>素材以画布中心对齐到脸框中心，再叠加偏移与缩放；尺寸乘 `userScale`
- * （用户把立绘放大 2 倍时，贴脸的特效必须跟着变大）。
+ * <p>素材以画布中心对齐到**头部区域中心**，再叠加偏移与缩放；尺寸乘 `userScale`
+ * （用户把元素放大 2 倍时，贴头的特效必须跟着变大）。
  *
- * <p><b>偏移的单位是头部长度</b>（见 {@link headSize}）：`offsetY = -0.3` 表示
- * "脸框中心往上 0.3 个头宽"，换任何一个角色都是同一个相对位置。
+ * <p>本函数只认"中心 + 头部区域长度"，所以立绘与临时素材共用同一份实现：
+ * 立绘的中心/长度来自裁剪框（{@link headSize}），临时素材的来自
+ * `previewLayout.tempImageHeadCenter` / `tempImageHeadSize`（边长 = 图片宽度 / 3 的正方形）。
+ *
+ * <p><b>偏移的单位是头部区域长度</b>：`offsetY = -0.3` 表示
+ * "头部区域中心往上 0.3 个头宽"，换任何一个元素都是同一个相对位置。
  *
  * <p>换算成输出坐标由调用方负责（`sceneToOutput`），这里只管场景空间。
  */
 export function spriteRect(
-  faceCenterX: number,
-  faceCenterY: number,
+  headCenterX: number,
+  headCenterY: number,
   headSizeValue: number,
   canvasWidth: number,
   canvasHeight: number,
@@ -286,8 +290,8 @@ export function spriteRect(
   const w = safeWidth * factor;
   const h = safeHeight * factor;
   return {
-    x: faceCenterX + (Number.isFinite(offsetX) ? offsetX : 0) * head - w / 2,
-    y: faceCenterY + (Number.isFinite(offsetY) ? offsetY : 0) * head - h / 2,
+    x: headCenterX + (Number.isFinite(offsetX) ? offsetX : 0) * head - w / 2,
+    y: headCenterY + (Number.isFinite(offsetY) ? offsetY : 0) * head - h / 2,
     w,
     h,
   };

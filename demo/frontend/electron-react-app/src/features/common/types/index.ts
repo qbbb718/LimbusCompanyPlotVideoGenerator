@@ -98,7 +98,7 @@ export interface ElectronAPI {
 /**
  * 摄像机：把「世界坐标」映射到「场景画布 1920×1080」。
  *
- * <p>只影响场景层（背景 / 立绘 / 临时图片）；边框、对话框、角色名片、地点牌、台词都在设计画布上
+ * <p>只影响场景层（背景 / 立绘 / 临时素材）；边框、对话框、角色名片、地点牌、台词都在设计画布上
  * 直接绘制，不受它影响。字段与后端 {@code com.lbc_plot.render.video.Camera} 一一对应。
  *
  * <p>三个字段是**起点**；可选 `to` 是终点、`easing` 是起点→终点之间的缓动。
@@ -211,7 +211,7 @@ export interface BackgroundVisual {
   /**
    * 是否压暗（剧情编辑 → 背景 → 压暗）。
    *
-   * <p>与立绘 / 临时图片的「压暗」同一口径：压暗一半（后端 `ImageDarkener.darkenImage(image, 0.5f)`，
+   * <p>与立绘 / 临时素材的「压暗」同一口径：压暗一半（后端 `ImageDarkener.darkenImage(image, 0.5f)`，
    * 预览里对应 `.preview-scene-item.dim { filter: brightness(0.5) }`）。
    * 旧工程没有这个字段时按 `false` 处理，行为与加压暗之前完全一致。
    */
@@ -280,7 +280,7 @@ export interface CharacterVisual {
   emotionAnim?: EmotionAnim;
 }
 
-// 临时图片视觉元素（NPC、道具等）
+// 临时素材视觉元素（NPC、道具等）
 export interface TempImageVisual {
   uuid: string;
   imagePath: string;
@@ -290,6 +290,16 @@ export interface TempImageVisual {
   dim: boolean;
   /** 移动动画装备；缺省 = 不动（见 CharacterVisual.anim） */
   anim?: SpriteAnimation;
+  /**
+   * 情绪动画（序列帧）。缺省/`null` = 没有，渲染走原路径、逐像素不变。
+   *
+   * <p>与 {@link CharacterVisual.emotionAnim} 是**同一份数据、同一套交互**（组件都是
+   * `EmotionAnimPicker`），唯一的差别是坐标基准：立绘用裁剪出来的脸框，临时素材没有裁剪框，
+   * 于是用需求定义的**头部正方形区域**——边长 = 图片显示宽度 / 3、水平居中、上边缘贴合图片
+   * 上边缘（见 `previewLayout.tempImageHeadBox` 与 `EmotionAnimPlacement.tempImageHeadBox`）。
+   * 所以 `offsetX / offsetY` 的单位仍是"一个头部区域宽度"，同一份摆放换图仍然落在相对位置。
+   */
+  emotionAnim?: EmotionAnim;
 }
 
 /**
@@ -323,7 +333,7 @@ export const EFFECT_TYPE_FADE_FROM_WHITE = "FADE_FROM_WHITE";
 /**
  * 特效类型：镜头摇动（属于**镜头层预设**，开关在「剧情编辑 → 摄像机 → 预设」）。
  *
- * <p>按帧轻微晃动"看世界的那台相机"：只影响背景 / 立绘 / 临时图片（世界层），
+ * <p>按帧轻微晃动"看世界的那台相机"：只影响背景 / 立绘 / 临时素材（世界层），
  * 对话框、地点牌、角色名片与边框暗角画在设计画布上，**UI 与遮罩不受影响**。
  * 与三种起始转场互不冲突，可以同时开（同写在 `record.effects` 里，按 type 区分）。
  * 取值与后端 EffectVisual.TYPE_CAMERA_SHAKE 一致（公式见 preview/cameraShake.ts 与 CameraShake.java，
@@ -335,7 +345,7 @@ export const EFFECT_TYPE_CAMERA_SHAKE = "CAMERA_SHAKE";
  * 特效类型：T 巢滤镜（「剧情编辑 → 特效」里的画面层调色开关）。
  *
  * <p>把整幅画面压成 T 巢那种棕褐色老照片：先算亮度（Rec.601），再把亮度映射成一条
- * "暗部偏红褐、亮部偏米白"的单色带。**只作用于画面层**（背景 / 立绘 / 临时图片）——
+ * "暗部偏红褐、亮部偏米白"的单色带。**只作用于画面层**（背景 / 立绘 / 临时素材）——
  * 后端在场景画布上就染完了，UI 与台词是第二趟才叠上去的，所以按钮/面板/文本框
  * 天然不会被染色（见 `render/video/TCorpFilter.java`）。
  * 取值与后端 EffectVisual.TYPE_T_CORP_FILTER 一致（曲线见 preview/tCorpFilter.ts）。

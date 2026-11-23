@@ -54,7 +54,7 @@ export const parseVideoSizeKey = (
  * @function 剧情类型 → 后端 plot 布尔值
  *
  * 后端 `RenderOfImage.renderPre(record, plot, width, height)` 用 plot 决定画面样式：
- * plot = true 时叠加立绘、临时图片与黑边框，并把背景+角色合成后缩放到 0.8 居中；
+ * plot = true 时叠加立绘、临时素材与黑边框，并把背景+角色合成后缩放到 0.8 居中；
  * plot = false（人格故事）时只画背景与 UI/对话。
  *
  * 只有选"剧情"才是 plot = true，其余（人格故事）为 false。

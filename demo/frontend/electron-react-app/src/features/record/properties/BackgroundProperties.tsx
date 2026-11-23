@@ -164,7 +164,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
       // 新加的背景默认不压暗：加进来先看到原图，需要氛围时再勾
       dim: false,
     };
-    // 默认插入位置：**追加到列表末尾 = 画面最底层**（与「立绘」「临时图片」的新增行为一致，
+    // 默认插入位置：**追加到列表末尾 = 画面最底层**（与「立绘」「临时素材」的新增行为一致，
     // 不会把用户已经调好的背景瞬间盖住）。想让它显示在前面，点这张卡片的「↑」即可。
     updateRecord(selectedRecordIndex, {
       ...selectedRecord,
@@ -284,7 +284,8 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
         <h4>背景设置</h4>
         <p className="transform-hint">
           列表最上 = 画面最前：用卡片上的 ↑ / ↓ 调整背景之间的叠放顺序（首项不能再上移、末项不能再下移）；
-          缩放以画面中心为基准；位置 0 = 居中，可超出画面；每行 ↺ 只复原该行；
+          缩放 1 = 等比铺满画面（任何比例都不留黑边，超出画面的部分以图片中心为基准裁掉）；
+          位置 0 = 居中，可超出画面；每行 ↺ 只复原该行；
           「压暗」只压这张背景，不影响叠在上面的立绘与 UI。
         </p>
         {/* 批量删除工具条：勾选后才出现「批量删除」 */}
@@ -402,7 +403,7 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                     min={MIN_VISUAL_SCALE}
                     max={MAX_BACKGROUND_SCALE}
                     ariaLabel={`背景 ${index + 1} 缩放`}
-                    title="背景缩放（1 = 铺满画面，2 = 长宽各放大一倍）"
+                    title="背景缩放（1 = 等比铺满画面，2 = 在此基础上再放大一倍）"
                     onChange={(value) =>
                       updateBackground(index, "scale", value)
                     }
@@ -513,8 +514,8 @@ const BackgroundProperties: React.FC<BackgroundPropertiesProps> = ({
                   </div>
                 </div>
 
-                {/* 压暗：与「立绘压暗」「临时图片压暗」同一个口径（压暗）。
-                    只压这张背景自己的像素，画在它上面的立绘、临时图片与 UI 都不受影响；
+                {/* 压暗：与「立绘压暗」「临时素材压暗」同一个口径（压暗）。
+                    只压这张背景自己的像素，画在它上面的立绘、临时素材与 UI 都不受影响；
                     位置/缩放的 ↺ 也不会碰它。 */}
                 <div className="transform-row background-dim-row">
                   <span className="transform-label">压暗</span>

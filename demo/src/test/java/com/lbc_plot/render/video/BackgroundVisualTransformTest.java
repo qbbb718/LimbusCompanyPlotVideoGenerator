@@ -16,9 +16,11 @@ import org.junit.jupiter.api.Test;
  *
  * <p>约定：
  * <ul>
- *   <li>scale 以「等比铺满 1920×1080 设计画布」为 1.0 基准；</li>
+ *   <li>scale 以「等比铺满 1920×1080 设计画布」为 1.0 基准；「铺满」是 <b>cover</b>：
+ *       取宽、高两个方向所需倍数的<b>较大者</b>（= CSS {@code object-fit: cover}）；</li>
  *   <li>posX / posY 是背景中心相对画布中心的偏移；</li>
- *   <li>scale=1 + pos=0 必须与加缩放功能之前的全屏背景完全一致（16:9 图正好铺满画布）。</li>
+ *   <li>scale=1 + pos=0 时<b>任意比例</b>的背景都盖满画布、一条黑边都不留，且宽高比不变；</li>
+ *   <li>16:9 图在 scale=1 时正好铺满画布，逐像素与加缩放功能之前一致。</li>
  * </ul>
  */
 class BackgroundVisualTransformTest {
@@ -79,24 +81,129 @@ class BackgroundVisualTransformTest {
     }
 
     @Test
-    @DisplayName("非 16:9 图片等比缩放后居中，不拉伸变形")
-    void nonSixteenByNineImageKeepsAspectRatio() {
-        BackgroundVisual visual = visual(1000, 1000, 1.0f, 0, 0);
+    @DisplayName("横长条（比 16:9 更宽）：纵向铺满画布高度、左右溢出，不留上下黑边")
+    void wideImageFillsHeightAndOverflowsWidth() {
+        // 3600×1080：fit = max(1920/3600, 1080/1080) = 1 → 画成 3600×1080（高度恰好 = 画布高）
+        assertEquals(new Rectangle(-840, 0, 3600, 1080),
+                visual(3600, 1080, 1.0f, 0, 0).getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT));
+    }
 
-        // 1000×1000 等比放进 1920×1080 => 1080×1080，水平居中 x = (1920-1080)/2 = 420
-        assertEquals(new Rectangle(420, 0, 1080, 1080),
-                visual.getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT));
+    @Test
+    @DisplayName("竖图（比 16:9 更窄）：横向铺满画布宽度、上下溢出，不留左右黑边")
+    void tallImageFillsWidthAndOverflowsHeight() {
+        // 1080×1920：fit = max(1920/1080 = 1.778, 1080/1920) = 1.778 → 画成 1920×3413
+        assertEquals(new Rectangle(0, -1166, 1920, 3413),
+                visual(1080, 1920, 1.0f, 0, 0).getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT));
+    }
+
+    @Test
+    @DisplayName("正方形图同样铺满：宽高都取画布宽（1920），上下溢出并居中")
+    void squareImageFillsWidthAndOverflowsHeight() {
+        // 1000×1000：fit = max(1920/1000 = 1.92, 1080/1000 = 1.08) = 1.92 → 画成 1920×1920
+        assertEquals(new Rectangle(0, -420, 1920, 1920),
+                visual(1000, 1000, 1.0f, 0, 0).getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT));
+    }
+
+    /**
+     * 需求验收：任意比例都不留黑边。
+     *
+     * <p>判定方式与画面一致——绘制矩形必须在水平、竖直两个方向都<b>不短于</b>画布
+     * （{@code x <= 0 && y <= 0 && x + w >= 画布宽 && y + h >= 画布高}），
+     * 同时宽高比必须与原图完全一致（等比缩放，不拉伸变形）。
+     */
+    @Test
+    @DisplayName("任意比例的背景在 scale=1 时都盖满画布（无黑边），且宽高比不变")
+    void anyAspectRatioCoversCanvasWithoutDistortion() {
+        int[][] sizes = {
+                { 1920, 1080 }, // 16:9：正好铺满
+                { 3840, 2160 }, // 16:9 的 4K 图：同样正好铺满
+                { 3600, 1080 }, // 30:9 横长条：左右溢出
+                { 2400, 1600 }, // 3:2：略窄于 16:9，上下溢出
+                { 1000, 1000 }, // 1:1
+                { 1080, 1350 }, // 4:5
+                { 1080, 1920 }, // 9:16 竖图：上下大幅溢出
+                { 500, 4000 }, // 极端竖长条：上下溢出到离谱，也不能崩
+                { 4000, 500 }, // 极端横长条
+        };
+
+        for (int[] size : sizes) {
+            int imageWidth = size[0];
+            int imageHeight = size[1];
+            Rectangle bounds = visual(imageWidth, imageHeight, 1.0f, 0, 0)
+                    .getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT);
+            String what = imageWidth + "x" + imageHeight;
+
+            assertTrue(bounds.x <= 0, what + "：左边缘不能露进画布（x=" + bounds.x + "）");
+            assertTrue(bounds.y <= 0, what + "：上边缘不能露进画布（y=" + bounds.y + "）");
+            assertTrue(bounds.x + bounds.width >= CANVAS_WIDTH,
+                    what + "：右边缘必须盖住画布（实际到 " + (bounds.x + bounds.width) + "）");
+            assertTrue(bounds.y + bounds.height >= CANVAS_HEIGHT,
+                    what + "：下边缘必须盖住画布（实际到 " + (bounds.y + bounds.height) + "）");
+
+            double imageAspect = (double) imageWidth / imageHeight;
+            double drawnAspect = (double) bounds.width / bounds.height;
+            // 取整误差最多 1 像素，相对误差留到 0.2%
+            assertEquals(imageAspect, drawnAspect, imageAspect * 0.002,
+                    what + "：铺满必须等比缩放，不能拉伸变形");
+        }
+    }
+
+    /**
+     * 居中裁剪：绘制矩形的中心 = 画布中心 + (posX, posY)。
+     *
+     * <p>这正是"裁剪以图片中心为基准"的几何表述：图片中心被摆在画布中心，
+     * 所以溢出画布的那两条边被对称裁掉，画面主体留在中间。
+     */
+    @Test
+    @DisplayName("铺满后的裁剪以图片中心为基准：绘制矩形中心落在画布中心（加上手动偏移）")
+    void coverCropIsCenteredOnCanvas() {
+        int[][] sizes = { { 3600, 1080 }, { 1080, 1920 }, { 1000, 1000 } };
+        for (int[] size : sizes) {
+            Rectangle centered = visual(size[0], size[1], 1.0f, 0, 0)
+                    .getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT);
+            assertEquals(CANVAS_WIDTH / 2.0, centered.getCenterX(), 1.0,
+                    size[0] + "x" + size[1] + "：横向裁剪必须左右对称");
+            assertEquals(CANVAS_HEIGHT / 2.0, centered.getCenterY(), 1.0,
+                    size[0] + "x" + size[1] + "：纵向裁剪必须上下对称");
+
+            Rectangle shifted = visual(size[0], size[1], 1.0f, 300, -200)
+                    .getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT);
+            assertEquals(CANVAS_WIDTH / 2.0 + 300, shifted.getCenterX(), 1.0,
+                    "手动偏移应原样叠加在居中位置之上");
+            assertEquals(CANVAS_HEIGHT / 2.0 - 200, shifted.getCenterY(), 1.0,
+                    "手动偏移应原样叠加在居中位置之上");
+        }
+    }
+
+    @Test
+    @DisplayName("scale 在铺满的基础上再叠一层：竖图放大 2 倍后仍然铺满、宽高比不变")
+    void scaleZoomsOnTopOfCover() {
+        // 1080×1920 @ scale=2：目标框 3840×2160，fit = max(3840/1080 = 3.556, 2160/1920 = 1.125)
+        assertEquals(new Rectangle(-960, -2873, 3840, 6827),
+                visual(1080, 1920, 2.0f, 0, 0).getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT));
+    }
+
+    /**
+     * 唯一会露出画布底色的情况：用户主动把 scale 调到 1 以下（拉远）。
+     *
+     * <p>这不是缺陷而是构图选择；写在这里是为了把"scale=1 必须无黑边"与
+     * "scale&lt;1 是用户自己要求留白"两条语义钉清楚，避免以后有人把下限也改成"必须铺满"。
+     */
+    @Test
+    @DisplayName("scale<1 是唯一会露出底色的情况（用户主动拉远）")
+    void zoomOutBelowOneIsTheOnlyCaseWithGaps() {
+        Rectangle bounds = visual(1920, 1080, 0.5f, 0, 0)
+                .getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        assertEquals(new Rectangle(480, 270, 960, 540), bounds);
     }
 
     /**
      * 异常 scale 必须回退或收敛，不能产生非法尺寸。
      *
-     * <p>这里<b>不</b>写死 3.0：背景的上限比立绘/临时图片的 3.0 大。9:16 的竖图要盖住
-     * 16:9 取景框需要 1920/1080*... ≈ 3.16 倍，卡在 3.0 会差 100 多像素铺不满画面，
-     * 所以背景单独放宽到 4.0（前端 {@code visualCoordinates.MAX_BACKGROUND_SCALE} 同一个值）。
-     *
-     * <p>历史上测试里写死了 3.0，产品把上限调到 4.0 之后这条断言就一直失败——本质是
-     * "同一个契约抄了两份数字"。现在统一引用 {@link BackgroundVisual#MAX_SCALE}。
+     * <p>这里<b>不</b>写死 3.0 / 4.0 之类的数字，直接引用 {@link BackgroundVisual#MAX_SCALE} /
+     * {@link BackgroundVisual#MIN_SCALE}：历史上测试里写死了 3.0，产品把上限调到 4.0 之后
+     * 这条断言就一直失败——本质是"同一个契约抄了两份数字"。
      */
     @Test
     @DisplayName("异常 scale（NaN / 超大值 / 过小值）回退或收敛，不会产生非法尺寸")
@@ -125,25 +232,6 @@ class BackgroundVisualTransformTest {
                 "背景缩放上限必须与前端 visualCoordinates.MAX_BACKGROUND_SCALE 保持一致");
         assertEquals(0.1f, BackgroundVisual.MIN_SCALE,
                 "背景缩放下限必须与前端 visualCoordinates.MIN_VISUAL_SCALE 保持一致");
-    }
-
-    @Test
-    @DisplayName("9:16 竖图靠 4.0 上限才能铺满 16:9 画布；3.0 会留出黑边")
-    void portraitImageNeedsWiderLimitToFillCanvas() {
-        // 1080×1920 的竖图：等比放进目标框后宽度 = 1080 * fit，需要 fit = 1920/1080 ≈ 1.778，
-        // 对应 scale ≈ 3.16。所以 3.0 铺不满、4.0 够用——这就是背景上限放宽的原因。
-        BackgroundVisual atOldLimit = visual(1080, 1920, 3.0f, 0, 0);
-        Rectangle oldBounds = atOldLimit.getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT);
-        assertTrue(oldBounds.width < CANVAS_WIDTH,
-                "scale=3.0 时 9:16 竖图不该已经铺满（说明上限确实需要大于 3.0），实际宽度 "
-                        + oldBounds.width);
-
-        BackgroundVisual atBackgroundLimit = visual(1080, 1920, BackgroundVisual.MAX_SCALE, 0, 0);
-        Rectangle fullBounds = atBackgroundLimit.getDrawBounds(CANVAS_WIDTH, CANVAS_HEIGHT);
-        assertTrue(fullBounds.width >= CANVAS_WIDTH,
-                "scale=上限时 9:16 竖图应能盖满画布宽度，实际 " + fullBounds.width);
-        assertTrue(fullBounds.height >= CANVAS_HEIGHT,
-                "盖满宽度的同时高度也必须溢出画布，实际 " + fullBounds.height);
     }
 
     @Test

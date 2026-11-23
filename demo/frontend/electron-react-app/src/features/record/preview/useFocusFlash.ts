@@ -5,7 +5,7 @@
  * 否则用户切了页签还得自己在长列表里翻。
  *
  * 与「文本 → 全局显示速度」的跳转高亮（`GlobalProperties` 的 `highlightTextSpeed`）同一套视觉，
- * 这里抽成 Hook 供「立绘 / 临时图片 / 背景」三个列表面板复用。
+ * 这里抽成 Hook 供「立绘 / 临时素材 / 背景」三个列表面板复用。
  */
 import { useEffect, useRef, useState } from "react";
 import type { PropertyFocusKind, PropertyFocusRequest } from "./previewTargets";

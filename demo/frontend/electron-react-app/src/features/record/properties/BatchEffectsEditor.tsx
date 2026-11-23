@@ -196,7 +196,7 @@ const BatchEffectsEditor: React.FC<BatchEffectsEditorProps> = ({ batch }) => {
 
       <h4 style={{ marginTop: 18 }}>画面滤镜</h4>
       <p className="effects-hint">
-        只作用于画面层（背景 / 立绘 / 临时图片），与起始转场不互斥，可以同时开。
+        只作用于画面层（背景 / 立绘 / 临时素材），与起始转场不互斥，可以同时开。
       </p>
       <div className="effects-list">
         {FILTER_OPTIONS.map((option) => renderOption(option, toggleFilter))}

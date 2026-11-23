@@ -230,7 +230,7 @@ export function isAnimated(anim: SpriteAnimation | null | undefined): boolean {
  * 锚点：没配时用元素类型默认值。
  *
  * @param defaultX 一般传 0.5
- * @param defaultY 立绘传 1（脚底：弹跳/摇摆的自然支点）、临时图片传 0.5（中心）
+ * @param defaultY 立绘传 1（脚底：弹跳/摇摆的自然支点）、临时素材传 0.5（中心）
  */
 export function anchorOf(
   anim: SpriteAnimation | null | undefined,

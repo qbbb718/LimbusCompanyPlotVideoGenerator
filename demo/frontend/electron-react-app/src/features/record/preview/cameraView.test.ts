@@ -170,14 +170,41 @@ describe("视图缩放（Ctrl+滚轮）", () => {
 describe("铺满背景", () => {
   const makeBg = () => ({ background: { path: "b.png" } } as unknown as BackgroundVisual);
 
+  // 背景是 cover（等比放大铺满画布），所以镜头没拉远时任何比例的背景都已经铺满，
+  // 「铺满背景」只在取景框比画布还大（zoom < 1）时才需要放大。
   test("16:9 背景在 zoom=1 时本来就铺满，scale=1", () => {
     const scale = coverScaleForBackground(makeBg(), { width: 1920, height: 1080 }, IDENTITY_CAMERA);
     expect(scale).toBeCloseTo(1, 3);
   });
 
-  test("30:9 横长背景要放大到 1.875 才能盖住取景框", () => {
+  test("30:9 横长背景在 zoom=1 时也是铺满的（cover 之后不再需要放大），scale=1", () => {
     const scale = coverScaleForBackground(makeBg(), { width: 3600, height: 1080 }, IDENTITY_CAMERA);
-    expect(scale).toBeCloseTo(1.875, 3);
+    expect(scale).toBeCloseTo(1, 3);
+  });
+
+  test("9:16 竖图在 zoom=1 时同样铺满（横向刚好盖住、不须 3.16 倍），scale=1", () => {
+    const scale = coverScaleForBackground(makeBg(), { width: 1080, height: 1920 }, IDENTITY_CAMERA);
+    expect(scale).toBeCloseTo(1, 3);
+  });
+
+  test("镜头拉远（取景框 2 倍大）时按取景框放大：30:9 要 2 倍才盖住高度", () => {
+    // 取景框 3840×2160；scale=1 时铺满后的绘制尺寸是 3600×1080
+    // → 高度需要 2160/1080 = 2 倍（宽度 3840/3600 只要 1.07 倍）
+    const scale = coverScaleForBackground(makeBg(), { width: 3600, height: 1080 }, {
+      centerX: 960,
+      centerY: 540,
+      zoom: 0.5,
+    });
+    expect(scale).toBeCloseTo(2, 3);
+  });
+
+  test("镜头拉远时竖图同样按取景框放大：9:16 取景框 2 倍大 → 2 倍", () => {
+    const scale = coverScaleForBackground(makeBg(), { width: 1080, height: 1920 }, {
+      centerX: 960,
+      centerY: 540,
+      zoom: 0.5,
+    });
+    expect(scale).toBeCloseTo(2, 3);
   });
 
   test("背景本来就比取景框大时不缩小（保持 1，避免「铺满」把世界变小）", () => {
@@ -191,19 +218,10 @@ describe("铺满背景", () => {
     expect(zoomed).toBeCloseTo(1, 3);
   });
 
-  test("结果夹在后端支持的范围 [0.1, 4]（背景上限比立绘大，竖图才能铺满）", () => {
+  test("结果夹在后端支持的范围 [0.1, 4]", () => {
     const huge = coverScaleForBackground(makeBg(), { width: 3840, height: 2160 }, IDENTITY_CAMERA);
     expect(huge).toBeLessThanOrEqual(4);
     expect(huge).toBeGreaterThanOrEqual(0.1);
-  });
-
-  test("9:16 竖图按 3.16 倍铺满，不再被 3.0 卡住", () => {
-    // 1920×1080 的取景框 / 1080×1920 的竖图：宽度需要 16/9 ≈ 1.778 倍于"高度铺满"的 3.16？直接算：
-    // scale=1 时 contain 画成 607.5×1080，盖住 1920 宽需要 1920/607.5 ≈ 3.16
-    const scale = coverScaleForBackground(makeBg(), { width: 1080, height: 1920 }, IDENTITY_CAMERA);
-    expect(scale).toBeGreaterThan(3);
-    expect(scale).toBeLessThanOrEqual(4);
-    expect(scale).toBeCloseTo(1920 / 607.5, 2);
   });
 });
 describe("起止镜头（C2）", () => {

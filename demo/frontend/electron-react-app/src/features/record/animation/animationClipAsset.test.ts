@@ -277,4 +277,58 @@ describe("工程文件归一化（写坏的 JSON 不能让编辑器崩）", () =
     });
     expect(isEmotionAnimUsable(anim)).toBe(true);
   });
+
+  /* ---- 临时素材与立绘共用同一份 EmotionAnim / 同一套归一化 ---- */
+
+  const tempRecordWith = (emotionAnim: any) =>
+    normalizeRecord({
+      uuid: "r2",
+      dialogue: { text: "hi" },
+      tempImages: [
+        {
+          uuid: "t1",
+          imagePath: "projects/temp/images/t1.png",
+          posX: 12,
+          posY: 34,
+          scale: 0.5,
+          dim: true,
+          emotionAnim,
+        },
+      ],
+    });
+
+  test("临时素材上写坏的 emotionAnim 同样被丢掉（渲染走原路径）", () => {
+    expect(
+      tempRecordWith({ clipId: "", frameHolds: [1] }).tempImages[0].emotionAnim,
+    ).toBeUndefined();
+    expect(
+      tempRecordWith({ clipId: "x", frameHolds: [] }).tempImages[0].emotionAnim,
+    ).toBeUndefined();
+    expect(tempRecordWith(null).tempImages[0].emotionAnim).toBeUndefined();
+  });
+
+  test("临时素材的 emotionAnim 用同一套夹取，其它字段原样保留", () => {
+    const record = tempRecordWith({
+      clipId: "flow_1",
+      name: "花开",
+      frameHolds: [3, 1, 2],
+      offsetX: 999999,
+      scale: -1,
+    });
+    const anim = record.tempImages[0].emotionAnim;
+
+    expect(anim).toBeDefined();
+    // 偏移单位是头部区域长度：手写的天文数字被夹到 ±20 个头宽以内
+    expect(anim!.offsetX).toBe(20);
+    expect(anim!.scale).toBe(0.01);
+    expect(anim!.frameHolds).toEqual([3, 1, 2]);
+    expect(isEmotionAnimUsable(anim)).toBe(true);
+    // 临时素材自己的坐标 / 缩放 / 压暗不能被归一化改掉
+    expect(record.tempImages[0]).toMatchObject({
+      posX: 12,
+      posY: 34,
+      scale: 0.5,
+      dim: true,
+    });
+  });
 });

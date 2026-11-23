@@ -28,8 +28,10 @@ import { IDENTITY_CAMERA } from "../preview/cameraView";
 /**
  * 背景原图尺寸：30:9 的横长条。
  *
- * <p>选它是因为倍数能手算：contain 到 1920×1080 只画 1920×288，
- * 铺满取景框（1920×1080）要放大 1080/288 = 3.75 倍。
+ * <p>背景是 cover（等比放大铺满画布），scale=1 时这幅图已经画成 7200×1080
+ * （{@code fit = max(1920/3840, 1080/576) = 1.875}：纵向铺满、左右大幅溢出），
+ * 所以镜头没拉远时「铺满背景」不需要放大；把镜头拉远到 0.5×（取景框 3840×2160）之后，
+ * 高度要 2160/1080 = 2 倍才盖得住 —— 用例就锁这个倍数。
  */
 const BACKGROUND_SIZE = { width: 3840, height: 576 };
 
@@ -277,9 +279,15 @@ describe("摄像机页签 → 铺满背景", () => {
     expect(screen.getByRole("button", { name: "铺满背景" })).toBeDisabled();
   });
 
-  test("铺满最上层背景：倍数 = 取景框高 / 画出来的高（3.75），不动 X/Y 与其它字段", async () => {
+  test("铺满最上层背景：镜头拉远 2 倍时放大 2 倍盖住取景框，不动 X/Y 与其它字段", async () => {
     const background = makeBackground({ posX: 120, posY: -30, scale: 1 });
-    const writes = setupPanel(makeRecord({ bg: [background] }));
+    const writes = setupPanel(
+      makeRecord({
+        bg: [background],
+        // 取景框拉远到 2 倍（3840×2160）：scale=1 时铺满后的绘制尺寸 7200×1080 此时盖不住高度
+        camera: { centerX: 960, centerY: 540, zoom: 0.5 },
+      }),
+    );
 
     const cover = screen.getByRole("button", { name: "铺满背景" });
     // 原图尺寸是异步读到的：读到之后按钮才可用
@@ -288,12 +296,25 @@ describe("摄像机页签 → 铺满背景", () => {
     fireEvent.click(cover);
 
     const bg = lastWrite(writes).bg![0];
-    // 3840×576 contain 进 1920×1080 → 画成 1920×288；盖住 1080 高要 3.75 倍
-    expect(bg.scale).toBe(3.75);
+    // 取景框 3840×2160 / 画出来的 7200×1080 → 取较大的 2 倍
+    expect(bg.scale).toBe(2);
     // 只改缩放：位置与选中的背景都不动
     expect(bg.posX).toBe(120);
     expect(bg.posY).toBe(-30);
     expect(bg.background).toBe(background.background);
+  });
+
+  test("镜头没拉远时背景本来就铺满：铺满背景写回 scale=1（不放大、不缩小）", async () => {
+    const background = makeBackground({ posX: 120, posY: -30, scale: 3 });
+    const writes = setupPanel(makeRecord({ bg: [background] }));
+
+    const cover = screen.getByRole("button", { name: "铺满背景" });
+    await waitFor(() => expect(cover).not.toBeDisabled());
+
+    fireEvent.click(cover);
+
+    // 已经铺满 → 倍数收敛到 1；只放大不缩小的约定在这里表现为"回到 1"
+    expect(lastWrite(writes).bg![0].scale).toBe(1);
   });
 });
 

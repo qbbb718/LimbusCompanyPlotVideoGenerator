@@ -84,7 +84,7 @@ class PortraitDefaultPersistenceTest {
     }
 
     @Test
-    @DisplayName("设置默认立绘后重新查询，默认立绘排在最前且带 defaultPortrait 标记")
+    @DisplayName("设置默认立绘后重新查询：顺序不变、默认标记跟着那张立绘（可以在中间）")
     void defaultPortraitSurvivesReload() {
         portraitDao.setDefaultPortrait(CHARACTER_ID, PORTRAIT_C);
 
@@ -92,9 +92,13 @@ class PortraitDefaultPersistenceTest {
         List<Portrait> reloaded = portraitDao.findByCharacterId(CHARACTER_ID);
 
         assertEquals(3, reloaded.size());
-        assertEquals(PORTRAIT_C, reloaded.get(0).getPortraitID(),
-                "重新加载后默认立绘应排在第一位");
-        assertTrue(reloaded.get(0).isDefaultPortrait(),
+        // 顺序由 display_order 决定（A/B/C），不会因为 C 变成默认就把它挪到第一张
+        assertEquals(Arrays.asList(PORTRAIT_A, PORTRAIT_B, PORTRAIT_C),
+                reloaded.stream().map(Portrait::getPortraitID).toList(),
+                "设置默认立绘不应改变列表顺序");
+        assertEquals(PORTRAIT_C, reloaded.get(2).getPortraitID(),
+                "默认立绘保持在自己的 display_order 位置");
+        assertTrue(reloaded.get(2).isDefaultPortrait(),
                 "重新加载后默认立绘应带 defaultPortrait 标记");
 
         long marked = reloaded.stream().filter(Portrait::isDefaultPortrait).count();
@@ -153,7 +157,7 @@ class PortraitDefaultPersistenceTest {
 
         List<Portrait> reloaded = portraitDao.findByCharacterId(CHARACTER_ID);
         assertEquals(PORTRAIT_B, reloaded.get(0).getPortraitID(),
-                "默认立绘应排在第一位");
+                "补齐关联时 B 的 display_order 最小，应排在最前");
         assertTrue(reloaded.get(0).isDefaultPortrait());
     }
 

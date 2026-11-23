@@ -422,9 +422,10 @@ export function zoomViewAt(
 /**
  * 背景「铺满画面」需要的最小 scale。
  *
- * <p>后端背景是 contain（完整放进 1920×1080×scale 的目标框），所以横长条背景在 scale=1 时
- * 会上下留黑、世界也只有画布那么大、镜头无处可摇。这个值把它放大到刚好盖住当前取景框：
- * 先按 scale=1 量出绘制尺寸，再按「取景框 / 绘制尺寸」的最大比例放大。
+ * <p>背景是 cover（等比放大铺满设计画布，见 {@link backgroundWorldRect}），所以 **scale=1 时
+ * 任何比例的背景都已经盖住画布**，只有在镜头拉远（取景框比画布还大）时才会露出后面的底色。
+ * 这个值按「取景框 / scale=1 时的绘制尺寸」算出刚好盖住当前取景框的倍数，
+ * 于是把镜头拉远之后还能一键把画面重新填满。
  *
  * @param background 背景视觉元素（用它的原图与路径，scale 会被忽略）
  * @param imageSize  背景原图尺寸
@@ -446,6 +447,7 @@ export function coverScaleForBackground(
   const frameH = DESIGN_HEIGHT / zoom;
   // 取「刚好盖住取景框」的比例，但**不缩小**：背景本来就比取景框大时保持 1，
   // 否则点一下"铺满"反而把世界变小、镜头更没地方摇。
+  //（cover 之后 scale=1 通常就够了，这里只在镜头拉远、取景框比画布还大时才 > 1）
   const scale = Math.max(1, frameW / atOne.w, frameH / atOne.h);
   // 后端把 scale 夹在 [0.1, 4]（BackgroundVisual.normalizeScale / MAX_BACKGROUND_SCALE），超出没有意义
   return clamp(Math.round(scale * 1000) / 1000, 0.1, MAX_BACKGROUND_SCALE);

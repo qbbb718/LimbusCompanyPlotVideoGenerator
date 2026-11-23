@@ -7,7 +7,7 @@
  * 用 DOM 重绘；它**直接按 `geometry.layers` 的数组顺序叠**（后面的盖前面的）。
  * 而后端栅格图（`RenderOfImage.renderCharacters`）是从 `chars` 末尾往前画，
  * 也就是 `chars[0]` 最后画 = 画面最前。几何模块曾经对背景倒序 push、
- * 对立绘/临时图片正序 push，两边的叠放层次正好整段相反。
+ * 对立绘/临时素材正序 push，两边的叠放层次正好整段相反。
  */
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -140,7 +140,7 @@ describe("播放时 DOM 场景层的立绘顺序", () => {
     expect(order).toEqual([BACK, FRONT]);
   });
 
-  test("临时图片画在立绘之上（后端顺序：立绘 → 临时图片）", () => {
+  test("临时素材画在立绘之上（后端顺序：立绘 → 临时素材）", () => {
     const tempImage = {
       uuid: "temp-1",
       imagePath: "./projects/temp/images/t.png",

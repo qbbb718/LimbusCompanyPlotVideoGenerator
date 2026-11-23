@@ -8,7 +8,7 @@
  * | --- | --- | --- |
  * | 立绘 `character` | `adjX` / `adjY` | 相对「身高锚点」的**偏移**（`posX/posY` 由后端重算，前端不写） |
  * | 背景 `background` | `posX` / `posY` | 背景**中心**相对画面中心的偏移 |
- * | 临时图片 `tempImage` | `posX` / `posY` | 图片**左上角**的绝对坐标 |
+ * | 临时素材 `tempImage` | `posX` / `posY` | 图片**左上角**的绝对坐标 |
  *
  * 三者都存设计画布像素、都不夹取上下限（与属性面板的滑杆/数值框保持一致）。
  * 把"读/写"和"换算"都做成纯函数，拖拽组件只负责指针事件。
@@ -24,7 +24,7 @@ import {
 /** 可以用鼠标拖动的图层种类 */
 export type DraggableKind = "character" | "background" | "tempImage";
 
-/** 设计画布坐标上的一个点（立绘=偏移量，背景/临时图片=坐标） */
+/** 设计画布坐标上的一个点（立绘=偏移量，背景/临时素材=坐标） */
 export interface DragPoint {
   x: number;
   y: number;

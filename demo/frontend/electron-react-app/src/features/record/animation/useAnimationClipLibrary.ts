@@ -6,7 +6,7 @@
  * 这里做一层模块级缓存：第一次请求后共享，导入/删除后 `invalidateAnimationClips()` 统一失效，
  * 所有在用的面板通过订阅自动刷新。
  *
- * <p>为什么不用 Context：面板分布在"立绘"与"临时图片"两棵很深的树里，为它套一层 Provider
+ * <p>为什么不用 Context：面板分布在"立绘"与"临时素材"两棵很深的树里，为它套一层 Provider
  * 会牵动无关的组件与测试；模块级缓存 + 订阅是这里最轻的做法（`useImageSizes` 也是同一思路）。
  */
 import { useCallback, useEffect, useState } from "react";

@@ -722,6 +722,8 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
+  /* 定位上下文：拖拽插入条 / 默认角标 / 勾选框都靠它贴边 */
+  position: relative;
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -731,6 +733,69 @@
 .portrait-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+ * 立绘拖拽排序
+ *
+ * 整张卡片可拖：拖动中的卡片变淡、轻微缩小（留在网格里当"占位"），
+ * 指针悬停的目标卡片浮起并显示插入位置（前 / 后各一条蓝色竖线）。
+ * 多选模式下卡片用于勾选，不参与拖拽。
+ * ============================================================ */
+
+.portrait-card--draggable {
+  cursor: grab;
+  /* 拖动整张卡片时不要顺手选中文字（按钮仍可点击） */
+  user-select: none;
+}
+
+.portrait-card--draggable:active {
+  cursor: grabbing;
+}
+
+/* 拖动中的卡片：浏览器会另画一张跟随指针的拖影，这里把原位变成"占位" */
+.portrait-card--dragging {
+  opacity: 0.45;
+  transform: none !important;
+  border-style: dashed;
+  border-color: #91caff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.12);
+}
+
+.portrait-card--dragging:hover {
+  transform: none !important;
+}
+
+/* 落点提示：目标卡片浮起 */
+.portrait-card--drop-target {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.22);
+}
+
+.portrait-card--drop-target:hover {
+  transform: translateY(-4px);
+}
+
+/* 插入位置：卡片左 / 右内边缘的蓝色竖条（卡片 overflow:hidden，只能画在里面） */
+.portrait-card--drop-target::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 4;
+  border-radius: 2px;
+  background-color: #1677ff;
+  box-shadow: 0 0 6px rgba(22, 119, 255, 0.55);
+  pointer-events: none;
+}
+
+.portrait-card--drop-before::before {
+  left: 0;
+}
+
+.portrait-card--drop-after::before {
+  right: 0;
 }
 
 /* 缩略图容器 - 1:1比例 */
@@ -751,6 +816,60 @@
   width: 100%;
   height: 100%;
   object-fit: cover; /* 保持图片比例，填充容器 */
+}
+
+/* 默认立绘角标：贴在缩略图右上角，字号比普通说明文字大一号，一眼可见但不遮挡人物主体 */
+.portrait-default-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  min-width: 30px;
+  padding: 4px 12px;
+  border-radius: 13px;
+  border: 1px solid #f0c36d;
+  background-color: rgba(255, 247, 230, 0.97);
+  color: #ad6800;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: 1px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  pointer-events: none; /* 拖拽时直接穿透到卡片 */
+  user-select: none;
+}
+
+/* 拖拽手柄：左上角的小把手，只是"可以拖"的视觉提示（多选时让位给勾选框） */
+.portrait-drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.88);
+  color: #595959;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: none; /* 手柄只作提示，拖动整张卡片即可 */
+  user-select: none;
+}
+
+/* 多选模式下卡片已经是"勾选"交互，手柄隐藏，避免和勾选框抢同一个角 */
+.portrait-card--selectable .portrait-drag-handle {
+  display: none;
+}
+
+/* 信息区的默认文字也加一点颜色，和右上角角标呼应 */
+.portrait-info .default-portrait-indicator {
+  color: #ad6800;
+  font-weight: 600;
 }
 
 /* 缩略图占位符 */
@@ -876,6 +995,27 @@
   margin: 0;
 }
 
+/* 标题 + 拖拽提示：提示不能把右侧按钮挤走，窄窗口下允许换行 */
+.portraits-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.portraits-drag-hint {
+  font-size: 12px;
+  color: #8c8c8c;
+  white-space: nowrap;
+}
+
+.portraits-drag-hint::before {
+  content: "☰";
+  margin-right: 4px;
+  color: #aaa;
+}
+
 .portraits-section .section-actions {
   display: flex;
   align-items: center;
@@ -962,6 +1102,176 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ============================================================
+ * 立绘多选（批量选择）
+ *
+ * 标题行「批量选择」进入后：每张卡片左上角浮一个勾选框、整张卡片可点选，
+ * 标题行下面多出一条批量操作条（全选 / 已选数量 / 沿用默认裁剪 / 删除 / 取消）。
+ * 用 .portraits-section 前缀限定，别影响「背景 / 音效」页签的 `.selected` 样式。
+ * ============================================================ */
+
+/* 当前生效的入口按钮（多选模式下的「退出多选」）：加一圈描边，表示"已打开" */
+.portraits-section .section-actions button.is-active {
+  background-color: #e6f4ff;
+  color: #0958d9;
+  box-shadow: inset 0 0 0 1px #91caff;
+}
+
+/* 批量操作条：与标题行同宽，放在列表上方 */
+.portrait-selection-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background-color: #f7faff;
+  border: 1px solid #d6e4ff;
+  border-radius: 6px;
+}
+
+/* ============================================================
+ * 多选时的批量操作区：吸顶（position: sticky）
+ *
+ * 立绘一多列表就要滚好几屏，操作条跟着滚走的话，改勾选 / 看进度都得
+ * 来回上下翻，所以整块（操作条 + 进度/结果）吸在弹窗内容区顶部。
+ *
+ * 滚动容器是 `.modal-body`（overflow: auto），这里 `top: 0` 就是
+ * 停在标题栏下面的那条边；`.portraits-section` 是它的包含块，
+ * 所以滚过整个立绘列表之前都不会被推走。
+ * ============================================================ */
+.portrait-selection-dock {
+  position: sticky;
+  top: 0;
+  /* 盖住从下面滚上来的卡片（`.portrait-card:hover` 有 transform，必须抬高层级） */
+  z-index: 5;
+  /* 弹窗内容是白底：这块要能挡住卡片，不能留透明缝 */
+  background-color: #fff;
+  /* 上下留白做在容器上而不是子元素 margin：吸顶时白色区域一起走，卡片不会从缝里透出来 */
+  padding: 4px 0 12px;
+}
+
+.portrait-selection-dock .portrait-selection-bar {
+  margin-bottom: 0;
+  /* 吸顶后与下方卡片之间需要一点层次，否则蓝条像贴在卡片上 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.portrait-selection-dock .batch-status {
+  margin-bottom: 0;
+}
+
+/* 操作条下面的进度 / 结果提示：留一点缝，别贴着按钮 */
+.portrait-selection-dock .portrait-selection-bar + .batch-status {
+  margin-top: 8px;
+}
+
+.portrait-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.portrait-select-all input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.portrait-select-all input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+/* 「已选 2 / 3 张」：批量动作的作用范围一眼可见 */
+.portrait-selection-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d4ed8;
+  white-space: nowrap;
+}
+
+.portrait-selection-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* 数量靠左、按钮靠右，窄的时候自然换行 */
+  margin-left: auto;
+}
+
+.portrait-selection-actions button {
+  padding: 7px 13px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.portrait-selection-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 可勾选的卡片：整张卡片是一层 <label>，点哪里都等于勾选 */
+.portrait-card--selectable {
+  cursor: pointer;
+  /* 徽标要贴着卡片内边缘，别被 overflow: hidden 裁掉 */
+  position: relative;
+}
+
+.portrait-card--selected {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* 缩略图左上角的勾选框（缩略图容器本身就是 position: relative） */
+.portrait-card-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.portrait-card-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.portrait-card-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+/* 多选模式下卡片底部的提示（取代单张的编辑 / 设为默认 / 删除按钮） */
+.portrait-actions--selection {
+  align-items: center;
+  min-height: 30px;
+}
+
+.portrait-selection-hint {
+  font-size: 13px;
+  color: #1890ff;
+}
+
+/* 选中项已失效（例如批量操作刚把它移除）时的提示不需要高亮 */
+.portrait-card--selected .portrait-selection-hint {
+  font-weight: 500;
 }
 
 /*

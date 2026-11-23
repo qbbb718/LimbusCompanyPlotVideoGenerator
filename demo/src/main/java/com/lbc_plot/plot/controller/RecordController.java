@@ -497,33 +497,34 @@ public class RecordController {
     /**
      * 情绪动画的缓存签名：只把"影响画面"的字段编成一串再加哈希。
      *
-     * <p>为什么要单独签名：动画是贴在立绘上的第二层，改素材/偏移/缩放/代表帧时，
+     * <p>为什么要单独签名：动画是贴在元素上的第二层，改素材/偏移/缩放/代表帧时，
      * 记录里其它字段可能一个都没变（uuid、文本、立绘都没动），只按 uuid 缓存的话
      * 预览图会一直显示旧动画，用户会以为"改了没生效"。
      *
-     * <p>没有任何情绪动画时返回固定串 {@code "none"}：这类记录的缓存键形状与本次改动前
-     * 完全一致（除版本号），不会因为这次功能而额外失效一次。
+     * <p>立绘与临时图片共用同一套 {@code EmotionAnim}，所以两边都要签（前缀 {@code c} / {@code t}
+     * 只是为了互不串位）。没有任何情绪动画时返回固定串 {@code "none"}：这类记录的缓存键形状与
+     * 加临时图片之前完全一致，不会因为这次功能而额外失效一次。
      */
     private static String emotionAnimSignature(com.lbc_plot.plot.model.Record record) {
-        if (record == null || record.getCharacters() == null) {
+        if (record == null) {
             return "none";
         }
         StringBuilder raw = new StringBuilder();
-        for (com.lbc_plot.render.video.CharacterVisual character : record.getCharacters()) {
-            if (character == null || !character.hasEmotionAnim()) {
-                continue;
+        if (record.getCharacters() != null) {
+            for (com.lbc_plot.render.video.CharacterVisual character : record.getCharacters()) {
+                if (character == null || !character.hasEmotionAnim()) {
+                    continue;
+                }
+                appendEmotionAnimSignature(raw, 'c', character.getEmotionAnim());
             }
-            com.lbc_plot.render.video.anim.EmotionAnim emo = character.getEmotionAnim();
-            raw.append(emo.getClipId()).append('|')
-                    .append(emo.getCanvasWidth()).append('x').append(emo.getCanvasHeight()).append('|')
-                    .append(emo.getFrameHolds()).append('|')
-                    .append(emo.getLoop()).append('|').append(emo.getIterations()).append('|')
-                    .append(emo.getStartFrame()).append('|')
-                    .append(emo.getOffsetX()).append(',').append(emo.getOffsetY()).append('|')
-                    .append(emo.getScale()).append('|')
-                    .append(emo.getFadeInFrames()).append('/').append(emo.getFadeOutFrames()).append('|')
-                    .append(emo.getOpacity()).append('|')
-                    .append(emo.getPosterFrame()).append(';');
+        }
+        if (record.getTempImages() != null) {
+            for (com.lbc_plot.render.video.TempImageVisual temp : record.getTempImages()) {
+                if (temp == null || !temp.hasEmotionAnim()) {
+                    continue;
+                }
+                appendEmotionAnimSignature(raw, 't', temp.getEmotionAnim());
+            }
         }
         if (raw.length() == 0) {
             return "none";
@@ -535,6 +536,21 @@ public class RecordController {
             hash *= 0x01000193;
         }
         return String.format("%08x", hash);
+    }
+
+    /** 把一份 {@code EmotionAnim} 中影响画面的字段追加进签名串 */
+    private static void appendEmotionAnimSignature(StringBuilder raw, char kind,
+            com.lbc_plot.render.video.anim.EmotionAnim emo) {
+        raw.append(kind).append(emo.getClipId()).append('|')
+                .append(emo.getCanvasWidth()).append('x').append(emo.getCanvasHeight()).append('|')
+                .append(emo.getFrameHolds()).append('|')
+                .append(emo.getLoop()).append('|').append(emo.getIterations()).append('|')
+                .append(emo.getStartFrame()).append('|')
+                .append(emo.getOffsetX()).append(',').append(emo.getOffsetY()).append('|')
+                .append(emo.getScale()).append('|')
+                .append(emo.getFadeInFrames()).append('/').append(emo.getFadeOutFrames()).append('|')
+                .append(emo.getOpacity()).append('|')
+                .append(emo.getPosterFrame()).append(';');
     }
 
     /**

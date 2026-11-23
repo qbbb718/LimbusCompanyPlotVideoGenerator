@@ -77,6 +77,9 @@ const PortraitThumbnail = memo(
       <img
         src={thumbnailUrl}
         alt={portrait.portName}
+        // 浏览器默认把 <img> 当拖拽源：会拖出一张图片的拖影，而不是整张立绘卡片。
+        // 关掉它，拖拽交给外层 .portrait-card（资源管理里的拖拽排序）。
+        draggable={false}
         // 一次批量导入几十张立绘：让浏览器按需解码，避免同时占用主线程
         loading="lazy"
         decoding="async"

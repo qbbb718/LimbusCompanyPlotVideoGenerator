@@ -228,7 +228,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   );
 
   /**
-   * 当前记录里"世界场景"素材的原图尺寸（背景 / 立绘 / 临时图片）。
+   * 当前记录里"世界场景"素材的原图尺寸（背景 / 立绘 / 临时素材）。
    *
    * <p>「镜头自动跟随说话人」要算背景的实际范围与立绘的矩形，都需要原图像素尺寸；
    * `useImageSizes` 里是模块级缓存，预览与「摄像机」页签加载过的图这里能直接命中，
@@ -760,7 +760,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   }, []);
 
   /**
-   * @function 属性面板里点了一张素材卡片（立绘 / 临时图片 / 背景）
+   * @function 属性面板里点了一张素材卡片（立绘 / 临时素材 / 背景）
    *
    * <p>和 {@link handlePreviewSelect} 相反方向：这里不动页签（用户本来就在那个页签里），
    * 只做两件事——记下预览选中态（预览里画出选中框），并下发一次定位请求，
@@ -818,7 +818,7 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
   /**
    * @function 拖动中：把新位置写回记录
    *
-   * <p>这里已经是"设计画布像素的绝对位置"，语义差异（立绘是偏移、背景/临时图片是坐标）
+   * <p>这里已经是"设计画布像素的绝对位置"，语义差异（立绘是偏移、背景/临时素材是坐标）
    * 由 {@link writeLayerPosition} 统一处理。用 ref 读最新记录，避免闭包里的旧快照。
    */
   const handleElementDragMove = (layer: PreviewLayer, position: DragPoint) => {
@@ -1316,6 +1316,8 @@ const RecordEditor: React.FC<RecordEditorProps> = ({
             previewFrame={previewFrame}
             onSeekFrame={handleSeekPreview}
             lineFrames={lineFrames}
+            // 情绪动画的制作入口与「立绘」页签是同一个（资源管理 → 序列帧动画）
+            onOpenAnimationLibrary={onOpenAnimationLibrary}
           />
         );
       case "background":

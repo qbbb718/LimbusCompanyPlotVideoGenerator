@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 预览几何单测。
  *
  * <p>这里锁的是「与后端渲染公式逐行一致」这件事：
@@ -22,6 +22,10 @@ import {
   layersAt,
   shouldRenderNamePlate,
   sceneLayerKey,
+  tempImageHeadCenter,
+  tempImageHeadBox,
+  tempImageHeadSize,
+  tempImageScale,
   tempImageWorldRect,
   worldBoxOf,
   worldRefOf,
@@ -31,11 +35,13 @@ import {
   MAX_CAMERA_ZOOM,
   MIN_CAMERA_ZOOM,
 } from "./previewLayout";
+import { spriteRect } from "../animation/sequenceTiming";
 
 /* ============================ 夹具 ============================ */
 
 const IMAGE_16_9 = { width: 1920, height: 1080 };
 const IMAGE_ULTRA_WIDE = { width: 3600, height: 1080 }; // 10:3
+const IMAGE_9_16 = { width: 1080, height: 1920 }; // 竖图（比 16:9 更窄）
 const IMAGE_PORTRAIT = { width: 400, height: 800 };
 
 /** 造一条记录（没写到的字段给空数组/旁白台词） */
@@ -136,30 +142,99 @@ describe("预览几何 → 背景", () => {
     });
   });
 
-  test("10:3 横长背景 scale=1 按 contain 缩到 1920 宽、上下留黑", () => {
-    // fit = min(1920/3600, 1080/1080) = 0.5333… → 1920×576，纵向居中 (1080-576)/2 = 252
+  test("10:3 横长背景（比 16:9 更扁）：纵向铺满 1080、左右溢出，居中裁剪", () => {
+    // cover：fit = max(1920/3600, 1080/1080) = 1 → 画成 3600×1080；
+    // x = (1920 - 3600) / 2 = -840（左右各被裁掉 840，图中心仍在画布中心）
     expect(
       backgroundWorldRect(makeBackground() as any, IMAGE_ULTRA_WIDE),
-    ).toEqual({ x: 0, y: 252, w: 1920, h: 576 });
+    ).toEqual({ x: -840, y: 0, w: 3600, h: 1080 });
   });
 
-  test("「铺满画面」用的 scale=1.875：10:3 背景撑成 3600×1080（世界正好 3.3 屏宽）", () => {
+  test("9:16 竖图（比 16:9 更窄）：横向铺满 1920、上下溢出，居中裁剪", () => {
+    // cover：fit = max(1920/1080 = 1.778, 1080/1920) = 1.778 → 画成 1920×3413；
+    // y = round((1080 - 3413) / 2) = round(-1166.5) = -1166（Math.round 的半值向 +∞ 取）
     expect(
-      backgroundWorldRect(
-        makeBackground({ scale: 1.875 }) as any,
-        IMAGE_ULTRA_WIDE,
-      ),
-    ).toEqual({ x: -840, y: 0, w: 3600, h: 1080 });
+      backgroundWorldRect(makeBackground() as any, IMAGE_9_16),
+    ).toEqual({ x: 0, y: -1166, w: 1920, h: 3413 });
+  });
+
+  test("正方形背景同样铺满：宽高都取画布宽（1920），上下溢出并居中", () => {
+    // fit = max(1920/1000 = 1.92, 1080/1000 = 1.08) = 1.92 → 画成 1920×1920
+    expect(
+      backgroundWorldRect(makeBackground() as any, { width: 1000, height: 1000 }),
+    ).toEqual({ x: 0, y: -420, w: 1920, h: 1920 });
+  });
+
+  /**
+   * 需求验收：任意比例的背景在预览里都没有黑边，且不被拉伸变形。
+   *
+   * <p>「没有黑边」的几何判定 = 绘制矩形在水平、竖直两个方向都<b>不短于</b>画布
+   * （而不是 contain 那种某一轴正好等于画布、另一轴留白）。
+   */
+  test("任意比例都盖满画布（无黑边），且宽高比不变（不拉伸变形）", () => {
+    const sizes = [
+      { width: 1920, height: 1080 }, // 16:9
+      { width: 3600, height: 1080 }, // 30:9 横长条
+      { width: 2400, height: 1600 }, // 3:2
+      { width: 1000, height: 1000 }, // 1:1
+      { width: 1080, height: 1350 }, // 4:5
+      { width: 1080, height: 1920 }, // 9:16 竖图
+      { width: 500, height: 4000 }, // 极端竖长条
+      { width: 4000, height: 500 }, // 极端横长条
+    ];
+
+    sizes.forEach((size) => {
+      const rect = backgroundWorldRect(makeBackground() as any, size);
+      expect(rect.x).toBeLessThanOrEqual(0);
+      expect(rect.y).toBeLessThanOrEqual(0);
+      expect(rect.x + rect.w).toBeGreaterThanOrEqual(1920);
+      expect(rect.y + rect.h).toBeGreaterThanOrEqual(1080);
+      // 等比缩放：取整误差最多 1px，宽高比与后端 BackgroundVisual 一致
+      expect(rect.w / rect.h).toBeCloseTo(size.width / size.height, 2);
+    });
+  });
+
+  test("裁剪以图片中心为基准：绘制矩形中心落在画布中心，手输偏移原样叠加", () => {
+    [
+      { width: 3600, height: 1080 },
+      { width: 1080, height: 1920 },
+      { width: 1000, height: 1000 },
+    ].forEach((size) => {
+      const centered = backgroundWorldRect(makeBackground() as any, size);
+      // 取整最多差 1px
+      expect(Math.abs(centered.x + centered.w / 2 - 960)).toBeLessThanOrEqual(1);
+      expect(Math.abs(centered.y + centered.h / 2 - 540)).toBeLessThanOrEqual(1);
+
+      const moved = backgroundWorldRect(
+        makeBackground({ posX: 300, posY: -200 }) as any,
+        size,
+      );
+      expect(Math.abs(moved.x + moved.w / 2 - (960 + 300))).toBeLessThanOrEqual(1);
+      expect(Math.abs(moved.y + moved.h / 2 - (540 - 200))).toBeLessThanOrEqual(1);
+    });
+  });
+
+  test("scale 在「铺满」的基础上再叠一层：10:3 背景 scale=2 → 7200×2160", () => {
+    // 目标框 3840×2160；fit = max(3840/3600 = 1.0667, 2160/1080 = 2) = 2 → 画成 7200×2160
+    expect(
+      backgroundWorldRect(makeBackground({ scale: 2 }) as any, IMAGE_ULTRA_WIDE),
+    ).toEqual({ x: -2640, y: -540, w: 7200, h: 2160 });
   });
 
   test("scale 非法/缺省时按 1 处理，越界收敛到 [0.1, 4]", () => {
     expect(
       backgroundWorldRect(makeBackground({ scale: 0 }) as any, IMAGE_16_9),
     ).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
-    // scale=99 被夹到 4（背景上限比立绘大，竖图要能铺满）：16:9 背景 → 7680×4320，仍居中
+    // scale=99 被夹到 4：16:9 背景 → 7680×4320，仍居中
     expect(
       backgroundWorldRect(makeBackground({ scale: 99 }) as any, IMAGE_16_9),
     ).toEqual({ x: -2880, y: -1620, w: 7680, h: 4320 });
+  });
+
+  test("scale<1 是唯一会露出底色的情况（用户主动拉远）", () => {
+    expect(
+      backgroundWorldRect(makeBackground({ scale: 0.5 }) as any, IMAGE_16_9),
+    ).toEqual({ x: 480, y: 270, w: 960, h: 540 });
   });
 
   test("posX/posY 叠加在居中位置之上（背景 tab 的 X/Y 就是它）", () => {
@@ -235,21 +310,21 @@ describe("预览几何 → 背景层级", () => {
   });
 });
 
-/* ==================== 立绘 / 临时图片层级（z-order） ==================== */
+/* ==================== 立绘 / 临时素材层级（z-order） ==================== */
 
 /**
  * 回归：「预览图里在前的立绘，播放时跑到了别的立绘后面」。
  *
  * <p>DOM 场景层（播放 / 拖拽 / 对位自检）与摄像机世界视图**直接按 `layers` 数组顺序叠**，
  * 而后端 `RenderOfImage.renderCharacters` 是从数组末尾往前画（首项最后画 = 最上层）。
- * 几何模块当初只给背景做了倒序 push、立绘/临时图片仍是正序，两边正好相反 ——
+ * 几何模块当初只给背景做了倒序 push、立绘/临时素材仍是正序，两边正好相反 ——
  * 于是播放时叠放层次整段反过来（命中检测按 z 走，点击是对的，只有"画"反了）。
  */
-describe("预览几何 → 立绘与临时图片层级", () => {
+describe("预览几何 → 立绘与临时素材层级", () => {
   const sizeOf = (key: string) =>
     key.startsWith("background") ? IMAGE_16_9 : IMAGE_PORTRAIT;
 
-  /** 三个立绘 + 两张临时图片：矩形完全重叠，只有叠放顺序能决定谁盖住谁 */
+  /** 三个立绘 + 两张临时素材：矩形完全重叠，只有叠放顺序能决定谁盖住谁 */
   const layeredRecord = () =>
     makeRecord({
       bg: [makeBackground() as any],
@@ -281,12 +356,12 @@ describe("预览几何 → 立绘与临时图片层级", () => {
     ]);
   });
 
-  test("临时图片整体画在立绘之上，组内同样是首项最后画", () => {
+  test("临时素材整体画在立绘之上，组内同样是首项最后画", () => {
     expect(keysOf("tempImage")).toEqual(["tempImage:1", "tempImage:0"]);
 
     const indexOf = (key: string) =>
       geometry.layers.findIndex((layer) => layer.key === key);
-    // 最后画的立绘之后才是第一张临时图片：两组不会交错
+    // 最后画的立绘之后才是第一张临时素材：两组不会交错
     expect(indexOf("tempImage:1")).toBeGreaterThan(indexOf("character:0"));
   });
 
@@ -440,9 +515,9 @@ describe("预览几何 → 头部裁剪区域", () => {
 });
 
 
-/* ============================ 临时图片 ============================ */
+/* ============================ 临时素材 ============================ */
 
-describe("预览几何 → 临时图片", () => {
+describe("预览几何 → 临时素材", () => {
   test("posX/posY 是左上角，尺寸 = 原图 × scale", () => {
     expect(
       tempImageWorldRect(makeTempImage({ scale: 0.5 }) as any, {
@@ -459,6 +534,100 @@ describe("预览几何 → 临时图片", () => {
         height: 100,
       }).w,
     ).toBe(200);
+  });
+});
+
+/* ============================ 临时素材的头部区域（情绪动画的坐标基准） ============================ */
+
+describe("预览几何 → 临时素材的头部区域", () => {
+  /** 300×900 的图片放在 (100,200)：头部正方形边长 100、左上角 (200,200)、中心 (250,250) */
+  const rect = () =>
+    tempImageWorldRect(makeTempImage(), { width: 300, height: 900 });
+
+  test("边长 = 图片显示宽度 / 3，且是正方形（与图片高度无关）", () => {
+    const box = tempImageHeadBox(rect());
+    expect(box.w).toBeCloseTo(100, 9);
+    expect(box.h).toBeCloseTo(100, 9);
+    // 高度 900 再大也不影响边长：只看宽度
+    expect(tempImageHeadBox(tempImageWorldRect(makeTempImage(), { width: 300, height: 120 })).w).toBeCloseTo(
+      100,
+      9,
+    );
+  });
+
+  test("水平居中：左右留白相等，中心在图片宽度中点", () => {
+    const image = rect();
+    const box = tempImageHeadBox(image);
+    const leftGap = box.x - image.x;
+    const rightGap = image.x + image.w - (box.x + box.w);
+    expect(leftGap).toBeCloseTo(rightGap, 9);
+    expect(box.x + box.w / 2).toBeCloseTo(image.x + image.w / 2, 9);
+  });
+
+  test("顶部贴合：正方形上边与图片上边缘对齐（不往下掉）", () => {
+    const image = rect();
+    const box = tempImageHeadBox(image);
+    expect(box.y).toBe(image.y);
+    expect(box.y + box.h).toBeCloseTo(image.y + box.h, 9);
+    // 中心 = 图片顶边 + 半边长
+    expect(tempImageHeadCenter(image).y).toBeCloseTo(image.y + box.h / 2, 9);
+  });
+
+  test("按图片的**实际显示尺寸**算：scale 放大 / 缩小，方框跟着一起变", () => {
+    const normal = tempImageWorldRect(makeTempImage({ scale: 1 }), { width: 300, height: 900 });
+    const doubled = tempImageWorldRect(makeTempImage({ scale: 2 }), { width: 300, height: 900 });
+    expect(tempImageHeadSize(doubled)).toBeCloseTo(tempImageHeadSize(normal) * 2, 9);
+    // 顶部贴合同一个图片上边缘
+    expect(tempImageHeadBox(doubled).y).toBe(tempImageHeadBox(normal).y);
+    // 中心仍在各自图片的宽度中点
+    expect(tempImageHeadCenter(doubled).x).toBeCloseTo(doubled.x + doubled.w / 2, 9);
+  });
+
+  test("头部中心 = (图片 x + 宽/2, 图片 y + 宽/6)（情绪动画的锚点）", () => {
+    const image = rect();
+    expect(tempImageHeadCenter(image)).toEqual({
+      x: image.x + image.w / 2,
+      y: image.y + image.w / 6,
+    });
+  });
+
+  test("同一份摆放（偏移 0.5 个头宽）换任何图片都落在相同相对位置", () => {
+    // 两张完全不同的图片：300×900 与 600×300
+    const cases = [
+      { image: { width: 300, height: 900 }, scale: 1 },
+      { image: { width: 600, height: 300 }, scale: 1 },
+      { image: { width: 300, height: 900 }, scale: 2 },
+    ];
+
+    for (const item of cases) {
+      const image = tempImageWorldRect(makeTempImage({ scale: item.scale }), item.image);
+      const center = tempImageHeadCenter(image);
+      const head = tempImageHeadSize(image);
+      const sprite = spriteRect(
+        center.x,
+        center.y,
+        head,
+        600,
+        400,
+        1,
+        1,
+        0.5,
+        -0.5,
+      );
+
+      // 素材中心相对头部中心的位移 = (0.5, −0.5) × 头部边长
+      expect(sprite.x + sprite.w / 2).toBeCloseTo(center.x + 0.5 * head, 9);
+      expect(sprite.y + sprite.h / 2).toBeCloseTo(center.y - 0.5 * head, 9);
+      // 方框边长永远是图片显示宽度的 1/3
+      expect(head).toBeCloseTo(image.w / 3, 9);
+    }
+  });
+
+  test("tempImageScale：缺省 / 非法 / 非正按 1（与 tempImageWorldRect 同一套兜底）", () => {
+    expect(tempImageScale({ scale: 0 } as any)).toBe(1);
+    expect(tempImageScale({ scale: -2 } as any)).toBe(1);
+    expect(tempImageScale({ scale: undefined } as any)).toBe(1);
+    expect(tempImageScale({ scale: 0.5 } as any)).toBe(0.5);
   });
 });
 
@@ -526,10 +695,11 @@ describe("预览几何 → 投影", () => {
 /* ============================ 世界边界 ============================ */
 
 describe("预览几何 → 世界边界", () => {
+  // 10:3 背景在 scale=1 时按 cover 已经是 3600×1080，世界因此有 3.3 屏宽可摇
   const ultraWide = () =>
-    makeRecord({ bg: [makeBackground({ scale: 1.875 }) as any] });
+    makeRecord({ bg: [makeBackground({ scale: 1 }) as any] });
 
-  test("世界参考框 = 背景归位框 ∪ 画布（10:3 撑满时是 3600 宽）", () => {
+  test("世界参考框 = 背景归位框 ∪ 画布（10:3 铺满时是 3600 宽）", () => {
     expect(worldRefOf(ultraWide(), () => IMAGE_ULTRA_WIDE)).toEqual({
       x: -840,
       y: 0,
@@ -540,7 +710,7 @@ describe("预览几何 → 世界边界", () => {
 
   test("世界参考框不随背景 posX 变化（这是「拖背景不顶着镜头跑」的前提）", () => {
     const moved = makeRecord({
-      bg: [makeBackground({ scale: 1.875, posX: 500, posY: -200 }) as any],
+      bg: [makeBackground({ scale: 1, posX: 500, posY: -200 }) as any],
     });
     expect(worldRefOf(moved, () => IMAGE_ULTRA_WIDE)).toEqual(
       worldRefOf(ultraWide(), () => IMAGE_ULTRA_WIDE),
@@ -621,7 +791,7 @@ describe("预览几何 → 图层与命中", () => {
     );
   });
 
-  test("z 序：立绘首项在最上层，临时图片压过立绘，UI 压过场景", () => {
+  test("z 序：立绘首项在最上层，临时素材压过立绘，UI 压过场景", () => {
     const bg = geometry.layers.find((layer) => layer.key === "background:0")!;
     const first = geometry.layers.find((layer) => layer.key === "character:0")!;
     const second = geometry.layers.find((layer) => layer.key === "character:1")!;

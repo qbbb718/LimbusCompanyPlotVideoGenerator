@@ -107,7 +107,7 @@ describe("PreviewSceneLayer", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  test("压暗的图层加 .dim（背景 / 立绘 / 临时图片同一套滤镜）", () => {
+  test("压暗的图层加 .dim（背景 / 立绘 / 临时素材同一套滤镜）", () => {
     const { container } = render(
       <PreviewSceneLayer
         items={[

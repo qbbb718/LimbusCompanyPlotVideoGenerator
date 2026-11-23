@@ -87,12 +87,12 @@ export interface CameraPresetDefinition {
   params: CameraPresetParam[];
 }
 
-/** 镜头摇动：按帧轻晃"看世界的那台相机"（只影响背景 / 立绘 / 临时图片） */
+/** 镜头摇动：按帧轻晃"看世界的那台相机"（只影响背景 / 立绘 / 临时素材） */
 export const CAMERA_SHAKE_PRESET: CameraPresetDefinition = {
   type: EFFECT_TYPE_CAMERA_SHAKE,
   emoji: "📳",
   label: "镜头摇动",
-  description: "手持晃动，只影响背景 / 立绘 / 临时图片（UI 与黑边不动）。",
+  description: "手持晃动，只影响背景 / 立绘 / 临时素材（UI 与黑边不动）。",
   params: [
     {
       key: "amplitude",

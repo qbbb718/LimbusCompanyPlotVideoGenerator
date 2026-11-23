@@ -124,8 +124,14 @@ public class PortraitController {
                 PortraitDAO dao = handle.attach(PortraitDAO.class);
                 dao.save(portrait);
 
-                // 保存角色与立绘的关联关系，不设为默认立绘
-                dao.saveCharacterPortrait(characterId, portrait.getPortraitID(), false, 0);
+                // 保存角色与立绘的关联关系，不设为默认立绘。
+                // 序号取"现有最大值 + 1"：固定写 0 会和已有立绘重复，
+                // 之后按 display_order 排序时顺序就不稳定。
+                dao.saveCharacterPortrait(
+                        characterId,
+                        portrait.getPortraitID(),
+                        false,
+                        dao.findNextDisplayOrder(characterId));
 
                 return null;
             });
@@ -183,6 +189,38 @@ public class PortraitController {
     }
 
     /**
+     * 保存立绘的显示顺序（拖拽排序后立即调用）。
+     *
+     * <p>只更新 {@code character_portraits.display_order}，不碰已有的默认标记、不动立绘文件，
+     * 也不重建名片 —— 排序是纯展示属性，没必要为它触发一次约 1s 的名片渲染。
+     * （历史数据的默认标记不是恰好一个时，会保留显示顺序最靠前的那张为唯一默认，避免默认身份随排序漂移。）
+     *
+     * <p>请求体是前端列表里立绘ID的顺序。刚上传、还没点「保存」写进 portraits 表的
+     * 立绘会被跳过（保存角色时会按同一份列表顺序写入），不会因此报错。
+     *
+     * @param characterId 角色ID
+     * @param portraitIds 立绘ID顺序（从第一张到最后一张）
+     */
+    @PutMapping("/characters/{characterId}/portraits/order")
+    public void updatePortraitOrder(
+            @PathVariable String characterId,
+            @RequestBody(required = false) List<String> portraitIds) {
+        try {
+            logger.info("保存立绘顺序，角色ID: " + characterId
+                    + ", 数量: " + (portraitIds != null ? portraitIds.size() : 0));
+
+            int updated = jdbi.withExtension(PortraitDAO.class,
+                    dao -> dao.reorderCharacterPortraits(characterId, portraitIds));
+
+            logger.info("立绘顺序已保存，角色ID: " + characterId + ", 更新关联记录: " + updated);
+        } catch (Exception e) {
+            logger.severe("保存立绘顺序失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("保存立绘顺序失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 删除立绘
      */
     @DeleteMapping("/characters/{characterId}/portraits/{portraitId}")
@@ -206,8 +244,8 @@ public class PortraitController {
             jdbi.inTransaction(handle -> {
                 PortraitDAO dao = handle.attach(PortraitDAO.class);
 
-                // 记下删除前的默认立绘：删掉的正是它的话，要把剩下的第一张提为默认，
-                // 否则角色会变成"一张默认立绘都没有"，重新打开时默认项会随名称排序漂移。
+                // 记下删除前的默认立绘：删掉的正是它的话，要把剩下的第一张（按 display_order）
+                // 提为默认，否则角色会变成"一张默认立绘都没有"，默认项会随名称排序漂移。
                 String previousDefaultId = dao.findDefaultPortraitId(characterId);
 
                 // 只删这一条关联。旧实现调的是 deleteCharacterPortraits（删该角色**全部**关联），
@@ -216,7 +254,7 @@ public class PortraitController {
 
                 if (portraitId.equals(previousDefaultId)) {
                     // findDefaultPortraitId 按 (is_default, display_order) 取第一张，
-                    // 此时默认标记已清空，拿到的就是剩下的第一张（与前端列表首项一致）
+                    // 此时默认标记已清空，拿到的就是剩下的第一张（与前端列表的显示顺序一致）
                     String nextDefaultId = dao.findDefaultPortraitId(characterId);
                     if (nextDefaultId != null) {
                         dao.setDefaultPortrait(characterId, nextDefaultId);

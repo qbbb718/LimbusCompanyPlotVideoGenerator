@@ -7,6 +7,7 @@ import com.lbc_plot.render.video.Camera;
 import com.lbc_plot.render.video.CharacterVisual;
 import com.lbc_plot.render.video.TempImageVisual;
 import com.lbc_plot.render.video.anim.AnimationClip;
+import com.lbc_plot.render.video.anim.EmotionAnim;
 import com.lbc_plot.render.video.anim.LoopMode;
 import com.lbc_plot.render.video.anim.SequenceTiming;
 import com.lbc_plot.render.video.anim.SpriteAnimation;
@@ -87,7 +88,9 @@ public final class RecordAnimation {
         List<TempImageVisual> tempImages = record.getTempImages();
         if (tempImages != null) {
             for (TempImageVisual tempImage : tempImages) {
-                if (tempImage != null && tempImage.isAnimated()) {
+                if (tempImage != null
+                        && (tempImage.isAnimated() || tempImage.hasEmotionAnim())) {
+                    // 临时图片的情绪动画同样逐帧变图，漏判 → 成片里冻在第 1 张图
                     return true;
                 }
             }
@@ -127,7 +130,7 @@ public final class RecordAnimation {
                     // 只按"有没有挂动画"判断会让复用逻辑把上一帧整段复制过去（动画冻住）；
                     // 只算帧号不算 alpha，淡入淡出那几帧的签名不变，也会被误复用。
                     if (character.hasEmotionAnim()) {
-                        appendEmotionAnim(signature, i, character, frameIndex);
+                        appendEmotionAnim(signature, 'e', i, character.getEmotionAnim(), frameIndex);
                     }
                 }
             }
@@ -136,10 +139,16 @@ public final class RecordAnimation {
         if (tempImages != null) {
             for (int i = 0; i < tempImages.size(); i++) {
                 TempImageVisual tempImage = tempImages.get(i);
-                if (tempImage == null || !tempImage.isAnimated()) {
+                if (tempImage == null) {
                     continue;
                 }
-                appendTransform(signature, 't', i, transformOf(tempImage, frameIndex));
+                if (tempImage.isAnimated()) {
+                    appendTransform(signature, 't', i, transformOf(tempImage, frameIndex));
+                }
+                // 临时图片的情绪动画：与立绘同一套规则（帧号 + alpha 都要进签名）
+                if (tempImage.hasEmotionAnim()) {
+                    appendEmotionAnim(signature, 'E', i, tempImage.getEmotionAnim(), frameIndex);
+                }
             }
         }
         return signature.toString();
@@ -157,11 +166,13 @@ public final class RecordAnimation {
      * <p>精度与 {@link #appendTransform} 一致（alpha 取 4 位）：远低于肉眼阈值，又能吃掉浮点噪声。
      * 动画播完（{@code imageIndex == NO_FRAME}）之后签名会稳定下来，后面几百帧就能继续复用
      * ——这正是"加了序列帧以后导出没有变慢太多"的原因。
+     *
+     * @param kind 元素种类前缀：{@code 'e'} = 立绘，{@code 'E'} = 临时图片
      */
-    private static void appendEmotionAnim(StringBuilder signature, int index, CharacterVisual character,
-            int frameIndex) {
-        SequenceTiming.Sample sample = character.getEmotionAnim().sampleAt(frameIndex);
-        signature.append('e').append(index).append(':')
+    private static void appendEmotionAnim(StringBuilder signature, char kind, int index,
+            EmotionAnim emotionAnim, int frameIndex) {
+        SequenceTiming.Sample sample = emotionAnim.sampleAt(frameIndex);
+        signature.append(kind).append(index).append(':')
                 .append(sample.imageIndex()).append(',')
                 .append(String.format("%.4f", sample.alpha())).append(';');
     }

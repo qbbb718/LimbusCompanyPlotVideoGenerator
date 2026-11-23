@@ -738,6 +738,21 @@ class ApiService {
     }
   }
 
+  // 保存立绘显示顺序（资源管理 → 角色 → 立绘列表拖拽排序）
+  // 只更新 character_portraits.display_order，不碰默认标记 / 立绘文件 / 名片缓存。
+  async reorderPortraits(characterId: string, portraitIds: string[]) {
+    try {
+      const response = await apiClient.put(
+        `/characters/${characterId}/portraits/order`,
+        portraitIds,
+      );
+      return response.data;
+    } catch (error) {
+      console.error('保存立绘顺序失败:', error);
+      throw error;
+    }
+  }
+
   // 添加背景
   async addBackground(backgroundData: any) {
     try {
@@ -801,10 +816,10 @@ class ApiService {
     }
   }
 
-  // ===== 临时图片（NPC、道具等） =====
+  // ===== 临时素材（NPC、道具等） =====
 
   /**
-   * 上传临时图片到项目文件夹
+   * 上传临时素材到项目文件夹
    * @returns { uuid, imagePath, url }
    */
   async uploadTempImage(file: File): Promise<{ uuid: string; imagePath: string; url: string }> {
@@ -814,24 +829,24 @@ class ApiService {
       const response = await apiClient.post('/temp-images/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      console.log('[ApiService] 临时图片上传成功:', response.data);
+      console.log('[ApiService] 临时素材上传成功:', response.data);
       return response.data;
     } catch (error) {
-      console.error('[ApiService] 上传临时图片失败:', error);
+      console.error('[ApiService] 上传临时素材失败:', error);
       throw error;
     }
   }
 
   /**
-   * 删除临时图片文件
+   * 删除临时素材文件
    */
   async deleteTempImage(uuid: string): Promise<{ success: boolean }> {
     try {
       const response = await apiClient.delete(`/temp-images/${uuid}`);
-      console.log('[ApiService] 临时图片已删除:', uuid);
+      console.log('[ApiService] 临时素材已删除:', uuid);
       return response.data;
     } catch (error) {
-      console.error('[ApiService] 删除临时图片失败:', error);
+      console.error('[ApiService] 删除临时素材失败:', error);
       throw error;
     }
   }
@@ -1182,15 +1197,15 @@ class ApiService {
   }
 
   /**
-   * 构建临时图片（路人/道具）URL
+   * 构建临时素材（路人/道具）URL
    *
-   * 临时图片存在 {数据目录}/projects/temp/images 下，由后端静态映射 /projects/** 对外提供。
+   * 临时素材存在 {数据目录}/projects/temp/images 下，由后端静态映射 /projects/** 对外提供。
    * 记录里 TempImageVisual.imagePath 有两种历史格式：
    *   - 相对路径：./projects/temp/images/{uuid}.png、projects/temp/images/{uuid}.png
    *   - 绝对路径：C:/Users/<用户>/AppData/Roaming/.../projects/temp/images/{uuid}.png
    *     （后端 RuntimePaths 解析出来的就是绝对路径，现存记录基本都是这一种）
    * 绝对路径直接拼到 BASE_URL 后面会得到 http://localhost:8081/C:/...
-   * 静态资源映射匹配不上，图片一直 404 —— 属性面板里的临时图片预览因此一直没显示出来。
+   * 静态资源映射匹配不上，图片一直 404 —— 属性面板里的临时素材预览因此一直没显示出来。
    * 两种格式统一截到 "projects/" 这一段再拼，都能落到 /projects/temp/images/{uuid}.png。
    *
    * @param pathOrFilename 记录里保存的 imagePath
@@ -1211,7 +1226,7 @@ class ApiService {
     }
     // 其它 URL 路径（如 /projects/xxx 不经过上面的分支时）
     if (normalized.startsWith('/')) return BASE_URL + encodeURI(normalized);
-    // 纯文件名 / 其它相对路径：按临时图片目录处理
+    // 纯文件名 / 其它相对路径：按临时素材目录处理
     return `${BASE_URL}/projects/temp/images/${encodeURIComponent(
       this.extractFilename(normalized),
     )}`;

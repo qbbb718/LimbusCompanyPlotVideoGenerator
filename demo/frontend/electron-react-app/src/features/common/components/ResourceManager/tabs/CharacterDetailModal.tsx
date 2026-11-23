@@ -12,15 +12,21 @@ import type {
 } from "./CharacterDetailModal/PortraitsSection";
 import PortraitModal from "./PortraitModal";
 import {
+  applyPortraitOrder,
   buildPortraitImageUrl,
   getDefaultPortrait,
   isDefaultPortraitId,
   loadPortraitImageSize,
   markDefaultPortrait,
-  orderPortraitsDefaultFirst,
+  movePortrait,
+  normalizePortraitDefaults,
+  portraitIdsOf,
 } from "@features/common/utils/portraitUtils";
+import type { PortraitDropPosition } from "@features/common/utils/portraitUtils";
 import {
   CropRect,
+  CropScaleMode,
+  ImageSize,
   PortraitCropState,
   isValidCropState,
   resolveDefaultCropRect,
@@ -29,10 +35,22 @@ import {
 import {
   buildImportedPortrait,
   collectCropUpdateTargets,
+  collectSelectedCropTargets,
+  collectSelectedPortraits,
+  areAllPortraitsSelected,
+  describeCropBatchResult,
+  describeDeleteBatchResult,
   hasPortraitName,
   isSameCrop,
   portraitCropOf,
+  pruneSelectedIds,
   stripFileExtension,
+  toggleSelectedAll,
+  toggleSelectedId,
+} from "@features/common/utils/portraitBatch";
+import type {
+  PortraitCropBatchOutcome,
+  PortraitDeleteBatchOutcome,
 } from "@features/common/utils/portraitBatch";
 import {
   createCroppedImageFromElement,
@@ -98,6 +116,14 @@ interface CharacterDetailModalProps {
   onDelete?: (characterId: string, deleteFiles: boolean) => void;
   isNewCharacter: boolean;
   portraits: Portrait[];
+  /**
+   * 拖拽排序保存成功后，把新的立绘顺序同步回父组件的角色列表。
+   *
+   * <p>只影响父组件里"下次打开用"的那份数据，**不改**本弹窗的 `character` prop：
+   * 否则父组件用旧的角色字段重建数据，会把用户还没保存的名称 / 标签等编辑一起冲掉。
+   * 没有这个回调时（单测直接渲染本组件）只更新弹窗内部状态。
+   */
+  onPortraitsChange?: (portraits: Portrait[]) => void;
 }
 
 /** 把 0~1 的比例写成百分比（25% / 12.5%），确认框和结果提示里给用户看 */
@@ -115,16 +141,16 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   onDelete,
   isNewCharacter,
   portraits,
+  onPortraitsChange,
 }) => {
   // 编辑中的角色状态，初始化时传入角色数据或为null。
-  // 立绘统一按"默认立绘在前"排一次：后端返回的顺序本来就是默认在前，
-  // 但上层父组件可能带着本地改动过的顺序进来（保存后的响应、局部更新），
-  // 这里排好之后，"设为默认 / 新增 / 删除"的本地改动也能保持同一约定。
+  // 立绘保持数据里的顺序（后端 display_order / 用户拖拽结果），只把默认标记归一化：
+  // 默认立绘可以在任意位置，角标必须跟着那张卡片走，不能靠"首项"兜底。
   const [editingCharacter, setEditingCharacter] = useState<MyCharacter | null>(
     character
       ? {
           ...character,
-          portraits: orderPortraitsDefaultFirst(character.portraits),
+          portraits: normalizePortraitDefaults(character.portraits),
         }
       : null,
   );
@@ -156,11 +182,22 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   // 保存失败的提示（就地显示，不用 alert：alert 会抢走焦点，关掉后输入框就没法接着打字了）
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // ---- 立绘批量操作（批量套用默认立绘裁剪 / 批量导入立绘）----
+  // ---- 拖拽排序 ----
+  // 正在把新顺序写回后端：期间禁止再次拖动 / 保存，避免两次请求乱序落库。
+  const [reordering, setReordering] = useState(false);
+  const reorderingRef = useRef(false);
+
+  // ---- 立绘批量操作（批量套用默认立绘裁剪 / 批量导入立绘 / 多选批量操作）----
   const [batchProgress, setBatchProgress] =
     useState<PortraitBatchProgress | null>(null);
   const [batchMessage, setBatchMessage] =
     useState<PortraitBatchMessage | null>(null);
+  // 多选模式：进入后立绘卡片上出现勾选框，标题行下方出现批量操作条
+  const [selectionMode, setSelectionMode] = useState(false);
+  // 已勾选的立绘 ID。用 Set 存（勾选状态是"有没有"，不需要顺序）
+  const [selectedPortraitIds, setSelectedPortraitIds] = useState<Set<string>>(
+    new Set(),
+  );
   /**
    * 缩略图代次表：立绘ID → 代次。
    *
@@ -237,6 +274,77 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         : [],
     [editingCharacter?.portraits, defaultPortrait, defaultPortraitCrop],
   );
+
+  // ---- 多选相关的派生状态 ----
+  // 已选中的立绘：只算**还在列表里**的那些（删掉之后 Set 里可能还留着旧 ID）
+  const selectedPortraits = useMemo(
+    () =>
+      collectSelectedPortraits(
+        editingCharacter?.portraits,
+        selectedPortraitIds,
+      ),
+    [editingCharacter?.portraits, selectedPortraitIds],
+  );
+  // 已选中、且需要套用默认裁剪的立绘：默认立绘本身跳过（它就是要套用的来源）
+  const selectedCropTargets = useMemo(
+    () =>
+      collectSelectedCropTargets(
+        editingCharacter?.portraits,
+        selectedPortraitIds,
+        defaultPortrait?.portraitID,
+      ),
+    [editingCharacter?.portraits, selectedPortraitIds, defaultPortrait],
+  );
+  const allPortraitsSelected = useMemo(
+    () =>
+      areAllPortraitsSelected(
+        editingCharacter?.portraits,
+        selectedPortraitIds,
+      ),
+    [editingCharacter?.portraits, selectedPortraitIds],
+  );
+  /**
+   * 「沿用默认立绘裁剪」为什么不能用（null = 可以用）。
+   *
+   * <p>按钮的 title 直接显示这句，用户不用点进去才知道是"没默认立绘"还是"只选了默认立绘"。
+   */
+  const selectedCropDisabledReason = useMemo(() => {
+    if (!defaultPortrait) {
+      return "还没有默认立绘：先编辑一张立绘并「设为默认」，才有可沿用的裁剪";
+    }
+    if (!defaultPortraitCrop) {
+      return `默认立绘「${defaultPortrait.portName}」还没框好头部：先编辑它，把裁剪框框在脸上`;
+    }
+    if (selectedPortraits.length === 0) {
+      return "先勾选要套用裁剪的立绘";
+    }
+    if (selectedCropTargets.length === 0) {
+      return "选中的只有默认立绘本身，它不需要套用自己的裁剪";
+    }
+    return null;
+  }, [
+    defaultPortrait,
+    defaultPortraitCrop,
+    selectedPortraits,
+    selectedCropTargets,
+  ]);
+  const batchDeleteDisabledReason =
+    selectedPortraits.length === 0 ? "先勾选要删除的立绘" : null;
+
+  /**
+   * 列表里的立绘变了（批量导入 / 删除 / 切角色）就顺手清掉已经不存在于列表的勾选，
+   * 避免「已选 3 张」比实际卡片多、批量按钮误判成还有得删。
+   */
+  useEffect(() => {
+    setSelectedPortraitIds((prev) => {
+      const next = pruneSelectedIds(prev, editingCharacter?.portraits);
+      // 内容没变就返回原引用：否则每次立绘列表变化都会多一次无意义的重渲染
+      const sameContent =
+        next.size === prev.size &&
+        Array.from(next).every((portraitId) => prev.has(portraitId));
+      return sameContent ? prev : next;
+    });
+  }, [editingCharacter?.portraits]);
 
   // 图片缓存状态，避免重复加载
   const [loadedImages, setLoadedImages] = useState<{ [key: string]: string }>(
@@ -381,15 +489,244 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     }
   };
 
+  // ---- 多选模式 ----
+
+  /** 进入多选模式（每次进入都从"一张都没选"开始） */
+  const enterSelectionMode = () => {
+    setSelectionMode(true);
+    setSelectedPortraitIds(new Set());
+  };
+
+  /** 退出多选模式并清空勾选 */
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedPortraitIds(new Set());
+  };
+
+  /** 勾选 / 取消勾选一张立绘 */
+  const handleTogglePortraitSelection = (portraitId: string) => {
+    setSelectedPortraitIds((prev) => toggleSelectedId(prev, portraitId));
+  };
+
+  /** 全选 / 取消全选（只作用于当前列表里的立绘） */
+  const handleToggleSelectAllPortraits = () => {
+    setSelectedPortraitIds((prev) =>
+      toggleSelectedAll(editingCharacter?.portraits, prev),
+    );
+  };
+
   /**
-   * 「与默认立绘裁剪一致」：把默认立绘以外的所有立绘，裁剪框都按默认立绘的
-   * **比例**套用（原图尺寸不同也能保持同样的头部比例）。
+   * 拖拽排序：先**立即**更新本地顺序（界面即时响应），再把新顺序写回后端。
    *
-   * <p>裁剪值存的是原图像素，所以先读默认立绘自己的原图尺寸，把它的框换成
-   * 「中心点 + 边长占宽度的比例」，再逐张按各自原图尺寸落到图上，并夹进图片范围；
-   * 写回立绘的是**夹取后的实际坐标**（否则会出现"框在图里、存下来的坐标在图外"）。
-   * 读不到默认立绘原图尺寸时退回按像素照搬（老行为）。
+   * <p>默认立绘不参与任何特殊处理：它可以被拖动，也可以是其它立绘的落点。
+   *
+   * <p>保存失败时按拖动前的 ID 顺序回滚，并给出一条错误提示。
+   * 回滚只恢复**顺序**，期间改过的裁剪 / 默认标记 / 新加的立绘不会被旧快照覆盖。
+   * 正在保存时忽略新的拖动，保证请求按用户操作顺序落库。
+   *
+   * <p>新角色还没入库（{@code characterPersisted=false}）时只改本地顺序，
+   * 随后点「保存」会随角色一起写入，不会为一个还不存在的角色发请求。
+   */
+  const handleReorderPortrait = async (
+    fromPortraitId: string,
+    toPortraitId: string,
+    position: PortraitDropPosition,
+  ) => {
+    if (!editingCharacter || reorderingRef.current || saving) {
+      return;
+    }
+
+    const current = editingCharacter.portraits ?? [];
+    const next = movePortrait(current, fromPortraitId, toPortraitId, position);
+    // 落点算出来和原来一样（含只有一张立绘的情况）：没有可保存的变化，不报错
+    if (next === current) {
+      return;
+    }
+
+    const beforeOrder = portraitIdsOf(current);
+    reorderingRef.current = true;
+    setReordering(true);
+    setBatchMessage(null);
+    setEditingCharacter((prev) =>
+      prev ? { ...prev, portraits: next } : prev,
+    );
+
+    try {
+      if (characterPersisted) {
+        await ApiService.reorderPortraits(
+          editingCharacter.characterID,
+          portraitIdsOf(next),
+        );
+      }
+    } catch (error) {
+      console.error("[CharacterDetailModal] 拖拽排序保存失败:", error);
+      setEditingCharacter((prev) =>
+        prev
+          ? { ...prev, portraits: applyPortraitOrder(prev.portraits, beforeOrder) }
+          : prev,
+      );
+      setBatchMessage({
+        kind: "error",
+        text: `拖拽排序未保存，已恢复原顺序。${describeApiError(
+          error,
+          "请重试",
+        )}`,
+      });
+      return;
+    } finally {
+      reorderingRef.current = false;
+      setReordering(false);
+    }
+
+    // 同步给父组件：关掉弹窗再打开时拿到的是已经排好的顺序（不用刷新页面）。
+    // 放在 try 外面：父组件的回调不应影响"保存成功"的判定。
+    onPortraitsChange?.(next);
+  };
+
+  /**
+   * 把 `targets` 的裁剪逐张改成默认立绘的裁剪（**执行核心**：不确认、不碰选中状态）。
+   *
+   * <p>裁剪值存的是原图像素，所以调用方先读默认立绘自己的原图尺寸，把它的框换成
+   * 「中心点 + 边长占宽度的比例」；这里逐张按各自原图尺寸落到图上，并夹进图片范围，
+   * 写回的是**夹取后的实际坐标**（否则会出现"框在图里、存下来的坐标在图外"）。
+   * 读不到目标原图尺寸时退回按像素照搬（老行为）。
    * 改完重生成缩略图，不然列表里看到的还是旧头部的图。
+   *
+   * <p>单张失败不影响整批：记下它的 ID / 名字交回调用方，由调用方决定要不要保留选中重试。
+   */
+  const runDefaultCropBatch = async (params: {
+    characterId: string;
+    targets: Portrait[];
+    defaultCrop: PortraitCropState;
+    defaultImageSize: ImageSize | null;
+    mode: CropScaleMode;
+  }) => {
+    const { characterId, targets, defaultCrop, defaultImageSize, mode } =
+      params;
+    const updatedPortraits = new Map<string, Portrait>();
+    const failedIds: string[] = [];
+    const failedNames: string[] = [];
+    let adjustedCount = 0;
+    let unchangedCount = 0;
+    let imageFailedCount = 0;
+    let thumbnailFailedCount = 0;
+
+    for (let index = 0; index < targets.length; index++) {
+      const portrait = targets[index];
+      reportBatchProgress({ kind: "crop", done: index, total: targets.length });
+
+      try {
+        // 先按"图片尺寸未知"取一份兜底值（原图读不到时至少让数值一致）
+        let rect: CropRect | null = resolveDefaultCropRect({
+          crop: defaultCrop,
+          imageSize: null,
+        }).rect;
+        if (!rect) {
+          throw new Error("默认立绘没有有效的裁剪框");
+        }
+
+        let image: HTMLImageElement | null = null;
+        try {
+          image = await loadImageElement(
+            buildPortraitImageUrl(portrait.imagePath),
+          );
+          const resolved = resolveDefaultCropRect({
+            crop: defaultCrop,
+            sourceImageSize: defaultImageSize,
+            imageSize: {
+              width: image.naturalWidth,
+              height: image.naturalHeight,
+            },
+          });
+          if (resolved.rect) {
+            rect = resolved.rect;
+            if (resolved.adjusted) adjustedCount += 1;
+          }
+        } catch (error) {
+          imageFailedCount += 1;
+          console.warn(
+            "[CharacterDetailModal] 批量改裁剪：原图加载失败，只改数值",
+            portrait.portName,
+            error,
+          );
+        }
+
+        // 比例换算后算出来还是原来的框：不用重算缩略图（不同尺寸的图很少刚好相同）
+        const nextCrop = {
+          faceX: rect.left,
+          faceY: rect.top,
+          length: rect.width,
+        };
+        if (isSameCrop(portraitCropOf(portrait), nextCrop)) {
+          unchangedCount += 1;
+          continue;
+        }
+
+        let thumbnailPath = portrait.thumbnailPath;
+        if (image) {
+          const uploadedThumbnail = await regeneratePortraitThumbnail(
+            characterId,
+            portrait.portraitID,
+            image,
+            rect,
+          );
+          if (uploadedThumbnail) {
+            thumbnailPath = uploadedThumbnail;
+          } else {
+            thumbnailFailedCount += 1;
+          }
+        }
+
+        updatedPortraits.set(portrait.portraitID, {
+          ...portrait,
+          ...nextCrop,
+          thumbnailPath,
+        });
+      } catch (error) {
+        // 这张彻底没改成（算不出框 / 意外异常）：不能算进"已更新"，记为失败项
+        failedIds.push(portrait.portraitID);
+        failedNames.push(portrait.portName);
+        console.error(
+          "[CharacterDetailModal] 批量改裁剪：这张立绘没改成功",
+          portrait.portName,
+          error,
+        );
+      }
+    }
+
+    reportBatchProgress(null);
+
+    if (updatedPortraits.size > 0) {
+      setEditingCharacter((prev) =>
+        prev
+          ? {
+              ...prev,
+              portraits: (prev.portraits || []).map(
+                (portrait) =>
+                  updatedPortraits.get(portrait.portraitID) ?? portrait,
+              ),
+            }
+          : prev,
+      );
+      // 只刷新真的重算过缩略图的那几张，其它立绘的 <img> 不动
+      bumpThumbnailVersions(Array.from(updatedPortraits.keys()));
+    }
+
+    const outcome: PortraitCropBatchOutcome = {
+      mode,
+      updated: updatedPortraits.size,
+      unchanged: unchangedCount,
+      adjusted: adjustedCount,
+      imageFailed: imageFailedCount,
+      thumbnailFailed: thumbnailFailedCount,
+      failed: failedNames,
+    };
+    return { outcome, failedIds };
+  };
+
+  /**
+   * 「与默认立绘裁剪一致」：把默认立绘以外的**所有**立绘，裁剪框都按默认立绘的
+   * **比例**套用（原图尺寸不同也能保持同样的头部比例）。
    */
   const handleApplyDefaultCropToAll = async () => {
     if (!editingCharacter) return;
@@ -433,141 +770,183 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     });
     if (!confirmed) return;
 
-    const characterId = editingCharacter.characterID;
-    const updatedPortraits = new Map<string, Portrait>();
-    let adjustedCount = 0;
-    let unchangedCount = 0;
-    let imageFailedCount = 0;
-    let thumbnailFailedCount = 0;
     setBatchMessage(null);
+    const { outcome } = await runDefaultCropBatch({
+      characterId: editingCharacter.characterID,
+      targets,
+      defaultCrop: defaultPortraitCrop,
+      defaultImageSize,
+      mode: defaultRatio ? "ratio" : "pixel",
+    });
+    setBatchMessage(describeCropBatchResult(outcome, "all"));
+  };
 
-    for (let index = 0; index < targets.length; index++) {
-      const portrait = targets[index];
-      reportBatchProgress({ kind: "crop", done: index, total: targets.length });
+  /**
+   * 「沿用默认立绘裁剪」（多选模式，只改**选中的**那几张）。
+   *
+   * <p>与「与默认立绘裁剪一致」的区别：那个动全部立绘，这个只动勾选的；
+   * 默认立绘本身跳过（它就是要沿用的来源）。
+   *
+   * <p>这里不再二次确认：范围是用户一张张勾出来的，按钮上还写着张数，
+   * 而裁剪改错可以再编辑回来（真正破坏性的「删除」才必须确认）。
+   */
+  const handleApplyDefaultCropToSelected = async () => {
+    if (!editingCharacter) return;
 
-      // 先按"图片尺寸未知"取一份兜底值（原图读不到时至少让数值一致）
-      let rect: CropRect | null = resolveDefaultCropRect({
-        crop: defaultPortraitCrop,
-        imageSize: null,
-      }).rect;
-      if (!rect) continue;
-
-      let image: HTMLImageElement | null = null;
-      try {
-        image = await loadImageElement(
-          buildPortraitImageUrl(portrait.imagePath),
-        );
-        const resolved = resolveDefaultCropRect({
-          crop: defaultPortraitCrop,
-          sourceImageSize: defaultImageSize,
-          imageSize: {
-            width: image.naturalWidth,
-            height: image.naturalHeight,
-          },
-        });
-        if (resolved.rect) {
-          rect = resolved.rect;
-          if (resolved.adjusted) adjustedCount += 1;
-        }
-      } catch (error) {
-        imageFailedCount += 1;
-        console.warn(
-          "[CharacterDetailModal] 批量改裁剪：原图加载失败，只改数值",
-          portrait.portName,
-          error,
-        );
-      }
-
-      // 比例换算后算出来还是原来的框：不用重算缩略图（不同尺寸的图很少刚好相同）
-      const nextCrop = {
-        faceX: rect.left,
-        faceY: rect.top,
-        length: rect.width,
-      };
-      if (isSameCrop(portraitCropOf(portrait), nextCrop)) {
-        unchangedCount += 1;
-        continue;
-      }
-
-      let thumbnailPath = portrait.thumbnailPath;
-      if (image) {
-        const uploadedThumbnail = await regeneratePortraitThumbnail(
-          characterId,
-          portrait.portraitID,
-          image,
-          rect,
-        );
-        if (uploadedThumbnail) {
-          thumbnailPath = uploadedThumbnail;
-        } else {
-          thumbnailFailedCount += 1;
-        }
-      }
-
-      updatedPortraits.set(portrait.portraitID, {
-        ...portrait,
-        ...nextCrop,
-        thumbnailPath,
-      });
-    }
-
-    reportBatchProgress(null);
-
-    if (updatedPortraits.size > 0) {
-      setEditingCharacter((prev) =>
-        prev
-          ? {
-              ...prev,
-              portraits: (prev.portraits || []).map(
-                (portrait) =>
-                  updatedPortraits.get(portrait.portraitID) ?? portrait,
-              ),
-            }
-          : prev,
-      );
-      // 只刷新真的重算过缩略图的那几张，其它立绘的 <img> 不动
-      bumpThumbnailVersions(Array.from(updatedPortraits.keys()));
-    }
-
-    // 一张都没改动：说明算出来的框和现在存的一样（或原图都读不到，只能算像素值）
-    if (updatedPortraits.size === 0) {
-      const reason =
-        imageFailedCount > 0
-          ? `${imageFailedCount} 张原图加载失败，没法定比例（现有数值看起来已经一致）`
-          : `所有立绘的裁剪都已经和默认立绘一致（${
-              defaultRatio ? "按比例" : "按像素"
-            }）`;
+    if (!defaultPortrait || !defaultPortraitCrop) {
       setBatchMessage({
-        kind: "info",
-        text: `${reason}，没有需要修改的。`,
+        kind: "error",
+        text:
+          selectedCropDisabledReason ??
+          "还没有可用的默认立绘裁剪：先设一张默认立绘，并在「编辑立绘」里框好它的头部。",
       });
       return;
     }
 
-    const parts = [
-      `已${defaultRatio ? "按比例" : "按像素"}更新 ${
-        updatedPortraits.size
-      } 张立绘的裁剪`,
-    ];
-    if (unchangedCount > 0) {
-      parts.push(`${unchangedCount} 张算出来本来就是这个裁剪，已跳过`);
+    const targets = selectedCropTargets;
+    if (targets.length === 0) {
+      setBatchMessage({
+        kind: "info",
+        text: selectedCropDisabledReason ?? "先勾选要套用裁剪的立绘。",
+      });
+      return;
     }
-    if (adjustedCount > 0) {
-      parts.push(`其中 ${adjustedCount} 张超出原图范围，已按图片边界修正`);
-    }
-    if (imageFailedCount > 0) {
-      parts.push(`${imageFailedCount} 张原图加载失败（只改了数值，缩略图没更新）`);
-    }
-    if (thumbnailFailedCount > 0) {
-      parts.push(`${thumbnailFailedCount} 张缩略图重新生成失败`);
-    }
-    parts.push("记得点右上角「保存」写入数据库");
 
-    setBatchMessage({
-      kind:
-        imageFailedCount > 0 || thumbnailFailedCount > 0 ? "info" : "success",
-      text: `${parts.join("；")}。`,
+    // 读尺寸期间先置忙，避免连点两次同时跑两批
+    reportBatchProgress({ kind: "crop", done: 0, total: targets.length });
+    // 按比例换算必须先知道默认立绘自己的原图尺寸（库里只存了像素值）
+    const defaultImageSize = await loadPortraitImageSize(
+      defaultPortrait.imagePath,
+    );
+    const defaultRatio = toCropRatio(defaultPortraitCrop, defaultImageSize);
+    setBatchMessage(null);
+
+    const { outcome, failedIds } = await runDefaultCropBatch({
+      characterId: editingCharacter.characterID,
+      targets,
+      defaultCrop: defaultPortraitCrop,
+      defaultImageSize,
+      mode: defaultRatio ? "ratio" : "pixel",
     });
+    setBatchMessage(describeCropBatchResult(outcome, "selected"));
+
+    // 全部成功 → 清空选中并退出多选；有失败 → 只保留失败项，留在多选里直接重试
+    if (failedIds.length > 0) {
+      setSelectedPortraitIds(new Set(failedIds));
+      setSelectionMode(true);
+    } else {
+      exitSelectionMode();
+    }
+  };
+
+  /**
+   * 「批量删除」：逐张调删除接口，某一张失败不影响其它张。
+   *
+   * <p>删除**不可恢复**，所以一定先确认：确认框写明张数；选中默认立绘时再多一段说明
+   * （与单张删除的约定一致：删掉默认立绘后，后端会把剩下的第一张提为默认，这里同步本地标记）。
+   *
+   * <p>部分失败时只保留失败项、留在多选模式里，用户直接再点一次「删除」就能重试。
+   */
+  const handleBatchDeleteSelected = async () => {
+    if (!editingCharacter) return;
+
+    const targets = selectedPortraits;
+    if (targets.length === 0) {
+      setBatchMessage({ kind: "info", text: "先勾选要删除的立绘。" });
+      return;
+    }
+
+    const characterId = editingCharacter.characterID;
+    const portraitsBeforeDelete = editingCharacter.portraits || [];
+    const includesDefault = targets.some((portrait) =>
+      isDefaultPortraitId(portraitsBeforeDelete, portrait.portraitID),
+    );
+
+    const confirmed = await askConfirm({
+      title: "批量删除立绘",
+      message: `确定要删除选中的 ${targets.length} 张立绘吗？删除后不可恢复。`,
+      detail: includesDefault
+        ? "选中的里面包含默认立绘：删除后会自动把剩下的第一张设为新的默认立绘；全删光时这个角色就没有立绘了。"
+        : undefined,
+      confirmLabel: `删除 ${targets.length} 张`,
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    setBatchMessage(null);
+    const deletedIds: string[] = [];
+    const failed: { portName: string; reason: string }[] = [];
+    const failedIds: string[] = [];
+    let defaultDeleted = false;
+
+    for (let index = 0; index < targets.length; index++) {
+      const portrait = targets[index];
+      reportBatchProgress({
+        kind: "delete",
+        done: index,
+        total: targets.length,
+      });
+      try {
+        await ApiService.deletePortrait(characterId, portrait.portraitID);
+        deletedIds.push(portrait.portraitID);
+        if (isDefaultPortraitId(portraitsBeforeDelete, portrait.portraitID)) {
+          defaultDeleted = true;
+        }
+      } catch (error) {
+        console.error(
+          "[CharacterDetailModal] 批量删除：这张立绘删除失败",
+          portrait.portName,
+          error,
+        );
+        failed.push({
+          portName: portrait.portName,
+          reason: describeApiError(error, "删除失败"),
+        });
+        failedIds.push(portrait.portraitID);
+      }
+    }
+
+    reportBatchProgress(null);
+
+    // 本地同步删成功的那些。删掉的是默认立绘时，把剩下的第一张提为默认
+    // （后端删除接口做同样的事，这里同步标记，保证这次「保存」传回去的 defaultPortrait 和库里一致）
+    let promotedDefaultName: string | null = null;
+    if (deletedIds.length > 0) {
+      const deletedSet = new Set(deletedIds);
+      const remaining = portraitsBeforeDelete.filter(
+        (portrait) => !deletedSet.has(portrait.portraitID),
+      );
+      if (defaultDeleted && remaining.length > 0) {
+        promotedDefaultName = remaining[0].portName;
+      }
+      setEditingCharacter((prev) =>
+        prev
+          ? {
+              ...prev,
+              portraits:
+                defaultDeleted && remaining.length > 0
+                  ? markDefaultPortrait(remaining, remaining[0].portraitID)
+                  : remaining,
+            }
+          : prev,
+      );
+    }
+
+    const deleteOutcome: PortraitDeleteBatchOutcome = {
+      deleted: deletedIds.length,
+      failed,
+      defaultDeleted,
+      promotedDefaultName,
+    };
+    setBatchMessage(describeDeleteBatchResult(deleteOutcome));
+
+    // 全部成功 → 清空选中并退出多选；有失败 → 只保留失败项，留在多选里直接重试
+    if (failedIds.length > 0) {
+      setSelectedPortraitIds(new Set(failedIds));
+      setSelectionMode(true);
+    } else {
+      exitSelectionMode();
+    }
   };
 
   /**
@@ -713,8 +1092,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         prev
           ? {
               ...prev,
-              // 新导入的立绘一律排在后面；默认立绘仍然保持第一张
-              portraits: orderPortraitsDefaultFirst([
+              // 新导入的立绘一律追加到末尾；不动已有顺序 / 默认立绘的位置。
+              // 角色原本没有立绘时，归一化会把第一张标成默认（后端保存时同样兜底）。
+              portraits: normalizePortraitDefaults([
                 ...(prev.portraits || []),
                 ...importedPortraits,
               ]),
@@ -796,9 +1176,10 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       const remaining = (editingCharacter.portraits || []).filter(
         (p) => p.portraitID !== portraitId,
       );
-      // 删掉的是默认立绘：把剩下的第一张提为默认，别让角色变成"没有默认立绘"。
-      // 后端删除接口做同样的事（保住"角色至少有一张默认立绘"的约定），这里同步本地标记，
+      // 删掉的是默认立绘：把剩下的第一张（按当前显示顺序）提为默认，
+      // 别让角色变成"没有默认立绘"。后端删除接口做同样的事，这里同步本地标记，
       // 保证这次「保存」传回去的 defaultPortrait 标记和库里一致。
+      // 删的不是默认立绘时只移除这一张，其余顺序原样保留（用户排好的顺序不能被打乱）。
       const deletedDefault = isDefaultPortraitId(
         editingCharacter.portraits,
         portraitId,
@@ -808,7 +1189,7 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         portraits:
           deletedDefault && remaining.length > 0
             ? markDefaultPortrait(remaining, remaining[0].portraitID)
-            : orderPortraitsDefaultFirst(remaining),
+            : remaining,
       });
     } catch (error) {
       console.error("删除立绘失败:", error);
@@ -835,8 +1216,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
       );
 
       // 本地同步默认标记。默认立绘由 defaultPortrait 字段表示（后端 is_default 是唯一真源），
-      // markDefaultPortrait 会顺手把新的默认立绘挪到第一张：本地顺序与后端返回的顺序
-      // （默认立绘在前、其余按名称）保持一致，保存后再打开也不会"默认立绘排在中间"。
+      // markDefaultPortrait **只换标记、不挪位置**：默认立绘可以位于列表任意位置，
+      // 用户排好的顺序和正在拖拽的结果都不该因为"设为默认"被打乱。
       setEditingCharacter((prev) =>
         prev
           ? {
@@ -855,7 +1236,8 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
     if (character) {
       setEditingCharacter({
         ...character,
-        portraits: orderPortraitsDefaultFirst(
+        // 顺序原样保留（display_order）；只保证默认标记唯一，角标才能跟对卡片
+        portraits: normalizePortraitDefaults(
           character.portraits || portraits || [],
         ),
       });
@@ -863,7 +1245,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
   }, [character, portraits]);
 
   const handleSave = async () => {
-    if (!editingCharacter || saving) return;
+    if (!editingCharacter || saving || reordering || reorderingRef.current) {
+      return;
+    }
 
     console.log("[CharacterDetailModal] 保存角色详情", {
       characterName: editingCharacter.characterName,
@@ -948,12 +1332,13 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
         portraitId: portrait.portraitID,
       });
     } else {
-      // 添加新立绘：追加到末尾（默认立绘仍在第一张，角色原本没有立绘时它就是唯一一张）
+      // 添加新立绘：追加到末尾，保留已有顺序与默认立绘的位置；
+      // 角色原本没有立绘时把它标成默认（后端保存时也是同样的兜底）。
       setEditingCharacter((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
-          portraits: orderPortraitsDefaultFirst([
+          portraits: normalizePortraitDefaults([
             ...(prev.portraits || []),
             portrait,
           ]),
@@ -985,8 +1370,12 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
               : `编辑角色: ${editingCharacter.characterName}`}
           </h2>
           <div className="header-actions">
-            <button className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? "保存中…" : "保存"}
+            <button
+              className="btn-primary"
+              onClick={handleSave}
+              disabled={saving || reordering}
+            >
+              {saving ? "保存中…" : reordering ? "保存顺序中…" : "保存"}
             </button>
             <button className="btn-secondary" onClick={handleClose}>
               取消
@@ -1040,6 +1429,9 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             onEditPortrait={handleEditPortrait}
             onDeletePortrait={handleDeletePortrait}
             onSetDefaultPortrait={handleSetDefaultPortrait}
+            onReorderPortrait={handleReorderPortrait}
+            reordering={reordering}
+            saving={saving}
             onApplyDefaultCropToAll={handleApplyDefaultCropToAll}
             onBatchImportPortraits={handleBatchImportPortraits}
             canApplyDefaultCrop={defaultCropTargets.length > 0}
@@ -1047,6 +1439,20 @@ const CharacterDetailModal: React.FC<CharacterDetailModalProps> = ({
             batchMessage={batchMessage}
             onDismissBatchMessage={() => setBatchMessage(null)}
             thumbnailVersions={thumbnailVersions}
+            selectionMode={selectionMode}
+            selectedPortraitIds={selectedPortraitIds}
+            selectionCount={selectedPortraits.length}
+            selectedCropCount={selectedCropTargets.length}
+            allPortraitsSelected={allPortraitsSelected}
+            onEnterSelectionMode={enterSelectionMode}
+            onExitSelectionMode={exitSelectionMode}
+            onToggleSelectPortrait={handleTogglePortraitSelection}
+            onToggleSelectAll={handleToggleSelectAllPortraits}
+            onApplyDefaultCropToSelected={handleApplyDefaultCropToSelected}
+            onBatchDeleteSelected={handleBatchDeleteSelected}
+            canApplySelectedCrop={selectedCropDisabledReason === null}
+            selectedCropDisabledReason={selectedCropDisabledReason}
+            batchDeleteDisabledReason={batchDeleteDisabledReason}
           />
         </div>
       </div>

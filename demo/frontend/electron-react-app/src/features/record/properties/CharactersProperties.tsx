@@ -52,7 +52,7 @@ import "./CharactersProperties.css";
  * createCoordinateMapper）：X 轴滑块范围是 ±视频宽度/2、Y 轴是 ±视频高度，
  * 和预览图的实际像素一一对应；写回记录前再换算回设计画布像素。
  *
- * 临时图片（路人/道具）已拆到同级的 TempImagesProperties（「临时图片」页签），
+ * 临时素材（路人/道具）已拆到同级的 TempImagesProperties（「临时素材」页签），
  * 那边沿用同一套坐标换算规则。
  */
 

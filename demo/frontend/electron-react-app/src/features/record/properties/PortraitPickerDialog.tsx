@@ -9,6 +9,12 @@
  * 以前第 1 个入口是 JSX、第 2 个入口是 `document.createElement + innerHTML` 手搓的弹窗，
  * 两套 DOM、两套缩略图兜底逻辑。现在统一走这个组件（点哪都长一样），
  * 并且通过 {@link ModalPortal} 挂到 body 上 —— 否则会被停靠面板的层叠上下文裁切（见 ModalPortal 注释）。
+ *
+ * <h3>滚动与类名</h3>
+ * 一个角色的立绘动辄几十张，网格必须能滚：标题栏固定，内容区 `.portrait-picker-body` 自己滚
+ * （见 PortraitPickerDialog.css）。类名一律用 `portrait-picker-` 前缀，**不要**再叫
+ * `.portrait-modal` —— 资源管理的立绘裁剪弹窗占着这个名字，两边同名会让裁剪弹窗的
+ * `overflow: hidden` 盖掉这里的滚动，表现为"最多只显示 16 张、没有滚动条"。
  */
 import React from "react";
 import type { Portrait } from "@types";
@@ -60,12 +66,12 @@ const PortraitCard: React.FC<{
   return (
     <button
       type="button"
-      className={`portrait-grid-item${selected ? " selected" : ""}`}
+      className={`portrait-picker-item${selected ? " selected" : ""}`}
       aria-pressed={selected}
       title={emotion ? `${portrait.portName}（${emotion}）` : portrait.portName}
       onClick={onSelect}
     >
-      <span className="portrait-grid-thumb">
+      <span className="portrait-picker-thumb">
         <img
           src={buildPortraitThumbnailUrl(portrait.thumbnailPath)}
           alt={portrait.portName}
@@ -78,8 +84,10 @@ const PortraitCard: React.FC<{
           }}
         />
       </span>
-      <span className="name">{portrait.portName}</span>
-      {emotion && <span className="emotion-tag">{emotion}</span>}
+      <span className="portrait-picker-name">{portrait.portName}</span>
+      {emotion && (
+        <span className="portrait-picker-emotion">{emotion}</span>
+      )}
     </button>
   );
 };
@@ -96,14 +104,20 @@ const PortraitPickerDialog: React.FC<PortraitPickerDialogProps> = ({
   <ModalPortal
     label={title}
     onClose={onClose}
-    overlayClassName="portrait-modal-overlay"
-    dialogClassName="portrait-modal"
+    overlayClassName="portrait-picker-overlay"
+    dialogClassName="portrait-picker"
   >
-    <div className="portrait-modal-header">
-      <h4>{title}</h4>
+    <div className="portrait-picker-header">
+      <div className="portrait-picker-heading">
+        <h4 className="portrait-picker-title">{title}</h4>
+        {/* 张数：几十张立绘时，滚动的是内容区，标题栏里的"共 N 张"始终可见 */}
+        {portraits.length > 0 && (
+          <span className="portrait-picker-count">共 {portraits.length} 张</span>
+        )}
+      </div>
       <button
         type="button"
-        className="portrait-modal-close"
+        className="portrait-picker-close"
         aria-label="关闭"
         title="关闭（Esc）"
         onClick={onClose}
@@ -112,22 +126,25 @@ const PortraitPickerDialog: React.FC<PortraitPickerDialogProps> = ({
       </button>
     </div>
 
-    {notice && <p className="portrait-modal-notice">{notice}</p>}
+    {/* 内容区独立滚动（标题栏固定）：立绘多到几十张也能全部翻到，不会像以前那样被裁在一屏内 */}
+    <div className="portrait-picker-body">
+      {notice && <p className="portrait-picker-notice">{notice}</p>}
 
-    {portraits.length === 0 ? (
-      <p className="portrait-modal-empty">{emptyHint}</p>
-    ) : (
-      <div className="portrait-grid">
-        {portraits.map((portrait) => (
-          <PortraitCard
-            key={portrait.portraitID}
-            portrait={portrait}
-            selected={portrait.portraitID === selectedPortraitId}
-            onSelect={() => onSelect(portrait)}
-          />
-        ))}
-      </div>
-    )}
+      {portraits.length === 0 ? (
+        <p className="portrait-picker-empty">{emptyHint}</p>
+      ) : (
+        <div className="portrait-picker-grid">
+          {portraits.map((portrait) => (
+            <PortraitCard
+              key={portrait.portraitID}
+              portrait={portrait}
+              selected={portrait.portraitID === selectedPortraitId}
+              onSelect={() => onSelect(portrait)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   </ModalPortal>
 );
 

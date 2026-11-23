@@ -12,7 +12,7 @@ import ApiService from "@services/ApiService";
 import type { ProjectWorkspace } from "./useProjectWorkspace";
 
 /**
- * 剧情编辑 → 素材页签（立绘 / 临时图片 / 背景）与预览的联动接线：
+ * 剧情编辑 → 素材页签（立绘 / 临时素材 / 背景）与预览的联动接线：
  *
  * - **点卡片** = 在预览里选中这个素材；素材在取景之外时预览自动切世界视图把它显示出来；
  * - **勾复选框** = 批量选择，不碰预览选中；两者互不影响；

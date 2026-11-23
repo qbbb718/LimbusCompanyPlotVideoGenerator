@@ -22,8 +22,8 @@ import CharactersProperties from "./CharactersProperties";
 /**
  * "剧情编辑 → 立绘"页签：
  * - 立绘的缩放 / 复原 / X / Y 坐标控件行为不变；
- * - 临时图片（路人 / 道具）已拆成同级的「临时图片」页签，
- *   这里不应再出现它的标题、缩略图或"添加临时图片"入口。
+ * - 临时素材（物品 / 路人）已拆成同级的「临时素材」页签，
+ *   这里不应再出现它的标题、说明文字、缩略图或"添加临时素材"入口。
  */
 
 const getCharacters = jest.spyOn(ApiService, "getCharacters");
@@ -161,9 +161,9 @@ describe("CharactersProperties 立绘缩放与复原", () => {
   });
 });
 
-describe("CharactersProperties 不再包含临时图片", () => {
-  it("记录里有临时图片时，立绘页签也不渲染任何相关入口", () => {
-    // 有立绘、也有临时图片：立绘页签只应管立绘
+describe("CharactersProperties 不再包含临时素材", () => {
+  it("记录里有临时素材时，立绘页签也不渲染任何相关入口", () => {
+    // 有立绘、也有临时素材：立绘页签只应管立绘
     renderPanel(
       makeRecord([makeCharacter()], [
         {
@@ -177,10 +177,12 @@ describe("CharactersProperties 不再包含临时图片", () => {
       ]),
     );
 
-    expect(screen.queryByText("临时图片（路人/道具）")).toBeNull();
-    expect(screen.queryByText("临时图片 1")).toBeNull();
-    expect(screen.queryByAltText("临时图片 1")).toBeNull();
-    expect(screen.queryByText("添加临时图片")).toBeNull();
+    expect(screen.queryByText("临时素材")).toBeNull();
+    // 页签说明文字也不该出现在立绘页签里
+    expect(screen.queryByText(/无需在资源管理中登记/)).toBeNull();
+    expect(screen.queryByText("临时素材 1")).toBeNull();
+    expect(screen.queryByAltText("临时素材 1")).toBeNull();
+    expect(screen.queryByText("添加临时素材")).toBeNull();
     expect(screen.queryByText("压暗")).toBeNull();
   });
 });
@@ -267,6 +269,21 @@ describe("CharactersProperties 更换立绘弹窗", () => {
     ).toBe("false");
   });
 
+  it("素材库里的立绘超过 16 张时，弹窗也把全部列出来（回归）", async () => {
+    // 回归：以前弹窗被同名样式裁成一屏，默认窗口下正好只看得见 4×4 = 16 张。
+    const many = Array.from({ length: 20 }, (_, i) =>
+      makePortrait(`p${i + 1}`, `立绘-${i + 1}`),
+    );
+    getCharacters.mockResolvedValue([makeMyCharacter(many)]);
+    renderPanel(makeRecord([makeCharacter()]));
+
+    const dialog = await openPortraitPicker();
+
+    // 20 张全在弹窗里（不是只剩前 16 张）
+    expect(within(dialog).getAllByTitle(/^立绘-\d+（normal）$/)).toHaveLength(20);
+    expect(within(dialog).getByText("共 20 张")).toBeTruthy();
+  });
+
   it("点一张立绘就把 portrait 写回记录并关掉弹窗", async () => {
     getCharacters.mockResolvedValue([makeMyCharacter([portraitA, portraitB])]);
     const updateRecord = renderPanel(makeRecord([makeCharacter()]));
@@ -288,7 +305,7 @@ describe("CharactersProperties 更换立绘弹窗", () => {
     await openPortraitPicker();
     // 遮罩层没有语义角色，只能按 class 点它
     // eslint-disable-next-line testing-library/no-node-access
-    fireEvent.click(document.querySelector(".portrait-modal-overlay") as Element);
+    fireEvent.click(document.querySelector(".portrait-picker-overlay") as Element);
     expect(screen.queryByRole("dialog")).toBeNull();
 
     await openPortraitPicker();

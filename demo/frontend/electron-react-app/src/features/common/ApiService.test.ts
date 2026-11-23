@@ -1,7 +1,7 @@
 import ApiService, { BASE_URL } from "./ApiService";
 
 /**
- * "剧情编辑 → 立绘 → 临时图片（路人/道具）" 的缩略图地址。
+ * "剧情编辑 → 立绘 → 临时素材（路人/道具）" 的缩略图地址。
  *
  * 记录里 imagePath 有两种历史格式：
  * - 相对路径 ./projects/temp/images/xxx.png
@@ -43,7 +43,7 @@ describe("ApiService.getTempImageUrl", () => {
     ).toBe(expected);
   });
 
-  it("只有文件名时按临时图片目录拼", () => {
+  it("只有文件名时按临时素材目录拼", () => {
     expect(ApiService.getTempImageUrl(fileName)).toBe(expected);
   });
 

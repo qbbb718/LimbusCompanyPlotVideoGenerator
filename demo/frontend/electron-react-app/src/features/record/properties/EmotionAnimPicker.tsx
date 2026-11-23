@@ -1,5 +1,8 @@
 /**
- * @component 立绘「情绪动画（序列帧）」
+ * @component 立绘 / 临时素材的「情绪动画（序列帧）」
+ *
+ * <p>两个页签用的是**同一个组件**（「立绘」与「临时素材」）；数据也都是 `EmotionAnim`，
+ * 差别只有头部区域怎么定义，通过 `elementKindLabel` / `placementAnchorLabel` 只换文案。
  *
  * <h3>职责边界：做动画在资源管理，用哪一段 + 摆在哪在这里</h3>
  * 动画的**制作**（导入帧序列、每帧时长、播放参数、素材上的原始摆放）全部在
@@ -38,12 +41,21 @@ import EmotionPlacementEditor from "./EmotionPlacementEditor";
 import "./EmotionAnimPicker.css";
 
 interface EmotionAnimPickerProps {
-  /** 当前立绘的情绪动画；undefined = 没有 */
+  /** 当前情绪动画；undefined = 没有 */
   emotionAnim?: EmotionAnim;
   /** 写回记录；选「不使用」时传 undefined */
   onChange: (next: EmotionAnim | undefined) => void;
-  /** 无障碍标签用的名字（角色名） */
+  /** 无障碍标签用的名字（角色名 / 临时素材 N） */
   elementLabel: string;
+  /**
+   * 承载动画的元素种类（"立绘" / "临时素材"），只用于文案。
+   *
+   * <p>组件本身完全复用：数据是同一份 `EmotionAnim`，摆放同样是"相对头部区域"，
+   * 差别只在头部区域怎么定义（立绘=裁剪框，临时素材=图片宽度 1/3 的正方形）。
+   */
+  elementKindLabel?: string;
+  /** 摆放偏移的原点叫什么（立绘"脸框中心"，临时素材"头部区域中心"），只用于提示文案 */
+  placementAnchorLabel?: string;
   /** 是否剧情模式；人格故事模式不渲染立绘，这里只置灰 + 提示 */
   plot?: boolean;
   /** 跳转到「资源管理 → 序列帧动画」；不传则不显示跳转按钮（独立的组件测试里常见） */
@@ -96,6 +108,8 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
   emotionAnim,
   onChange,
   elementLabel,
+  elementKindLabel = "立绘",
+  placementAnchorLabel = "脸框中心",
   plot = true,
   onOpenAnimationLibrary,
 }) => {
@@ -127,7 +141,7 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
    * 用户会以为自己没选（与旧的原生 select 占位项同一用意）。
    */
   const options: PickerOption[] = [
-    { value: "", label: "不使用", meta: "立绘上不画序列帧", thumb: null },
+    { value: "", label: "不使用", meta: `${elementKindLabel}上不画序列帧`, thumb: null },
     ...library.clips.map((clip) => ({
       value: clip.id,
       label: clip.name,
@@ -369,6 +383,7 @@ const EmotionAnimPicker: React.FC<EmotionAnimPickerProps> = ({
           {hasAnimation && (
             <EmotionPlacementEditor
               elementLabel={elementLabel}
+              anchorLabel={placementAnchorLabel}
               value={emotionPlacementOf(emotionAnim)}
               baseline={asset ? assetPlacementOf(asset) : null}
               onChange={(patch) => onChange({ ...emotionAnim!, ...patch })}

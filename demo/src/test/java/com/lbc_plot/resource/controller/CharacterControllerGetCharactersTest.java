@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>修复后固定两条 SQL、共用同一条连接。这里用内存库验证：
  * <ol>
  *   <li>每个角色的立绘都被挂回去（不是空列表）</li>
- *   <li>默认立绘排在第一位（前端依赖 portraits[0] 的老约定）</li>
+ *   <li>顺序按 `display_order` 走：默认立绘可以在中间，不再被强制置顶</li>
  *   <li>没有立绘、不存在的角色不会让接口崩掉</li>
  * </ol>
  */
@@ -94,14 +95,15 @@ class CharacterControllerGetCharactersTest {
     }
 
     @Test
-    @DisplayName("一次查询就把每个角色的立绘挂回去，且默认立绘排在最前")
+    @DisplayName("一次查询就把每个角色的立绘挂回去，顺序按 display_order（默认立绘可在中间）")
     void loadsPortraitsForEveryCharacterInOnePass() {
         jdbi.useExtension(PortraitDAO.class, dao -> {
             dao.save(portrait("p_a_normal", CHAR_A, "A-普通", Emotion.NORMAL));
             dao.save(portrait("p_a_happy", CHAR_A, "A-开心", Emotion.HAPPY));
             dao.save(portrait("p_b_normal", CHAR_B, "B-普通", Emotion.NORMAL));
-            dao.saveCharacterPortrait(CHAR_A, "p_a_happy", true, 0);
-            dao.saveCharacterPortrait(CHAR_A, "p_a_normal", false, 1);
+            // 刻意让默认立绘（happy）在第二张：排序不能因为默认标记把它顶上去
+            dao.saveCharacterPortrait(CHAR_A, "p_a_normal", false, 0);
+            dao.saveCharacterPortrait(CHAR_A, "p_a_happy", true, 1);
             dao.saveCharacterPortrait(CHAR_B, "p_b_normal", true, 0);
         });
 
@@ -117,14 +119,19 @@ class CharacterControllerGetCharactersTest {
         assertEquals(2, a.getPortraits().size(), "阿尔法应有 2 张立绘");
         assertEquals(1, b.getPortraits().size(), "贝塔应有 1 张立绘");
 
-        assertEquals("p_a_happy", a.getPortraits().get(0).getPortraitID(),
-                "默认立绘必须排在第一位（前端 portraits[0] 的老约定）");
-        assertTrue(a.getPortraits().get(0).isDefaultPortrait(),
-                "第一张立绘应带默认标记");
-        assertEquals("A-开心", a.getPortraits().get(0).getPortName());
+        assertEquals("p_a_normal", a.getPortraits().get(0).getPortraitID(),
+                "列表顺序应严格按 display_order（第 0 张是普通立绘）");
+        assertFalse(a.getPortraits().get(0).isDefaultPortrait(),
+                "第一张不是默认立绘：默认立绘允许在中间");
+        assertEquals("A-普通", a.getPortraits().get(0).getPortName());
         assertEquals(1, a.getPortraits().get(0).getFaceX(), "裁剪参数应完整映射");
-        assertEquals("/assets/characters/" + CHAR_A + "/thumbnails/p_a_happy.png",
+        assertEquals("/assets/characters/" + CHAR_A + "/thumbnails/p_a_normal.png",
                 a.getPortraits().get(0).getThumbnailPath(), "缩略图路径应完整映射");
+
+        assertEquals("p_a_happy", a.getPortraits().get(1).getPortraitID(),
+                "默认立绘保持在 display_order 指定的第二张");
+        assertTrue(a.getPortraits().get(1).isDefaultPortrait(),
+                "默认立绘应带 defaultPortrait 标记");
 
         assertEquals(CHAR_B, b.getPortraits().get(0).getCharacterID(),
                 "立绘必须只属于它自己的角色，不能串到别的角色上");

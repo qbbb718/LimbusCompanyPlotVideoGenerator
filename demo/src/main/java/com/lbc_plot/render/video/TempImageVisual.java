@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
+import com.lbc_plot.render.video.anim.EmotionAnim;
 import com.lbc_plot.render.video.anim.SpriteAnimation;
 
 /**
@@ -35,6 +36,16 @@ public class TempImageVisual extends VisualElement {
 
     /** 移动动画装备（预设 + 关键帧）；null = 不动，渲染走原路径、逐像素不变 */
     private SpriteAnimation anim;
+
+    /**
+     * 情绪动画（序列帧）：与 {@link CharacterVisual#getEmotionAnim()} 同一份数据、同一套 UI。
+     *
+     * <p>唯一的差别是坐标基准：立绘用裁剪框推导出的脸框，临时图片没有裁剪框，用需求定义的
+     * **头部正方形区域**——边长 = 图片显示宽度 / 3、水平居中、上边缘贴合图片上边缘
+     * （见 {@link com.lbc_plot.render.video.anim.EmotionAnimPlacement#tempImageHeadBox}）。
+     * 所以 {@code offsetX/offsetY} 仍然是"几个头部区域宽度"，同一份摆放换图仍落在相对位置。
+     */
+    private EmotionAnim emotionAnim;
 
     @JsonIgnore
     private transient BufferedImage image; // 懒加载缓存
@@ -58,6 +69,7 @@ public class TempImageVisual extends VisualElement {
         this.scale = builder.scale;
         this.dim = builder.dim;
         this.anim = builder.anim;
+        this.emotionAnim = builder.emotionAnim;
     }
 
     // ---- 懒加载图像 ----
@@ -153,6 +165,26 @@ public class TempImageVisual extends VisualElement {
         return anim != null && anim.isAnimated();
     }
 
+    /** 情绪动画装备；null 表示没有 */
+    @JsonProperty
+    public EmotionAnim getEmotionAnim() {
+        return emotionAnim;
+    }
+
+    public void setEmotionAnim(EmotionAnim emotionAnim) {
+        this.emotionAnim = emotionAnim;
+    }
+
+    /**
+     * 有没有可画的情绪动画（与 {@link CharacterVisual#hasEmotionAnim()} 同一套判定）。
+     *
+     * <p>渲染端据此决定要不要多画一层：不可用就完全跳过，保证没挂动画的工程**逐像素不变**。
+     */
+    @JsonIgnore
+    public boolean hasEmotionAnim() {
+        return emotionAnim != null && emotionAnim.isUsable() && emotionAnim.totalFrames() > 0;
+    }
+
     @Override
     public String toString() {
         return "TempImageVisual{" +
@@ -162,6 +194,7 @@ public class TempImageVisual extends VisualElement {
                 ", posY=" + posY +
                 ", scale=" + scale +
                 ", dim=" + dim +
+                ", emotionAnim=" + emotionAnim +
                 '}';
     }
 
@@ -191,6 +224,10 @@ public class TempImageVisual extends VisualElement {
         /** 移动动画装备；旧工程没有该字段时为 null（= 不动） */
         @JsonProperty
         private SpriteAnimation anim;
+
+        /** 情绪动画（序列帧）；旧工程没有该字段时为 null（= 不画） */
+        @JsonProperty
+        private EmotionAnim emotionAnim;
 
         /** 无参构造器（Jackson 反序列化必需） */
         public Builder() {
@@ -229,6 +266,12 @@ public class TempImageVisual extends VisualElement {
         /** 设置移动动画（null = 不动） */
         public Builder anim(SpriteAnimation anim) {
             this.anim = anim;
+            return this;
+        }
+
+        /** 设置情绪动画（null = 不画） */
+        public Builder emotionAnim(EmotionAnim emotionAnim) {
+            this.emotionAnim = emotionAnim;
             return this;
         }
 

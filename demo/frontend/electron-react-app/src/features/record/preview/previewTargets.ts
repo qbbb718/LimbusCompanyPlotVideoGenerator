@@ -65,7 +65,7 @@ export const selectionOfLayer = (layer: PreviewLayer): PreviewSelection => ({
  * 这边来自"在属性面板里点卡片"。key 必须用 {@link sceneLayerKey} 拼，
  * 否则预览热区层按 key 找不到这一层，选中框不会出现。
  *
- * @param kind  素材种类（只有世界图层：立绘 / 临时图片 / 背景）
+ * @param kind  素材种类（只有世界图层：立绘 / 临时素材 / 背景）
  * @param index 在所属数组里的下标
  */
 export const selectionOfVisual = (
@@ -77,7 +77,7 @@ export const selectionOfVisual = (
   index,
 });
 
-/** @function 是不是世界图层种类（立绘 / 临时图片 / 背景） */
+/** @function 是不是世界图层种类（立绘 / 临时素材 / 背景） */
 export function isSceneLayerKind(
   kind: PreviewLayerKind,
 ): kind is SceneLayerKind {
@@ -120,8 +120,8 @@ export function selectionAfterRemoval(
 /**
  * 元素种类 → 页签 + 定位目标。
  *
- * <p>注意「临时图片」是**独立页签**（2026-10 起从「立绘」里拆出来），
- * 所以临时图片必须落到 `tempImages` 而不是 `characters`。
+ * <p>注意「临时素材」是**独立页签**（2026-10 起从「立绘」里拆出来），
+ * 所以临时素材必须落到 `tempImages` 而不是 `characters`。
  *
  * @param kind   图层种类
  * @param index  图层在所属数组里的下标（UI 图层传 -1）
@@ -171,7 +171,7 @@ export function focusRequestForLayer(
  * 中断在卸载的那一刻（`PreviewHitLayer` 再也收不到 pointerup）。
  *
  * <p>所以摄像机页签下点中元素只记选中态（画选中框、可继续拖动），
- * 要看/改它的属性由用户自己切到「立绘」「临时图片」「背景」页签。
+ * 要看/改它的属性由用户自己切到「立绘」「临时素材」「背景」页签。
  *
  * @param activeTab 当前页签
  * @returns true = 保持当前页签，不跳转

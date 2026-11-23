@@ -1,7 +1,7 @@
 /**
  * 「预览点选 → 页签 + 面板定位」映射的单测。
  *
- * 这组规则一旦错了，用户点立绘会跳错页签（最典型的是点临时图片跳到「立绘」），
+ * 这组规则一旦错了，用户点立绘会跳错页签（最典型的是点临时素材跳到「立绘」），
  * 所以把六种图层全部钉死在用例里。
  */
 import {
@@ -42,7 +42,7 @@ describe("预览点选 → 页签与定位目标", () => {
     });
   });
 
-  test("临时图片 → **临时图片**页签（不是立绘页签）", () => {
+  test("临时素材 → **临时素材**页签（不是立绘页签）", () => {
     expect(targetForLayerKind("tempImage", 0)).toEqual({
       tab: "tempImages",
       focus: { kind: "tempImages", index: 0 },
@@ -109,7 +109,7 @@ describe("属性面板点卡片 → 预览选中态", () => {
     expect(selectionOfVisual("background", 1).key).toBe("background:1");
   });
 
-  test("只有立绘 / 临时图片 / 背景是世界图层（UI 图层不参与素材页签联动）", () => {
+  test("只有立绘 / 临时素材 / 背景是世界图层（UI 图层不参与素材页签联动）", () => {
     expect(isSceneLayerKind("character")).toBe(true);
     expect(isSceneLayerKind("tempImage")).toBe(true);
     expect(isSceneLayerKind("background")).toBe(true);

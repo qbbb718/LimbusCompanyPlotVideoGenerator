@@ -3,7 +3,7 @@
  *
  * 把「图层 key」（`background:0` / `character:1` / `tempImage:0`）映射成可以直接
  * 给 `<img>` 或 `new Image()` 用的绝对地址。几何模块只认 key、不碰 URL，
- * URL 的拼装规则（中文文件名、按角色分目录、临时图片的绝对路径截断）都留在 ApiService /
+ * URL 的拼装规则（中文文件名、按角色分目录、临时素材的绝对路径截断）都留在 ApiService /
  * portraitUtils 里，避免同一个坑踩两遍。
  *
  * @see ApiService.getBackgroundUrl
